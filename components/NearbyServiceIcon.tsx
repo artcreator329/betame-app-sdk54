@@ -38,15 +38,24 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     overflow: 'hidden',
     marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   image: {
     width: '100%',
     height: '100%',
   },
   title: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#1D1D1F',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 14,
+    fontWeight: '500',
   },
 });

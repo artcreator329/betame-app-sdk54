@@ -102,7 +102,7 @@ export default function SettingsScreen() {
           <SettingItem
             icon={<Heart size={20} color="#1D1D1F" />}
             title="Favorite lists"
-            onPress={() => console.log('Favorite lists')}
+            onPress={() => router.push('/favorites')}
           />
           
           <SettingItem

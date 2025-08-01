@@ -6,11 +6,15 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, Star, List, Map as MapIcon } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { nearbyServiceLocations } from '@/data/mockMapData';
+
+const { width, height } = Dimensions.get('window');
 
 export default function NearbyScreen() {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
@@ -21,12 +25,36 @@ export default function NearbyScreen() {
   };
 
   const renderMapView = () => (
-    <View style={styles.mapPlaceholder}>
-      <MapIcon size={48} color="#8E8E93" />
-      <Text style={styles.mapPlaceholderText}>Map View</Text>
-      <Text style={styles.mapPlaceholderSubtext}>
-        Map functionality requires additional setup in Expo managed workflow
-      </Text>
+    <View style={styles.mapContainer}>
+      <MapView
+        style={styles.map}
+        provider={PROVIDER_GOOGLE}
+        initialRegion={{
+          latitude: 3.1478,
+          longitude: 101.6953,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        }}
+        showsUserLocation={true}
+        showsMyLocationButton={true}
+      >
+        {nearbyServiceLocations.map((service) => (
+          <Marker
+            key={service.id}
+            coordinate={service.coordinate}
+            title={service.title}
+            description={`${service.provider} - ${service.currency}${service.price}`}
+            onPress={() => handleServicePress(service.id)}
+          >
+            <View style={styles.markerContainer}>
+              <View style={styles.marker}>
+                <MapPin size={20} color="white" />
+              </View>
+              <View style={styles.markerTriangle} />
+            </View>
+          </Marker>
+        ))}
+      </MapView>
     </View>
   );
 
@@ -126,26 +154,51 @@ const styles = StyleSheet.create({
   activeToggle: {
     backgroundColor: '#1D1D1F',
   },
-  mapPlaceholder: {
+  mapContainer: {
     flex: 1,
+    margin: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+    minHeight: 400,
+  },
+  markerContainer: {
+    alignItems: 'center',
+  },
+  marker: {
+    backgroundColor: '#007AFF',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-    margin: 20,
-    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  mapPlaceholderText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1D1D1F',
-    marginTop: 16,
-  },
-  mapPlaceholderSubtext: {
-    fontSize: 14,
-    color: '#8E8E93',
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 40,
+  markerTriangle: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderBottomWidth: 0,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#007AFF',
+    marginTop: -1,
   },
   listContainer: {
     flex: 1,

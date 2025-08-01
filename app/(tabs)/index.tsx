@@ -11,7 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, MessageCircle, Heart, ChevronRight } from 'lucide-react-native';
+import { Search, MessageCircle, Heart, ChevronRight, Wallet } from 'lucide-react-native';
 import ServiceCard from '@/components/ServiceCard';
 import NearbyServiceIcon from '@/components/NearbyServiceIcon';
 import { categories, nearbyServices, trendingServices } from '@/data/mockData';
@@ -102,7 +102,10 @@ export default function HomeScreen() {
             />
           </View>
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconButton}>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => router.push('/favorites')}
+            >
               <Heart size={24} color="#1D1D1F" />
             </TouchableOpacity>
             <TouchableOpacity 
@@ -143,7 +146,7 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Banner */}
+        {/* Banner Ad Space */}
         <View style={styles.bannerContainer}>
           <FlatList
             data={bannerSlides}
@@ -230,6 +233,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     height: 40,
+    marginRight: 12,
   },
   searchIcon: {
     marginRight: 8,
@@ -241,7 +245,6 @@ const styles = StyleSheet.create({
   },
   headerIcons: {
     flexDirection: 'row',
-    marginLeft: 12,
   },
   iconButton: {
     marginLeft: 12,
@@ -276,19 +279,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
-    height: 120,
+    height: 140,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   bannerSlider: {
     width: '100%',
     height: '100%',
   },
   bannerSlide: {
-    height: 120,
+    height: 140,
     position: 'relative',
   },
   bannerImage: {
     width: '100%',
-    height: 120,
+    height: 140,
   },
   bannerOverlay: {
     position: 'absolute',

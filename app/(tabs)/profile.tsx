@@ -1,13 +1,96 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings, Heart, Wallet, Trophy, Camera, Star } from 'lucide-react-native';
-import { sellerServices } from '@/data/mockData';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+
+interface Service {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  currency: string;
+  image_url: string;
+  rating: number;
+  review_count: number;
+}
+
+interface Review {
+  id: string;
+  reviewer_id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  reviewer_profile?: {
+    full_name: string;
+    avatar_url: string;
+  };
+}
 
 export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState('Services');
+  const [services, setServices] = useState<Service[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { user, userProfile } = useAuth();
+
+  // Calculate average rating from reviews
+  const averageRating = reviews.length > 0 
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+    : 0;
+
+  // Fetch user's services and reviews from Supabase
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch user's services
+        const { data: servicesData, error: servicesError } = await supabase
+          .from('services')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('status', 'active');
+
+        if (servicesError) {
+          console.error('Error fetching services:', servicesError);
+        } else {
+          setServices(servicesData || []);
+        }
+
+        // Fetch reviews for this user (as reviewee)
+        const { data: reviewsData, error: reviewsError } = await supabase
+          .from('reviews')
+          .select(`
+            *,
+            reviewer_profile:profiles!reviewer_id(
+              full_name,
+              avatar_url
+            )
+          `)
+          .eq('reviewee_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (reviewsError) {
+          console.error('Error fetching reviews:', reviewsError);
+        } else {
+          setReviews(reviewsData || []);
+        }
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [user]);
 
   const handleShareProfile = async () => {
     try {
@@ -76,49 +159,81 @@ export default function ProfileScreen() {
           </View>
         );
       case 'Services':
+        if (loading) {
+          return (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#1D1D1F" />
+              <Text style={styles.loadingText}>Loading services...</Text>
+            </View>
+          );
+        }
         return (
           <View style={styles.servicesContent}>
-            <Text style={styles.availableListings}>Available Listings (4)</Text>
-            {sellerServices.map((service) => (
-              <View key={service.id} style={styles.serviceItem}>
-                <Image source={{ uri: service.image }} style={styles.serviceImage} />
-                <View style={styles.serviceInfo}>
-                  <Text style={styles.serviceTitle}>{service.title}</Text>
-                  <Text style={styles.serviceDescription} numberOfLines={3}>
-                    {service.description}
-                  </Text>
-                  <View style={styles.servicePricing}>
-                    <Text style={styles.servicePrice}>From {service.currency}{service.price}</Text>
-                    <TouchableOpacity style={styles.seeOfferButton}>
-                      <Text style={styles.seeOfferText}>See Offer!</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+            <Text style={styles.availableListings}>Available Listings ({services.length})</Text>
+            {services.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>You don't have any services yet</Text>
+                <Text style={styles.emptyStateSuggestion}>Create your first service listing!</Text>
               </View>
-            ))}
-          </View>
-        );
-      case 'Reviews':
-        return (
-          <View style={styles.reviewsContainer}>
-            {mockReviews.map((review) => (
-              <TouchableOpacity key={review.id} style={styles.reviewCard}>
-                <View style={styles.reviewHeader}>
-                  <Image
-                    source={{ uri: review.reviewerImage }}
-                    style={styles.reviewerImage}
-                  />
-                  <View style={styles.reviewerInfo}>
-                    <Text style={styles.reviewerName}>{review.reviewerName}</Text>
-                    <View style={styles.ratingContainer}>
-                      <Text style={styles.ratingText}>{review.rating.toFixed(1)}</Text>
-                      {renderStars(review.rating)}
+            ) : (
+              services.map((service) => (
+                <View key={service.id} style={styles.serviceItem}>
+                  <Image source={{ uri: service.image_url || 'https://via.placeholder.com/80' }} style={styles.serviceImage} />
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceTitle}>{service.title}</Text>
+                    <Text style={styles.serviceDescription} numberOfLines={3}>
+                      {service.description}
+                    </Text>
+                    <View style={styles.servicePricing}>
+                      <Text style={styles.servicePrice}>From {service.currency}{service.price}</Text>
+                      <TouchableOpacity style={styles.seeOfferButton}>
+                        <Text style={styles.seeOfferText}>See Offer!</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </View>
-                <Text style={styles.reviewText}>{review.reviewText}</Text>
-              </TouchableOpacity>
-            ))}
+              ))
+            )}
+          </View>
+        );
+      case 'Reviews':
+        if (loading) {
+          return (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#1D1D1F" />
+              <Text style={styles.loadingText}>Loading reviews...</Text>
+            </View>
+          );
+        }
+        return (
+          <View style={styles.reviewsContainer}>
+            {reviews.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No reviews yet</Text>
+                <Text style={styles.emptyStateSuggestion}>Complete some services to get your first review!</Text>
+              </View>
+            ) : (
+              reviews.map((review) => (
+                <TouchableOpacity key={review.id} style={styles.reviewCard}>
+                  <View style={styles.reviewHeader}>
+                    <Image
+                      source={{ uri: review.reviewer_profile?.avatar_url || 'https://via.placeholder.com/40' }}
+                      style={styles.reviewerImage}
+                    />
+                    <View style={styles.reviewerInfo}>
+                      <Text style={styles.reviewerName}>
+                        {review.reviewer_profile?.full_name || 'Anonymous User'}
+                      </Text>
+                      <View style={styles.ratingContainer}>
+                        <Text style={styles.ratingText}>{review.rating.toFixed(1)}</Text>
+                        {renderStars(review.rating)}
+                      </View>
+                    </View>
+                  </View>
+                  <Text style={styles.reviewText}>{review.comment || 'No comment provided'}</Text>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         );
       default:
@@ -135,7 +250,10 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.headerIcon}>
               <Wallet size={24} color="#1D1D1F" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon}>
+            <TouchableOpacity 
+              style={styles.headerIcon}
+              onPress={() => router.push('/check-in')}
+            >
               <Trophy size={24} color="#1D1D1F" />
             </TouchableOpacity>
           </View>
@@ -154,16 +272,16 @@ export default function ProfileScreen() {
 
         {/* Profile Section */}
         <View style={styles.profileSection}>
-          <View style={styles.sellerBadge}>
-            <Text style={styles.sellerBadgeText}>CELTA & DELTA Holders</Text>
-            <Text style={styles.sellerBadgeSubtext}>IELTS Tests Expert</Text>
-            <Text style={styles.sellerBadgeSubtext}>More than 1,000 D-Level Students</Text>
-          </View>
+          {userProfile?.bio && (
+            <View style={styles.sellerBadge}>
+              <Text style={styles.sellerBadgeText}>{userProfile.bio}</Text>
+            </View>
+          )}
           
           <View style={styles.profileImageContainer}>
             <Image
               source={{
-                uri: 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=400',
+                uri: userProfile?.avatar_url || 'https://via.placeholder.com/100',
               }}
               style={styles.profileImage}
             />
@@ -172,13 +290,17 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           
-          <Text style={styles.userName}>Anvenia Tan</Text>
+          <Text style={styles.userName}>
+            {userProfile?.full_name || 'User'}
+          </Text>
           <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>4.9</Text>
-            {renderStars(4.9)}
-            <Text style={styles.reviewText}>(219 reviews)</Text>
+            <Text style={styles.ratingText}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
+            {averageRating > 0 && renderStars(averageRating)}
+            <Text style={styles.reviewText}>({reviews.length} reviews)</Text>
           </View>
-          <Text style={styles.userTagline}>Believe in God ❤️</Text>
+          {userProfile?.tagline && (
+            <Text style={styles.userTagline}>{userProfile.tagline}</Text>
+          )}
         </View>
 
         {/* Action Buttons */}
@@ -439,23 +561,8 @@ const styles = StyleSheet.create({
     color: '#1D1D1F',
     marginBottom: 4,
   },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1D1D1F',
-    marginRight: 8,
-  },
   starsContainer: {
     flexDirection: 'row',
-  },
-  reviewText: {
-    fontSize: 14,
-    color: '#1D1D1F',
-    lineHeight: 20,
   },
   servicesContent: {
     paddingHorizontal: 20,
@@ -522,8 +629,19 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   seeOfferText: {
-    color: 'white',
+    color: '#1D1D1F',
     fontSize: 12,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
 });

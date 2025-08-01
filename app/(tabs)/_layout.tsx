@@ -1,7 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Chrome as Home, Users, FileText, Bell, User } from 'lucide-react-native';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
+
   return (
     <Tabs
       screenOptions={{
@@ -37,6 +41,7 @@ export default function TabLayout() {
           tabBarIcon: ({ size, color }) => (
             <Users size={size} color={color} />
           ),
+          href: isAuthenticated ? '/services' : null,
         }}
       />
       <Tabs.Screen
@@ -46,6 +51,7 @@ export default function TabLayout() {
           tabBarIcon: ({ size, color }) => (
             <FileText size={size} color={color} />
           ),
+          href: isAuthenticated ? '/orders' : null,
         }}
       />
       <Tabs.Screen
@@ -55,6 +61,7 @@ export default function TabLayout() {
           tabBarIcon: ({ size, color }) => (
             <Bell size={size} color={color} />
           ),
+          href: isAuthenticated ? '/notifications' : null,
         }}
       />
       <Tabs.Screen
