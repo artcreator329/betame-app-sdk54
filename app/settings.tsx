@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, Briefcase, Share, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -38,6 +39,7 @@ function SettingItem({ icon, title, hasArrow = true, onPress, isLogout = false }
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { userProfile } = useAuth();
 
   const handleLogout = () => {
     Alert.alert(
@@ -83,7 +85,7 @@ export default function SettingsScreen() {
           <View style={styles.profileImageContainer}>
             <Image
               source={{
-                uri: 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=400',
+                uri: userProfile?.avatar_url || 'https://via.placeholder.com/80',
               }}
               style={styles.profileImage}
             />
@@ -92,8 +94,12 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.userName}>Anvenia Tan</Text>
-            <Text style={styles.userTagline}>Believe in God ❤️</Text>
+            <Text style={styles.userName}>
+              {userProfile?.full_name || 'User'}
+            </Text>
+            {userProfile?.tagline && (
+              <Text style={styles.userTagline}>{userProfile.tagline}</Text>
+            )}
           </View>
         </View>
 

@@ -67,20 +67,29 @@ export default function ProfileScreen() {
         // Fetch reviews for this user (as reviewee)
         const { data: reviewsData, error: reviewsError } = await supabase
           .from('reviews')
-          .select(`
-            *,
-            reviewer_profile:profiles!reviewer_id(
-              full_name,
-              avatar_url
-            )
-          `)
+          .select('*')
           .eq('reviewee_id', user.id)
           .order('created_at', { ascending: false });
+
+        // Fetch reviewer profiles separately
+        let reviewsWithProfiles = [];
+        if (reviewsData && reviewsData.length > 0) {
+          const reviewerIds = reviewsData.map(review => review.reviewer_id);
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .in('id', reviewerIds);
+
+          reviewsWithProfiles = reviewsData.map(review => ({
+            ...review,
+            reviewer_profile: profilesData?.find(profile => profile.id === review.reviewer_id)
+          }));
+        }
 
         if (reviewsError) {
           console.error('Error fetching reviews:', reviewsError);
         } else {
-          setReviews(reviewsData || []);
+          setReviews(reviewsWithProfiles || []);
         }
       } catch (error) {
         console.error('Error fetching profile data:', error);
