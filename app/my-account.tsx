@@ -211,6 +211,7 @@ export default function MyAccountScreen() {
 
       const updates = {
         full_name: userProfile?.full_name, // Keep existing full name
+        avatar_url: userProfile?.avatar_url, // Preserve existing avatar
         phone: formData.mobile,
         gender: formData.gender,
         date_of_birth: dateOfBirth,
