@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings, Heart, Wallet, Trophy, Camera, Star } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { ImageService } from '@/lib/image-service';
 
 interface Service {
   id: string;
@@ -34,8 +35,9 @@ export default function ProfileScreen() {
   const [services, setServices] = useState<Service[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const router = useRouter();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, updateProfile } = useAuth();
 
   // Calculate average rating from reviews
   const averageRating = reviews.length > 0 
@@ -109,6 +111,80 @@ export default function ProfileScreen() {
       });
     } catch (error) {
       Alert.alert('Error', 'Unable to share profile. Please try again.');
+    }
+  };
+
+  const handleCameraPress = () => {
+    if (!user) {
+      Alert.alert('Error', 'Please log in to upload a profile photo.');
+      return;
+    }
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Gallery'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleTakePhoto();
+          } else if (buttonIndex === 2) {
+            handleChoosePhoto();
+          }
+        }
+      );
+    } else {
+      // For Android, show a simple alert with options
+      Alert.alert(
+        'Update Profile Photo',
+        'Choose an option',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Take Photo', onPress: handleTakePhoto },
+          { text: 'Choose from Gallery', onPress: handleChoosePhoto },
+        ]
+      );
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      setUploadingPhoto(true);
+      const result = await ImageService.takeProfilePhoto(user!.id);
+      
+      if (result.success && result.url) {
+        // Update the user profile with the new avatar URL
+        await updateProfile({ avatar_url: result.url });
+        Alert.alert('Success', 'Profile photo updated successfully!');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to upload photo. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleChoosePhoto = async () => {
+    try {
+      setUploadingPhoto(true);
+      const result = await ImageService.uploadProfilePhoto(user!.id);
+      
+      if (result.success && result.url) {
+        // Update the user profile with the new avatar URL
+        await updateProfile({ avatar_url: result.url });
+        Alert.alert('Success', 'Profile photo updated successfully!');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to upload photo. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error choosing photo:', error);
+      Alert.alert('Error', 'Failed to choose photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -294,8 +370,16 @@ export default function ProfileScreen() {
               }}
               style={styles.profileImage}
             />
-            <TouchableOpacity style={styles.cameraButton}>
-              <Camera size={16} color="white" />
+            <TouchableOpacity 
+              style={styles.cameraButton}
+              onPress={handleCameraPress}
+              disabled={uploadingPhoto}
+            >
+              {uploadingPhoto ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Camera size={16} color="white" />
+              )}
             </TouchableOpacity>
           </View>
           
