@@ -169,8 +169,12 @@ export default function MyAccountScreen() {
       let day = '', month = '', year = '';
       if (userProfile.date_of_birth) {
         const date = new Date(userProfile.date_of_birth);
+        const months = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
         day = date.getDate().toString();
-        month = (date.getMonth() + 1).toString();
+        month = months[date.getMonth()]; // Convert to month name
         year = date.getFullYear().toString();
       }
 
@@ -196,7 +200,13 @@ export default function MyAccountScreen() {
       // Format date of birth if all parts are provided
       let dateOfBirth = null;
       if (formData.day && formData.month && formData.year) {
-        dateOfBirth = `${formData.year}-${formData.month.padStart(2, '0')}-${formData.day.padStart(2, '0')}`;
+        // Convert month name to number
+        const months = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        const monthNumber = months.indexOf(formData.month) + 1;
+        dateOfBirth = `${formData.year}-${monthNumber.toString().padStart(2, '0')}-${formData.day.padStart(2, '0')}`;
       }
 
       const updates = {
