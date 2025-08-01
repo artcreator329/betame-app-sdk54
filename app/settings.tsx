@@ -132,7 +132,7 @@ export default function SettingsScreen() {
           <SettingItem
             icon={<User size={20} color="#1D1D1F" />}
             title="My account"
-            onPress={() => console.log('My account')}
+            onPress={() => router.push('/my-account')}
           />
 
           <SettingItem
