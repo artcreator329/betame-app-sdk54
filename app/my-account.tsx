@@ -182,7 +182,7 @@ export default function MyAccountScreen() {
         ...prev,
         email: user?.email || '',
         mobile: userProfile.phone || '',
-        gender: userProfile.gender || '',
+        gender: userProfile.gender ? userProfile.gender.charAt(0).toUpperCase() + userProfile.gender.slice(1) : '',
         day,
         month,
         year,
@@ -275,7 +275,7 @@ export default function MyAccountScreen() {
             label="Gender"
             value={formData.gender}
             options={['Male', 'Female']}
-            onSelect={(value) => setFormData(prev => ({ ...prev, gender: value }))}
+            onSelect={(value) => setFormData(prev => ({ ...prev, gender: value.toLowerCase() }))}
           />
 
           <DatePickerField

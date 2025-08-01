@@ -156,9 +156,9 @@ class AuthService {
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('*')
-      .eq('user_id', user)
+      .eq('id', user)
       .single();
 
     if (error) {
@@ -176,10 +176,9 @@ class AuthService {
     bio?: string;
     phone?: string;
     location?: string;
-    is_seller?: boolean;
-    seller_badge?: string;
-    seller_badge_subtitle?: string;
-    seller_description?: string;
+    date_of_birth?: string;
+    gender?: string;
+    is_verified?: boolean;
   }): Promise<{ data: any; error: any }> {
     const user = await this.getCurrentUser();
     if (!user) {
@@ -187,9 +186,9 @@ class AuthService {
     }
 
     const { data, error } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .update(updates)
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .select()
       .single();
 
