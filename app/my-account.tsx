@@ -147,7 +147,7 @@ function DatePickerField({ label, day, month, year, onDayChange, onMonthChange, 
 
 export default function MyAccountScreen() {
   const router = useRouter();
-  const { userProfile } = useAuth();
+  const { userProfile, updateProfile } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -165,24 +165,62 @@ export default function MyAccountScreen() {
   useEffect(() => {
     // Load user data when component mounts
     if (userProfile) {
+      // Parse date of birth if available
+      let day = '', month = '', year = '';
+      if (userProfile.date_of_birth) {
+        const date = new Date(userProfile.date_of_birth);
+        day = date.getDate().toString();
+        month = (date.getMonth() + 1).toString();
+        year = date.getFullYear().toString();
+      }
+
       setFormData(prev => ({
         ...prev,
-        email: userProfile.email || 'ilovebetame@gmail.com',
-        mobile: '+6012 238 6688',
-        bankName: 'Maybank Berhad',
-        accountHolderName: 'Elon Musk',
-        accountNumber: '123-888-321888',
-        contactNumber: '+6012 238 6688',
+        email: userProfile.email || '',
+        mobile: userProfile.phone || '',
+        gender: userProfile.gender || '',
+        day,
+        month,
+        year,
+        // Bank details are not stored in database, keeping as empty for now
+        bankName: '',
+        accountHolderName: userProfile.full_name || '',
+        accountNumber: '',
+        contactNumber: userProfile.phone || '',
       }));
     }
   }, [userProfile]);
 
-  const handleSave = () => {
-    Alert.alert(
-      'Save Changes',
-      'Your account information has been updated successfully.',
-      [{ text: 'OK' }]
-    );
+  const handleSave = async () => {
+    try {
+      // Format date of birth if all parts are provided
+      let dateOfBirth = null;
+      if (formData.day && formData.month && formData.year) {
+        dateOfBirth = `${formData.year}-${formData.month.padStart(2, '0')}-${formData.day.padStart(2, '0')}`;
+      }
+
+      const updates = {
+        full_name: userProfile?.full_name, // Keep existing full name
+        phone: formData.mobile,
+        gender: formData.gender,
+        date_of_birth: dateOfBirth,
+      };
+
+      const result = await updateProfile(updates);
+      
+      if (result.error) {
+        Alert.alert('Error', 'Failed to update profile. Please try again.');
+      } else {
+        Alert.alert(
+          'Success',
+          'Your account information has been updated successfully.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    }
   };
 
   const handleRegisterMobile = () => {
@@ -211,14 +249,14 @@ export default function MyAccountScreen() {
             label="Log in email"
             value={formData.email}
             onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
-            verified={true}
+            verified={userProfile?.is_verified || false}
           />
 
           <FormField
             label="Mobile"
             value={formData.mobile}
             onChangeText={(text) => setFormData(prev => ({ ...prev, mobile: text }))}
-            verified={true}
+            verified={userProfile?.phone ? true : false}
             onPress={handleRegisterMobile}
           />
 
@@ -270,6 +308,11 @@ export default function MyAccountScreen() {
 
           <TouchableOpacity style={styles.updateLink}>
             <Text style={styles.updateLinkText}>Click here to update your banking details</Text>
+          </TouchableOpacity>
+
+          {/* Save Button */}
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            <Text style={styles.saveButtonText}>Save Changes</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -412,8 +455,21 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   updateLinkText: {
-    fontSize: 14,
     color: '#007AFF',
+    fontSize: 14,
     textDecorationLine: 'underline',
+  },
+  saveButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 20,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
