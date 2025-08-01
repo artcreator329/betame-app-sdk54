@@ -147,7 +147,7 @@ function DatePickerField({ label, day, month, year, onDayChange, onMonthChange, 
 
 export default function MyAccountScreen() {
   const router = useRouter();
-  const { userProfile, updateProfile } = useAuth();
+  const { user, userProfile, updateProfile } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -176,7 +176,7 @@ export default function MyAccountScreen() {
 
       setFormData(prev => ({
         ...prev,
-        email: userProfile.email || '',
+        email: user?.email || '',
         mobile: userProfile.phone || '',
         gender: userProfile.gender || '',
         day,
@@ -189,7 +189,7 @@ export default function MyAccountScreen() {
         contactNumber: userProfile.phone || '',
       }));
     }
-  }, [userProfile]);
+  }, [user, userProfile]);
 
   const handleSave = async () => {
     try {
@@ -250,6 +250,7 @@ export default function MyAccountScreen() {
             value={formData.email}
             onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
             verified={userProfile?.is_verified || false}
+            editable={false}
           />
 
           <FormField
