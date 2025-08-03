@@ -86,7 +86,11 @@ export default function ServicesScreen() {
       </View>
 
       {/* Services Grid */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.servicesGrid}>
           {filteredServices.map((service) => (
             <View key={service.id} style={styles.serviceCardContainer}>
@@ -111,6 +115,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
