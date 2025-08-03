@@ -109,6 +109,21 @@ export class ImageService {
       const fileName = `${userId}/${Date.now()}.${fileExt}`;
       console.log('Upload filename:', fileName);
 
+      // Map file extensions to proper MIME types
+      const getMimeType = (extension: string): string => {
+        const mimeTypes: { [key: string]: string } = {
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'bmp': 'image/bmp',
+          'tiff': 'image/tiff',
+          'tif': 'image/tiff'
+        };
+        return mimeTypes[extension] || 'image/jpeg';
+      };
+
       // Convert base64 to array buffer
       const arrayBuffer = decode(base64);
 
@@ -116,7 +131,7 @@ export class ImageService {
       const { data, error } = await supabase.storage
         .from(bucket)
         .upload(fileName, arrayBuffer, {
-          contentType: `image/${fileExt}`,
+          contentType: getMimeType(fileExt),
           upsert: true,
         });
 
