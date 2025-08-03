@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, MapPin, Star, Filter } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +38,7 @@ const getFavoriteServices = async (): Promise<FavoriteService[]> => {
 
 export default function FavoritesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [favorites, setFavorites] = useState<FavoriteService[]>([]);
   const [savedCount, setSavedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +64,17 @@ export default function FavoritesScreen() {
   };
 
   const handleServicePress = (serviceId: string) => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to view service details.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+      return;
+    }
     router.push(`/service/${serviceId}`);
   };
 

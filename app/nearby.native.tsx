@@ -8,6 +8,7 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, Star, List, Map as MapIcon } from 'lucide-react-native';
@@ -70,6 +71,17 @@ export default function NearbyScreen() {
   };
 
   const handleServicePress = (serviceId: string) => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to view service details.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+      return;
+    }
     router.push(`/service/${serviceId}`);
   };
 

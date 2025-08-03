@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Service } from '@/types/service';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NearbyServiceIconProps {
   service: Service;
@@ -9,8 +10,20 @@ interface NearbyServiceIconProps {
 
 export default function NearbyServiceIcon({ service }: NearbyServiceIconProps) {
   const router = useRouter();
+  const { user } = useAuth();
 
   const handlePress = () => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to view service details.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+      return;
+    }
     router.push(`/service/${service.id}`);
   };
 

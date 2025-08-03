@@ -39,7 +39,7 @@ function SettingItem({ icon, title, hasArrow = true, onPress, isLogout = false }
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { userProfile } = useAuth();
+  const { userProfile, signOut } = useAuth();
 
   const handleLogout = () => {
     Alert.alert(
@@ -53,9 +53,19 @@ export default function SettingsScreen() {
         {
           text: 'Log Out',
           style: 'destructive',
-          onPress: () => {
-            // Handle logout logic here
-            console.log('User logged out');
+          onPress: async () => {
+            try {
+              const { error } = await signOut();
+              if (error) {
+                Alert.alert('Error', 'Failed to sign out. Please try again.');
+              } else {
+                // Navigate to homepage after successful logout
+                router.replace('/(tabs)');
+              }
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
           },
         },
       ]

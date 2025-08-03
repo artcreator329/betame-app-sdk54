@@ -17,9 +17,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MoveVertical as MoreVertical, Smile, Send, Shield, Flag, Ban } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChatMessage } from '@/types/chat';
-import { chatService, LiveChatMessage } from '@/lib/chat-service';
+import { ChatMessage, LiveChatMessage } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAblyChat } from '@/hooks/useAblyChat';
+import { useAblyChatContext } from '@/contexts/AblyChatContext';
 
 interface ModeratedMessage extends ChatMessage {
   isHidden?: boolean;
@@ -33,74 +34,39 @@ export default function ChatScreen() {
   const { participantId } = useLocalSearchParams();
   const { user, userProfile } = useAuth();
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<LiveChatMessage[]>([]);
-  const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
-  const [chatId, setChatId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
+  const { chatService } = useAblyChatContext();
+  
+  const {
+    messages,
+    isLoading,
+    connectionStatus,
+    typingUsers,
+    sendMessage: sendChatMessage,
+    blockUser,
+    reportUser,
+    reportMessage
+  } = useAblyChat({ 
+    chatId: `chat_${user?.id}_${participantId}`,
+    currentUserId: user?.id || '',
+    currentUserName: userProfile?.full_name || user?.email?.split('@')[0] || 'User'
+  });
 
   // Chat info will be loaded from ChatService
   const chat = { 
     participantName: 'Chat Participant', 
     participantImage: 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
-    lastActive: 'Active now'
+    lastActive: connectionStatus === 'connected' ? 'Active now' : 'Connecting...'
   };
 
+  // Auto scroll to bottom when new messages are added
   useEffect(() => {
-    if (!user?.id || !participantId) return;
-
-    const initializeChat = async () => {
-      setIsLoading(true);
-      
-      // Create or get existing chat
-      const chatData = await chatService.createOrGetChat(participantId as string, user.id);
-      if (chatData) {
-        setChatId(chatData.id);
-        
-        // Load existing messages
-        const existingMessages = await chatService.getMessages(chatData.id, user.id);
-        const messagesWithIsMe = existingMessages.map(msg => ({
-          ...msg,
-          isMe: msg.senderId === user.id
-        }));
-        setMessages(messagesWithIsMe);
-        
-        // Subscribe to new messages
-        const unsubscribe = chatService.subscribeToMessages(
-          chatData.id,
-          user.id,
-          (newMessage) => {
-            const messageWithIsMe = {
-              ...newMessage,
-              isMe: newMessage.senderId === user.id
-            };
-            setMessages(prev => {
-              // Avoid duplicates
-              const exists = prev.some(msg => msg.id === newMessage.id);
-              if (exists) {
-                return prev.map(msg => msg.id === newMessage.id ? messageWithIsMe : msg);
-              }
-              return [...prev, messageWithIsMe];
-            });
-          },
-          (messageId) => {
-            setMessages(prev => prev.filter(msg => msg.id !== messageId));
-          }
-        );
-        
-        return unsubscribe;
-      }
-      setIsLoading(false);
-    };
-
-    const cleanup = initializeChat();
-    
-    return () => {
-      cleanup.then(unsubscribe => unsubscribe?.());
-    };
-  }, [user?.id, participantId]);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, [messages]);
 
   useEffect(() => {
     // Auto scroll to bottom when new messages are added
@@ -191,20 +157,18 @@ export default function ChatScreen() {
   };
 
   const sendMessage = async () => {
-    if (!message.trim() || !chatId || !user?.id || !userProfile) return;
+    if (!message.trim() || !user?.id || !userProfile) return;
 
     const messageText = message.trim();
     setMessage(''); // Clear input immediately for better UX
     
-    const sentMessage = await chatService.sendMessage(
-      chatId,
-      user.id,
+    const result = await sendChatMessage(
+      messageText,
       userProfile.full_name || user.email?.split('@')[0] || 'User',
-      userProfile.avatar_url || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
-      messageText
+      userProfile.avatar_url || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400'
     );
 
-    if (sentMessage?.isHidden) {
+    if (!result) {
       Alert.alert(
         'Message Moderated',
         'Your message contains personal contact information and has been hidden for safety. Please use the platform\'s built-in messaging system.',
@@ -214,7 +178,7 @@ export default function ChatScreen() {
   };
 
   const handleBlockUser = async () => {
-    if (!chatId || !participantId) return;
+    if (!participantId) return;
     
     Alert.alert(
       'Block User',
@@ -225,9 +189,8 @@ export default function ChatScreen() {
           text: 'Block',
           style: 'destructive',
           onPress: async () => {
-            const success = await chatService.blockUser(chatId, participantId as string);
+            const success = await blockUser(participantId as string);
             if (success) {
-              setBlockedUsers(prev => new Set([...prev, participantId as string]));
               Alert.alert('User Blocked', `${chat?.participantName} has been blocked.`);
             } else {
               Alert.alert('Error', 'Failed to block user. Please try again.');
@@ -243,11 +206,11 @@ export default function ChatScreen() {
   };
 
   const submitReport = async (reason: string) => {
-    if (!chatId || !participantId || !user?.id) return;
+    if (!participantId || !user?.id) return;
     
     setReportModalVisible(false);
     
-    const success = await chatService.reportUser(chatId, participantId as string, user.id, reason);
+    const success = await reportUser(participantId as string, reason);
     
     if (success) {
       Alert.alert(
@@ -294,14 +257,9 @@ export default function ChatScreen() {
   };
 
   const handleReportMessage = async (messageId: string) => {
-    const success = await chatService.reportMessage(messageId);
+    const success = await reportMessage(messageId);
     
     if (success) {
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === messageId ? { ...msg, isReported: true } : msg
-        )
-      );
       Alert.alert(
         'Message Reported',
         'This message has been reported to our moderation team.',
@@ -349,10 +307,7 @@ export default function ChatScreen() {
     const showAvatar = !(msg.isMe || false) && (index === messages.length - 1 || 
       messages[index + 1]?.senderId !== msg.senderId);
 
-    // Don't render messages from blocked users
-    if (blockedUsers.has(msg.senderId) && !(msg.isMe || false)) {
-      return null;
-    }
+    // Messages from blocked users are already filtered by the hook
 
     return (
       <View key={msg.id}>
@@ -441,6 +396,19 @@ export default function ChatScreen() {
           contentContainerStyle={styles.messagesContent}
         >
           {messages.map(renderMessage)}
+          {/* Typing Indicators */}
+          {typingUsers.length > 0 && (
+            <View style={styles.typingContainer}>
+              <View style={styles.typingBubble}>
+                <Text style={styles.typingText}>
+                  {typingUsers.length === 1 
+                    ? `${typingUsers[0].userName} is typing...`
+                    : `${typingUsers.length} people are typing...`
+                  }
+                </Text>
+              </View>
+            </View>
+          )}
         </ScrollView>
 
         {/* Input */}
@@ -449,7 +417,10 @@ export default function ChatScreen() {
             <TextInput
               style={styles.textInput}
               value={message}
-              onChangeText={setMessage}
+              onChangeText={(text) => {
+                setMessage(text);
+                // Handle typing indicators here if needed
+              }}
               placeholder="Message..."
               placeholderTextColor="#8E8E93"
               multiline
@@ -789,5 +760,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#8E8E93',
     textAlign: 'center',
+  },
+  typingContainer: {
+    flexDirection: 'row',
+    marginVertical: 8,
+    paddingHorizontal: 16,
+    justifyContent: 'flex-start',
+  },
+  typingBubble: {
+    backgroundColor: '#E5E5EA',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderBottomLeftRadius: 6,
+  },
+  typingText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    fontStyle: 'italic',
   },
 });

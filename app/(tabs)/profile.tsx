@@ -251,7 +251,20 @@ export default function ProfileScreen() {
                   <TouchableOpacity 
                     key={job.id} 
                     style={styles.jobItem}
-                    onPress={() => router.push(`/job/${job.id}`)}
+                    onPress={() => {
+                      if (!user) {
+                        Alert.alert(
+                          'Sign In Required',
+                          'Please sign in to view job details.',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Sign In', onPress: () => router.push('/auth/login') }
+                          ]
+                        );
+                        return;
+                      }
+                      router.push(`/job/${job.id}`);
+                    }}
                     activeOpacity={0.7}
                   >
                     {job.cover_photo && (
@@ -390,6 +403,32 @@ export default function ProfileScreen() {
         return null;
     }
   };
+
+  // Show login prompt for non-authenticated users
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loginPromptContainer}>
+          <Text style={styles.loginPromptTitle}>Welcome to Your Profile</Text>
+          <Text style={styles.loginPromptText}>
+            Sign in to view your profile, manage your services, and track your job listings.
+          </Text>
+          <TouchableOpacity 
+            style={styles.loginButton}
+            onPress={() => router.push('/auth/login')}
+          >
+            <Text style={styles.loginButtonText}>Sign In</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.skipButton}
+            onPress={() => router.push('/(tabs)')}
+          >
+            <Text style={styles.skipButtonText}>Continue as Guest</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -936,5 +975,51 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#999',
     marginLeft: 4,
+  },
+  loginPromptContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    backgroundColor: '#F2F2F7',
+  },
+  loginPromptTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1D1D1F',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  loginPromptText: {
+    fontSize: 16,
+    color: '#8E8E93',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  loginButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  loginButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  skipButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    width: '100%',
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    color: '#8E8E93',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

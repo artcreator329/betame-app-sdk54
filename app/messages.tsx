@@ -11,42 +11,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Search, MessageCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { ChatService, UserChat } from '@/lib/chat-service';
+import { UserChat } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserChats } from '@/hooks/useAblyChat';
 
 export default function MessagesScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const [chats, setChats] = useState<UserChat[]>([]);
-  const [lastMessages, setLastMessages] = useState<{[key: string]: string}>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const chatService = ChatService.getInstance();
-
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const loadChats = async () => {
-      setIsLoading(true);
-      try {
-        const userChats = await chatService.getUserChats(user.id);
-        setChats(userChats);
-        
-        // Load last messages for each chat
-        const messages: {[key: string]: string} = {};
-        for (const chat of userChats) {
-          const lastMessage = await chatService.getLastMessage(chat.id);
-          messages[chat.id] = lastMessage;
-        }
-        setLastMessages(messages);
-      } catch (error) {
-        console.error('Error loading chats:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadChats();
-  }, [user?.id]);
+  const { chats, isLoading, error } = useUserChats(user?.id || '');
 
   const formatLastMessageTime = (lastMessageAt: string | null) => {
     if (!lastMessageAt) return '';
@@ -111,7 +83,7 @@ export default function MessagesScreen() {
                   <Text style={styles.chatTime}>{formatLastMessageTime(chat.lastMessageAt)}</Text>
                 </View>
                 <Text style={styles.lastMessage} numberOfLines={2}>
-                  {lastMessages[chat.id] || 'No messages yet'}
+                  {'Start a conversation'}
                 </Text>
               </View>
             </TouchableOpacity>

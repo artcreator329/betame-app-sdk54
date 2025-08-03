@@ -5,6 +5,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AblyChatProvider } from '@/contexts/AblyChatContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect } from 'react';
 
@@ -82,8 +83,10 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar style="auto" />
-        <RootLayoutNav />
+        <AblyChatProvider>
+          <StatusBar style="auto" />
+          <RootLayoutNav />
+        </AblyChatProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

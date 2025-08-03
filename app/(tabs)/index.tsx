@@ -10,6 +10,7 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MessageCircle, Heart, ChevronRight, Wallet, MapPin, Calendar } from 'lucide-react-native';
@@ -21,6 +22,7 @@ import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { JobService, JobListing } from '@/lib/job-service';
 import { CategoryService, Category } from '@/lib/category-service';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -82,6 +84,7 @@ export default function HomeScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const router = useRouter();
+  const { user } = useAuth();
 
   // Helper function to convert database service to UI service format
   const convertToUIService = (dbService: DBService): Service => {
@@ -184,20 +187,31 @@ export default function HomeScreen() {
               placeholderTextColor="#8E8E93"
             />
           </View>
-          <View style={styles.headerIcons}>
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={() => router.push('/favorites')}
-            >
-              <Heart size={24} color="#1D1D1F" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={() => router.push('/messages')}
-            >
-              <MessageCircle size={24} color="#1D1D1F" />
-            </TouchableOpacity>
-          </View>
+          {user ? (
+            <View style={styles.headerIcons}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={() => router.push('/favorites')}
+              >
+                <Heart size={24} color="#1D1D1F" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={() => router.push('/messages')}
+              >
+                <MessageCircle size={24} color="#1D1D1F" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.authButtons}>
+              <TouchableOpacity 
+                style={styles.signInButton}
+                onPress={() => router.push('/auth/login')}
+              >
+                <Text style={styles.signInButtonText}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Categories */}
@@ -342,7 +356,20 @@ export default function HomeScreen() {
                 <TouchableOpacity 
                   key={job.id} 
                   style={styles.jobCard}
-                  onPress={() => router.push(`/job/${job.id}`)}
+                  onPress={() => {
+                    if (!user) {
+                      Alert.alert(
+                        'Sign In Required',
+                        'Please sign in to view job details.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+                        ]
+                      );
+                      return;
+                    }
+                    router.push(`/job/${job.id}`);
+                  }}
                   activeOpacity={0.7}
                 >
                   {job.cover_photo && (
@@ -381,12 +408,14 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>No job opportunities available at the moment</Text>
-              <TouchableOpacity 
-                style={styles.createJobButton}
-                onPress={() => router.push('/create-job-listing')}
-              >
-                <Text style={styles.createJobButtonText}>Post a Job</Text>
-              </TouchableOpacity>
+              {user && (
+                <TouchableOpacity 
+                  style={styles.createJobButton}
+                  onPress={() => router.push('/create-job-listing')}
+                >
+                  <Text style={styles.createJobButtonText}>Post a Job</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -650,6 +679,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   createJobButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  authButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  signInButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  signInButtonText: {
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
