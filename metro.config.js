@@ -41,6 +41,10 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 config.resolver.extraNodeModules = {
   'react-native-maps': path.resolve(__dirname, 'metro-shims/react-native-maps.js'),
   'react-native/Libraries/Utilities/codegenNativeCommands': path.resolve(__dirname, 'metro-shims/codegenNativeCommands.js'),
+  // Add crypto polyfills for web
+  'crypto': require.resolve('crypto-browserify'),
+  'stream': require.resolve('readable-stream'),
+  'buffer': require.resolve('buffer'),
 };
 
 module.exports = config;

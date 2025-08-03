@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,19 +6,65 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, ChevronDown, SlidersHorizontal, ArrowLeft } from 'lucide-react-native';
 import ServiceCard from '@/components/ServiceCard';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
-import { trendingServices, allServices } from '@/data/mockData';
+import { Service } from '@/types/service';
+import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { useRouter } from 'expo-router';
+
+// Convert DB service to UI service
+const convertToUIService = (dbService: DBService): Service => ({
+  id: dbService.id || '',
+  title: dbService.title,
+  provider: dbService.provider_name || 'Service Provider',
+  rating: dbService.rating || 0,
+  reviewCount: dbService.review_count || 0,
+  price: dbService.price,
+  currency: dbService.currency,
+  image: dbService.image_url || 'https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=400',
+  category: dbService.category_name || 'General',
+  description: dbService.description,
+  isNearby: dbService.is_nearby,
+});
 
 export default function TrendingScreen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setIsLoading(true);
+        const [trending, nearby] = await Promise.all([
+          ServiceService.getTrendingServices(),
+          ServiceService.getNearbyServices(),
+        ]);
+        
+        // Combine trending and nearby services, removing duplicates
+        const allServices = [...trending, ...nearby];
+        const uniqueServices = allServices.filter((service, index, self) => 
+          index === self.findIndex(s => s.id === service.id)
+        );
+        
+        setServices(uniqueServices.map(convertToUIService));
+      } catch (error) {
+        console.error('Error fetching services:', error);
+        setServices([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
 
   const getCategoryDisplayText = () => {
     if (selectedCategories.includes('all') || selectedCategories.length === 0) {
@@ -40,7 +86,7 @@ export default function TrendingScreen() {
     return `${selectedCategories.length} Categories`;
   };
 
-  const filteredServices = allServices.filter((service) => {
+  const filteredServices = services.filter((service: Service) => {
     const matchesCategory = selectedCategories.includes('all') || 
                            selectedCategories.length === 0 ||
                            selectedCategories.some(cat => 
@@ -92,13 +138,25 @@ export default function TrendingScreen() {
 
       {/* Services Grid */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.servicesGrid}>
-          {filteredServices.map((service) => (
-            <View key={service.id} style={styles.serviceCardContainer}>
-              <ServiceCard service={service} />
-            </View>
-          ))}
-        </View>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Loading services...</Text>
+          </View>
+        ) : filteredServices.length > 0 ? (
+          <View style={styles.servicesGrid}>
+            {filteredServices.map((service: Service) => (
+              <View key={service.id} style={styles.serviceCardContainer}>
+                <ServiceCard service={service} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No services available</Text>
+            <Text style={styles.emptySubtext}>Check back later for new services</Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Category Selection Modal */}
@@ -192,5 +250,33 @@ const styles = StyleSheet.create({
   serviceCardContainer: {
     width: '48%',
     marginBottom: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#8E8E93',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1D1D1F',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 });

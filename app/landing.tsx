@@ -40,26 +40,9 @@ export default function LandingScreen() {
     },
   ];
 
-  const testimonials = [
-    {
-      name: 'Sarah Chen',
-      rating: 5,
-      comment: 'Found an amazing yoga instructor through BetaMe. The booking process was so smooth!',
-      service: 'Yoga Training',
-    },
-    {
-      name: 'Ahmad Rahman',
-      rating: 5,
-      comment: 'Great platform for finding reliable home cleaning services. Highly recommended!',
-      service: 'House Cleaning',
-    },
-    {
-      name: 'Jessica Wong',
-      rating: 5,
-      comment: 'The English tutoring I found here helped me pass my IELTS exam. Thank you BetaMe!',
-      service: 'English Tutoring',
-    },
-  ];
+  // TODO: Implement testimonials functionality with Supabase
+  // For now, return empty array until testimonials table is created
+  const testimonials: any[] = [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -106,12 +89,8 @@ export default function LandingScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.servicesScroll}
           >
-            {[
-              { title: 'House Cleaning', price: 'From RM80', image: 'https://images.pexels.com/photos/4239091/pexels-photo-4239091.jpeg?auto=compress&cs=tinysrgb&w=400' },
-              { title: 'Yoga Training', price: 'From RM60', image: 'https://images.pexels.com/photos/3822587/pexels-photo-3822587.jpeg?auto=compress&cs=tinysrgb&w=400' },
-              { title: 'English Tutoring', price: 'From RM68', image: 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=400' },
-              { title: 'Pet Care', price: 'From RM55', image: 'https://images.pexels.com/photos/4498778/pexels-photo-4498778.jpeg?auto=compress&cs=tinysrgb&w=400' },
-            ].map((service, index) => (
+            {/* TODO: Replace with real popular services from database */
+            [].map((service: any, index: number) => (
               <View key={index} style={styles.serviceCard}>
                 <Image source={{ uri: service.image }} style={styles.serviceImage} />
                 <View style={styles.serviceInfo}>

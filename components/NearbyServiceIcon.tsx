@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Service } from '@/data/mockData';
+import { Service } from '@/types/service';
 
 interface NearbyServiceIconProps {
   service: Service;

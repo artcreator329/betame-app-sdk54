@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,78 +28,33 @@ interface FavoriteService {
   isFavorited: boolean;
 }
 
-const favoriteServices: FavoriteService[] = [
-  {
-    id: '1',
-    title: 'Karl Kuan',
-    provider: 'Every Friday 6pm',
-    rating: 4.7,
-    reviewCount: 169,
-    price: 35,
-    currency: 'RM',
-    image: 'https://images.pexels.com/photos/3621104/pexels-photo-3621104.jpeg?auto=compress&cs=tinysrgb&w=400',
-    location: 'A court for 16 @ Puchong South',
-    description: 'Equipment are prepared. Come join us, first come first serve',
-    isFavorited: true,
-  },
-  {
-    id: '2',
-    title: 'Tania Wong',
-    provider: 'A luxurious 5-star pet hotel for dogs, cats, and rabbits.',
-    rating: 4.8,
-    reviewCount: 37,
-    price: 89,
-    currency: 'RM',
-    image: 'https://images.pexels.com/photos/4498778/pexels-photo-4498778.jpeg?auto=compress&cs=tinysrgb&w=400',
-    location: 'Located in Petaling Jaya, a 20-minute drive from Kuala Lumpur City Centre.',
-    description: 'Offers luxurious private suites with 24/7 care',
-    isFavorited: true,
-  },
-  {
-    id: '3',
-    title: 'OuR Spa',
-    provider: 'Amidst the stress of an occasionally overwhelming city, we have created a signature story of integrated, result-driven wellness within an urban, tropical and chic sanctuary.',
-    rating: 4.9,
-    reviewCount: 971,
-    price: 112,
-    currency: 'RM',
-    image: 'https://images.pexels.com/photos/3997991/pexels-photo-3997991.jpeg?auto=compress&cs=tinysrgb&w=400',
-    location: 'Kuala Lumpur City Centre',
-    description: 'Premium spa services in the heart of KL',
-    isFavorited: true,
-  },
-  {
-    id: '4',
-    title: 'Waxing Salon',
-    provider: 'Step into our sanctuary and let your stress melt away as we groom you to perfection in the lap of luxury. From facials to full-body waxing, come savour your signature treatment.',
-    rating: 4.9,
-    reviewCount: 270,
-    price: 39,
-    currency: 'RM',
-    image: 'https://images.pexels.com/photos/3997991/pexels-photo-3997991.jpeg?auto=compress&cs=tinysrgb&w=400',
-    location: 'Mont Kiara, Kuala Lumpur',
-    description: 'Professional waxing and beauty treatments',
-    isFavorited: true,
-  },
-  {
-    id: '5',
-    title: 'Bonding Inc.',
-    provider: 'After a long, hard day of work, the best way to unwind is by doing some painting and having a glass of wine in your hand. The session is suitable for beginners and professionals.',
-    rating: 5.0,
-    reviewCount: 215,
-    price: 65,
-    currency: 'RM',
-    image: 'https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=400',
-    location: 'Bangsar, Kuala Lumpur',
-    description: 'Paint and wine sessions for relaxation',
-    isFavorited: true,
-  },
-];
+// TODO: Implement favorites functionality with Supabase
+// For now, return empty array until favorites table is created
+const getFavoriteServices = async (): Promise<FavoriteService[]> => {
+  return [];
+};
 
 export default function FavoritesScreen() {
   const router = useRouter();
-  const [favorites, setFavorites] = useState(favoriteServices);
-  const [savedCount] = useState(5);
+  const [favorites, setFavorites] = useState<FavoriteService[]>([]);
+  const [savedCount, setSavedCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const favoriteServices = await getFavoriteServices();
+        setFavorites(favoriteServices);
+        setSavedCount(favoriteServices.length);
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFavorites();
+  }, []);
 
   const handleBack = () => {
     router.back();
@@ -110,8 +65,8 @@ export default function FavoritesScreen() {
   };
 
   const toggleFavorite = (serviceId: string) => {
-    setFavorites(prev => 
-      prev.map(service => 
+    setFavorites((prev: FavoriteService[]) => 
+      prev.map((service: FavoriteService) => 
         service.id === serviceId 
           ? { ...service, isFavorited: !service.isFavorited }
           : service

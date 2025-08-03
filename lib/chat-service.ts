@@ -1,39 +1,7 @@
 import { supabase } from './supabase';
-import { ChatMessage } from '@/data/mockChatData';
+import { ChatMessage, LiveChatMessage, ChatParticipant, Chat, UserChat } from '@/types/chat';
 
-export interface LiveChatMessage extends ChatMessage {
-  isHidden?: boolean;
-  moderationReason?: string;
-  isReported?: boolean;
-  chatId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ChatParticipant {
-  id: string;
-  userId: string;
-  chatId: string;
-  joinedAt: string;
-  isBlocked: boolean;
-}
-
-export interface Chat {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  lastMessageAt?: string;
-  participants: ChatParticipant[];
-}
-
-export interface UserChat {
-  id: string;
-  participantId: string;
-  participantName: string;
-  participantImage: string;
-  lastMessageAt: string | null;
-  createdAt: string;
-}
+export { ChatMessage, LiveChatMessage, ChatParticipant, Chat, UserChat };
 
 export class ChatService {
   private static instance: ChatService;
@@ -414,8 +382,7 @@ export class ChatService {
       senderName: dbMessage.sender_name,
       senderImage: dbMessage.sender_image,
       message: dbMessage.message,
-      timestamp: new Date(dbMessage.created_at),
-      isMe: false, // This will be set by the component
+      timestamp: dbMessage.created_at,
       isHidden: dbMessage.is_hidden,
       moderationReason: dbMessage.moderation_reason,
       isReported: dbMessage.is_reported,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,17 @@ import {
   FlatList,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, MessageCircle, Heart, ChevronRight, Wallet } from 'lucide-react-native';
+import { Search, MessageCircle, Heart, ChevronRight, Wallet, MapPin, Calendar } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import ServiceCard from '@/components/ServiceCard';
 import NearbyServiceIcon from '@/components/NearbyServiceIcon';
-import { categories, nearbyServices, trendingServices } from '@/data/mockData';
+import { Service } from '@/types/service';
+import { ServiceService, Service as DBService } from '@/lib/service-service';
+import { JobService, JobListing } from '@/lib/job-service';
+import { CategoryService, Category } from '@/lib/category-service';
 import { useRouter } from 'expo-router';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -67,9 +72,76 @@ const bannerSlides: BannerSlide[] = [
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Household');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [jobListings, setJobListings] = useState<JobListing[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  const [nearbyServices, setNearbyServices] = useState<Service[]>([]);
+  const [trendingServices, setTrendingServices] = useState<Service[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const router = useRouter();
+
+  // Helper function to convert database service to UI service format
+  const convertToUIService = (dbService: DBService): Service => {
+    return {
+      id: dbService.id || '',
+      title: dbService.title,
+      provider: dbService.provider_name || 'Service Provider',
+      rating: dbService.rating || 0,
+      reviewCount: dbService.review_count || 0,
+      price: Number(dbService.price) || 0,
+      currency: dbService.currency || 'RM',
+      image: dbService.image_url || 'https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=400',
+      category: dbService.category_name || 'General',
+      description: dbService.description,
+      isNearby: dbService.is_nearby,
+    };
+  };
+
+  const fetchData = useCallback(async () => {
+    setIsLoadingJobs(true);
+    setIsLoadingServices(true);
+    setIsLoadingCategories(true);
+    
+    try {
+      // Fetch all data concurrently
+      const [jobs, nearby, trending, categoriesData] = await Promise.all([
+        JobService.getAllActiveJobs(),
+        ServiceService.getNearbyServices(),
+        ServiceService.getTrendingServices(),
+        CategoryService.getAllCategories()
+      ]);
+      
+      setJobListings(jobs.slice(0, 4)); // Show only first 4 jobs on homepage
+      setNearbyServices(nearby.map(convertToUIService));
+      setTrendingServices(trending.map(convertToUIService));
+      setCategories(categoriesData);
+      
+      // Set first category as selected if available
+      if (categoriesData.length > 0 && !selectedCategory) {
+        setSelectedCategory(categoriesData[0].name);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoadingJobs(false);
+      setIsLoadingServices(false);
+      setIsLoadingCategories(false);
+    }
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Refetch data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
 
   const handleSlideChange = (event: any) => {
     const slideIndex = Math.round(event.nativeEvent.contentOffset.x / (screenWidth - 40));
@@ -122,31 +194,42 @@ export default function HomeScreen() {
 
         {/* Categories */}
         <View style={styles.categoriesContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesContent}
-          >
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryTab,
-                  selectedCategory === category.name && styles.selectedCategoryTab,
-                ]}
-                onPress={() => setSelectedCategory(category.name)}
-              >
-                <Text
+          {isLoadingCategories ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#007AFF" />
+              <Text style={styles.loadingText}>Loading categories...</Text>
+            </View>
+          ) : categories.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoriesContent}
+            >
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
                   style={[
-                    styles.categoryText,
-                    selectedCategory === category.name && styles.selectedCategoryText,
+                    styles.categoryTab,
+                    selectedCategory === category.name && styles.selectedCategoryTab,
                   ]}
+                  onPress={() => setSelectedCategory(category.name)}
                 >
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      selectedCategory === category.name && styles.selectedCategoryText,
+                    ]}
+                  >
+                    {category.icon} {category.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No categories available</Text>
+            </View>
+          )}
         </View>
 
         {/* Banner Ad Space */}
@@ -183,15 +266,26 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Nearby</Text>
             <ChevronRight size={20} color="#8E8E93" />
           </TouchableOpacity>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.nearbyContent}
-          >
-            {nearbyServices.map((service) => (
-              <NearbyServiceIcon key={service.id} service={service} />
-            ))}
-          </ScrollView>
+          {isLoadingServices ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#007AFF" />
+              <Text style={styles.loadingText}>Loading services...</Text>
+            </View>
+          ) : nearbyServices.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.nearbyContent}
+            >
+              {nearbyServices.map((service) => (
+                <NearbyServiceIcon key={service.id} service={service} />
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No nearby services available</Text>
+            </View>
+          )}
         </View>
 
         {/* Trending Services */}
@@ -203,13 +297,85 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Trending</Text>
             <ChevronRight size={20} color="#8E8E93" />
           </TouchableOpacity>
-          <View style={styles.servicesGrid}>
-            {trendingServices.slice(0, 4).map((service) => (
-              <View key={service.id} style={styles.serviceCardContainer}>
-                <ServiceCard service={service} />
-              </View>
-            ))}
+          {isLoadingServices ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#007AFF" />
+              <Text style={styles.loadingText}>Loading services...</Text>
+            </View>
+          ) : trendingServices.length > 0 ? (
+            <View style={styles.servicesGrid}>
+              {trendingServices.slice(0, 4).map((service) => (
+                <View key={service.id} style={styles.serviceCardContainer}>
+                  <ServiceCard service={service} />
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No trending services available</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Job Listings */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Latest Job Opportunities</Text>
+            <ChevronRight size={20} color="#8E8E93" />
           </View>
+          {isLoadingJobs ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#007AFF" />
+              <Text style={styles.loadingText}>Loading jobs...</Text>
+            </View>
+          ) : jobListings.length > 0 ? (
+            <View style={styles.jobsGrid}>
+              {jobListings.map((job) => (
+                <TouchableOpacity key={job.id} style={styles.jobCard}>
+                  {job.cover_photo && (
+                    <Image source={{ uri: job.cover_photo }} style={styles.jobImage} />
+                  )}
+                  <View style={styles.jobContent}>
+                    <Text style={styles.jobTitle} numberOfLines={2}>{job.title}</Text>
+                    <Text style={styles.jobDescription} numberOfLines={2}>{job.description}</Text>
+                    
+                    {job.location_address && (
+                      <View style={styles.jobLocation}>
+                        <MapPin size={12} color="#8E8E93" />
+                        <Text style={styles.jobLocationText} numberOfLines={1}>
+                          {job.location_address}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    <View style={styles.jobFooter}>
+                      <View style={styles.jobBudget}>
+                        <Text style={styles.jobBudgetText}>
+                          {job.budget_amount ? `${job.currency} ${job.budget_amount}` : job.payment_type}
+                        </Text>
+                      </View>
+                      <View style={styles.jobDate}>
+                        <Calendar size={10} color="#8E8E93" />
+                        <Text style={styles.jobDateText}>
+                          {job.created_at ? new Date(job.created_at).toLocaleDateString() : ''}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No job opportunities available at the moment</Text>
+              <TouchableOpacity 
+                style={styles.createJobButton}
+                onPress={() => router.push('/create-job-listing')}
+              >
+                <Text style={styles.createJobButtonText}>Post a Job</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -377,5 +543,102 @@ const styles = StyleSheet.create({
   serviceCardContainer: {
     width: '48%',
     marginBottom: 16,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#8E8E93',
+  },
+  jobsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  jobCard: {
+    width: '48%',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  jobImage: {
+    width: '100%',
+    height: 80,
+    backgroundColor: '#E5E5EA',
+  },
+  jobContent: {
+    padding: 12,
+  },
+  jobTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1D1D1F',
+    marginBottom: 4,
+  },
+  jobDescription: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginBottom: 8,
+    lineHeight: 16,
+  },
+  jobLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  jobLocationText: {
+    fontSize: 11,
+    color: '#8E8E93',
+    marginLeft: 4,
+    flex: 1,
+  },
+  jobFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  jobBudget: {
+    flex: 1,
+  },
+  jobBudgetText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  jobDate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  jobDateText: {
+    fontSize: 10,
+    color: '#8E8E93',
+    marginLeft: 2,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  createJobButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  createJobButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

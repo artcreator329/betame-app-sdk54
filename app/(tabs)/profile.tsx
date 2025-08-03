@@ -1,21 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Heart, Wallet, Trophy, Camera, Star } from 'lucide-react-native';
+import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { ImageService } from '@/lib/image-service';
+import { JobService, JobListing } from '@/lib/job-service';
+import { ServiceService } from '@/lib/service-service';
 
 interface Service {
-  id: string;
+  id?: string;
+  user_id: string;
   title: string;
   description: string;
   price: number;
   currency: string;
-  image_url: string;
-  rating: number;
-  review_count: number;
+  category_id?: string;
+  category_name?: string;
+  image_url?: string;
+  location?: string;
+  is_nearby?: boolean;
+  is_trending?: boolean;
+  rating?: number;
+  review_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface Review {
@@ -34,6 +45,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState('Services');
   const [services, setServices] = useState<Service[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [jobListings, setJobListings] = useState<JobListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const router = useRouter();
@@ -45,63 +57,71 @@ export default function ProfileScreen() {
     : 0;
 
   // Fetch user's services and reviews from Supabase
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+  const fetchProfileData = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
+    try {
+      setLoading(true);
+      // Fetch user's services
       try {
-        // Fetch user's services
-        const { data: servicesData, error: servicesError } = await supabase
-          .from('services')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('status', 'active');
-
-        if (servicesError) {
-          console.error('Error fetching services:', servicesError);
-        } else {
-          setServices(servicesData || []);
-        }
-
-        // Fetch reviews for this user (as reviewee)
-        const { data: reviewsData, error: reviewsError } = await supabase
-          .from('reviews')
-          .select('*')
-          .eq('reviewee_id', user.id)
-          .order('created_at', { ascending: false });
-
-        // Fetch reviewer profiles separately
-        let reviewsWithProfiles = [];
-        if (reviewsData && reviewsData.length > 0) {
-          const reviewerIds = reviewsData.map(review => review.reviewer_id);
-          const { data: profilesData } = await supabase
-            .from('profiles')
-            .select('id, full_name, avatar_url')
-            .in('id', reviewerIds);
-
-          reviewsWithProfiles = reviewsData.map(review => ({
-            ...review,
-            reviewer_profile: profilesData?.find(profile => profile.id === review.reviewer_id)
-          }));
-        }
-
-        if (reviewsError) {
-          console.error('Error fetching reviews:', reviewsError);
-        } else {
-          setReviews(reviewsWithProfiles || []);
-        }
+        const userServices = await ServiceService.getUserServices(user.id);
+        setServices(userServices);
       } catch (error) {
-        console.error('Error fetching profile data:', error);
-      } finally {
-        setLoading(false);
+        console.error('Error fetching services:', error);
+        setServices([]);
       }
-    };
 
-    fetchProfileData();
+      // Fetch reviews for this user (as reviewee)
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('reviewee_id', user.id)
+        .order('created_at', { ascending: false });
+
+      // Fetch reviewer profiles separately
+      let reviewsWithProfiles = [];
+      if (reviewsData && reviewsData.length > 0) {
+        const reviewerIds = reviewsData.map(review => review.reviewer_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', reviewerIds);
+
+        reviewsWithProfiles = reviewsData.map(review => ({
+          ...review,
+          reviewer_profile: profilesData?.find(profile => profile.id === review.reviewer_id)
+        }));
+      }
+
+      if (reviewsError) {
+        console.error('Error fetching reviews:', reviewsError);
+      } else {
+        setReviews(reviewsWithProfiles || []);
+      }
+
+      // Fetch user's job listings
+      const userJobs = await JobService.getUserJobs(user.id);
+      setJobListings(userJobs);
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchProfileData();
+  }, [fetchProfileData]);
+
+  // Refetch profile data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfileData();
+    }, [fetchProfileData])
+  );
 
   const handleShareProfile = async () => {
     try {
@@ -190,7 +210,7 @@ export default function ProfileScreen() {
     }
   };
 
-  // Mock reviews are now replaced with real data from Supabase in the useEffect
+  
 
   const renderStars = (rating: number) => {
     return (
@@ -209,14 +229,71 @@ export default function ProfileScreen() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'Jobs (Hiring)':
-        return (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>You do not have any job postings</Text>
-            <Text style={styles.emptyStateSuggestion}>Why don't you post your first job?</Text>
-          </View>
-        );
-      case 'Services':
+        case 'I\'m Hiring':
+          if (loading) {
+            return (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#1D1D1F" />
+                <Text style={styles.loadingText}>Loading job listings...</Text>
+              </View>
+            );
+          }
+          return (
+            <View style={styles.tabSectionContainer}>
+              <Text style={styles.availableListings}>Job Postings ({jobListings.length})</Text>
+              {jobListings.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>You do not have any job postings</Text>
+                  <Text style={styles.emptyStateText}>Why don't you post your first job?</Text>
+                </View>
+              ) : (
+                jobListings.map((job) => (
+                  <View key={job.id} style={styles.jobItem}>
+                    {job.cover_photo && (
+                      <Image source={{ uri: job.cover_photo }} style={styles.jobImage} />
+                    )}
+                    <View style={styles.jobInfo}>
+                      <Text style={styles.jobTitle}>{job.title}</Text>
+                      <Text style={styles.jobDescription} numberOfLines={2}>
+                        {job.description}
+                      </Text>
+                      {job.location_address && (
+                        <View style={styles.jobLocation}>
+                          <MapPin size={14} color="#666" />
+                          <Text style={styles.jobLocationText}>{job.location_address}</Text>
+                        </View>
+                      )}
+                      <View style={styles.jobDetails}>
+                        <View style={styles.jobBudget}>
+                          <Text style={styles.jobBudgetText}>
+                            {job.payment_type === 'negotiable' ? 'Negotiable' : `${job.currency}${job.budget_amount} (${job.payment_type})`}
+                          </Text>
+                        </View>
+                        <View style={styles.jobStatus}>
+                          <Text style={[styles.jobStatusText, { color: job.status === 'active' ? '#4CAF50' : '#FF9800' }]}>
+                            {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.jobMeta}>
+                        <Calendar size={12} color="#999" />
+                        <Text style={styles.jobDate}>
+                          {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Date not available'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ))
+              )}
+              <TouchableOpacity 
+                style={styles.addButton}
+                onPress={() => router.push('/create-job-listing')}
+              >
+                <Text style={styles.addButtonText}>Hire Someone Now</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        case 'My Services':
         if (loading) {
           return (
             <View style={styles.loadingContainer}>
@@ -234,8 +311,8 @@ export default function ProfileScreen() {
                 <Text style={styles.emptyStateSuggestion}>Create your first service listing!</Text>
               </View>
             ) : (
-              services.map((service) => (
-                <View key={service.id} style={styles.serviceItem}>
+              services.map((service, index) => (
+                <View key={service.id || `service-${index}`} style={styles.serviceItem}>
                   <Image source={{ uri: service.image_url || 'https://via.placeholder.com/80' }} style={styles.serviceImage} />
                   <View style={styles.serviceInfo}>
                     <Text style={styles.serviceTitle}>{service.title}</Text>
@@ -244,7 +321,10 @@ export default function ProfileScreen() {
                     </Text>
                     <View style={styles.servicePricing}>
                       <Text style={styles.servicePrice}>From {service.currency}{service.price}</Text>
-                      <TouchableOpacity style={styles.seeOfferButton}>
+                      <TouchableOpacity 
+                        style={styles.seeOfferButton}
+                        onPress={() => service.id && router.push(`/service/${service.id}`)}
+                      >
                         <Text style={styles.seeOfferText}>See Offer!</Text>
                       </TouchableOpacity>
                     </View>
@@ -252,6 +332,13 @@ export default function ProfileScreen() {
                 </View>
               ))
             )}
+            <TouchableOpacity 
+              style={styles.addServiceButton}
+              onPress={() => router.push('/create-service-listing')}
+            >
+              <Text style={styles.addServiceButtonIcon}>+</Text>
+              <Text style={styles.addServiceButtonText}>Offer Your Best Service/Product Now</Text>
+            </TouchableOpacity>
           </View>
         );
       case 'Reviews':
@@ -406,7 +493,7 @@ export default function ProfileScreen() {
 
         {/* Tab Navigation */}
         <View style={styles.tabNavigation}>
-          {['Jobs (Hiring)', 'Services', 'Reviews'].map((tab) => (
+          {['I\'m Hiring', 'My Services', 'Reviews'].map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[
@@ -725,5 +812,124 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#666',
+  },
+  tabSectionContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  addButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+    marginHorizontal: 20,
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  addServiceButton: {
+    flexDirection: 'row',
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  addServiceButtonIcon: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: '600',
+    marginRight: 12,
+  },
+  addServiceButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  jobItem: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  jobImage: {
+    width: 80,
+    height: 80,
+    margin: 12,
+    borderRadius: 8,
+  },
+  jobInfo: {
+    flex: 1,
+    padding: 12,
+    paddingLeft: 0,
+  },
+  jobTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1D1D1F',
+    marginBottom: 4,
+  },
+  jobDescription: {
+    fontSize: 13,
+    color: '#8E8E93',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  jobLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  jobLocationText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  jobDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  jobBudget: {
+    flex: 1,
+  },
+  jobBudgetText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1D1D1F',
+  },
+  jobStatus: {
+    alignItems: 'flex-end',
+  },
+  jobStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  jobMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  jobDate: {
+    fontSize: 11,
+    color: '#999',
+    marginLeft: 4,
   },
 });

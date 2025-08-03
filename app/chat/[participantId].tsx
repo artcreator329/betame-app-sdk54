@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MoveVertical as MoreVertical, Smile, Send, Shield, Flag, Ban } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { findChatByParticipant, ChatMessage } from '@/data/mockChatData';
+import { ChatMessage } from '@/types/chat';
 import { chatService, LiveChatMessage } from '@/lib/chat-service';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -41,7 +41,12 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const chat = findChatByParticipant(participantId as string);
+  // Chat info will be loaded from ChatService
+  const chat = { 
+    participantName: 'Chat Participant', 
+    participantImage: 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
+    lastActive: 'Active now'
+  };
 
   useEffect(() => {
     if (!user?.id || !participantId) return;
@@ -140,22 +145,23 @@ export default function ChatScreen() {
     );
   }
 
-  const formatTimestamp = (timestamp: Date) => {
+  const formatTimestamp = (timestamp: string) => {
     const now = new Date();
-    const diffInDays = Math.floor((now.getTime() - timestamp.getTime()) / (1000 * 60 * 60 * 24));
+    const msgTime = new Date(timestamp);
+    const diffInDays = Math.floor((now.getTime() - msgTime.getTime()) / (1000 * 60 * 60 * 24));
     
     if (diffInDays === 0) {
-      return timestamp.toLocaleTimeString('en-US', { 
+      return msgTime.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit',
         hour12: true 
       });
     } else {
-      return timestamp.toLocaleDateString('en-US', { 
+      return msgTime.toLocaleDateString('en-US', { 
         month: 'short', 
         day: 'numeric', 
         year: 'numeric' 
-      }) + ', ' + timestamp.toLocaleTimeString('en-US', { 
+      }) + ', ' + msgTime.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit',
         hour12: true 
@@ -338,13 +344,13 @@ export default function ChatScreen() {
   const renderMessage = (msg: LiveChatMessage, index: number) => {
     const showTimestamp = index === 0 || 
       (index > 0 && 
-       Math.abs(msg.timestamp.getTime() - messages[index - 1].timestamp.getTime()) > 60000);
+       Math.abs(new Date(msg.timestamp).getTime() - new Date(messages[index - 1].timestamp).getTime()) > 60000);
 
-    const showAvatar = !msg.isMe && (index === messages.length - 1 || 
+    const showAvatar = !(msg.isMe || false) && (index === messages.length - 1 || 
       messages[index + 1]?.senderId !== msg.senderId);
 
     // Don't render messages from blocked users
-    if (blockedUsers.has(msg.senderId) && !msg.isMe) {
+    if (blockedUsers.has(msg.senderId) && !(msg.isMe || false)) {
       return null;
     }
 
@@ -358,22 +364,22 @@ export default function ChatScreen() {
           </View>
         )}
         <TouchableOpacity
-          onLongPress={() => handleMessageLongPress(msg.id, msg.isMe)}
+          onLongPress={() => handleMessageLongPress(msg.id, msg.isMe || false)}
           activeOpacity={0.8}
         >
           <View style={[
             styles.messageContainer,
-            msg.isMe ? styles.myMessageContainer : styles.theirMessageContainer
+            (msg.isMe || false) ? styles.myMessageContainer : styles.theirMessageContainer
           ]}>
-            {!msg.isMe && showAvatar && (
+            {!(msg.isMe || false) && showAvatar && (
               <Image source={{ uri: msg.senderImage }} style={styles.avatar} />
             )}
-            {!msg.isMe && !showAvatar && (
+            {!(msg.isMe || false) && !showAvatar && (
               <View style={styles.avatarPlaceholder} />
             )}
             <View style={[
               styles.messageBubble,
-              msg.isMe ? styles.myMessageBubble : styles.theirMessageBubble,
+              (msg.isMe || false) ? styles.myMessageBubble : styles.theirMessageBubble,
               msg.isHidden && styles.hiddenMessageBubble,
               msg.isReported && styles.reportedMessageBubble
             ]}>
@@ -387,7 +393,7 @@ export default function ChatScreen() {
               ) : (
                 <Text style={[
                   styles.messageText,
-                  msg.isMe ? styles.myMessageText : styles.theirMessageText
+                  (msg.isMe || false) ? styles.myMessageText : styles.theirMessageText
                 ]}>
                   {msg.message}
                 </Text>

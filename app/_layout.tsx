@@ -1,7 +1,11 @@
+// Import crypto polyfill first to ensure it's available before other modules
+import '../metro-shims/crypto-polyfill';
+
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect } from 'react';
 
 function RootLayoutNav() {
@@ -77,9 +81,11 @@ export default function RootLayout() {
   useFrameworkReady();
 
   return (
-    <AuthProvider>
-      <StatusBar style="auto" />
-      <RootLayoutNav />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <StatusBar style="auto" />
+        <RootLayoutNav />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

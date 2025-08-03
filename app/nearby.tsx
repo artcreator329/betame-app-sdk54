@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,67 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, Star, List, Map as MapIcon } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { nearbyServiceLocations } from '@/data/mockMapData';
+import { ServiceLocation } from '@/types/service-location';
+import { ServiceService, Service } from '@/lib/service-service';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
+// Helper function to convert Service to ServiceLocation
+const convertServiceToLocation = (service: Service): ServiceLocation | null => {
+  if (!service.latitude || !service.longitude) {
+    return null; // Skip services without coordinates
+  }
+  
+  return {
+    id: service.id || '',
+    title: service.title,
+    provider: service.provider_name || 'Service Provider',
+    rating: service.rating || 0,
+    price: service.price,
+    currency: service.currency,
+    category: service.category_name || 'General',
+    image: service.image_url || 'https://images.pexels.com/photos/3997991/pexels-photo-3997991.jpeg?auto=compress&cs=tinysrgb&w=400',
+    coordinate: {
+      latitude: service.latitude,
+      longitude: service.longitude,
+    },
+    address: service.location || 'Location not specified',
+    distance: '0 km', // TODO: Calculate actual distance based on user location
+  };
+};
+
 export default function NearbyScreen() {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
+  const [nearbyServices, setNearbyServices] = useState<ServiceLocation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    loadNearbyServices();
+  }, []);
+
+  const loadNearbyServices = async () => {
+    try {
+      setIsLoading(true);
+      const services = await ServiceService.getNearbyServices();
+      const serviceLocations = services
+        .map(convertServiceToLocation)
+        .filter((location): location is ServiceLocation => location !== null);
+      setNearbyServices(serviceLocations);
+    } catch (error) {
+      console.error('Error loading nearby services:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleBack = () => {
     router.back();
@@ -42,7 +91,7 @@ export default function NearbyScreen() {
         showsUserLocation={true}
         showsMyLocationButton={true}
       >
-        {nearbyServiceLocations.map((service) => (
+        {nearbyServices.map((service) => (
           <Marker
             key={service.id}
             coordinate={service.coordinate}
@@ -62,14 +111,32 @@ export default function NearbyScreen() {
     </View>
   );
 
-  const renderListView = () => (
-    <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
-      {nearbyServiceLocations.map((service) => (
-        <TouchableOpacity
-          key={service.id}
-          style={styles.listItem}
-          onPress={() => handleServicePress(service.id)}
-        >
+  const renderListView = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading nearby services...</Text>
+        </View>
+      );
+    }
+
+    if (nearbyServices.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No nearby services found</Text>
+        </View>
+      );
+    }
+
+    return (
+      <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
+        {nearbyServices.map((service) => (
+          <TouchableOpacity
+            key={service.id}
+            style={styles.listItem}
+            onPress={() => handleServicePress(service.id)}
+          >
           <Image source={{ uri: service.image }} style={styles.listItemImage} />
           <View style={styles.listItemInfo}>
             <View style={styles.listItemHeader}>
@@ -89,9 +156,10 @@ export default function NearbyScreen() {
             </View>
           </View>
         </TouchableOpacity>
-      ))}
-    </ScrollView>
-  );
+        ))}
+      </ScrollView>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -278,5 +346,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1D1D1F',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#8E8E93',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 });

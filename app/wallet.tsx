@@ -21,32 +21,13 @@ interface VisibilityBoost {
   color: string;
 }
 
-const visibilityBoosts: VisibilityBoost[] = [
-  {
-    id: '1',
-    title: '2x Visibility!',
-    description: 'Feature your listing in the home page & dedicated section',
-    cost: 100,
-    icon: <Star size={20} color="white" />,
-    color: '#FF6B35',
-  },
-  {
-    id: '2',
-    title: 'Instant Visibility!',
-    description: 'Bring your listing to top in relevant section',
-    cost: 50,
-    icon: <Zap size={20} color="white" />,
-    color: '#4ECDC4',
-  },
-  {
-    id: '3',
-    title: 'Max Visibility!',
-    description: 'Pin your listing on top of the relevant section',
-    cost: 50,
-    icon: <TrendingUp size={20} color="white" />,
-    color: '#45B7D1',
-  },
-];
+// TODO: Implement visibility boosts functionality with Supabase
+// For now, return empty array until boosts table is created
+const getVisibilityBoosts = async (): Promise<VisibilityBoost[]> => {
+  return [];
+};
+
+const visibilityBoosts: VisibilityBoost[] = [];
 
 export default function WalletScreen() {
   const router = useRouter();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,16 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Star, MessageCircle } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { allServices } from '@/data/mockData';
-import { findChatByParticipant } from '@/data/mockChatData';
+import { ServiceService, Service } from '@/lib/service-service';
+
+import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/lib/auth-service';
 
 interface SubPlan {
   id: string;
@@ -21,135 +25,90 @@ interface SubPlan {
   details: string[];
 }
 
-const mockSubPlans: { [key: string]: SubPlan[] } = {
-  '10': [ // Pet grooming service
-    {
-      id: '1',
-      name: 'Basic Care',
-      price: 45,
-      description: 'Leave your pet with us!',
-      details: [
-        'Check in time to check out time is not exceeding 24 hours',
-        'Meals price is excluded'
-      ]
-    },
-    {
-      id: '2',
-      name: 'Extended Care',
-      price: 185,
-      description: 'Complete pet care package',
-      details: [
-        'Up to 7 days pet care',
-        'Meals included',
-        'Daily exercise and playtime',
-        'Photo updates twice daily'
-      ]
-    },
-    {
-      id: '3',
-      name: 'Premium Care',
-      price: 990,
-      description: 'Luxury pet care experience',
-      details: [
-        'Up to 1 month pet care',
-        'Premium meals included',
-        'Daily grooming',
-        'Veterinary checkups',
-        'Video calls with pet owner'
-      ]
-    }
-  ],
-  '6': [ // Fitness training
-    {
-      id: '1',
-      name: 'Basic Training',
-      price: 88,
-      description: 'Individual training session',
-      details: [
-        '1 hour personal training',
-        'Basic workout plan',
-        'Nutrition guidelines'
-      ]
-    },
-    {
-      id: '2',
-      name: 'Weekly Package',
-      price: 300,
-      description: 'Weekly training program',
-      details: [
-        '4 training sessions per week',
-        'Customized meal plan',
-        'Progress tracking',
-        'WhatsApp support'
-      ]
-    },
-    {
-      id: '3',
-      name: 'Monthly Transformation',
-      price: 1200,
-      description: 'Complete body transformation',
-      details: [
-        'Daily training sessions',
-        'Meal prep service',
-        'Body composition analysis',
-        '24/7 coach support',
-        'Supplement recommendations'
-      ]
-    }
-  ]
+// TODO: Replace with real subscription plans from database
+const getServicePlans = (serviceId: string): SubPlan[] => {
+  // Return empty array until subscription plans are implemented in database
+  return [];
 };
 
 export default function ServiceDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [service, setService] = useState<Service | null>(null);
+  const [serviceOwnerProfile, setServiceOwnerProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const service = allServices.find(s => s.id === id);
+  useEffect(() => {
+    const fetchService = async () => {
+      if (typeof id === 'string') {
+        try {
+          const serviceData = await ServiceService.getServiceById(id);
+          setService(serviceData);
+          
+          // Fetch service owner's profile
+          if (serviceData?.user_id) {
+            const ownerProfile = await authService.getUserProfile(serviceData.user_id);
+            setServiceOwnerProfile(ownerProfile);
+          }
+        } catch (error) {
+          console.error('Error fetching service:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchService();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading service...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
   
   if (!service) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text>Service not found</Text>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Service not found</Text>
+          <TouchableOpacity style={styles.backToServicesButton} onPress={() => router.push('/services')}>
+            <Text style={styles.backToServicesText}>Back to Services</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
 
   const getParticipantId = () => {
-    // Map service providers to chat participant IDs
-    const providerMap: { [key: string]: string } = {
-      'Jeslina Kong': 'jeslina-kong',
-      'Abang Joe': 'abang-joe',
-      'Raj Kumar': 'raj-kumar',
-      'Abdul Khalib': 'abdul-khalib',
-      'Mike Chen': 'mike-chen',
-      'David Wong': 'david-wong',
-    };
-    return providerMap[service.provider] || service.provider.toLowerCase().replace(' ', '-');
+    return service?.user_id || 'service-provider';
   };
+
+  // Check if current user owns this service
+  const isOwnService = user?.id === service?.user_id;
 
   const handleChatWithSeller = () => {
     const participantId = getParticipantId();
     router.push(`/chat/${participantId}`);
   };
 
-  const subPlans = mockSubPlans[service.id] || [];
-  const selectedSubPlan = subPlans.find(plan => plan.id === selectedPlan);
+  const subPlans = getServicePlans(service.id || '');
+  const selectedSubPlan = subPlans.find((plan: SubPlan) => plan.id === selectedPlan);
 
-  // Enhanced service details for pet grooming
-  const serviceDetails = service.id === '10' ? {
-    title: 'Pawer Puff',
-    subtitle: 'Take care your pet for short-term',
-    duration: 'From 1 hour, up to 1 month',
-    location: 'We are located @ Bandar Puteri Puchong, a corner landed landed house with max capacity 16 pets',
-    feeding: 'We will feed your pet according to your requirement',
-    socializing: 'We will ensure your pet can enjoy making friends with others'
-  } : {
+  const serviceDetails = {
     title: service.title,
     subtitle: service.description,
     duration: 'Flexible scheduling available',
-    location: 'Location can be discussed',
-    feeding: '',
-    socializing: ''
+    location: service.location || 'Location can be discussed',
+    price: service.price,
+    currency: service.currency || 'RM'
   };
 
   return (
@@ -159,9 +118,7 @@ export default function ServiceDetailsScreen() {
         <View style={styles.heroContainer}>
           <Image
             source={{ 
-              uri: service.id === '10' 
-                ? 'https://images.pexels.com/photos/4498778/pexels-photo-4498778.jpeg?auto=compress&cs=tinysrgb&w=800' 
-                : service.image 
+              uri: service.image_url || 'https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=800'
             }}
             style={styles.heroImage}
           />
@@ -179,21 +136,23 @@ export default function ServiceDetailsScreen() {
           <View style={styles.providerSection}>
             <View style={styles.providerInfo}>
               <Image
-                source={{ uri: 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=200' }}
+                source={{ 
+                  uri: serviceOwnerProfile?.avatar_url || 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=200' 
+                }}
                 style={styles.providerImage}
               />
               <View style={styles.providerDetails}>
                 <Text style={styles.listedBy}>Listed by</Text>
                 <View style={styles.providerNameRow}>
                   <Text style={styles.providerName}>
-                    {service.id === '10' ? 'Abang Joe' : service.provider}
+                    {serviceOwnerProfile?.full_name || 'Service Provider'}
                   </Text>
-                  <Text style={styles.checkProfile}>Check Abang Joe's profile!</Text>
+                  <Text style={styles.checkProfile}>Check provider's profile!</Text>
                 </View>
                 <View style={styles.ratingRow}>
                   <Star size={14} color="#FFD700" fill="#FFD700" />
                   <Text style={styles.rating}>
-                    {service.rating} ({service.reviewCount})
+                    {service.rating || 0} ({service.review_count || 0})
                   </Text>
                 </View>
               </View>
@@ -206,22 +165,30 @@ export default function ServiceDetailsScreen() {
             <Text style={styles.serviceSubtitle}>{serviceDetails.subtitle}</Text>
             <Text style={styles.serviceDuration}>{serviceDetails.duration}</Text>
             
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceLabel}>Starting from</Text>
+              <Text style={styles.priceAmount}>
+                {serviceDetails.currency}{serviceDetails.price}
+              </Text>
+            </View>
+            
             {serviceDetails.location ? (
               <Text style={styles.serviceDetail}>{serviceDetails.location}</Text>
             ) : null}
-            {serviceDetails.feeding ? (
-              <Text style={styles.serviceDetail}>{serviceDetails.feeding}</Text>
-            ) : null}
-            {serviceDetails.socializing ? (
-              <Text style={styles.serviceDetail}>{serviceDetails.socializing}</Text>
-            ) : null}
+            
+            {service.category_name && (
+              <View style={styles.categoryContainer}>
+                <Text style={styles.categoryLabel}>Category:</Text>
+                <Text style={styles.categoryName}>{service.category_name}</Text>
+              </View>
+            )}
           </View>
 
           {/* Pricing Plans */}
           {subPlans.length > 0 && (
             <View style={styles.pricingSection}>
               <View style={styles.pricingTabs}>
-                {subPlans.map((plan) => (
+                {subPlans.map((plan: SubPlan) => (
                   <TouchableOpacity
                     key={plan.id}
                     style={[
@@ -244,7 +211,7 @@ export default function ServiceDetailsScreen() {
               {selectedSubPlan && (
                 <View style={styles.subPlanDetails}>
                   <Text style={styles.subPlanTitle}>{selectedSubPlan.description}</Text>
-                  {selectedSubPlan.details.map((detail, index) => (
+                  {selectedSubPlan.details.map((detail: string, index: number) => (
                     <Text key={index} style={styles.subPlanDetail}>{detail}</Text>
                   ))}
                 </View>
@@ -252,16 +219,28 @@ export default function ServiceDetailsScreen() {
             </View>
           )}
 
-          {/* Chat Button */}
+          {/* Action Button - Chat or Edit based on ownership */}
           <View style={styles.chatSection}>
-            <TouchableOpacity style={styles.chatButton} onPress={handleChatWithSeller}>
-              <MessageCircle size={20} color="white" />
-              <Text style={styles.chatButtonText}>Chat with seller</Text>
-              <Image
-                source={{ uri: 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=100' }}
-                style={styles.chatProviderImage}
-              />
-            </TouchableOpacity>
+            {!isOwnService ? (
+              <TouchableOpacity style={styles.chatButton} onPress={handleChatWithSeller}>
+                <MessageCircle size={20} color="white" />
+                <Text style={styles.chatButtonText}>Chat with seller</Text>
+                <Image
+                  source={{ 
+                    uri: serviceOwnerProfile?.avatar_url || 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=100' 
+                  }}
+                  style={styles.chatProviderImage}
+                />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={styles.editButton} 
+                onPress={() => router.push(`/edit-service/${id}`)}
+              >
+                <Ionicons name="pencil" size={20} color="white" />
+                <Text style={styles.editButtonText}>Edit Service</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -434,5 +413,84 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#8E8E93',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#1D1D1F',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  backToServicesButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backToServicesText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  priceContainer: {
+    backgroundColor: '#F2F2F7',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  priceLabel: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  priceAmount: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1D1D1F',
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  categoryLabel: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginRight: 8,
+  },
+  categoryName: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  editButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    gap: 8,
+  },
+  editButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

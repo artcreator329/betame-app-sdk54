@@ -35,7 +35,7 @@ export class ImageService {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1], // Square aspect ratio for profile photos
         quality: 0.8,
@@ -60,7 +60,7 @@ export class ImageService {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1], // Square aspect ratio for profile photos
         quality: 0.8,
@@ -84,9 +84,30 @@ export class ImageService {
     bucket: string = 'profile-images'
   ): Promise<ImageUploadResult> {
     try {
+      // Debug: Check current session
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Current session during upload:', session ? 'Authenticated' : 'Not authenticated');
+      console.log('Session user ID:', session?.user?.id);
+      console.log('Provided user ID:', userId);
+      
+      // If no session, try to refresh it
+      if (!session) {
+        console.log('No session found, attempting to refresh...');
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.error('Failed to refresh session:', refreshError);
+          return {
+            success: false,
+            error: 'Authentication required. Please sign in again.',
+          };
+        }
+        console.log('Refreshed session:', refreshedSession ? 'Success' : 'Failed');
+      }
+      
       // Generate unique filename
       const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${userId}/${Date.now()}.${fileExt}`;
+      console.log('Upload filename:', fileName);
 
       // Convert base64 to array buffer
       const arrayBuffer = decode(base64);
