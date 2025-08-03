@@ -248,7 +248,12 @@ export default function ProfileScreen() {
                 </View>
               ) : (
                 jobListings.map((job) => (
-                  <View key={job.id} style={styles.jobItem}>
+                  <TouchableOpacity 
+                    key={job.id} 
+                    style={styles.jobItem}
+                    onPress={() => router.push(`/job/${job.id}`)}
+                    activeOpacity={0.7}
+                  >
                     {job.cover_photo && (
                       <Image source={{ uri: job.cover_photo }} style={styles.jobImage} />
                     )}
@@ -282,7 +287,7 @@ export default function ProfileScreen() {
                         </Text>
                       </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))
               )}
               <TouchableOpacity 

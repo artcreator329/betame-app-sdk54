@@ -339,7 +339,12 @@ export default function HomeScreen() {
           ) : jobListings.length > 0 ? (
             <View style={styles.jobsGrid}>
               {jobListings.map((job) => (
-                <TouchableOpacity key={job.id} style={styles.jobCard}>
+                <TouchableOpacity 
+                  key={job.id} 
+                  style={styles.jobCard}
+                  onPress={() => router.push(`/job/${job.id}`)}
+                  activeOpacity={0.7}
+                >
                   {job.cover_photo && (
                     <Image source={{ uri: job.cover_photo }} style={styles.jobImage} />
                   )}
