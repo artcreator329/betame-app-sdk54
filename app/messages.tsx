@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,33 +6,57 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Search } from 'lucide-react-native';
+import { ArrowLeft, Search, MessageCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { mockChats } from '@/data/mockChatData';
+import { ChatService, UserChat } from '@/lib/chat-service';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function MessagesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [chats, setChats] = useState<UserChat[]>([]);
+  const [lastMessages, setLastMessages] = useState<{[key: string]: string}>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const chatService = ChatService.getInstance();
 
-  const getLastMessage = (chatId: string) => {
-    const chat = mockChats.find(c => c.id === chatId);
-    if (!chat || chat.messages.length === 0) return '';
-    
-    const lastMessage = chat.messages[chat.messages.length - 1];
-    return lastMessage.message;
-  };
+  useEffect(() => {
+    if (!user?.id) return;
 
-  const getLastMessageTime = (chatId: string) => {
-    const chat = mockChats.find(c => c.id === chatId);
-    if (!chat || chat.messages.length === 0) return '';
+    const loadChats = async () => {
+      setIsLoading(true);
+      try {
+        const userChats = await chatService.getUserChats(user.id);
+        setChats(userChats);
+        
+        // Load last messages for each chat
+        const messages: {[key: string]: string} = {};
+        for (const chat of userChats) {
+          const lastMessage = await chatService.getLastMessage(chat.id);
+          messages[chat.id] = lastMessage;
+        }
+        setLastMessages(messages);
+      } catch (error) {
+        console.error('Error loading chats:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadChats();
+  }, [user?.id]);
+
+  const formatLastMessageTime = (lastMessageAt: string | null) => {
+    if (!lastMessageAt) return '';
     
-    const lastMessage = chat.messages[chat.messages.length - 1];
+    const messageDate = new Date(lastMessageAt);
     const now = new Date();
-    const diffInDays = Math.floor((now.getTime() - lastMessage.timestamp.getTime()) / (1000 * 60 * 60 * 24));
+    const diffInDays = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60 * 60 * 24));
     
     if (diffInDays === 0) {
-      return lastMessage.timestamp.toLocaleTimeString('en-US', { 
+      return messageDate.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit',
         hour12: true 
@@ -40,7 +64,7 @@ export default function MessagesScreen() {
     } else if (diffInDays === 1) {
       return 'Yesterday';
     } else {
-      return lastMessage.timestamp.toLocaleDateString('en-US', { 
+      return messageDate.toLocaleDateString('en-US', { 
         month: 'short', 
         day: 'numeric' 
       });
@@ -62,27 +86,37 @@ export default function MessagesScreen() {
 
       {/* Chat List */}
       <ScrollView style={styles.chatList} showsVerticalScrollIndicator={false}>
-        {mockChats.map((chat) => (
-          <TouchableOpacity
-            key={chat.id}
-            style={styles.chatItem}
-            onPress={() => router.push(`/chat/${chat.participantId}`)}
-          >
-            <Image source={{ uri: chat.participantImage }} style={styles.chatAvatar} />
-            <View style={styles.chatContent}>
-              <View style={styles.chatHeader}>
-                <Text style={styles.chatName}>{chat.participantName}</Text>
-                <Text style={styles.chatTime}>{getLastMessageTime(chat.id)}</Text>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Loading chats...</Text>
+          </View>
+        ) : chats.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MessageCircle size={64} color="#8E8E93" />
+            <Text style={styles.emptyTitle}>No chats yet</Text>
+            <Text style={styles.emptySubtitle}>Start a conversation by visiting someone's profile</Text>
+          </View>
+        ) : (
+          chats.map((chat) => (
+            <TouchableOpacity
+              key={chat.id}
+              style={styles.chatItem}
+              onPress={() => router.push(`/chat/${chat.participantId}`)}
+            >
+              <Image source={{ uri: chat.participantImage }} style={styles.chatAvatar} />
+              <View style={styles.chatContent}>
+                <View style={styles.chatHeader}>
+                  <Text style={styles.chatName}>{chat.participantName}</Text>
+                  <Text style={styles.chatTime}>{formatLastMessageTime(chat.lastMessageAt)}</Text>
+                </View>
+                <Text style={styles.lastMessage} numberOfLines={2}>
+                  {lastMessages[chat.id] || 'No messages yet'}
+                </Text>
               </View>
-              {chat.serviceTitle && (
-                <Text style={styles.serviceTitle}>{chat.serviceTitle}</Text>
-              )}
-              <Text style={styles.lastMessage} numberOfLines={2}>
-                {getLastMessage(chat.id)}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -153,5 +187,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     lineHeight: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#8E8E93',
+    marginTop: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1D1D1F',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: '#8E8E93',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,54 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function EditProfileScreen() {
-  const [username, setUsername] = useState('Anvenia Tan');
+  const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const router = useRouter();
+  const { userProfile, updateProfile } = useAuth();
+
+  // Load user data when component mounts
+  useEffect(() => {
+    if (userProfile) {
+      setUsername(userProfile.full_name || '');
+      setBio(userProfile.bio || '');
+    }
+  }, [userProfile]);
 
   const handleBioChange = (text: string) => {
     if (text.length <= 200) {
       setBio(text);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      const updates = {
+        full_name: username,
+        bio: bio,
+      };
+
+      const result = await updateProfile(updates);
+      
+      if (result.error) {
+        Alert.alert('Error', 'Failed to update profile. Please try again.');
+      } else {
+        Alert.alert(
+          'Success',
+          'Your profile has been updated successfully.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
     }
   };
 
@@ -35,7 +70,7 @@ export default function EditProfileScreen() {
             <ArrowLeft size={24} color="#1D1D1F" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleSave}>
             <Text style={styles.saveButton}>Save</Text>
           </TouchableOpacity>
         </View>

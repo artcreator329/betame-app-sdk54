@@ -105,9 +105,11 @@ export default function ProfileScreen() {
 
   const handleShareProfile = async () => {
     try {
+      const userName = userProfile?.full_name || 'User';
+      const userBio = userProfile?.bio || 'Amazing service provider';
       const result = await Share.share({
-        message: "Check out Anvenia Tan's profile on BetaMe!\n\nBelieve in God ❤️\n\nDownload the app to connect with amazing service providers!",
-        title: "Anvenia Tan's Profile",
+        message: `Check out ${userName}'s profile on BetaMe!\n\n${userBio}\n\nDownload the app to connect with amazing service providers!`,
+        title: `${userName}'s Profile`,
       });
     } catch (error) {
       Alert.alert('Error', 'Unable to share profile. Please try again.');
@@ -188,36 +190,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const mockReviews = [
-    {
-      id: '1',
-      reviewerName: 'Syafiqah',
-      reviewerImage: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=200',
-      rating: 5.0,
-      reviewText: 'Great teacher, always love to attend her class',
-    },
-    {
-      id: '2',
-      reviewerName: 'Rosli Yahya',
-      reviewerImage: 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=200',
-      rating: 5.0,
-      reviewText: 'Your dedication to your students and your hard work do not go unnoticed. Thank you for going the extra mile to ensure we succeed.',
-    },
-    {
-      id: '3',
-      reviewerName: 'Kimberly Yap',
-      reviewerImage: 'https://images.pexels.com/photos/3807738/pexels-photo-3807738.jpeg?auto=compress&cs=tinysrgb&w=200',
-      rating: 5.0,
-      reviewText: 'Thank you very much for the effort you have put into teaching me, I have enjoyed and learned from every lesson you have taught me',
-    },
-    {
-      id: '4',
-      reviewerName: 'Anvenia Tan',
-      reviewerImage: 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=200',
-      rating: 5.0,
-      reviewText: 'Thank you Ms. Jeslina! It was wonderful to attend your class',
-    },
-  ];
+  // Mock reviews are now replaced with real data from Supabase in the useEffect
 
   const renderStars = (rating: number) => {
     return (
@@ -400,9 +373,19 @@ export default function ProfileScreen() {
         <View style={styles.actionButtons}>
           <TouchableOpacity 
             style={styles.chatButton}
-            onPress={() => router.push('/chat/jeslina-kong')}
+            onPress={() => {
+              // If viewing own profile, go to messages dashboard
+              // If viewing someone else's profile, start a chat with them
+              if (userProfile?.id === user?.id) {
+                router.push('/messages');
+              } else {
+                router.push(`/chat/${userProfile?.id || user?.id}`);
+              }
+            }}
           >
-            <Text style={styles.chatButtonText}>Chat to enquire</Text>
+            <Text style={styles.chatButtonText}>
+              {userProfile?.id === user?.id ? 'View Chat' : 'Chat to enquire'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.actionButton}
