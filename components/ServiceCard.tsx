@@ -17,14 +17,14 @@ export default function ServiceCard({ service }: ServiceCardProps) {
 
   return (
     <TouchableOpacity style={styles.card} onPress={handlePress}>
-      <Image source={{ uri: service.image }} style={styles.image} />
+      <Image source={{ uri: service.image_url || 'https://images.pexels.com/photos/3997991/pexels-photo-3997991.jpeg?auto=compress&cs=tinysrgb&w=400' }} style={styles.image} />
       <View style={styles.content}>
         <View style={styles.ratingContainer}>
           <Star size={12} color="#FFD700" fill="#FFD700" />
           <Text style={styles.rating}>{service.rating}</Text>
-          <Text style={styles.reviewCount}>({service.reviewCount})</Text>
+          <Text style={styles.reviewCount}>({service.review_count})</Text>
         </View>
-        <Text style={styles.provider}>{service.provider}</Text>
+        <Text style={styles.provider}>{service.provider_name || 'Unknown Provider'}</Text>
         <Text style={styles.title} numberOfLines={2}>
           {service.title}
         </Text>

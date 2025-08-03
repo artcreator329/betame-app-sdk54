@@ -28,7 +28,7 @@ const convertServiceToLocation = (service: Service): ServiceLocation | null => {
   return {
     id: service.id || '',
     title: service.title,
-    provider: service.provider_name || 'Service Provider',
+    provider: service.provider_name || 'Unknown Provider',
     rating: service.rating || 0,
     price: service.price,
     currency: service.currency,

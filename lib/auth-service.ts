@@ -159,7 +159,7 @@ class AuthService {
       .from('profiles')
       .select('*')
       .eq('id', user)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching user profile:', error);

@@ -29,27 +29,52 @@ export class ServiceService {
    */
   static async getAllServices(): Promise<Service[]> {
     try {
-      const { data, error } = await supabase
+      // First get services
+      const { data: services, error: servicesError } = await supabase
         .from('services')
-        .select(`
-          *,
-          profiles!services_user_id_fkey(
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching services:', error);
+      if (servicesError) {
+        console.error('Error fetching services:', servicesError);
         return [];
       }
 
-      return (data || []).map(service => ({
-        ...service,
-        provider_name: service.profiles?.full_name || 'Service Provider',
-        provider_avatar: service.profiles?.avatar_url
-      }));
+      if (!services || services.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs
+      const userIds = [...new Set(services.map(s => s.user_id))];
+
+      // Get profiles for these users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Return services without profile data
+        return services.map(service => ({
+          ...service,
+          provider_name: 'Service Provider',
+          provider_avatar: undefined
+        }));
+      }
+
+      // Create a map for quick lookup
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Combine services with profile data
+      return services.map(service => {
+        const profile = profileMap.get(service.user_id);
+        return {
+          ...service,
+          provider_name: profile?.full_name || 'Service Provider',
+          provider_avatar: profile?.avatar_url
+        };
+      });
     } catch (error) {
       console.error('Error in getAllServices:', error);
       return [];
@@ -61,28 +86,53 @@ export class ServiceService {
    */
   static async getNearbyServices(): Promise<Service[]> {
     try {
-      const { data, error } = await supabase
+      // First get nearby services
+      const { data: services, error: servicesError } = await supabase
         .from('services')
-        .select(`
-          *,
-          profiles!services_user_id_fkey(
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('is_nearby', true)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching nearby services:', error);
+      if (servicesError) {
+        console.error('Error fetching nearby services:', servicesError);
         return [];
       }
 
-      return (data || []).map(service => ({
-        ...service,
-        provider_name: service.profiles?.full_name || 'Service Provider',
-        provider_avatar: service.profiles?.avatar_url
-      }));
+      if (!services || services.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs
+      const userIds = [...new Set(services.map(s => s.user_id))];
+
+      // Get profiles for these users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Return services without profile data
+        return services.map(service => ({
+          ...service,
+          provider_name: 'Service Provider',
+          provider_avatar: undefined
+        }));
+      }
+
+      // Create a map for quick lookup
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Combine services with profile data
+      return services.map(service => {
+        const profile = profileMap.get(service.user_id);
+        return {
+          ...service,
+          provider_name: profile?.full_name || 'Service Provider',
+          provider_avatar: profile?.avatar_url
+        };
+      });
     } catch (error) {
       console.error('Error in getNearbyServices:', error);
       return [];
@@ -94,29 +144,54 @@ export class ServiceService {
    */
   static async getTrendingServices(): Promise<Service[]> {
     try {
-      const { data, error } = await supabase
+      // First get trending services
+      const { data: services, error: servicesError } = await supabase
         .from('services')
-        .select(`
-          *,
-          profiles!services_user_id_fkey(
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('is_trending', true)
         .order('rating', { ascending: false })
         .order('review_count', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching trending services:', error);
+      if (servicesError) {
+        console.error('Error fetching trending services:', servicesError);
         return [];
       }
 
-      return (data || []).map(service => ({
-        ...service,
-        provider_name: service.profiles?.full_name || 'Service Provider',
-        provider_avatar: service.profiles?.avatar_url
-      }));
+      if (!services || services.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs
+      const userIds = [...new Set(services.map(s => s.user_id))];
+
+      // Get profiles for these users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Return services without profile data
+        return services.map(service => ({
+          ...service,
+          provider_name: 'Service Provider',
+          provider_avatar: undefined
+        }));
+      }
+
+      // Create a map for quick lookup
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Combine services with profile data
+      return services.map(service => {
+        const profile = profileMap.get(service.user_id);
+        return {
+          ...service,
+          provider_name: profile?.full_name || 'Service Provider',
+          provider_avatar: profile?.avatar_url
+        };
+      });
     } catch (error) {
       console.error('Error in getTrendingServices:', error);
       return [];
@@ -128,18 +203,53 @@ export class ServiceService {
    */
   static async getServicesByCategory(categoryName: string): Promise<Service[]> {
     try {
-      const { data, error } = await supabase
+      // First get services by category
+      const { data: services, error: servicesError } = await supabase
         .from('services')
         .select('*')
         .eq('category_name', categoryName)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching services by category:', error);
+      if (servicesError) {
+        console.error('Error fetching services by category:', servicesError);
         return [];
       }
 
-      return data || [];
+      if (!services || services.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs
+      const userIds = [...new Set(services.map(s => s.user_id))];
+
+      // Get profiles for these users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Return services without profile data
+        return services.map(service => ({
+          ...service,
+          provider_name: 'Service Provider',
+          provider_avatar: undefined
+        }));
+      }
+
+      // Create a map for quick lookup
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Combine services with profile data
+      return services.map(service => {
+        const profile = profileMap.get(service.user_id);
+        return {
+          ...service,
+          provider_name: profile?.full_name || 'Service Provider',
+          provider_avatar: profile?.avatar_url
+        };
+      });
     } catch (error) {
       console.error('Error in getServicesByCategory:', error);
       return [];

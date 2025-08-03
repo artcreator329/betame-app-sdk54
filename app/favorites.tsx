@@ -17,12 +17,12 @@ const { width } = Dimensions.get('window');
 interface FavoriteService {
   id: string;
   title: string;
-  provider: string;
+  provider_name?: string;
   rating: number;
-  reviewCount: number;
+  review_count: number;
   price: number;
   currency: string;
-  image: string;
+  image_url?: string;
   location: string;
   description: string;
   isFavorited: boolean;
@@ -81,19 +81,19 @@ export default function FavoritesScreen() {
         style={styles.serviceCard}
         onPress={() => handleServicePress(service.id)}
       >
-        <Image source={{ uri: service.image }} style={styles.serviceImage} />
+        <Image source={{ uri: service.image_url || 'https://images.pexels.com/photos/3997991/pexels-photo-3997991.jpeg?auto=compress&cs=tinysrgb&w=400' }} style={styles.serviceImage} />
         <View style={styles.serviceInfo}>
           <View style={styles.serviceHeader}>
             <Text style={styles.serviceTitle}>{service.title}</Text>
             <View style={styles.ratingContainer}>
               <Star size={14} color="#FFD700" fill="#FFD700" />
               <Text style={styles.ratingText}>{service.rating}</Text>
-              <Text style={styles.reviewCount}>({service.reviewCount})</Text>
+              <Text style={styles.reviewCount}>({service.review_count})</Text>
             </View>
           </View>
           
           <Text style={styles.serviceProvider} numberOfLines={2}>
-            {service.provider}
+            {service.provider_name || 'Unknown Provider'}
           </Text>
           
           <View style={styles.locationContainer}>

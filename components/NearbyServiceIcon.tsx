@@ -17,7 +17,7 @@ export default function NearbyServiceIcon({ service }: NearbyServiceIconProps) {
   return (
     <TouchableOpacity style={styles.container} onPress={handlePress}>
       <View style={styles.imageContainer}>
-        <Image source={{ uri: service.image }} style={styles.image} />
+        <Image source={{ uri: service.image_url }} style={styles.image} />
       </View>
       <Text style={styles.title} numberOfLines={2}>
         {service.title}

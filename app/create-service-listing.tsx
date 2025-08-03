@@ -335,7 +335,6 @@ export default function CreateServiceListingScreen() {
                 placeholder="0.00"
                 placeholderTextColor="#8E8E93"
                 keyboardType="decimal-pad"
-                returnKeyType="done"
               />
             </View>
             
