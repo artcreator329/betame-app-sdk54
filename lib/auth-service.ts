@@ -108,8 +108,15 @@ class AuthService {
 
   // Sign out
   async signOut(): Promise<{ error: AuthError | null }> {
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    console.log('🔄 AuthService: Starting Supabase signOut...');
+    try {
+      const { error } = await supabase.auth.signOut();
+      console.log('🔄 AuthService: Supabase signOut result:', { error });
+      return { error };
+    } catch (error) {
+      console.error('❌ AuthService: Supabase signOut error:', error);
+      return { error: error as AuthError };
+    }
   }
 
   // Reset password

@@ -1,10 +1,43 @@
 import { Tabs } from 'expo-router';
+import React from 'react';
+import { Platform, View, Text } from 'react-native';
 import { Chrome as Home, Users, FileText, Bell, User } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 export default function TabLayout() {
   const { user } = useAuth();
   const isAuthenticated = !!user;
+  const { unreadCount } = useNotifications();
+
+  const NotificationBadge = ({ count }: { count: number }) => {
+    if (count === 0) return null;
+    
+    return (
+      <View style={{
+        position: 'absolute',
+        top: -2,
+        right: -6,
+        backgroundColor: '#34C759',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+      }}>
+        <Text style={{
+          color: '#FFFFFF',
+          fontSize: 12,
+          fontWeight: '600',
+          textAlign: 'center',
+        }}>
+          {count > 99 ? '99+' : count.toString()}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <Tabs
@@ -70,7 +103,10 @@ export default function TabLayout() {
         options={{
           title: 'Notifications',
           tabBarIcon: ({ size, color }) => (
-            <Bell size={size} color={color} />
+            <View style={{ position: 'relative' }}>
+              <Bell size={size} color={color} />
+              <NotificationBadge count={unreadCount} />
+            </View>
           ),
           href: isAuthenticated ? '/notifications' : null,
         }}

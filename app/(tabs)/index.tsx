@@ -23,8 +23,40 @@ import { JobService, JobListing } from '@/lib/job-service';
 import { CategoryService, Category } from '@/lib/category-service';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
+import { Colors } from '@/constants/Colors';
 
 const { width: screenWidth } = Dimensions.get('window');
+
+// Unread message badge component
+const MessageBadge = ({ count }: { count: number }) => {
+  if (count === 0) return null;
+  
+  return (
+    <View style={{
+      position: 'absolute',
+      top: -2,
+      right: -6,
+      backgroundColor: Colors.status.error,
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: Colors.text.white,
+    }}>
+      <Text style={{
+        color: Colors.text.white,
+        fontSize: 12,
+        fontWeight: '600',
+        textAlign: 'center',
+      }}>
+        {count > 99 ? '99+' : count.toString()}
+      </Text>
+    </View>
+  );
+};
 
 interface BannerSlide {
   id: string;
@@ -85,6 +117,7 @@ export default function HomeScreen() {
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
+  const { totalUnreadCount } = useUnreadMessageCount();
 
   // Helper function to convert database service to UI service format
   const convertToUIService = (dbService: DBService): Service => {
@@ -199,7 +232,10 @@ export default function HomeScreen() {
                 style={styles.iconButton}
                 onPress={() => router.push('/messages')}
               >
-                <MessageCircle size={24} color="#1D1D1F" />
+                <View style={{ position: 'relative' }}>
+                  <MessageCircle size={24} color="#1D1D1F" />
+                  <MessageBadge count={totalUnreadCount} />
+                </View>
               </TouchableOpacity>
             </View>
           ) : (
@@ -218,7 +254,7 @@ export default function HomeScreen() {
         <View style={styles.categoriesContainer}>
           {isLoadingCategories ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#007AFF" />
+              <ActivityIndicator size="small" color={Colors.primary.main} />
               <Text style={styles.loadingText}>Loading categories...</Text>
             </View>
           ) : categories.length > 0 ? (
@@ -286,11 +322,11 @@ export default function HomeScreen() {
             onPress={() => router.push('/nearby')}
           >
             <Text style={styles.sectionTitle}>Nearby</Text>
-            <ChevronRight size={20} color="#8E8E93" />
+            <ChevronRight size={20} color={Colors.text.secondary} />
           </TouchableOpacity>
           {isLoadingServices ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#007AFF" />
+              <ActivityIndicator size="small" color={Colors.primary.main} />
               <Text style={styles.loadingText}>Loading services...</Text>
             </View>
           ) : nearbyServices.length > 0 ? (
@@ -317,7 +353,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/nearby')}
           >
             <Text style={styles.sectionTitle}>Trending</Text>
-            <ChevronRight size={20} color="#8E8E93" />
+            <ChevronRight size={20} color={Colors.text.secondary} />
           </TouchableOpacity>
           {isLoadingServices ? (
             <View style={styles.loadingContainer}>
@@ -381,7 +417,7 @@ export default function HomeScreen() {
                     
                     {job.location_address && (
                       <View style={styles.jobLocation}>
-                        <MapPin size={12} color="#8E8E93" />
+                        <MapPin size={12} color={Colors.text.secondary} />
                         <Text style={styles.jobLocationText} numberOfLines={1}>
                           {job.location_address}
                         </Text>
@@ -395,7 +431,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                       <View style={styles.jobDate}>
-                        <Calendar size={10} color="#8E8E93" />
+                        <Calendar size={10} color={Colors.text.secondary} />
                         <Text style={styles.jobDateText}>
                           {job.created_at ? new Date(job.created_at).toLocaleDateString() : ''}
                         </Text>
@@ -427,7 +463,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
   },
   scrollContent: {
     paddingBottom: 100,
@@ -437,13 +473,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 10,
     paddingHorizontal: 12,
     height: 40,
@@ -455,7 +491,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   headerIcons: {
     flexDirection: 'row',
@@ -464,7 +500,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   categoriesContainer: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     paddingBottom: 16,
   },
   categoriesContent: {
@@ -475,18 +511,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginRight: 12,
     borderRadius: 20,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
   },
   selectedCategoryTab: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary.main,
   },
   categoryText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   selectedCategoryText: {
-    color: 'white',
+    color: Colors.text.white,
   },
   bannerContainer: {
     margin: 20,
@@ -494,7 +530,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     height: 140,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow.medium,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -527,7 +563,7 @@ const styles = StyleSheet.create({
   bannerText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
+    color: Colors.text.white,
     marginBottom: 4,
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
@@ -535,7 +571,7 @@ const styles = StyleSheet.create({
   },
   bannerSubtext: {
     fontSize: 14,
-    color: 'white',
+    color: Colors.text.white,
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -554,10 +590,10 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   activeIndicator: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.text.white,
   },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     marginHorizontal: 20,
     marginBottom: 16,
     borderRadius: 12,
@@ -572,7 +608,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   nearbyContent: {
     paddingRight: 16,
@@ -595,7 +631,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   jobsGrid: {
     flexDirection: 'row',
@@ -604,7 +640,7 @@ const styles = StyleSheet.create({
   },
   jobCard: {
     width: '48%',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     marginBottom: 12,
     overflow: 'hidden',
@@ -612,7 +648,7 @@ const styles = StyleSheet.create({
   jobImage: {
     width: '100%',
     height: 80,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: Colors.border.light,
   },
   jobContent: {
     padding: 12,
@@ -620,12 +656,12 @@ const styles = StyleSheet.create({
   jobTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   jobDescription: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginBottom: 8,
     lineHeight: 16,
   },
@@ -636,7 +672,7 @@ const styles = StyleSheet.create({
   },
   jobLocationText: {
     fontSize: 11,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginLeft: 4,
     flex: 1,
   },
@@ -651,7 +687,7 @@ const styles = StyleSheet.create({
   jobBudgetText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#007AFF',
+    color: Colors.primary.main,
   },
   jobDate: {
     flexDirection: 'row',
@@ -659,7 +695,7 @@ const styles = StyleSheet.create({
   },
   jobDateText: {
     fontSize: 10,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginLeft: 2,
   },
   emptyState: {
@@ -668,18 +704,18 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     textAlign: 'center',
     marginBottom: 12,
   },
   createJobButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary.main,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
   createJobButtonText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -688,13 +724,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signInButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary.main,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
   signInButtonText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 14,
     fontWeight: '600',
   },

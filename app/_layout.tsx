@@ -5,8 +5,10 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { AblyChatProvider } from '@/contexts/AblyChatContext';
+import { SupabaseChatProvider } from '@/contexts/SupabaseChatContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
 
 function RootLayoutNav() {
@@ -60,6 +62,7 @@ function RootLayoutNav() {
       <Stack.Screen name="auth/login" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="service/[id]" />
+      <Stack.Screen name="user-profile/[userId]" />
       <Stack.Screen name="messages" />
       <Stack.Screen name="chat/[participantId]" />
       <Stack.Screen name="wallet" />
@@ -81,13 +84,17 @@ export default function RootLayout() {
   useFrameworkReady();
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <AblyChatProvider>
-          <StatusBar style="auto" />
-          <RootLayoutNav />
-        </AblyChatProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <SupabaseChatProvider>
+              <StatusBar style="auto" />
+              <RootLayoutNav />
+            </SupabaseChatProvider>
+          </NotificationProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

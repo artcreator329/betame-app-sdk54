@@ -16,6 +16,7 @@ import ServiceCard from '@/components/ServiceCard';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
+import { Colors } from '@/constants/Colors';
 
 // Convert DB service to UI service
 const convertToUIService = (dbService: DBService): Service => ({
@@ -38,6 +39,8 @@ const convertToUIService = (dbService: DBService): Service => ({
   updated_at: dbService.updated_at,
   provider_name: dbService.provider_name || 'Unknown Provider',
   provider_avatar: dbService.provider_avatar,
+  parent_service_id: dbService.parent_service_id,
+  service_variants: dbService.service_variants?.map(convertToUIService) || [],
 });
 
 export default function ServicesScreen() {
@@ -52,7 +55,10 @@ export default function ServicesScreen() {
     try {
       setIsLoading(true);
       const allServices = await ServiceService.getAllServices();
-      setServices(allServices.map(convertToUIService));
+      console.log('📋 ServicesScreen: Fetched services from DB:', allServices.length);
+      const uiServices = allServices.map(convertToUIService);
+      console.log('🎨 ServicesScreen: Converted to UI services:', uiServices.map(s => ({ id: s.id, title: s.title })));
+      setServices(uiServices);
     } catch (error) {
       console.error('Error fetching services:', error);
       setServices([]);
@@ -121,19 +127,19 @@ export default function ServicesScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Services</Text>
         <TouchableOpacity>
-          <Search size={24} color="#1D1D1F" />
+          <Search size={24} color={Colors.text.primary} />
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <Search size={20} color="#8E8E93" style={styles.searchIcon} />
+        <Search size={20} color={Colors.text.secondary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search services..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor="#8E8E93"
+          placeholderTextColor={Colors.text.secondary}
         />
       </View>
 
@@ -144,10 +150,10 @@ export default function ServicesScreen() {
           onPress={() => setShowCategoryModal(true)}
         >
           <Text style={styles.categoryText}>{getCategoryDisplayText()}</Text>
-          <ChevronDown size={20} color="#1D1D1F" />
+          <ChevronDown size={20} color={Colors.text.primary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.filterButton}>
-          <SlidersHorizontal size={20} color="#1D1D1F" />
+          <SlidersHorizontal size={20} color={Colors.text.primary} />
         </TouchableOpacity>
       </View>
 
@@ -160,14 +166,14 @@ export default function ServicesScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#007AFF']}
-            tintColor="#007AFF"
+            colors={[Colors.primary.main]}
+            tintColor={Colors.primary.main}
           />
         }
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
+            <ActivityIndicator size="large" color={Colors.primary.main} />
             <Text style={styles.loadingText}>Loading services...</Text>
           </View>
         ) : filteredServices.length > 0 ? (
@@ -200,7 +206,7 @@ export default function ServicesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
   },
   scrollContent: {
     paddingBottom: 100,
@@ -211,24 +217,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     marginHorizontal: 20,
     marginTop: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
   },
   searchIcon: {
     marginRight: 12,
@@ -236,14 +242,14 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   filtersContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     marginTop: 1,
   },
   categoryDropdown: {
@@ -253,18 +259,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     marginRight: 12,
   },
   categoryText: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     fontWeight: '500',
   },
   filterButton: {
     padding: 12,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
   },
   content: {
@@ -290,7 +296,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   emptyContainer: {
     flex: 1,
@@ -301,12 +307,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     textAlign: 'center',
   },
 });

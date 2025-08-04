@@ -12,51 +12,101 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Upload, Camera, ImageIcon } from 'lucide-react-native';
+import { ArrowLeft, Upload, Camera, ImageIcon, MapPin } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceService } from '@/lib/service-service';
 import { ImageService } from '@/lib/image-service';
+import ServiceAreaPicker from '@/components/ServiceAreaPicker';
+
+function getPriceUnitLabel(priceUnit: string): string {
+  const unitLabels: { [key: string]: string } = {
+    'per_hour': ' per hour',
+    'per_day': ' per day',
+    'per_week': ' per week',
+    'per_month': ' per month',
+    'per_item': ' per item',
+    'per_project': ' per project',
+    'per_session': ' per session',
+    'one_time': '',
+  };
+  return unitLabels[priceUnit] || '';
+}
+
+const INDUSTRIES = [
+  'Technology & Programming',
+  'Graphic Design & Creative',
+  'Writing & Translation',
+  'Digital Marketing & SEO',
+  'Video & Animation',
+  'Music & Audio',
+  'Business & Consulting',
+  'Data & Analytics',
+  'Photography',
+  'Web Development',
+  'Mobile App Development',
+  'UI/UX Design',
+  'Content Creation',
+  'Social Media Management',
+  'Virtual Assistant',
+  'Accounting & Finance',
+  'Legal Services',
+  'Education & Tutoring',
+  'Health & Wellness',
+  'Fitness & Personal Training',
+  'Beauty & Styling',
+  'Event Planning',
+  'Real Estate',
+  'Architecture & Engineering',
+  'Construction & Trades',
+  'Automotive Services',
+  'Home Services & Repair',
+  'Cleaning Services',
+  'Pet Care & Services',
+  'Food & Catering',
+  'Transportation & Delivery',
+  'Travel & Tourism',
+  'Entertainment & Performance',
+  'Gaming & Esports',
+  'Crafts & Handmade',
+  'Fashion & Apparel',
+  'Jewelry & Accessories',
+  'Sports & Recreation',
+  'Agriculture & Farming',
+  'Environmental Services',
+  'Security Services',
+  'Logistics & Supply Chain',
+  'Research & Development',
+  'Quality Assurance & Testing',
+  'Project Management',
+  'HR & Recruitment',
+  'Customer Service',
+  'Sales & Lead Generation',
+  'Other'
+];
 
 export default function CreateServiceListingScreen() {
+  const [currentStep, setCurrentStep] = useState(1);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [priceType, setPriceType] = useState<'fixed' | 'starting'>('starting');
+  const [industry, setIndustry] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
+  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
+  const [serviceArea, setServiceArea] = useState<{
+    latitude: number;
+    longitude: number;
+    address: string;
+    radius: number;
+    description: string;
+  } | null>(null);
+
   const router = useRouter();
   const { user } = useAuth();
 
-  const formatPrice = (value: string): string => {
-    // Remove all non-numeric characters except decimal point
-    const numericValue = value.replace(/[^0-9.]/g, '');
-    
-    // Ensure only one decimal point
-    const parts = numericValue.split('.');
-    if (parts.length > 2) {
-      return parts[0] + '.' + parts.slice(1).join('');
-    }
-    
-    // Limit to 2 decimal places
-    if (parts[1] && parts[1].length > 2) {
-      return parts[0] + '.' + parts[1].substring(0, 2);
-    }
-    
-    return numericValue;
-  };
-
-  const handlePriceChange = (text: string) => {
-    const formattedPrice = formatPrice(text);
-    setPrice(formattedPrice);
-  };
-
-  const getDisplayPrice = (): string => {
-    if (!price) return '';
-    const numPrice = parseFloat(price);
-    if (isNaN(numPrice)) return price;
-    return numPrice.toFixed(2);
+  const handleIndustrySelect = (selectedIndustry: string) => {
+    setIndustry(selectedIndustry);
+    setShowIndustryDropdown(false);
   };
 
   const handleTitleChange = (text: string) => {
@@ -159,227 +209,238 @@ export default function CreateServiceListingScreen() {
     }
   };
 
-  const handleList = async () => {
-    if (!user) {
-      Alert.alert('Error', 'You must be logged in to create a service');
-      return;
-    }
-
-    if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a service title');
-      return;
-    }
-    if (!description.trim()) {
-      Alert.alert('Error', 'Please enter a service description');
-      return;
-    }
-    if (!price.trim()) {
-      Alert.alert('Error', 'Please enter a price');
-      return;
-    }
-    
-    const numPrice = parseFloat(price);
-    if (isNaN(numPrice) || numPrice <= 0) {
-      Alert.alert('Error', 'Please enter a valid price amount');
-      return;
-    }
-    
-    if (numPrice > 999999.99) {
-      Alert.alert('Error', 'Price cannot exceed RM 999,999.99');
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      const serviceData = {
-        user_id: user.id,
-        title: title.trim(),
-        description: description.trim(),
-        price: numPrice,
-        currency: 'RM',
-        image_url: imageUri || undefined,
-        category_name: 'General', // Default category, can be enhanced later
-        rating: 0,
-        review_count: 0,
-      };
-
-      const createdService = await ServiceService.createService(serviceData);
-      
-      if (createdService) {
-        Alert.alert('Success', 'Service listing created successfully!', [
-          { text: 'OK', onPress: () => router.back() }
-        ]);
-      } else {
-        Alert.alert('Error', 'Failed to create service listing. Please try again.');
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      if (!user) {
+        Alert.alert('Error', 'You must be logged in to create a service');
+        return;
       }
-    } catch (error) {
-      console.error('Error creating service:', error);
-      Alert.alert('Error', 'Failed to create service listing. Please try again.');
-    } finally {
-      setIsCreating(false);
+
+      if (!title.trim()) {
+        Alert.alert('Error', 'Please enter a service title');
+        return;
+      }
+      if (!description.trim()) {
+        Alert.alert('Error', 'Please enter a service description');
+        return;
+      }
+      if (!industry.trim()) {
+        Alert.alert('Error', 'Please select an industry');
+        return;
+      }
+
+      setCurrentStep(2);
     }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
-          </TouchableOpacity>
+  const handlePreviousStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleServiceAreaSelect = (area: {
+    latitude: number;
+    longitude: number;
+    address: string;
+    radius: number;
+    description: string;
+  }) => {
+    setServiceArea(area);
+  };
+
+  const handleProceedToDetails = () => {
+    if (!serviceArea) {
+      Alert.alert('Error', 'Please select a service area');
+      return;
+    }
+
+    // Navigate to detailed service listing with the complete service data
+    const serviceData = {
+      title: title.trim(),
+      description: description.trim(),
+      industry: industry.trim(),
+      imageUri: imageUri || undefined,
+      serviceArea: serviceArea,
+    };
+
+    router.push({
+      pathname: '/detailed-service-listing',
+      params: {
+        serviceData: JSON.stringify(serviceData)
+      }
+    });
+  };
+
+  const renderStepIndicator = () => (
+    <View style={styles.stepIndicator}>
+      <View style={styles.stepContainer}>
+        <View style={[styles.stepCircle, currentStep >= 1 && styles.stepCircleActive]}>
+          <Text style={[styles.stepNumber, currentStep >= 1 && styles.stepNumberActive]}>1</Text>
         </View>
-
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={styles.sectionTitle}>Your Service Details</Text>
-
-          {/* Cover Photo */}
-          <View style={styles.fieldContainer}>
-            <TouchableOpacity 
-              style={styles.photoUploadContainer} 
-              onPress={handlePhotoUpload}
-              disabled={isUploading}
-            >
-              {imageUri ? (
-                <Image source={{ uri: imageUri }} style={styles.uploadedImage} />
-              ) : (
-                <View style={styles.uploadPlaceholder}>
-                  {isUploading ? (
-                    <Text style={styles.uploadText}>Uploading...</Text>
-                  ) : (
-                    <>
-                      <Upload size={24} color="#8E8E93" />
-                      <Text style={styles.uploadText}>Upload your service cover photo</Text>
-                      <Text style={styles.uploadSubtext}>Max. 10MB</Text>
-                    </>
-                  )}
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Title */}
-          <View style={styles.fieldContainer}>
-            <View style={styles.fieldHeader}>
-              <Text style={styles.fieldLabel}>Title (Required)</Text>
-              <Text style={styles.characterCount}>{title.length}/100</Text>
-            </View>
-            <TextInput
-              style={styles.textInput}
-              value={title}
-              onChangeText={handleTitleChange}
-              placeholder="Add a title to describe your service"
-              placeholderTextColor="#8E8E93"
-              maxLength={100}
-            />
-          </View>
-
-          {/* Description */}
-          <View style={styles.fieldContainer}>
-            <View style={styles.fieldHeader}>
-              <Text style={styles.fieldLabel}>Description</Text>
-              <Text style={styles.characterCount}>{description.length}/1000</Text>
-            </View>
-            <TextInput
-              style={[styles.textInput, styles.textArea]}
-              value={description}
-              onChangeText={handleDescriptionChange}
-              placeholder="Simple brief about your service"
-              placeholderTextColor="#8E8E93"
-              multiline={true}
-              textAlignVertical="top"
-              maxLength={1000}
-            />
-          </View>
-
-          {/* Price */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Price</Text>
-            
-            {/* Price Type Selection */}
-            <View style={styles.priceTypeContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.priceTypeButton,
-                  priceType === 'starting' && styles.priceTypeButtonActive
-                ]}
-                onPress={() => setPriceType('starting')}
-              >
-                <Text style={[
-                  styles.priceTypeText,
-                  priceType === 'starting' && styles.priceTypeTextActive
-                ]}>Starting from</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.priceTypeButton,
-                  priceType === 'fixed' && styles.priceTypeButtonActive
-                ]}
-                onPress={() => setPriceType('fixed')}
-              >
-                <Text style={[
-                  styles.priceTypeText,
-                  priceType === 'fixed' && styles.priceTypeTextActive
-                ]}>Fixed price</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Price Input */}
-            <View style={styles.priceInputContainer}>
-              <Text style={styles.currencyPrefix}>RM</Text>
-              <TextInput
-                style={styles.priceInput}
-                value={price}
-                onChangeText={handlePriceChange}
-                placeholder="0.00"
-                placeholderTextColor="#8E8E93"
-                keyboardType="decimal-pad"
-              />
-            </View>
-            
-            {/* Price Display */}
-            {price && (
-              <View style={styles.priceDisplayContainer}>
-                <Text style={styles.priceDisplayText}>
-                  {priceType === 'starting' ? 'Starting from ' : ''}
-                  <Text style={styles.priceDisplayAmount}>RM {getDisplayPrice()}</Text>
-                </Text>
-              </View>
-            )}
-            
-            {/* Price Helper Text */}
-            <Text style={styles.priceHelperText}>
-              {priceType === 'starting' 
-                ? 'Set your base price. You can create different pricing tiers later.'
-                : 'Set a fixed price for your service.'}
-            </Text>
-          </View>
-
-          {/* List Button */}
-          <TouchableOpacity 
-            style={[
-              styles.listButton, 
-              (title.trim() && description.trim() && price.trim() && !isCreating) 
-                ? styles.listButtonActive 
-                : styles.listButtonDisabled
-            ]} 
-            onPress={handleList}
-            disabled={isCreating || !title.trim() || !description.trim() || !price.trim()}
-          >
-            <Text style={[
-              styles.listButtonText,
-              (title.trim() && description.trim() && price.trim() && !isCreating) 
-                ? styles.listButtonTextActive 
-                : {}
-            ]}>
-              {isCreating ? 'Creating...' : 'List'}
-            </Text>
-          </TouchableOpacity>
+        <Text style={styles.stepLabel}>Basic Info</Text>
+      </View>
+      <View style={styles.stepLine} />
+      <View style={styles.stepContainer}>
+        <View style={[styles.stepCircle, currentStep >= 2 && styles.stepCircleActive]}>
+          <Text style={[styles.stepNumber, currentStep >= 2 && styles.stepNumberActive]}>2</Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+        <Text style={styles.stepLabel}>Service Area</Text>
+      </View>
+    </View>
   );
+
+  const renderBasicInfoStep = () => (
+     <ScrollView showsVerticalScrollIndicator={false}>
+       <View style={styles.content}>
+         <Text style={styles.sectionTitle}>Main Service</Text>
+
+         {/* Service Title */}
+         <View style={styles.compactFieldContainer}>
+           <Text style={styles.compactFieldLabel}>Service Title *</Text>
+           <TextInput
+             style={styles.compactTextInput}
+             value={title}
+             onChangeText={handleTitleChange}
+             placeholder="What service do you offer?"
+             placeholderTextColor="#8E8E93"
+             maxLength={100}
+           />
+         </View>
+
+         {/* Description */}
+         <View style={styles.compactFieldContainer}>
+           <Text style={styles.compactFieldLabel}>Description *</Text>
+           <TextInput
+             style={[styles.compactTextInput, styles.compactTextArea]}
+             value={description}
+             onChangeText={handleDescriptionChange}
+             placeholder="Brief description of your service"
+             placeholderTextColor="#8E8E93"
+             multiline={true}
+             numberOfLines={3}
+             textAlignVertical="top"
+             maxLength={500}
+           />
+         </View>
+
+         {/* Industry Selection */}
+         <View style={styles.compactFieldContainer}>
+           <Text style={styles.compactFieldLabel}>Industry *</Text>
+           <TouchableOpacity 
+             style={styles.compactDropdownButton} 
+             onPress={() => setShowIndustryDropdown(!showIndustryDropdown)}
+           >
+             <Text style={[
+               styles.compactDropdownText,
+               !industry && styles.compactDropdownPlaceholder
+             ]}>
+               {industry || 'Select Industry'}
+             </Text>
+             <Text style={styles.compactDropdownArrow}>
+               {showIndustryDropdown ? '▲' : '▼'}
+             </Text>
+           </TouchableOpacity>
+           
+           {showIndustryDropdown && (
+             <View style={styles.compactDropdownList}>
+               <ScrollView style={styles.compactDropdownScrollView} nestedScrollEnabled>
+                 {INDUSTRIES.map((industryOption, index) => (
+                   <TouchableOpacity
+                     key={index}
+                     style={[
+                       styles.compactDropdownItem,
+                       industry === industryOption && styles.compactDropdownItemSelected
+                     ]}
+                     onPress={() => handleIndustrySelect(industryOption)}
+                   >
+                     <Text style={[
+                       styles.compactDropdownItemText,
+                       industry === industryOption && styles.compactDropdownItemTextSelected
+                     ]}>
+                       {industryOption}
+                     </Text>
+                   </TouchableOpacity>
+                 ))}
+               </ScrollView>
+             </View>
+           )}
+         </View>
+
+         {/* Continue Button */}
+         <TouchableOpacity 
+           style={[
+             styles.continueButton, 
+             (title.trim() && description.trim() && industry.trim()) 
+               ? styles.continueButtonActive 
+               : styles.continueButtonDisabled
+           ]} 
+           onPress={handleNextStep}
+           disabled={!title.trim() || !description.trim() || !industry.trim()}
+         >
+           <Text style={[
+             styles.continueButtonText,
+             (title.trim() && description.trim() && industry.trim()) 
+               ? styles.continueButtonTextActive 
+               : {}
+           ]}>
+             Next: Service Area
+           </Text>
+         </TouchableOpacity>
+       </View>
+     </ScrollView>
+   );
+
+   const renderServiceAreaStep = () => (
+     <View style={styles.serviceAreaContainer}>
+       <ServiceAreaPicker
+          onLocationSelect={handleServiceAreaSelect}
+          initialLocation={serviceArea || undefined}
+        />
+       <View style={styles.serviceAreaButtons}>
+         <TouchableOpacity 
+           style={styles.backButton}
+           onPress={handlePreviousStep}
+         >
+           <Text style={styles.backButtonText}>Back</Text>
+         </TouchableOpacity>
+         <TouchableOpacity 
+           style={[
+             styles.continueButton,
+             serviceArea ? styles.continueButtonActive : styles.continueButtonDisabled
+           ]}
+           onPress={handleProceedToDetails}
+           disabled={!serviceArea}
+         >
+           <Text style={[
+             styles.continueButtonText,
+             serviceArea ? styles.continueButtonTextActive : {}
+           ]}>
+             Continue to Details
+           </Text>
+         </TouchableOpacity>
+       </View>
+     </View>
+   );
+
+   return (
+     <SafeAreaView style={styles.container}>
+       {/* Header */}
+       <View style={styles.header}>
+         <TouchableOpacity onPress={currentStep === 1 ? () => router.back() : handlePreviousStep}>
+           <ArrowLeft size={24} color="#1D1D1F" />
+         </TouchableOpacity>
+         <Text style={styles.headerTitle}>Create Service</Text>
+         <View style={{ width: 24 }} />
+       </View>
+
+       {/* Step Indicator */}
+       {renderStepIndicator()}
+
+       {/* Content */}
+       {currentStep === 1 ? renderBasicInfoStep() : renderServiceAreaStep()}
+     </SafeAreaView>
+   );
 }
 
 const styles = StyleSheet.create({
@@ -481,79 +542,219 @@ const styles = StyleSheet.create({
   listButtonTextActive: {
     color: 'white',
   },
-  priceTypeContainer: {
+
+  dropdownButton: {
     flexDirection: 'row',
-    marginBottom: 12,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 8,
-    padding: 2,
-  },
-  priceTypeButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
   },
-  priceTypeButtonActive: {
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  dropdownButtonText: {
+    fontSize: 16,
+    color: '#000',
   },
-  priceTypeText: {
-    fontSize: 14,
-    fontWeight: '500',
+  dropdownPlaceholder: {
     color: '#8E8E93',
   },
-  priceTypeTextActive: {
-    color: '#1D1D1F',
+  dropdownArrow: {
+    fontSize: 14,
+    color: '#8E8E93',
   },
-  priceInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-    borderRadius: 8,
+  dropdownList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginTop: 8,
+    maxHeight: 200,
     borderWidth: 1,
     borderColor: '#E5E5EA',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
   },
-  currencyPrefix: {
+  dropdownScrollView: {
+    maxHeight: 200,
+  },
+  dropdownItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#007AFF10',
+  },
+  dropdownItemText: {
     fontSize: 16,
+    color: '#000',
+  },
+  dropdownItemTextSelected: {
+    color: '#007AFF',
     fontWeight: '600',
-    color: '#1D1D1F',
-    marginRight: 8,
   },
-  priceInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1D1D1F',
-    padding: 0,
+  // Compact styles for minimized form
+  compactFieldContainer: {
+    marginBottom: 16,
   },
-  priceDisplayContainer: {
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#E8F5E8',
-    borderRadius: 6,
-  },
-  priceDisplayText: {
+  compactFieldLabel: {
     fontSize: 14,
-    color: '#2D7D32',
+    fontWeight: '500',
+    color: '#1D1D1F',
+    marginBottom: 6,
   },
-  priceDisplayAmount: {
-    fontWeight: '600',
+  compactTextInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#1D1D1F',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
   },
-  priceHelperText: {
+  compactTextArea: {
+    height: 70,
+    textAlignVertical: 'top',
+  },
+  compactDropdownButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  compactDropdownText: {
+    fontSize: 15,
+    color: '#1D1D1F',
+  },
+  compactDropdownPlaceholder: {
+    color: '#8E8E93',
+  },
+  compactDropdownArrow: {
     fontSize: 12,
     color: '#8E8E93',
-    marginTop: 6,
-    lineHeight: 16,
+  },
+  compactDropdownList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    marginTop: 4,
+    maxHeight: 150,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  compactDropdownScrollView: {
+    maxHeight: 150,
+  },
+  compactDropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  compactDropdownItemSelected: {
+    backgroundColor: '#007AFF10',
+  },
+  compactDropdownItemText: {
+    fontSize: 15,
+    color: '#1D1D1F',
+  },
+  compactDropdownItemTextSelected: {
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  continueButton: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  continueButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  continueButtonDisabled: {
+    backgroundColor: '#E5E5EA',
+  },
+  continueButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  continueButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  // Step indicator styles
+  stepIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  stepContainer: {
+    alignItems: 'center',
+  },
+  stepCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#E5E5EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  stepCircleActive: {
+    backgroundColor: '#007AFF',
+  },
+  stepNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  stepNumberActive: {
+    color: 'white',
+  },
+  stepLabel: {
+    fontSize: 12,
+    color: '#8E8E93',
+    fontWeight: '500',
+  },
+  stepLine: {
+    width: 60,
+    height: 2,
+    backgroundColor: '#E5E5EA',
+    marginHorizontal: 10,
+  },
+  // Header styles
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1D1D1F',
+  },
+  // Service area styles
+  serviceAreaContainer: {
+    flex: 1,
+  },
+  serviceAreaButtons: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5EA',
+    gap: 12,
+  },
+  backButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1D1D1F',
   },
 });

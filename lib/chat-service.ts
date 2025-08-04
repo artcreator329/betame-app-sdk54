@@ -38,54 +38,37 @@ export class ChatService {
 
   async createOrGetChat(participantId: string, currentUserId: string): Promise<Chat | null> {
     try {
-      // Check if chat already exists between these users
-      // First, get all chats where current user is a participant
-      const { data: userChats, error: userChatsError } = await supabase
-        .from('chat_participants')
-        .select('chat_id')
-        .eq('user_id', currentUserId);
-
-      if (userChatsError || !userChats) {
-        console.error('Error fetching user chats:', userChatsError);
-      } else {
-        // Check if any of these chats also include the other participant
-        const chatIds = userChats.map(c => c.chat_id);
-        if (chatIds.length > 0) {
-          const { data: existingChat, error: existingChatError } = await supabase
-            .from('chat_participants')
-            .select('chat_id')
-            .eq('user_id', participantId)
-            .in('chat_id', chatIds)
-            .single();
-
-          if (existingChat && !existingChatError) {
-            // Found existing chat, return it with full details
-            const { data: chatData, error: chatError } = await supabase
-              .from('chats')
-              .select(`
-                *,
-                chat_participants(
-                  id,
-                  user_id,
-                  chat_id,
-                  joined_at,
-                  is_blocked
-                )
-              `)
-              .eq('id', existingChat.chat_id)
-              .single();
-
-            if (chatData && !chatError) {
-              return chatData as Chat;
-            }
-          }
-        }
+      // Validate input parameters
+      if (!participantId || !currentUserId || participantId.trim() === '' || currentUserId.trim() === '') {
+        console.error('Invalid participant or user ID provided');
+        return null;
       }
 
-      // Create new chat
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(participantId) || !uuidRegex.test(currentUserId)) {
+        console.error('Invalid UUID format for participant or user ID');
+        return null;
+      }
+
+      // Check if chat already exists between these users using the chats table structure
+      const { data: existingChat, error: existingChatError } = await supabase
+        .from('chats')
+        .select('*')
+        .or(`and(participant1_id.eq.${currentUserId},participant2_id.eq.${participantId}),and(participant1_id.eq.${participantId},participant2_id.eq.${currentUserId})`)
+        .single();
+
+      if (existingChat && !existingChatError) {
+        return existingChat as Chat;
+      }
+
+      // Create new chat with required participant fields
       const { data: newChat, error: createError } = await supabase
         .from('chats')
-        .insert({})
+        .insert({
+          participant1_id: currentUserId,
+          participant2_id: participantId
+        })
         .select()
         .single();
 
@@ -93,7 +76,7 @@ export class ChatService {
         throw createError;
       }
 
-      // Add participants
+      // Add participants to chat_participants table for compatibility
       const { error: participantsError } = await supabase
         .from('chat_participants')
         .insert([
@@ -102,7 +85,8 @@ export class ChatService {
         ]);
 
       if (participantsError) {
-        throw participantsError;
+        console.warn('Warning: Could not add to chat_participants table:', participantsError);
+        // Don't fail the chat creation if participants table insert fails
       }
 
       return newChat as Chat;
@@ -156,62 +140,282 @@ export class ChatService {
     }
   }
 
-  async getUserChats(userId: string): Promise<UserChat[]> {
+  async sendServiceMessage(
+    chatId: string,
+    senderId: string,
+    senderName: string,
+    senderImage: string,
+    serviceData: {
+      id: string;
+      title: string;
+      description: string;
+      price: number;
+      currency: string;
+      image_url?: string;
+      category_name?: string;
+    }
+  ): Promise<LiveChatMessage | null> {
     try {
-      // First get all chats for the user
-      const { data: userChats, error: userChatsError } = await supabase
-        .from('chat_participants')
-        .select('chat_id')
-        .eq('user_id', userId);
+      const serviceMessage = `🛍️ Service: ${serviceData.title}\n💰 Price: ${serviceData.price} ${serviceData.currency}\n📝 ${serviceData.description}`;
+      
+      const messageData = {
+        chat_id: chatId,
+        sender_id: senderId,
+        sender_name: senderName,
+        sender_image: senderImage,
+        message: serviceMessage,
+        is_hidden: false,
+        is_reported: false,
+        service_id: serviceData.id,
+        service_data: JSON.stringify(serviceData)
+      };
 
-      if (userChatsError || !userChats) {
-        throw userChatsError;
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert(messageData)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
       }
 
-      const chatIds = userChats.map(c => c.chat_id);
-      if (chatIds.length === 0) {
+      // Update chat's last message timestamp
+      await supabase
+        .from('chats')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', chatId);
+
+      return this.transformMessage(data);
+    } catch (error) {
+      console.error('Error sending service message:', error);
+      return null;
+    }
+  }
+
+  async createServiceOffer(
+    chatId: string,
+    serviceId: string,
+    sellerId: string,
+    buyerId: string,
+    serviceData: {
+      id: string;
+      title: string;
+      description: string;
+      price: number;
+      currency: string;
+      image_url?: string;
+      category_name?: string;
+      customPrice?: number;
+      customDescription?: string;
+      customDeliveryTime?: number;
+    }
+  ): Promise<{ offer: any; message: LiveChatMessage | null }> {
+    try {
+      // Create the service offer
+      const { data: offer, error: offerError } = await supabase
+        .from('service_offers')
+        .insert({
+          service_id: serviceId,
+          seller_id: sellerId,
+          buyer_id: buyerId,
+          chat_id: chatId,
+          original_price: serviceData.price,
+          custom_price: serviceData.customPrice || serviceData.price,
+          custom_description: serviceData.customDescription,
+          custom_delivery_time: serviceData.customDeliveryTime,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (offerError) {
+        throw offerError;
+      }
+
+      // Send a message about the offer
+      const offerMessage = `📋 Service Offer\n🛍️ ${serviceData.title}\n💰 Price: ${serviceData.customPrice || serviceData.price} ${serviceData.currency}\n${serviceData.customDescription ? `📝 Custom: ${serviceData.customDescription}` : ''}\n${serviceData.customDeliveryTime ? `⏰ Delivery: ${serviceData.customDeliveryTime} days` : ''}`;
+      
+      const messageData = {
+        chat_id: chatId,
+        sender_id: sellerId,
+        sender_name: 'Service Offer',
+        sender_image: '',
+        message: offerMessage,
+        is_hidden: false,
+        is_reported: false,
+        service_id: serviceId,
+        offer_id: offer.id,
+        service_data: JSON.stringify(serviceData)
+      };
+
+      const { data: messageResult, error: messageError } = await supabase
+        .from('chat_messages')
+        .insert(messageData)
+        .select()
+        .single();
+
+      if (messageError) {
+        console.warn('Error sending offer message:', messageError);
+      }
+
+      // Update chat's last message timestamp
+      await supabase
+        .from('chats')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', chatId);
+
+      return {
+        offer,
+        message: messageResult ? this.transformMessage(messageResult) : null
+      };
+    } catch (error) {
+      console.error('Error creating service offer:', error);
+      throw error;
+    }
+  }
+
+  async updateServiceOffer(
+    offerId: string,
+    updates: {
+      customPrice?: number;
+      customDescription?: string;
+      customDeliveryTime?: number;
+    }
+  ): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from('service_offers')
+        .update({
+          custom_price: updates.customPrice,
+          custom_description: updates.customDescription,
+          custom_delivery_time: updates.customDeliveryTime,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', offerId)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error updating service offer:', error);
+      throw error;
+    }
+  }
+
+  async acceptServiceOffer(offerId: string): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from('service_offers')
+        .update({
+          status: 'accepted',
+          accepted_at: new Date().toISOString()
+        })
+        .eq('id', offerId)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error accepting service offer:', error);
+      throw error;
+    }
+  }
+
+  async rejectServiceOffer(offerId: string): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from('service_offers')
+        .update({
+          status: 'rejected',
+          rejected_at: new Date().toISOString()
+        })
+        .eq('id', offerId)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      // Also update the corresponding chat message
+      await supabase
+        .from('chat_messages')
+        .update({ offer_status: 'rejected' })
+        .eq('offer_id', offerId);
+
+      return data;
+    } catch (error) {
+      console.error('Error rejecting service offer:', error);
+      throw error;
+    }
+  }
+
+  async getUserChats(userId: string): Promise<UserChat[]> {
+    try {
+      // Validate userId
+      if (!userId || userId.trim() === '') {
+        console.error('Invalid user ID provided');
         return [];
       }
 
-      // Get chat details with participants
+      // Get chats where user is either participant1 or participant2
       const { data: chatsData, error: chatsError } = await supabase
         .from('chats')
         .select(`
           id,
+          participant1_id,
+          participant2_id,
           created_at,
-          updated_at,
-          last_message_at,
-          chat_participants!inner (
-            user_id,
-            profiles!inner (
-              id,
-              full_name,
-              avatar_url
-            )
-          )
+          last_message_at
         `)
-        .in('id', chatIds)
+        .or(`participant1_id.eq.${userId},participant2_id.eq.${userId}`)
         .order('last_message_at', { ascending: false });
 
       if (chatsError) {
         throw chatsError;
       }
 
+      if (!chatsData || chatsData.length === 0) {
+        return [];
+      }
+
+      // Get other participants' profile information
+      const otherParticipantIds = chatsData.map((chat: any) => 
+        chat.participant1_id === userId ? chat.participant2_id : chat.participant1_id
+      );
+
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', otherParticipantIds);
+
+      if (profilesError) {
+        console.warn('Error fetching participant profiles:', profilesError);
+      }
+
       // Transform the data to get chat info with other participant details
-      const chats = chatsData?.map((chat: any) => {
-        const otherParticipant = chat.chat_participants.find(
-          (p: any) => p.user_id !== userId
-        );
+      const chats = chatsData.map((chat: any) => {
+        const otherParticipantId = chat.participant1_id === userId ? chat.participant2_id : chat.participant1_id;
+        const otherParticipant = profilesData?.find((p: any) => p.id === otherParticipantId);
         
         return {
           id: chat.id,
-          participantId: otherParticipant?.user_id,
-          participantName: otherParticipant?.profiles?.full_name || 'Unknown User',
-          participantImage: otherParticipant?.profiles?.avatar_url || 'https://via.placeholder.com/50',
+          participantId: otherParticipantId,
+          participantName: otherParticipant?.full_name || 'Unknown User',
+          participantImage: otherParticipant?.avatar_url || 'https://via.placeholder.com/50',
           lastMessageAt: chat.last_message_at,
           createdAt: chat.created_at,
         };
-      }) || [];
+      });
 
       return chats;
     } catch (error) {
@@ -376,20 +580,69 @@ export class ChatService {
   }
 
   private transformMessage(dbMessage: any): LiveChatMessage {
+    let serviceData = null;
+    if (dbMessage.service_data) {
+      try {
+        serviceData = JSON.parse(dbMessage.service_data);
+      } catch (error) {
+        console.error('Error parsing service data:', error);
+      }
+    }
+
     return {
       id: dbMessage.id,
-      senderId: dbMessage.sender_id,
-      senderName: dbMessage.sender_name,
-      senderImage: dbMessage.sender_image,
-      message: dbMessage.message,
-      timestamp: dbMessage.created_at,
-      isHidden: dbMessage.is_hidden,
-      moderationReason: dbMessage.moderation_reason,
-      isReported: dbMessage.is_reported,
       chatId: dbMessage.chat_id,
-      createdAt: dbMessage.created_at,
-      updatedAt: dbMessage.updated_at,
+      senderId: dbMessage.sender_id,
+      senderName: dbMessage.sender_name || 'Unknown',
+      senderImage: dbMessage.sender_image || '',
+      content: dbMessage.content || dbMessage.message || '',
+      timestamp: new Date(dbMessage.created_at),
+      isRead: dbMessage.is_read || false,
+      messageType: dbMessage.message_type || 'text',
+      serviceData,
+      offerId: dbMessage.offer_id,
+      offerStatus: dbMessage.offer_status,
+      offerExpiresAt: dbMessage.offer_expires_at ? new Date(dbMessage.offer_expires_at) : undefined,
     };
+  }
+
+  async getChatParticipant(participantId: string): Promise<{ name: string; image: string; isOnline: boolean } | null> {
+    try {
+      // Validate participantId
+      if (!participantId || participantId.trim() === '') {
+        console.error('Invalid participant ID provided');
+        return null;
+      }
+
+      // Fetch participant profile from profiles table
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', participantId)
+        .single();
+
+      if (error || !profile) {
+        console.error('Error fetching participant profile:', error);
+        return {
+          name: 'Unknown User',
+          image: 'https://via.placeholder.com/50',
+          isOnline: false
+        };
+      }
+
+      return {
+        name: profile.full_name || 'Unknown User',
+        image: profile.avatar_url || 'https://via.placeholder.com/50',
+        isOnline: false // TODO: Implement online status tracking
+      };
+    } catch (error) {
+      console.error('Error fetching chat participant:', error);
+      return {
+        name: 'Unknown User',
+        image: 'https://via.placeholder.com/50',
+        isOnline: false
+      };
+    }
   }
 
   cleanup(): void {

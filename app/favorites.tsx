@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, MapPin, Star, Filter } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { Colors } from '@/constants/Colors';
 
 const { width } = Dimensions.get('window');
 
@@ -111,7 +112,7 @@ export default function FavoritesScreen() {
           </Text>
           
           <View style={styles.locationContainer}>
-            <MapPin size={12} color="#8E8E93" />
+            <MapPin size={12} color={Colors.text.secondary} />
             <Text style={styles.locationText} numberOfLines={1}>
               {service.location}
             </Text>
@@ -127,8 +128,8 @@ export default function FavoritesScreen() {
             >
               <Heart 
                 size={20} 
-                color={service.isFavorited ? "#FF3B30" : "#8E8E93"}
-                fill={service.isFavorited ? "#FF3B30" : "transparent"}
+                color={service.isFavorited ? Colors.status.error : Colors.text.secondary}
+                fill={service.isFavorited ? Colors.status.error : "transparent"}
               />
             </TouchableOpacity>
           </View>
@@ -142,14 +143,14 @@ export default function FavoritesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color="#1D1D1F" />
+          <ArrowLeft size={24} color={Colors.text.primary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Favorite Lists</Text>
           <Text style={styles.headerSubtitle}>({savedCount} saved)</Text>
         </View>
         <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color="#1D1D1F" />
+          <Filter size={20} color={Colors.text.primary} />
         </TouchableOpacity>
       </View>
 
@@ -184,7 +185,7 @@ export default function FavoritesScreen() {
         <View style={styles.listHeader}>
           <Text style={styles.listTitle}>Favorite Lists ({savedCount} saved)</Text>
           <View style={styles.sortContainer}>
-            <Filter size={16} color="#8E8E93" />
+            <Filter size={16} color={Colors.text.secondary} />
             <Text style={styles.sortText}>Sort</Text>
           </View>
         </View>
@@ -200,7 +201,7 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
   },
   header: {
     flexDirection: 'row',
@@ -208,9 +209,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border.light,
   },
   backButton: {
     padding: 4,
@@ -222,22 +223,22 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginTop: 2,
   },
   filterButton: {
     padding: 4,
   },
   profileSection: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border.light,
   },
   profileInfo: {
     flexDirection: 'row',
@@ -256,12 +257,12 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   profileBio: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   profileActions: {
     flexDirection: 'row',
@@ -269,13 +270,13 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#8E8E93',
+    backgroundColor: Colors.text.secondary,
     paddingVertical: 10,
     borderRadius: 20,
     alignItems: 'center',
   },
   actionButtonText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -291,14 +292,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border.light,
   },
   listTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   sortContainer: {
     flexDirection: 'row',
@@ -307,18 +308,18 @@ const styles = StyleSheet.create({
   },
   sortText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   servicesList: {
     paddingHorizontal: 20,
     paddingTop: 16,
   },
   serviceCard: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: Colors.shadow.medium,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -343,7 +344,7 @@ const styles = StyleSheet.create({
   serviceTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     flex: 1,
     marginRight: 12,
   },
@@ -355,15 +356,15 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   reviewCount: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   serviceProvider: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginBottom: 8,
     lineHeight: 20,
   },
@@ -375,7 +376,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     flex: 1,
   },
   serviceFooter: {
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
   servicePrice: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   favoriteButton: {
     padding: 4,

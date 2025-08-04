@@ -5,13 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Gift, Clock, Calendar, Diamond } from 'lucide-react-native';
+import { ArrowLeft, Gift, Clock, Diamond } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Colors } from '../constants/Colors';
 
 const { width } = Dimensions.get('window');
 
@@ -84,14 +85,14 @@ export default function CheckInScreen() {
           <View style={styles.diamondContainer}>
             <Diamond 
               size={16} 
-              color={claimed ? '#4CAF50' : isToday ? '#007AFF' : '#8E8E93'}
-              fill={claimed ? '#4CAF50' : isToday ? '#007AFF' : 'transparent'}
+              color={claimed ? Colors.status.success : isToday ? Colors.primary.main : Colors.text.secondary}
+              fill={claimed ? Colors.status.success : isToday ? Colors.primary.main : 'transparent'}
             />
             {diamonds > 1 && (
               <Diamond 
                 size={16} 
-                color={claimed ? '#4CAF50' : isToday ? '#007AFF' : '#FF9800'}
-                fill={claimed ? '#4CAF50' : isToday ? '#007AFF' : '#FF9800'}
+                color={claimed ? Colors.status.success : isToday ? Colors.primary.main : Colors.status.warning}
+                fill={claimed ? Colors.status.success : isToday ? Colors.primary.main : Colors.status.warning}
                 style={styles.bonusDiamond}
               />
             )}
@@ -118,7 +119,7 @@ export default function CheckInScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#1D1D1F" />
+          <ArrowLeft size={24} color={Colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Check-in Bonus</Text>
         <View style={styles.headerRight} />
@@ -128,7 +129,7 @@ export default function CheckInScreen() {
         {/* Diamonds Counter */}
         <View style={styles.diamondsHeader}>
           <View style={styles.diamondsCounter}>
-            <Diamond size={20} color="#007AFF" fill="#007AFF" />
+            <Diamond size={20} color={Colors.primary.main} fill={Colors.primary.main} />
             <Text style={styles.diamondsCount}>{totalDiamonds} Diamonds</Text>
           </View>
           <View style={styles.streakInfo}>
@@ -160,7 +161,7 @@ export default function CheckInScreen() {
             disabled={!canCheckIn}
           >
             <LinearGradient
-              colors={canCheckIn ? ['#007AFF', '#0056CC'] : ['#8E8E93', '#6D6D70']}
+              colors={canCheckIn ? [Colors.primary.main, Colors.primary.dark] : [Colors.text.secondary, '#6D6D70']}
               style={styles.buttonGradient}
             >
               <Gift size={20} color="white" />
@@ -171,7 +172,7 @@ export default function CheckInScreen() {
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.historyButton} onPress={handleHistory}>
-            <Clock size={20} color="#007AFF" />
+            <Clock size={20} color={Colors.primary.main} />
             <Text style={styles.historyButtonText}>History</Text>
           </TouchableOpacity>
         </View>
@@ -219,7 +220,7 @@ export default function CheckInScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
   },
   header: {
     flexDirection: 'row',
@@ -227,9 +228,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border.light,
   },
   backButton: {
     padding: 4,
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   headerRight: {
     width: 32,
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   diamondsHeader: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     paddingHorizontal: 20,
     paddingVertical: 16,
     alignItems: 'center',
@@ -260,24 +261,24 @@ const styles = StyleSheet.create({
   diamondsCount: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   streakInfo: {
     alignItems: 'center',
   },
   streakText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     textAlign: 'center',
   },
   statusCard: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     marginHorizontal: 20,
     marginTop: 16,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: Colors.shadow.medium,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -289,21 +290,21 @@ const styles = StyleSheet.create({
   statusTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   statusSubtitle: {
     fontSize: 14,
-    color: '#007AFF',
+    color: Colors.primary.main,
     fontWeight: '500',
   },
   calendarContainer: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     marginHorizontal: 20,
     marginTop: 16,
     borderRadius: 12,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow.medium,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -322,7 +323,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   dayCard: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     padding: 8,
     alignItems: 'center',
@@ -331,31 +332,31 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   claimedCard: {
-    backgroundColor: '#E8F5E8',
+    backgroundColor: Colors.background.secondary,
     borderWidth: 1,
-    borderColor: '#4CAF50',
+    borderColor: Colors.status.success,
   },
   todayCard: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: Colors.background.secondary,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: Colors.primary.main,
   },
   bonusCard: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: Colors.background.secondary,
     borderWidth: 1,
-    borderColor: '#FF9800',
+    borderColor: Colors.status.warning,
   },
   dayNumber: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginBottom: 4,
   },
   claimedText: {
-    color: '#4CAF50',
+    color: Colors.status.success,
   },
   todayText: {
-    color: '#007AFF',
+    color: Colors.primary.main,
   },
   diamondContainer: {
     flexDirection: 'row',
@@ -370,7 +371,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     right: 2,
-    backgroundColor: '#4CAF50',
+    backgroundColor: Colors.status.success,
     borderRadius: 8,
     width: 16,
     height: 16,
@@ -378,20 +379,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkMarkText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 10,
     fontWeight: 'bold',
   },
   bonusLabel: {
     position: 'absolute',
     bottom: -8,
-    backgroundColor: '#FF9800',
+    backgroundColor: Colors.status.warning,
     borderRadius: 4,
     paddingHorizontal: 4,
     paddingVertical: 1,
   },
   bonusText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 8,
     fontWeight: '600',
   },
@@ -417,7 +418,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   checkInButtonText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -425,16 +426,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderRadius: 25,
     paddingVertical: 14,
     paddingHorizontal: 20,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: Colors.primary.main,
   },
   historyButtonText: {
-    color: '#007AFF',
+    color: Colors.primary.main,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -456,7 +457,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   adTitle: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 24,
     fontWeight: 'bold',
   },
@@ -464,7 +465,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   adSubtitle: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 10,
     fontWeight: '500',
     opacity: 0.9,
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
   featuredTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 12,
   },
   featuredGrid: {
@@ -486,10 +487,10 @@ const styles = StyleSheet.create({
   },
   featuredItem: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderRadius: 12,
     padding: 12,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow.medium,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -501,18 +502,18 @@ const styles = StyleSheet.create({
   featuredImage: {
     width: '100%',
     height: 80,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     marginBottom: 8,
   },
   featuredText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   featuredPrice: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
 });

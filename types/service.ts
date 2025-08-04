@@ -18,6 +18,8 @@ export interface Service {
   updated_at?: string;
   provider_name?: string;
   provider_avatar?: string;
+  parent_service_id?: string; // For service variants
+  service_variants?: Service[]; // Child services/variants
 }
 
 export interface Category {

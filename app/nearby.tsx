@@ -5,48 +5,25 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
   Dimensions,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, MapPin, Star, List, Map as MapIcon } from 'lucide-react-native';
+import { ArrowLeft, MapPin, List, Map as MapIcon } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { ServiceLocation } from '@/types/service-location';
-import { ServiceService, Service } from '@/lib/service-service';
+import { ServiceService, Service as ServiceFromLib } from '@/lib/service-service';
+import { Service } from '@/types/service';
 import { useAuth } from '@/contexts/AuthContext';
+import ServiceCard from '@/components/ServiceCard';
 
 const { width, height } = Dimensions.get('window');
 
-// Helper function to convert Service to ServiceLocation
-const convertServiceToLocation = (service: Service): ServiceLocation | null => {
-  if (!service.latitude || !service.longitude) {
-    return null; // Skip services without coordinates
-  }
-  
-  return {
-    id: service.id || '',
-    title: service.title,
-    provider: service.provider_name || 'Unknown Provider',
-    rating: service.rating || 0,
-    price: service.price,
-    currency: service.currency,
-    category: service.category_name || 'General',
-    image: service.image_url || 'https://images.pexels.com/photos/3997991/pexels-photo-3997991.jpeg?auto=compress&cs=tinysrgb&w=400',
-    coordinate: {
-      latitude: service.latitude,
-      longitude: service.longitude,
-    },
-    address: service.location || 'Location not specified',
-    distance: '0 km', // TODO: Calculate actual distance based on user location
-  };
-};
+
 
 export default function NearbyScreen() {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
-  const [nearbyServices, setNearbyServices] = useState<ServiceLocation[]>([]);
+  const [nearbyServices, setNearbyServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { user } = useAuth();
@@ -59,10 +36,11 @@ export default function NearbyScreen() {
     try {
       setIsLoading(true);
       const services = await ServiceService.getNearbyServices();
-      const serviceLocations = services
-        .map(convertServiceToLocation)
-        .filter((location): location is ServiceLocation => location !== null);
-      setNearbyServices(serviceLocations);
+      // Filter out services without coordinates and ensure they have required fields
+      const validServices = services
+        .filter(service => service.id && service.latitude && service.longitude)
+        .map(service => service as Service);
+      setNearbyServices(validServices);
     } catch (error) {
       console.error('Error loading nearby services:', error);
     } finally {
@@ -70,24 +48,7 @@ export default function NearbyScreen() {
     }
   };
 
-  const handleBack = () => {
-    router.back();
-  };
 
-  const handleServicePress = (serviceId: string) => {
-    if (!user) {
-      Alert.alert(
-        'Sign In Required',
-        'Please sign in to view service details.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign In', onPress: () => router.push('/auth/login') }
-        ]
-      );
-      return;
-    }
-    router.push(`/service/${serviceId}`);
-  };
 
   const renderMapView = () => (
     <View style={styles.mapContainer}>
@@ -106,10 +67,13 @@ export default function NearbyScreen() {
         {nearbyServices.map((service) => (
           <Marker
             key={service.id}
-            coordinate={service.coordinate}
+            coordinate={{
+              latitude: service.latitude!,
+              longitude: service.longitude!
+            }}
             title={service.title}
-            description={`${service.provider} - ${service.currency}${service.price}`}
-            onPress={() => handleServicePress(service.id)}
+            description={`${service.provider_name} - ${service.currency}${service.price}`}
+            onPress={() => router.push(`/service/${service.id}`)}
           >
             <View style={styles.markerContainer}>
               <View style={styles.marker}>
@@ -144,30 +108,10 @@ export default function NearbyScreen() {
     return (
       <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
         {nearbyServices.map((service) => (
-          <TouchableOpacity
+          <ServiceCard
             key={service.id}
-            style={styles.listItem}
-            onPress={() => handleServicePress(service.id)}
-          >
-          <Image source={{ uri: service.image }} style={styles.listItemImage} />
-          <View style={styles.listItemInfo}>
-            <View style={styles.listItemHeader}>
-              <Text style={styles.listItemTitle}>{service.title}</Text>
-              <Text style={styles.listItemDistance}>{service.distance}</Text>
-            </View>
-            <Text style={styles.listItemProvider}>{service.provider}</Text>
-            <Text style={styles.listItemAddress}>{service.address}</Text>
-            <View style={styles.listItemFooter}>
-              <View style={styles.ratingContainer}>
-                <Star size={14} color="#FFD700" fill="#FFD700" />
-                <Text style={styles.ratingText}>{service.rating}</Text>
-              </View>
-              <Text style={styles.listItemPrice}>
-                From {service.currency}{service.price}
-              </Text>
-            </View>
-          </View>
-        </TouchableOpacity>
+            service={service}
+          />
         ))}
       </ScrollView>
     );
@@ -288,77 +232,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  listItem: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  listItemImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 16,
-  },
-  listItemInfo: {
-    flex: 1,
-  },
-  listItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  listItemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1D1D1F',
-    flex: 1,
-  },
-  listItemDistance: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '500',
-  },
-  listItemProvider: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 2,
-  },
-  listItemAddress: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 8,
-  },
-  listItemFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1D1D1F',
-    marginLeft: 4,
-  },
-  listItemPrice: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1D1D1F',
-  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

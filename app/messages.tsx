@@ -9,16 +9,79 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Search, MessageCircle } from 'lucide-react-native';
+import { ArrowLeft, Search, MessageCircle, Trash2, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { UserChat } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserChats } from '@/hooks/useAblyChat';
+import { useUserChats } from '@/hooks/useSupabaseChat';
+import { supabase } from '@/lib/supabase';
+import { Alert } from 'react-native';
 
 export default function MessagesScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { chats, isLoading, error } = useUserChats(user?.id || '');
+  const { chats, isLoading, error, loadChats } = useUserChats(user?.id || '');
+
+  const handleDeleteConversation = async (chatId: string, participantName: string) => {
+    Alert.alert(
+      'Delete Conversation',
+      `Are you sure you want to delete your conversation with ${participantName}? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🗑️ Starting deletion for chat:', chatId);
+              
+              // Delete all messages in the chat
+              const { data: deletedMessages, error: messagesError } = await supabase
+                .from('chat_messages')
+                .delete()
+                .eq('chat_id', chatId)
+                .select();
+              
+              if (messagesError) {
+                console.error('❌ Error deleting messages:', messagesError);
+                throw messagesError;
+              }
+              
+              console.log('✅ Deleted messages:', deletedMessages?.length || 0);
+              
+              // Delete the chat itself
+              const { data: deletedChat, error: chatError } = await supabase
+                .from('chats')
+                .delete()
+                .eq('id', chatId)
+                .select();
+              
+              if (chatError) {
+                console.error('❌ Error deleting chat:', chatError);
+                throw chatError;
+              }
+              
+              console.log('✅ Deleted chat:', deletedChat);
+              
+              // Refresh the chats list
+              console.log('🔄 Refreshing chats list...');
+              await loadChats();
+              console.log('✅ Chat list refreshed');
+              
+              Alert.alert('Success', 'Conversation deleted successfully.');
+            } catch (error) {
+              console.error('❌ Error deleting conversation:', error);
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+              Alert.alert('Error', `Failed to delete conversation: ${errorMessage}`);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const formatLastMessageTime = (lastMessageAt: string | null) => {
     if (!lastMessageAt) return '';
@@ -71,22 +134,51 @@ export default function MessagesScreen() {
           </View>
         ) : (
           chats.map((chat) => (
-            <TouchableOpacity
-              key={chat.id}
-              style={styles.chatItem}
-              onPress={() => router.push(`/chat/${chat.participantId}`)}
-            >
-              <Image source={{ uri: chat.participantImage }} style={styles.chatAvatar} />
-              <View style={styles.chatContent}>
-                <View style={styles.chatHeader}>
-                  <Text style={styles.chatName}>{chat.participantName}</Text>
-                  <Text style={styles.chatTime}>{formatLastMessageTime(chat.lastMessageAt)}</Text>
+            <View key={chat.id} style={styles.chatItem}>
+              <TouchableOpacity
+                style={styles.chatTouchable}
+                onPress={() => router.push(`/chat/${chat.participantId}`)}
+              >
+                <View style={styles.avatarContainer}>
+                  {chat.participantImage && !chat.participantImage.includes('placeholder') ? (
+                    <Image source={{ uri: chat.participantImage }} style={styles.chatAvatar} />
+                  ) : (
+                    <View style={styles.defaultChatAvatar}>
+                      <User size={20} color="#8E8E93" />
+                    </View>
+                  )}
+                  {(chat.unreadCount || 0) > 0 && (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadBadgeText}>
+                        {(chat.unreadCount || 0) > 99 ? '99+' : chat.unreadCount}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-                <Text style={styles.lastMessage} numberOfLines={2}>
-                  {'Start a conversation'}
-                </Text>
-              </View>
-            </TouchableOpacity>
+                <View style={styles.chatContent}>
+                  <View style={styles.chatHeader}>
+                    <Text style={[
+                      styles.chatName,
+                      (chat.unreadCount || 0) > 0 && styles.chatNameUnread
+                    ]}>{chat.participantName}</Text>
+                    <Text style={styles.chatTime}>{formatLastMessageTime(chat.lastMessageAt)}</Text>
+                  </View>
+                  <Text style={[
+                    styles.lastMessage,
+                    (chat.unreadCount || 0) > 0 && styles.lastMessageUnread
+                  ]} numberOfLines={2}>
+                    {chat.lastMessage || 'Start a conversation'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleDeleteConversation(chat.id, chat.participantName)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Trash2 size={20} color="#ff4444" />
+              </TouchableOpacity>
+            </View>
           ))
         )}
       </ScrollView>
@@ -126,11 +218,48 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F2F2F7',
   },
+  chatTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  deleteButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 16,
+  },
   chatAvatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    marginRight: 16,
+  },
+  defaultChatAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#ff4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  unreadBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   chatContent: {
     flex: 1,
@@ -146,6 +275,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1D1D1F',
   },
+  chatNameUnread: {
+    fontWeight: 'bold',
+    color: '#000',
+  },
   chatTime: {
     fontSize: 14,
     color: '#8E8E93',
@@ -159,6 +292,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     lineHeight: 20,
+  },
+  lastMessageUnread: {
+    fontWeight: '600',
+    color: '#333',
   },
   loadingContainer: {
     flex: 1,

@@ -20,6 +20,7 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import { GOOGLE_PLACES_API_KEY } from '../config/maps';
 import { JobService } from '../lib/job-service';
 import { useAuth } from '../contexts/AuthContext';
+import { Colors } from '@/constants/Colors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -273,7 +274,7 @@ export default function CreateJobListingScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
+            <ArrowLeft size={24} color={Colors.text.primary} />
           </TouchableOpacity>
         </View>
 
@@ -300,7 +301,7 @@ export default function CreateJobListingScreen() {
                 </View>
               ) : (
                 <View style={styles.uploadPlaceholder}>
-                  <Upload size={24} color="#8E8E93" />
+                  <Upload size={24} color={Colors.text.secondary} />
                   <Text style={styles.uploadText}>Upload job cover photo</Text>
                   <Text style={styles.uploadSubtext}>Max 10MB</Text>
                 </View>
@@ -318,12 +319,12 @@ export default function CreateJobListingScreen() {
               value={title}
               onChangeText={handleTitleChange}
               placeholder="Job title (e.g., Graphic Designer, Cleaner, Tutor)"
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={Colors.text.secondary}
               maxLength={25}
             />
             {coverPhoto && (
               <TouchableOpacity style={styles.editIcon}>
-                <Edit3 size={16} color="#8E8E93" />
+                <Edit3 size={16} color={Colors.text.secondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -338,14 +339,14 @@ export default function CreateJobListingScreen() {
               value={description}
               onChangeText={handleDescriptionChange}
               placeholder="Describe what you need done, requirements, and expectations"
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={Colors.text.secondary}
               multiline={true}
               textAlignVertical="top"
               maxLength={1000}
             />
             {coverPhoto && (
               <TouchableOpacity style={styles.editIcon}>
-                <Edit3 size={16} color="#8E8E93" />
+                <Edit3 size={16} color={Colors.text.secondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -422,7 +423,7 @@ export default function CreateJobListingScreen() {
               style={styles.locationSelector}
               onPress={() => setShowLocationPicker(true)}
             >
-              <MapPin size={20} color="#8E8E93" style={styles.locationIcon} />
+              <MapPin size={20} color={Colors.text.secondary} style={styles.locationIcon} />
               <Text style={[
                 styles.locationText,
                 !selectedLocation && styles.placeholderText
@@ -446,7 +447,7 @@ export default function CreateJobListingScreen() {
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowLocationPicker(false)}>
-              <X size={24} color="#1D1D1F" />
+              <X size={24} color={Colors.text.primary} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Select Work Location</Text>
             <TouchableOpacity 
@@ -462,7 +463,7 @@ export default function CreateJobListingScreen() {
 
           <View style={styles.searchContainer}>
             <View style={styles.searchWrapper}>
-              <Search size={20} color="#8E8E93" style={styles.searchIcon} />
+              <Search size={20} color={Colors.text.secondary} style={styles.searchIcon} />
               <GooglePlacesAutocomplete
                 placeholder="Search for a location..."
                 onPress={handleLocationSelect}
@@ -484,25 +485,25 @@ export default function CreateJobListingScreen() {
                   autoCorrect: false,
                   autoCapitalize: 'none',
                   placeholder: "Search for a location...",
-                  placeholderTextColor: "#8E8E93",
+                  placeholderTextColor: Colors.text.secondary,
                 }}
                 styles={{
                   textInputContainer: styles.searchInputContainer,
                   textInput: styles.searchInput,
                   listView: styles.searchResults,
                   row: {
-                    backgroundColor: 'white',
+                    backgroundColor: Colors.background.tertiary,
                     padding: 13,
                     height: 44,
                     flexDirection: 'row',
                   },
                   separator: {
                     height: 0.5,
-                    backgroundColor: '#E5E5EA',
+                    backgroundColor: Colors.border.light,
                   },
                   description: {
                     fontWeight: 'normal',
-                    color: '#1D1D1F',
+                    color: Colors.text.primary,
                     fontSize: 15,
                   },
                 }}
@@ -525,7 +526,7 @@ export default function CreateJobListingScreen() {
                 description={selectedLocation.address}
               >
                 <View style={styles.customMarker}>
-                  <MapPin size={24} color="#007AFF" />
+                  <MapPin size={24} color={Colors.primary.main} />
                 </View>
               </Marker>
             )}
@@ -539,12 +540,12 @@ export default function CreateJobListingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
   },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
   },
   content: {
     padding: 20,
@@ -552,12 +553,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   guidanceText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginBottom: 20,
     lineHeight: 20,
   },
@@ -574,21 +575,21 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   characterCount: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   textInput: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
   },
   textArea: {
     height: 100,
@@ -601,10 +602,10 @@ const styles = StyleSheet.create({
   },
   photoUploadContainer: {
     height: 150,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
@@ -614,12 +615,12 @@ const styles = StyleSheet.create({
   },
   uploadText: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginTop: 8,
   },
   uploadSubtext: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginTop: 4,
   },
   photoContainer: {
@@ -662,7 +663,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   locationSelector: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -670,25 +671,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
   },
   locationText: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   placeholderText: {
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   dropdownArrow: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   locationOptions: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderRadius: 8,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
     maxHeight: 200,
   },
   locationOption: {
@@ -697,36 +698,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: Colors.background.secondary,
   },
   checkbox: {
     width: 20,
     height: 20,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
     borderRadius: 4,
     marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkmark: {
-    color: '#34C759',
+    color: Colors.status.success,
     fontSize: 14,
     fontWeight: 'bold',
   },
   locationOptionText: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   listButton: {
-    backgroundColor: '#8E8E93',
+    backgroundColor: Colors.text.secondary,
     paddingVertical: 16,
     borderRadius: 25,
     alignItems: 'center',
     marginTop: 20,
   },
   listButtonText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -734,7 +735,7 @@ const styles = StyleSheet.create({
   paymentTypeContainer: {
     flexDirection: 'row',
     marginBottom: 16,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     padding: 4,
   },
@@ -746,8 +747,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   paymentTypeButtonActive: {
-    backgroundColor: 'white',
-    shadowColor: '#000',
+    backgroundColor: Colors.background.tertiary,
+    shadowColor: Colors.shadow.medium,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -756,10 +757,10 @@ const styles = StyleSheet.create({
   paymentTypeText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   paymentTypeTextActive: {
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   // Budget Input Styles
   budgetInputContainer: {
@@ -770,7 +771,7 @@ const styles = StyleSheet.create({
   },
   currencySelector: {
     flexDirection: 'row',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 6,
     padding: 2,
   },
@@ -780,50 +781,50 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   currencyButtonActive: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
   },
   currencyText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   currencyTextActive: {
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   budgetInput: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
   },
   // Budget Summary Styles
   budgetSummary: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
   },
   budgetSummaryLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginBottom: 4,
   },
   budgetSummaryText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -831,60 +832,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border.light,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   doneButton: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: Colors.primary.main,
   },
   doneButtonDisabled: {
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   searchContainer: {
     padding: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border.light,
   },
   searchInputContainer: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
   },
   searchInput: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     paddingLeft: 44,
     paddingRight: 16,
     paddingVertical: 12,
   },
   searchResults: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderRadius: 8,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
     maxHeight: 200,
   },
   map: {
     flex: 1,
   },
   customMarker: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     padding: 8,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#007AFF',
-    shadowColor: '#000',
+    borderColor: Colors.primary.main,
+    shadowColor: Colors.shadow.medium,
     shadowOffset: {
       width: 0,
       height: 2,

@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, Calendar, DollarSign, User, Phone, Mail, MessageCircle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { JobService, JobListing } from '../../lib/job-service';
+import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function JobDetailScreen() {
@@ -107,15 +108,15 @@ export default function JobDetailScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return '#4CAF50';
+        return Colors.status.success;
       case 'paused':
-        return '#FF9800';
+        return Colors.status.warning;
       case 'completed':
-        return '#2196F3';
+        return Colors.primary.main;
       case 'cancelled':
-        return '#F44336';
+        return Colors.status.error;
       default:
-        return '#8E8E93';
+        return Colors.text.secondary;
     }
   };
 
@@ -124,11 +125,11 @@ export default function JobDetailScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
+            <ArrowLeft size={24} color={Colors.text.primary} />
           </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={Colors.primary.main} />
           <Text style={styles.loadingText}>Loading job details...</Text>
         </View>
       </SafeAreaView>
@@ -140,7 +141,7 @@ export default function JobDetailScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
+            <ArrowLeft size={24} color={Colors.text.primary} />
           </TouchableOpacity>
         </View>
         <View style={styles.errorContainer}>
@@ -154,7 +155,7 @@ export default function JobDetailScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#1D1D1F" />
+          <ArrowLeft size={24} color={Colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Job Details</Text>
         {isOwner && (
@@ -185,21 +186,21 @@ export default function JobDetailScreen() {
 
           {/* Budget */}
           <View style={styles.infoRow}>
-            <DollarSign size={20} color="#007AFF" />
+            <DollarSign size={20} color={Colors.primary.main} />
             <Text style={styles.budgetText}>{formatBudget(job)}</Text>
           </View>
 
           {/* Location */}
           {job.location_address && (
             <View style={styles.infoRow}>
-              <MapPin size={20} color="#007AFF" />
+              <MapPin size={20} color={Colors.primary.main} />
               <Text style={styles.locationText}>{job.location_address}</Text>
             </View>
           )}
 
           {/* Date Posted */}
           <View style={styles.infoRow}>
-            <Calendar size={20} color="#007AFF" />
+            <Calendar size={20} color={Colors.primary.main} />
             <Text style={styles.dateText}>
               Posted on {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Unknown date'}
             </Text>
@@ -227,7 +228,7 @@ export default function JobDetailScreen() {
       {!isOwner && (
         <View style={styles.actionButtonsContainer}>
           <TouchableOpacity style={styles.contactButton} onPress={handleContact}>
-            <MessageCircle size={20} color="#007AFF" />
+            <MessageCircle size={20} color={Colors.primary.main} />
             <Text style={styles.contactButtonText}>Contact</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
@@ -242,7 +243,7 @@ export default function JobDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
   },
   header: {
     flexDirection: 'row',
@@ -250,19 +251,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border.light,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   editButton: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: Colors.primary.main,
   },
   loadingContainer: {
     flex: 1,
@@ -272,7 +273,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   errorContainer: {
     flex: 1,
@@ -281,14 +282,14 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   content: {
     flex: 1,
   },
   coverPhotoContainer: {
     height: 200,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
   },
   coverPhoto: {
     width: '100%',
@@ -296,7 +297,7 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   jobInfoContainer: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     padding: 20,
     marginTop: 12,
   },
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 24,
     fontWeight: '700',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginRight: 12,
   },
   statusBadge: {
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: 'white',
+    color: Colors.text.white,
   },
   infoRow: {
     flexDirection: 'row',
@@ -331,43 +332,43 @@ const styles = StyleSheet.create({
   budgetText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginLeft: 12,
   },
   locationText: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginLeft: 12,
     flex: 1,
   },
   dateText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginLeft: 12,
   },
   descriptionContainer: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     padding: 20,
     marginTop: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 12,
   },
   description: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   ownerActionsContainer: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     padding: 20,
     marginTop: 12,
   },
   deleteButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: Colors.status.error,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -376,44 +377,44 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
+    color: Colors.text.white,
   },
   actionButtonsContainer: {
     flexDirection: 'row',
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    borderTopColor: Colors.border.light,
     gap: 12,
   },
   contactButton: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#007AFF',
-    backgroundColor: 'white',
+    borderColor: Colors.primary.main,
+    backgroundColor: Colors.background.tertiary,
   },
   contactButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: Colors.primary.main,
     marginLeft: 8,
   },
   applyButton: {
-    flex: 2,
-    justifyContent: 'center',
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 8,
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary.main,
   },
   applyButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
+    color: Colors.text.white,
   },
 });

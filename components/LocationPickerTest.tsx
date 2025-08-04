@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { Colors } from '../constants/Colors';
 import { GOOGLE_PLACES_API_KEY } from '../config/maps';
 
 interface LocationData {
@@ -80,7 +87,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
   },
   title: {
     fontSize: 18,
@@ -89,22 +96,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   searchInputContainer: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
   },
   searchInput: {
     backgroundColor: 'transparent',
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   searchResults: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderRadius: 8,
     marginTop: 5,
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow.medium,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -112,10 +119,10 @@ const styles = StyleSheet.create({
   selectedLocation: {
     marginTop: 20,
     padding: 15,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
   },
   selectedTitle: {
     fontSize: 16,
@@ -124,11 +131,11 @@ const styles = StyleSheet.create({
   },
   selectedAddress: {
     fontSize: 14,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 5,
   },
   selectedCoords: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
 });

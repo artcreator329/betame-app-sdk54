@@ -10,6 +10,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Search, X, Check } from 'lucide-react-native';
+import { Colors } from '../constants/Colors';
 
 export interface Category {
   id: string;
@@ -190,7 +191,7 @@ export default function CategorySelectionModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
   },
   header: {
     flexDirection: 'row',
@@ -198,9 +199,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border.light,
   },
   headerContent: {
     alignItems: 'center',
@@ -208,11 +209,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   subtitle: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginTop: 2,
   },
   placeholder: {
@@ -221,14 +222,14 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     marginHorizontal: 20,
     marginTop: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
   },
   searchIcon: {
     marginRight: 12,
@@ -236,11 +237,11 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   categoriesContainer: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     marginHorizontal: 20,
     marginTop: 16,
     borderRadius: 12,
@@ -252,13 +253,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: Colors.background.secondary,
   },
   checkbox: {
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
     borderRadius: 4,
     marginRight: 16,
     alignItems: 'center',
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     flex: 1,
   },
   footer: {
@@ -276,13 +277,13 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E5EA',
   },
   doneButton: {
-    backgroundColor: '#1D1D1F',
+    backgroundColor: Colors.primary.main,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   doneButtonText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 16,
     fontWeight: '600',
   },

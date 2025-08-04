@@ -13,14 +13,20 @@ import {
   Modal,
   ActionSheetIOS,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, MoveVertical as MoreVertical, Smile, Send, Shield, Flag, Ban } from 'lucide-react-native';
+import { ArrowLeft, MoveVertical as MoreVertical, Smile, Send, Shield, Flag, Ban, Trash2, Package, X } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChatMessage, LiveChatMessage } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAblyChat } from '@/hooks/useAblyChat';
-import { useAblyChatContext } from '@/contexts/AblyChatContext';
+import { useSupabaseChat, useUserChats } from '@/hooks/useSupabaseChat';
+import { useSupabaseChatContext } from '@/contexts/SupabaseChatContext';
+import { chatService } from '@/lib/chat-service';
+import { supabase } from '@/lib/supabase';
+import { ServiceService, Service } from '@/lib/service-service';
+import { ServiceOfferModal } from '../../components/ServiceOfferModal';
+import { ServiceOfferMessage } from '../../components/ServiceOfferMessage';
 
 interface ModeratedMessage extends ChatMessage {
   isHidden?: boolean;
@@ -35,9 +41,128 @@ export default function ChatScreen() {
   const { user, userProfile } = useAuth();
   const [message, setMessage] = useState('');
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [serviceModalVisible, setServiceModalVisible] = useState(false);
+  const [serviceOfferModalVisible, setServiceOfferModalVisible] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [serviceSelectionModalVisible, setServiceSelectionModalVisible] = useState(false);
+  const [userServices, setUserServices] = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [chatLoading, setChatLoading] = useState(true);
+  const [editOfferModalVisible, setEditOfferModalVisible] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<{
+    offerId: string;
+    currentPrice: number;
+    currentDescription: string;
+    currentDeliveryTime: number;
+    serviceTitle: string;
+  } | null>(null);
+  const [editPrice, setEditPrice] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDeliveryTime, setEditDeliveryTime] = useState('');
+  const [participantInfo, setParticipantInfo] = useState<{
+    name: string;
+    image: string;
+    isOnline: boolean;
+  } | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
-  const { chatService } = useAblyChatContext();
+  const { chatService: supabaseChatService } = useSupabaseChatContext();
+  
+  // Always call useUserChats but with safe default values to avoid hook order issues
+  const safeUserId = user?.id || '';
+  const safeChatId = chatId || undefined;
+  const { markChatAsRead } = useUserChats(safeUserId, safeChatId);
+  
+  // Initialize chat
+  useEffect(() => {
+    const initializeChat = async () => {
+      if (!user?.id || !participantId) {
+        console.log('Missing user ID or participant ID:', { userId: user?.id, participantId });
+        setChatLoading(false);
+        return;
+      }
+      
+      // Validate participantId format
+      const participantIdStr = Array.isArray(participantId) ? participantId[0] : participantId;
+      if (!participantIdStr || participantIdStr.trim() === '') {
+        console.error('Invalid participant ID:', participantIdStr);
+        setChatLoading(false);
+        router.replace('/messages');
+        return;
+      }
+      
+      setChatLoading(true);
+      try {
+        console.log('Initializing chat with:', { participantId: participantIdStr, userId: user.id });
+        
+        // Initialize chat and fetch participant info in parallel
+        const [chat, participant] = await Promise.all([
+          supabaseChatService.createOrGetChat(participantIdStr, user.id),
+          chatService.getChatParticipant(participantIdStr)
+        ]);
+        
+        if (chat) {
+          setChatId(chat.id);
+          console.log('Chat initialized successfully:', chat.id);
+        } else {
+          console.error('Failed to create or get chat');
+        }
+        
+        if (participant) {
+          setParticipantInfo(participant);
+          console.log('Participant info loaded:', participant.name);
+        }
+      } catch (error) {
+        console.error('Error initializing chat:', error);
+      } finally {
+        setChatLoading(false);
+      }
+    };
+
+    initializeChat();
+    fetchUserServices();
+  }, [user?.id, participantId, supabaseChatService, router]);
+  
+  const fetchUserServices = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoadingServices(true);
+      const services = await ServiceService.getUserServices(user.id);
+      console.log('🔍 Chat: Fetched user services:', services);
+      console.log('🔍 Chat: Service IDs:', services.map(s => ({ id: s.id, title: s.title })));
+      setUserServices(services);
+    } catch (error) {
+      console.error('Error fetching user services:', error);
+    } finally {
+      setLoadingServices(false);
+    }
+  };
+
+  const isUserSeller = userServices.length > 0;
+  
+  // Mark messages as read when chat is opened
+  useEffect(() => {
+    const markAsRead = async () => {
+      if (chatId && user?.id) {
+        try {
+          await supabaseChatService.markMessagesAsRead(chatId, user.id);
+          markChatAsRead(chatId); // Reset unread count in messages list
+          console.log('Messages marked as read for chat:', chatId);
+        } catch (error) {
+          console.error('Error marking messages as read:', error);
+        }
+      }
+    };
+    
+    markAsRead();
+  }, [chatId, user?.id, supabaseChatService, markChatAsRead]);
+  
+  // Use stable parameters for useSupabaseChat to avoid hook order issues
+  const stableChatId = chatId || '';
+  const stableUserId = user?.id || '';
+  const stableUserName = userProfile?.full_name || user?.email?.split('@')[0] || 'User';
   
   const {
     messages,
@@ -45,20 +170,24 @@ export default function ChatScreen() {
     connectionStatus,
     typingUsers,
     sendMessage: sendChatMessage,
+    sendServiceMessage,
+    startTyping,
+    stopTyping,
     blockUser,
     reportUser,
-    reportMessage
-  } = useAblyChat({ 
-    chatId: `chat_${user?.id}_${participantId}`,
-    currentUserId: user?.id || '',
-    currentUserName: userProfile?.full_name || user?.email?.split('@')[0] || 'User'
+    reportMessage,
+    deleteMessage
+  } = useSupabaseChat({ 
+    chatId: stableChatId,
+    currentUserId: stableUserId,
+    currentUserName: stableUserName
   });
 
-  // Chat info will be loaded from ChatService
+  // Chat info from participant data
   const chat = { 
-    participantName: 'Chat Participant', 
-    participantImage: 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
-    lastActive: connectionStatus === 'connected' ? 'Active now' : 'Connecting...'
+    participantName: participantInfo?.name || 'Chat Participant', 
+    participantImage: participantInfo?.image || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
+    lastActive: participantInfo?.isOnline ? 'Active now' : (connectionStatus === 'connected' ? 'Recently active' : 'Connecting...')
   };
 
   // Auto scroll to bottom when new messages are added
@@ -75,43 +204,19 @@ export default function ChatScreen() {
     }, 100);
   }, [messages]);
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Loading...</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Setting up chat...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Handle loading and error states in JSX instead of early returns to avoid hook order issues
+  const isLoadingState = chatLoading || (isLoading && chatId);
+  const shouldRedirect = !chatLoading && !chatId;
+  const hasValidChat = !shouldRedirect && chatId;
+  
+  // Redirect if needed (but after all hooks are called)
+  useEffect(() => {
+    if (shouldRedirect) {
+      router.replace('/messages');
+    }
+  }, [shouldRedirect, router]);
 
-  // If no chat exists and no messages, redirect to messages dashboard
-  if (!chat && messages.length === 0 && !isLoading) {
-    router.replace('/messages');
-    return null;
-  }
-
-  if (!chat) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Chat not found</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const formatTimestamp = (timestamp: string) => {
+  const formatTimestamp = (timestamp: string | Date) => {
     const now = new Date();
     const msgTime = new Date(timestamp);
     const diffInDays = Math.floor((now.getTime() - msgTime.getTime()) / (1000 * 60 * 60 * 24));
@@ -177,6 +282,192 @@ export default function ChatScreen() {
     }
   };
 
+  const handleShareService = (service: Service) => {
+    console.log('🔍 Chat: Selected service for sharing:', service);
+    console.log('🔍 Chat: Service ID:', service.id);
+    setSelectedService(service);
+    setServiceModalVisible(false);
+    setServiceSelectionModalVisible(true);
+  };
+
+  const handleSendServiceDirectly = async () => {
+    if (!user?.id || !userProfile || !chatId || !selectedService) return;
+
+    // Validate that the service has a valid ID
+    if (!selectedService.id || selectedService.id.trim() === '') {
+      Alert.alert('Error', 'Invalid service selected. Please try again.');
+      return;
+    }
+
+    try {
+      const serviceData = {
+        id: selectedService.id,
+        title: selectedService.title,
+        description: selectedService.description,
+        price: selectedService.price,
+        currency: selectedService.currency,
+        image_url: selectedService.image_url,
+        category_name: selectedService.category_name,
+      };
+
+      console.log('🔍 Chat: Sending service directly:', serviceData);
+
+      const success = await sendServiceMessage(
+        userProfile.full_name || user.email?.split('@')[0] || 'User',
+        userProfile.avatar_url || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
+        serviceData
+      );
+
+      if (success) {
+        setServiceSelectionModalVisible(false);
+        setSelectedService(null);
+        // Scroll to bottom after sending
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } else {
+        Alert.alert('Error', 'Failed to share service. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sending service directly:', error);
+      Alert.alert('Error', 'Failed to send service. Please try again.');
+    }
+  };
+
+  const handleCustomizeService = () => {
+    setServiceSelectionModalVisible(false);
+    setServiceOfferModalVisible(true);
+  };
+
+  const handleSendServiceOffer = async (offerData: {
+    serviceId: string;
+    customPrice?: number;
+    customDescription?: string;
+    customDeliveryTime?: number;
+  }) => {
+    if (!user?.id || !userProfile || !chatId || !selectedService) return;
+
+    // Validate that the service has a valid ID
+    if (!selectedService.id || selectedService.id.trim() === '') {
+      Alert.alert('Error', 'Invalid service selected. Please try again.');
+      return;
+    }
+
+    try {
+      const serviceData = {
+        id: selectedService.id,
+        title: selectedService.title,
+        description: selectedService.description,
+        price: offerData.customPrice || selectedService.price,
+        currency: selectedService.currency,
+        image_url: selectedService.image_url,
+        category_name: selectedService.category_name,
+        customPrice: offerData.customPrice,
+        customDescription: offerData.customDescription,
+        customDeliveryTime: offerData.customDeliveryTime,
+      };
+
+      console.log('🔍 Chat: Creating service offer with serviceData:', serviceData);
+      console.log('🔍 Chat: Selected service ID:', selectedService.id);
+      console.log('🔍 Chat: Service data ID:', serviceData.id);
+
+      const success = await sendServiceMessage(
+        userProfile.full_name || user.email?.split('@')[0] || 'User',
+        userProfile.avatar_url || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
+        serviceData
+      );
+
+      if (success) {
+        setServiceOfferModalVisible(false);
+        setSelectedService(null);
+        // Scroll to bottom after sending
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } else {
+        Alert.alert('Error', 'Failed to share service. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sending service offer:', error);
+      Alert.alert('Error', 'Failed to send service offer. Please try again.');
+    }
+  };
+
+  const acceptServiceOffer = async (offerId: string) => {
+    try {
+      // TODO: Implement service offer acceptance logic
+      console.log('Accepting service offer:', offerId);
+      Alert.alert('Success', 'Service offer accepted!');
+    } catch (error) {
+      console.error('Error accepting service offer:', error);
+      Alert.alert('Error', 'Failed to accept service offer');
+    }
+  };
+
+  const rejectServiceOffer = async (offerId: string) => {
+    try {
+      // TODO: Implement service offer rejection logic
+      console.log('Rejecting service offer:', offerId);
+      Alert.alert('Success', 'Service offer rejected.');
+    } catch (error) {
+      console.error('Error rejecting service offer:', error);
+      Alert.alert('Error', 'Failed to reject service offer');
+    }
+  };
+
+  // Effect to populate edit form when editing offer is set
+  useEffect(() => {
+    if (editingOffer) {
+      setEditPrice(editingOffer.currentPrice.toString());
+      setEditDescription(editingOffer.currentDescription);
+      setEditDeliveryTime(editingOffer.currentDeliveryTime.toString());
+    }
+  }, [editingOffer]);
+
+  const handleSaveEditedOffer = async () => {
+    if (!editingOffer) return;
+
+    try {
+      const newPrice = parseFloat(editPrice);
+      const newDeliveryTime = parseInt(editDeliveryTime);
+
+      if (isNaN(newPrice) || newPrice <= 0) {
+        Alert.alert('Invalid Price', 'Please enter a valid price greater than 0');
+        return;
+      }
+
+      if (isNaN(newDeliveryTime) || newDeliveryTime <= 0) {
+        Alert.alert('Invalid Delivery Time', 'Please enter a valid delivery time in days');
+        return;
+      }
+
+      // Call the supabase service to update the offer
+      await supabaseChatService.updateServiceOffer(editingOffer.offerId, {
+        customPrice: newPrice,
+        customDescription: editDescription.trim(),
+        customDeliveryTime: newDeliveryTime,
+      });
+
+      Alert.alert('Success', 'Offer updated successfully!');
+      setEditOfferModalVisible(false);
+      setEditingOffer(null);
+      
+      // Refresh messages to show updated offer
+      // The real-time subscription should handle this automatically
+    } catch (error) {
+      console.error('Error updating service offer:', error);
+      Alert.alert('Error', 'Failed to update offer. Please try again.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditOfferModalVisible(false);
+    setEditingOffer(null);
+    setEditPrice('');
+    setEditDescription('');
+    setEditDeliveryTime('');
+  };
+
   const handleBlockUser = async () => {
     if (!participantId) return;
     
@@ -224,40 +515,66 @@ export default function ChatScreen() {
   };
 
   const handleMessageLongPress = (messageId: string, isMyMessage: boolean) => {
-    if (isMyMessage) return; // Don't allow reporting own messages
-    
     setSelectedMessageId(messageId);
     
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Report Message', 'Block User'],
-          destructiveButtonIndex: 2,
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) {
-            handleReportMessage(messageId);
-          } else if (buttonIndex === 2) {
-            handleBlockUser();
+    if (isMyMessage) {
+      // Options for user's own messages
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: ['Cancel', 'Delete Message'],
+            destructiveButtonIndex: 1,
+            cancelButtonIndex: 0,
+          },
+          (buttonIndex) => {
+            if (buttonIndex === 1) {
+              handleDeleteMessage(messageId);
+            }
           }
-        }
-      );
+        );
+      } else {
+        Alert.alert(
+          'Message Options',
+          'What would you like to do?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete Message', style: 'destructive', onPress: () => handleDeleteMessage(messageId) },
+          ]
+        );
+      }
     } else {
-      Alert.alert(
-        'Message Options',
-        'What would you like to do?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Report Message', onPress: () => handleReportMessage(messageId) },
-          { text: 'Block User', style: 'destructive', onPress: handleBlockUser },
-        ]
-      );
+      // Options for other users' messages
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: ['Cancel', 'Report Message', 'Block User'],
+            destructiveButtonIndex: 2,
+            cancelButtonIndex: 0,
+          },
+          (buttonIndex) => {
+            if (buttonIndex === 1) {
+              handleReportMessage(messageId);
+            } else if (buttonIndex === 2) {
+              handleBlockUser();
+            }
+          }
+        );
+      } else {
+        Alert.alert(
+          'Message Options',
+          'What would you like to do?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Report Message', onPress: () => handleReportMessage(messageId) },
+            { text: 'Block User', style: 'destructive', onPress: handleBlockUser },
+          ]
+        );
+      }
     }
   };
 
   const handleReportMessage = async (messageId: string) => {
-    const success = await reportMessage(messageId);
+    const success = await reportMessage(messageId, 'Inappropriate content');
     
     if (success) {
       Alert.alert(
@@ -269,6 +586,62 @@ export default function ChatScreen() {
       Alert.alert('Error', 'Failed to report message. Please try again.');
     }
   };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    Alert.alert(
+      'Delete Message',
+      'Are you sure you want to delete this message?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            const success = await deleteMessage(messageId);
+            if (!success) {
+              Alert.alert('Error', 'Failed to delete message. Please try again.');
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  const handleDeleteConversation = async () => {
+    Alert.alert(
+      'Delete Conversation',
+      'Are you sure you want to delete this entire conversation? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Delete all messages in this conversation
+              const { error } = await supabase
+                .from('messages')
+                .delete()
+                .eq('chat_id', chatId);
+              
+              if (error) {
+                Alert.alert('Error', 'Failed to delete conversation. Please try again.');
+                return;
+              }
+              
+              // Navigate back after successful deletion
+              router.back();
+            } catch (error) {
+              console.error('Error deleting conversation:', error);
+              Alert.alert('Error', 'Failed to delete conversation. Please try again.');
+            }
+          }
+        },
+      ]
+    );
+  };
+
+
 
   const showMoreOptions = () => {
     if (Platform.OS === 'ios') {
@@ -304,7 +677,7 @@ export default function ChatScreen() {
       (index > 0 && 
        Math.abs(new Date(msg.timestamp).getTime() - new Date(messages[index - 1].timestamp).getTime()) > 60000);
 
-    const showAvatar = !(msg.isMe || false) && (index === messages.length - 1 || 
+    const showAvatar = !(msg.senderId === user?.id) && (index === messages.length - 1 || 
       messages[index + 1]?.senderId !== msg.senderId);
 
     // Messages from blocked users are already filtered by the hook
@@ -318,91 +691,194 @@ export default function ChatScreen() {
             </Text>
           </View>
         )}
-        <TouchableOpacity
-          onLongPress={() => handleMessageLongPress(msg.id, msg.isMe || false)}
-          activeOpacity={0.8}
-        >
-          <View style={[
-            styles.messageContainer,
-            (msg.isMe || false) ? styles.myMessageContainer : styles.theirMessageContainer
-          ]}>
-            {!(msg.isMe || false) && showAvatar && (
-              <Image source={{ uri: msg.senderImage }} style={styles.avatar} />
-            )}
-            {!(msg.isMe || false) && !showAvatar && (
-              <View style={styles.avatarPlaceholder} />
-            )}
+        {msg.messageType === 'offer' && msg.serviceData && msg.offerId ? (
+          // Service offers span full width - no regular message wrapper
+          <ServiceOfferMessage
+            message={msg}
+            isCurrentUser={msg.senderId === user?.id}
+            onAcceptOffer={acceptServiceOffer}
+            onRejectOffer={rejectServiceOffer}
+            onEditOffer={(offerId) => {
+              console.log('Edit offer:', offerId);
+              // Find the message to get current offer details
+              const offerMessage = messages.find(m => m.offerId === offerId);
+              if (offerMessage && offerMessage.serviceData) {
+                setEditingOffer({
+                  offerId,
+                  currentPrice: offerMessage.serviceData.customPrice || offerMessage.serviceData.price || 0,
+                  currentDescription: offerMessage.serviceData.customDescription || '',
+                  currentDeliveryTime: offerMessage.serviceData.customDeliveryTime || 3,
+                  serviceTitle: offerMessage.serviceData.title || 'Service Offer'
+                });
+                setEditOfferModalVisible(true);
+              }
+            }}
+            onViewService={(serviceId) => router.push(`/service/${serviceId}`)}
+          />
+        ) : (
+          <TouchableOpacity
+            onLongPress={() => handleMessageLongPress(msg.id, msg.senderId === user?.id)}
+            activeOpacity={0.8}
+          >
             <View style={[
-              styles.messageBubble,
-              (msg.isMe || false) ? styles.myMessageBubble : styles.theirMessageBubble,
-              msg.isHidden && styles.hiddenMessageBubble,
-              msg.isReported && styles.reportedMessageBubble
+              styles.messageContainer,
+              (msg.senderId === user?.id) ? styles.myMessageContainer : styles.theirMessageContainer
             ]}>
-              {msg.isHidden ? (
-                <View style={styles.hiddenMessageContent}>
-                  <Shield size={16} color="#8E8E93" style={styles.hiddenMessageIcon} />
-                  <Text style={styles.hiddenMessageText}>
-                    {msg.moderationReason || 'This message has been hidden for safety.'}
+              {!(msg.senderId === user?.id) && showAvatar && (
+                <Image source={{ uri: msg.senderImage }} style={styles.avatar} />
+              )}
+              {!(msg.senderId === user?.id) && !showAvatar && (
+                <View style={styles.avatarPlaceholder} />
+              )}
+              <View style={[
+                styles.messageBubble,
+                (msg.senderId === user?.id) ? styles.myMessageBubble : styles.theirMessageBubble
+              ]}>
+                {msg.messageType === 'service' && msg.serviceData ? (
+                <View style={styles.serviceMessageContent}>
+                  <View style={styles.serviceHeader}>
+                    <Package size={16} color={(msg.senderId === user?.id) ? '#FFFFFF' : '#007AFF'} />
+                    <Text style={[
+                    styles.serviceLabel,
+                    (msg.senderId === user?.id) ? styles.myServiceLabel : styles.theirServiceLabel
+                  ]}>Service Shared</Text>
+                  </View>
+                  {msg.serviceData.image_url && (
+                    <Image 
+                      source={{ uri: msg.serviceData.image_url }} 
+                      style={styles.serviceImage}
+                      resizeMode="cover"
+                    />
+                  )}
+                  <Text style={[
+                    styles.serviceTitle,
+                    (msg.senderId === user?.id) ? styles.myServiceTitle : styles.theirServiceTitle
+                  ]}>
+                    {msg.serviceData.title}
                   </Text>
+                  <Text style={[
+                    styles.servicePrice,
+                    (msg.senderId === user?.id) ? styles.myServicePrice : styles.theirServicePrice
+                  ]}>
+                    {msg.serviceData.currency} {msg.serviceData.price}
+                  </Text>
+                  <Text style={[
+                    styles.serviceDescription,
+                    (msg.senderId === user?.id) ? styles.myServiceDescription : styles.theirServiceDescription
+                  ]} numberOfLines={2}>
+                    {msg.serviceData.description}
+                  </Text>
+                  <TouchableOpacity 
+                    style={[
+                      styles.viewServiceButton,
+                      (msg.senderId === user?.id) ? styles.myViewServiceButton : styles.theirViewServiceButton
+                    ]}
+                    onPress={() => {
+                      console.log('🔗 Chat: View Service clicked with serviceData:', msg.serviceData);
+                      console.log('🔗 Chat: Service ID:', msg.serviceData?.id);
+                      console.log('🔗 Chat: Service title:', msg.serviceData?.title);
+                      
+                      if (msg.serviceData?.id) {
+                        // Check if this is a custom offer with no service reference
+                        if (msg.serviceData.isCustomOffer && 
+                            (msg.serviceData.id.startsWith('custom-offer-') || 
+                             msg.serviceData.id.startsWith('fallback-'))) {
+                          console.log('🔗 Chat: This is a custom offer with no service reference, showing details in alert');
+                          Alert.alert(
+                            'Custom Service Offer',
+                            `Title: ${msg.serviceData.title}\n\nDescription: ${msg.serviceData.description}\n\nPrice: ${msg.serviceData.currency} ${msg.serviceData.price}\n\nThis is a custom offer sent in chat.`,
+                            [{ text: 'OK' }]
+                          );
+                        } else {
+                          // This is a regular service or custom offer based on existing service, navigate to service details
+                          router.push(`/service/${msg.serviceData.id}`);
+                        }
+                      } else {
+                        console.error('❌ Chat: No service ID found in serviceData');
+                        Alert.alert('Error', 'Service ID not found');
+                      }
+                    }}
+                  >
+                    <Text style={[
+                      styles.viewServiceText,
+                      (msg.senderId === user?.id) ? styles.myViewServiceText : styles.theirViewServiceText
+                    ]}>View Service</Text>
+                  </TouchableOpacity>
                 </View>
-              ) : (
-                <Text style={[
-                  styles.messageText,
-                  (msg.isMe || false) ? styles.myMessageText : styles.theirMessageText
-                ]}>
-                  {msg.message}
-                </Text>
-              )}
-              {msg.isReported && (
-                <View style={styles.reportedIndicator}>
-                  <Flag size={12} color="#FF3B30" />
-                </View>
-              )}
+                ) : (
+                  <Text style={[
+                    styles.messageText,
+                    (msg.senderId === user?.id) ? styles.myMessageText : styles.theirMessageText
+                  ]}>
+                    {msg.content}
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
-          </TouchableOpacity>
-          <View style={styles.headerInfo}>
-            <Image source={{ uri: chat.participantImage }} style={styles.headerAvatar} />
-            <View style={styles.headerText}>
-              <Text style={styles.headerName}>{chat.participantName}</Text>
-              <Text style={styles.headerStatus}>{chat.lastActive}</Text>
-            </View>
-          </View>
-          <TouchableOpacity onPress={showMoreOptions}>
-            <MoreVertical size={24} color="#1D1D1F" />
-          </TouchableOpacity>
+      {shouldRedirect ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Redirecting...</Text>
+        </View>
+      ) : (
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <ArrowLeft size={24} color="#1D1D1F" />
+            </TouchableOpacity>
+            
+            {isLoadingState || !hasValidChat ? (
+              <Text style={styles.headerTitle}>Loading...</Text>
+            ) : (
+            <>
+              <View style={styles.headerInfo}>
+                <Image source={{ uri: chat.participantImage }} style={styles.headerAvatar} />
+                <View style={styles.headerText}>
+                  <Text style={styles.headerName}>{chat.participantName}</Text>
+                  <Text style={styles.headerStatus}>{chat.lastActive}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={handleDeleteConversation}>
+                <Trash2 size={24} color="#FF3B30" />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
-        {/* Messages */}
-        <ScrollView 
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.messagesContent}
-        >
-          {messages.map(renderMessage)}
+        {/* Main Content - Loading or Messages */}
+        {isLoadingState ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Setting up chat...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Messages */}
+            <ScrollView 
+              ref={scrollViewRef}
+              style={styles.messagesContainer}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.messagesContent}
+            >
+              {messages.map(renderMessage)}
           {/* Typing Indicators */}
           {typingUsers.length > 0 && (
             <View style={styles.typingContainer}>
               <View style={styles.typingBubble}>
                 <Text style={styles.typingText}>
                   {typingUsers.length === 1 
-                    ? `${typingUsers[0].userName} is typing...`
+                    ? `${typingUsers[0]} is typing...`
                     : `${typingUsers.length} people are typing...`
                   }
                 </Text>
@@ -414,6 +890,14 @@ export default function ChatScreen() {
         {/* Input */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
+            {isUserSeller && (
+              <TouchableOpacity 
+                style={styles.serviceButton}
+                onPress={() => setServiceModalVisible(true)}
+              >
+                <Package size={20} color="#007AFF" />
+              </TouchableOpacity>
+            )}
             <TextInput
               style={styles.textInput}
               value={message}
@@ -441,7 +925,10 @@ export default function ChatScreen() {
             <Send size={20} color="white" />
           </TouchableOpacity>
         </View>
+          </>
+        )}
         </KeyboardAvoidingView>
+      )}
         
         {/* Report Modal */}
         <Modal
@@ -498,6 +985,221 @@ export default function ChatScreen() {
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Service Selection Modal */}
+        <Modal
+          visible={serviceModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setServiceModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.serviceModalContent}>
+              <View style={styles.serviceModalHeader}>
+                <Text style={styles.modalTitle}>Share a Service</Text>
+                <TouchableOpacity onPress={() => setServiceModalVisible(false)}>
+                  <X size={24} color="#8E8E93" />
+                </TouchableOpacity>
+              </View>
+              
+              {loadingServices ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#007AFF" />
+                  <Text style={styles.loadingText}>Loading services...</Text>
+                </View>
+              ) : userServices.length === 0 ? (
+                <View style={styles.emptyServicesContainer}>
+                  <Package size={48} color="#8E8E93" />
+                  <Text style={styles.emptyServicesText}>No services available</Text>
+                  <Text style={styles.emptyServicesSubtext}>Create a service to share with others</Text>
+                  <TouchableOpacity 
+                    style={styles.createServiceButton}
+                    onPress={() => {
+                      setServiceModalVisible(false);
+                      router.push('/create-service-listing');
+                    }}
+                  >
+                    <Text style={styles.createServiceButtonText}>Create Service</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <FlatList
+                  data={userServices.filter(service => service.id && service.id.trim() !== '')}
+                  keyExtractor={(item) => item.id || ''}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity 
+                      style={styles.serviceItem}
+                      onPress={() => handleShareService(item)}
+                    >
+                      {item.image_url && (
+                        <Image 
+                          source={{ uri: item.image_url }} 
+                          style={styles.serviceItemImage}
+                        />
+                      )}
+                      <View style={styles.serviceItemContent}>
+                        <Text style={styles.serviceItemTitle}>{item.title}</Text>
+                        <Text style={styles.serviceItemPrice}>
+                          {item.currency} {item.price}
+                        </Text>
+                        <Text style={styles.serviceItemDescription} numberOfLines={2}>
+                          {item.description}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.servicesList}
+                />
+              )}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Service Offer Modal */}
+        <ServiceOfferModal
+           visible={serviceOfferModalVisible}
+           service={selectedService}
+           onClose={() => {
+             setServiceOfferModalVisible(false);
+             setSelectedService(null);
+           }}
+           onSendOffer={handleSendServiceOffer}
+        />
+
+        {/* Service Selection Modal */}
+        <Modal
+          visible={serviceSelectionModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setServiceSelectionModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.selectionModalContent}>
+              <View style={styles.selectionModalHeader}>
+                <Text style={styles.modalTitle}>Share Service</Text>
+                <TouchableOpacity onPress={() => {
+                  setServiceSelectionModalVisible(false);
+                  setSelectedService(null);
+                }}>
+                  <X size={24} color="#8E8E93" />
+                </TouchableOpacity>
+              </View>
+              
+              {selectedService && (
+                <View style={styles.selectedServicePreview}>
+                  {selectedService.image_url && (
+                    <Image 
+                      source={{ uri: selectedService.image_url }} 
+                      style={styles.selectedServiceImage}
+                    />
+                  )}
+                  <View style={styles.selectedServiceInfo}>
+                    <Text style={styles.selectedServiceTitle}>{selectedService.title}</Text>
+                    <Text style={styles.selectedServicePrice}>
+                      {selectedService.currency} {selectedService.price}
+                    </Text>
+                    <Text style={styles.selectedServiceDescription} numberOfLines={2}>
+                      {selectedService.description}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.selectionButtons}>
+                <TouchableOpacity 
+                  style={styles.sendDirectlyButton}
+                  onPress={handleSendServiceDirectly}
+                >
+                  <Text style={styles.sendDirectlyButtonText}>Send As-Is</Text>
+                  <Text style={styles.sendDirectlyButtonSubtext}>Share the service without modifications</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.customizeButton}
+                  onPress={handleCustomizeService}
+                >
+                  <Text style={styles.customizeButtonText}>Customize Offer</Text>
+                  <Text style={styles.customizeButtonSubtext}>Modify price, description, or delivery time</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Edit Offer Modal */}
+        <Modal
+          visible={editOfferModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={handleCancelEdit}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.editModalContainer}>
+              <Text style={styles.editModalTitle}>Edit Service Offer</Text>
+              <Text style={styles.editModalSubtitle}>{editingOffer?.serviceTitle}</Text>
+              
+              <View style={styles.editFormContainer}>
+                {/* Price Input */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Price (RM)</Text>
+                  <TextInput
+                    style={styles.editInput}
+                    value={editPrice}
+                    onChangeText={setEditPrice}
+                    placeholder="Enter price"
+                    keyboardType="numeric"
+                    placeholderTextColor="#8E8E93"
+                  />
+                </View>
+
+                {/* Delivery Time Input */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Delivery Time (Days)</Text>
+                  <TextInput
+                    style={styles.editInput}
+                    value={editDeliveryTime}
+                    onChangeText={setEditDeliveryTime}
+                    placeholder="Enter delivery time in days"
+                    keyboardType="numeric"
+                    placeholderTextColor="#8E8E93"
+                  />
+                </View>
+
+                {/* Description Input */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Custom Description (Optional)</Text>
+                  <TextInput
+                    style={[styles.editInput, styles.editTextArea]}
+                    value={editDescription}
+                    onChangeText={setEditDescription}
+                    placeholder="Add custom description for this offer..."
+                    multiline
+                    numberOfLines={4}
+                    placeholderTextColor="#8E8E93"
+                  />
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.editModalActions}>
+                <TouchableOpacity 
+                  style={styles.editCancelButton}
+                  onPress={handleCancelEdit}
+                >
+                  <Text style={styles.editCancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.editSaveButton}
+                  onPress={handleSaveEditedOffer}
+                >
+                  <Text style={styles.editSaveButtonText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -596,7 +1298,7 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   myMessageBubble: {
-    backgroundColor: '#1D1D1F',
+    backgroundColor: '#34C759',
     borderBottomRightRadius: 6,
   },
   theirMessageBubble: {
@@ -779,4 +1481,408 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     fontStyle: 'italic',
   },
+  // Service sharing styles
+  serviceButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  serviceModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    minHeight: '50%',
+    paddingTop: 20,
+  },
+  serviceModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  emptyServicesContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyServicesText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyServicesSubtext: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  createServiceButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  createServiceButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  servicesList: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  serviceItem: {
+    flexDirection: 'row',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  serviceItemImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  serviceItemContent: {
+    flex: 1,
+  },
+  serviceItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 4,
+  },
+  serviceItemPrice: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+    marginBottom: 4,
+  },
+  serviceItemDescription: {
+    fontSize: 12,
+    color: '#8E8E93',
+    lineHeight: 16,
+  },
+  // Service message styles
+  serviceMessageContent: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    padding: 12,
+    maxWidth: 280,
+  },
+  serviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  serviceLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  serviceImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  serviceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 4,
+  },
+  servicePrice: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+    marginBottom: 6,
+  },
+  serviceDescription: {
+    fontSize: 12,
+    color: '#8E8E93',
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  viewServiceButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  viewServiceText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // My service message styles
+  myServiceLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  myServiceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 4,
+  },
+  myServicePrice: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 6,
+  },
+  myServiceDescription: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  myViewServiceButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  myViewServiceText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Their service message styles
+  theirServiceLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  theirServiceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 4,
+  },
+  theirServicePrice: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+    marginBottom: 6,
+  },
+  theirServiceDescription: {
+    fontSize: 12,
+    color: '#8E8E93',
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  theirViewServiceButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  theirViewServiceText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  selectionModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    minHeight: '50%',
+    paddingTop: 20,
+  },
+  selectionModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  selectedServicePreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  selectedServiceImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  selectedServiceInfo: {
+    flex: 1,
+  },
+  selectedServiceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 4,
+  },
+  selectedServicePrice: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+    marginBottom: 4,
+  },
+  selectedServiceDescription: {
+    fontSize: 12,
+    color: '#8E8E93',
+    lineHeight: 16,
+  },
+  selectionButtons: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  sendDirectlyButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  sendDirectlyButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  sendDirectlyButtonSubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  customizeButton: {
+    backgroundColor: '#F2F2F7',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  customizeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1D1D1F',
+  },
+  customizeButtonSubtext: {
+    fontSize: 12,
+    color: '#8E8E93',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  // Edit Modal Styles
+  editModalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    width: '90%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  editModalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    textAlign: 'center',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  editModalSubtitle: {
+    fontSize: 16,
+    color: '#8E8E93',
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  editFormContainer: {
+    paddingHorizontal: 20,
+  },
+  editInputContainer: {
+    marginBottom: 20,
+  },
+  editInputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 8,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1C1C1E',
+    backgroundColor: '#F8F9FA',
+  },
+  editTextArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  editModalActions: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+  },
+  editCancelButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+  },
+  editCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  editSaveButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+  },
+  editSaveButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
 });

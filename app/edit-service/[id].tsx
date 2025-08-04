@@ -18,19 +18,30 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceService, Service } from '@/lib/service-service';
 import { ImageService } from '@/lib/image-service';
+import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
+import CategorySelectionModal from '@/components/CategorySelectionModal';
+import ServiceAreaPicker from '@/components/ServiceAreaPicker';
 
 export default function EditServiceScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [priceType, setPriceType] = useState<'fixed' | 'starting'>('starting');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [serviceArea, setServiceArea] = useState<{
+    latitude: number;
+    longitude: number;
+    address: string;
+    radius: number;
+    description: string;
+  } | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [service, setService] = useState<Service | null>(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showServiceAreaPicker, setShowServiceAreaPicker] = useState(false);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
@@ -64,7 +75,16 @@ export default function EditServiceScreen() {
         setService(serviceData);
         setTitle(serviceData.title);
         setDescription(serviceData.description);
-        setPrice(serviceData.price.toString());
+        setSelectedCategories(serviceData.category_name ? [serviceData.category_name] : []);
+        if (serviceData.latitude && serviceData.longitude) {
+          setServiceArea({
+            latitude: serviceData.latitude,
+            longitude: serviceData.longitude,
+            address: serviceData.location || '',
+            radius: serviceData.service_area_radius || 10,
+            description: serviceData.service_area_description || ''
+          });
+        }
         setImageUri(serviceData.image_url || null);
       } catch (error) {
         console.error('Error loading service:', error);
@@ -78,28 +98,32 @@ export default function EditServiceScreen() {
     loadService();
   }, [id, user?.id, router]);
 
-  const formatPrice = (text: string): string => {
-    const cleaned = text.replace(/[^\d.]/g, '');
-    const parts = cleaned.split('.');
-    if (parts.length > 2) {
-      return parts[0] + '.' + parts.slice(1).join('');
+  const getCategoryDisplayText = (): string => {
+    if (selectedCategories.length === 0) {
+      return 'Select Category';
     }
-    if (parts[1] && parts[1].length > 2) {
-      return parts[0] + '.' + parts[1].substring(0, 2);
+    if (selectedCategories.length === 1) {
+      return selectedCategories[0];
     }
-    return cleaned;
+    return `${selectedCategories.length} Categories`;
   };
 
-  const handlePriceChange = (text: string) => {
-    const formattedPrice = formatPrice(text);
-    setPrice(formattedPrice);
+  const getServiceAreaDisplayText = (): string => {
+    if (!serviceArea) {
+      return 'Set Service Area';
+    }
+    return serviceArea.address || `${serviceArea.latitude.toFixed(4)}, ${serviceArea.longitude.toFixed(4)}`;
   };
 
-  const getDisplayPrice = (): string => {
-    if (!price) return '';
-    const numPrice = parseFloat(price);
-    if (isNaN(numPrice)) return price;
-    return numPrice.toFixed(2);
+  const handleServiceAreaSelect = (area: {
+    latitude: number;
+    longitude: number;
+    address: string;
+    radius: number;
+    description: string;
+  }) => {
+    setServiceArea(area);
+    setShowServiceAreaPicker(false);
   };
 
   const handleTitleChange = (text: string) => {
@@ -280,47 +304,31 @@ export default function EditServiceScreen() {
   };
 
   const handleUpdate = async () => {
-    if (!user || !service) {
-      Alert.alert('Error', 'Unable to update service');
+    if (!service || !user?.id) return;
+    
+    if (!title.trim() || !description.trim() || selectedCategories.length === 0 || !serviceArea) {
+      Alert.alert('Error', 'Please fill in all required fields including category and service area');
       return;
     }
 
-    if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a service title');
-      return;
-    }
-    if (!description.trim()) {
-      Alert.alert('Error', 'Please enter a service description');
-      return;
-    }
-    if (!price.trim()) {
-      Alert.alert('Error', 'Please enter a price');
-      return;
-    }
-    
-    const numPrice = parseFloat(price);
-    if (isNaN(numPrice) || numPrice <= 0) {
-      Alert.alert('Error', 'Please enter a valid price amount');
-      return;
-    }
-    
-    if (numPrice > 999999.99) {
-      Alert.alert('Error', 'Price cannot exceed RM 999,999.99');
-      return;
-    }
-
-    setIsUpdating(true);
     try {
-      const updates = {
+      setIsUpdating(true);
+      
+      const updateData = {
         title: title.trim(),
         description: description.trim(),
-        price: numPrice,
+        category_name: selectedCategories[0], // Use first selected category
+        latitude: serviceArea.latitude,
+        longitude: serviceArea.longitude,
+        location: serviceArea.address,
+        service_area_radius: serviceArea.radius,
+        service_area_description: serviceArea.description,
         image_url: imageUri || undefined,
       };
 
-      const updatedService = await ServiceService.updateService(service.id!, updates);
+      const success = await ServiceService.updateService(service.id!, updateData);
       
-      if (updatedService) {
+      if (success) {
         Alert.alert('Success', 'Service updated successfully!', [
           { text: 'OK', onPress: () => router.back() }
         ]);
@@ -329,7 +337,7 @@ export default function EditServiceScreen() {
       }
     } catch (error) {
       console.error('Error updating service:', error);
-      Alert.alert('Error', 'Failed to update service. Please try again.');
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsUpdating(false);
     }
@@ -468,84 +476,57 @@ export default function EditServiceScreen() {
             />
           </View>
 
-          {/* Price */}
+          {/* Categories */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Price</Text>
-            
-            {/* Price Type Selection */}
-            <View style={styles.priceTypeContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.priceTypeButton,
-                  priceType === 'starting' && styles.priceTypeButtonActive
-                ]}
-                onPress={() => setPriceType('starting')}
-              >
-                <Text style={[
-                  styles.priceTypeText,
-                  priceType === 'starting' && styles.priceTypeTextActive
-                ]}>Starting from</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.priceTypeButton,
-                  priceType === 'fixed' && styles.priceTypeButtonActive
-                ]}
-                onPress={() => setPriceType('fixed')}
-              >
-                <Text style={[
-                  styles.priceTypeText,
-                  priceType === 'fixed' && styles.priceTypeTextActive
-                ]}>Fixed price</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Price Input */}
-            <View style={styles.priceInputContainer}>
-              <Text style={styles.currencyPrefix}>RM</Text>
-              <TextInput
-                style={styles.priceInput}
-                value={price}
-                onChangeText={handlePriceChange}
-                placeholder="0.00"
-                placeholderTextColor="#8E8E93"
-                keyboardType="decimal-pad"
-                returnKeyType="done"
-              />
-            </View>
-            
-            {/* Price Display */}
-            {price && (
-              <View style={styles.priceDisplayContainer}>
-                <Text style={styles.priceDisplayText}>
-                  {priceType === 'starting' ? 'Starting from ' : ''}
-                  <Text style={styles.priceDisplayAmount}>RM {getDisplayPrice()}</Text>
-                </Text>
-              </View>
-            )}
-            
-            {/* Price Helper Text */}
-            <Text style={styles.priceHelperText}>
-              {priceType === 'starting' 
-                ? 'Set your base price. You can create different pricing tiers later.'
-                : 'Set a fixed price for your service.'}
-            </Text>
+            <Text style={styles.fieldLabel}>Categories</Text>
+            <TouchableOpacity 
+              style={styles.categoryButton}
+              onPress={() => setShowCategoryModal(true)}
+            >
+              <Text style={[
+                styles.categoryButtonText,
+                selectedCategories.length === 0 && styles.categoryButtonPlaceholder
+              ]}>
+                {selectedCategories.length > 0 
+                  ? `${selectedCategories.length} categor${selectedCategories.length === 1 ? 'y' : 'ies'} selected`
+                  : 'Select Categories'
+                }
+              </Text>
+              <Text style={styles.categoryButtonArrow}>▼</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Service Area */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Service Area</Text>
+            <TouchableOpacity 
+              style={styles.serviceAreaButton}
+              onPress={() => setShowServiceAreaPicker(true)}
+            >
+              <Text style={[
+                styles.serviceAreaButtonText,
+                !serviceArea && styles.serviceAreaButtonPlaceholder
+              ]}>
+                {getServiceAreaDisplayText()}
+              </Text>
+              <Text style={styles.serviceAreaButtonArrow}>▼</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Update Button */}
           <TouchableOpacity 
             style={[
               styles.updateButton, 
-              (title.trim() && description.trim() && price.trim() && !isUpdating) 
+              (title.trim() && description.trim() && selectedCategories.length > 0 && serviceArea && !isUpdating) 
                 ? styles.updateButtonActive 
                 : styles.updateButtonDisabled
             ]} 
             onPress={handleUpdate}
-            disabled={isUpdating || !title.trim() || !description.trim() || !price.trim()}
+            disabled={isUpdating || !title.trim() || !description.trim() || selectedCategories.length === 0 || !serviceArea}
           >
             <Text style={[
               styles.updateButtonText,
-              (title.trim() && description.trim() && price.trim() && !isUpdating) 
+              (title.trim() && description.trim() && selectedCategories.length > 0 && serviceArea && !isUpdating) 
                 ? styles.updateButtonTextActive 
                 : {}
             ]}>
@@ -554,6 +535,33 @@ export default function EditServiceScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Category Selection Modal */}
+      <CategorySelectionModal
+        visible={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        selectedCategories={selectedCategories}
+        onCategoriesChange={setSelectedCategories}
+      />
+
+      {/* Service Area Picker Modal */}
+      {showServiceAreaPicker && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setShowServiceAreaPicker(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Select Service Area</Text>
+              <View style={{ width: 50 }} />
+            </View>
+            <ServiceAreaPicker
+               onLocationSelect={handleServiceAreaSelect}
+               initialLocation={serviceArea || undefined}
+             />
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -668,7 +676,7 @@ const styles = StyleSheet.create({
   },
   priceTypeContainer: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 12,
     backgroundColor: '#F2F2F7',
     borderRadius: 8,
     padding: 4,
@@ -698,7 +706,6 @@ const styles = StyleSheet.create({
   },
   priceTypeTextActive: {
     color: '#1D1D1F',
-    fontWeight: '600',
   },
   priceInputContainer: {
     flexDirection: 'row',
@@ -726,12 +733,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#E8F5E8',
+    backgroundColor: '#F2F2F7',
     borderRadius: 6,
   },
   priceDisplayText: {
     fontSize: 14,
-    color: '#2D7D32',
+    color: '#34C759',
   },
   priceDisplayAmount: {
     fontWeight: '600',
@@ -742,25 +749,140 @@ const styles = StyleSheet.create({
     marginTop: 6,
     lineHeight: 16,
   },
+  selectionButton: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectionButtonText: {
+    fontSize: 16,
+    color: '#1D1D1F',
+    flex: 1,
+  },
+  selectionButtonPlaceholder: {
+    color: '#8E8E93',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 6,
+    lineHeight: 16,
+  },
+  serviceAreaInfo: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+  },
+  serviceAreaText: {
+    fontSize: 14,
+    color: '#1D1D1F',
+    marginBottom: 4,
+  },
   updateButton: {
-    backgroundColor: '#8E8E93',
+    backgroundColor: Colors.text.secondary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 20,
   },
   updateButtonActive: {
-    backgroundColor: '#1D1D1F',
+    backgroundColor: Colors.primary.main,
   },
   updateButtonDisabled: {
-    backgroundColor: '#8E8E93',
+    backgroundColor: Colors.text.secondary,
   },
   updateButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
+    color: Colors.text.white,
   },
   updateButtonTextActive: {
-    color: 'white',
+    color: Colors.text.white,
+  },
+  categoryButton: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  categoryButtonText: {
+    fontSize: 16,
+    color: '#1D1D1F',
+  },
+  categoryButtonPlaceholder: {
+    color: '#8E8E93',
+  },
+  categoryButtonArrow: {
+    fontSize: 16,
+    color: '#8E8E93',
+  },
+  serviceAreaButton: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  serviceAreaButtonText: {
+    fontSize: 16,
+    color: '#1D1D1F',
+  },
+  serviceAreaButtonPlaceholder: {
+    color: '#8E8E93',
+  },
+  serviceAreaButtonArrow: {
+    fontSize: 16,
+    color: '#8E8E93',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    margin: 20,
+    flex: 1,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1D1D1F',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    color: Colors.primary.main,
   },
 });

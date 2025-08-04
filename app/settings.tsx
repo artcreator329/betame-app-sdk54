@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, Briefcase, Share, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { Colors } from '../constants/Colors';
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -55,15 +56,20 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              console.log('🔄 Starting logout process...');
               const { error } = await signOut();
+              console.log('🔄 SignOut result:', { error });
+              
               if (error) {
+                console.error('❌ Logout error:', error);
                 Alert.alert('Error', 'Failed to sign out. Please try again.');
               } else {
-                // Navigate to homepage after successful logout
-                router.replace('/(tabs)');
+                console.log('✅ Logout successful, navigating to login...');
+                // Navigate to login screen after successful logout
+                router.replace('/auth/login');
               }
             } catch (error) {
-              console.error('Logout error:', error);
+              console.error('❌ Logout exception:', error);
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
           },
@@ -93,12 +99,16 @@ export default function SettingsScreen() {
         {/* Profile Section */}
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={{
-                uri: userProfile?.avatar_url || 'https://via.placeholder.com/80',
-              }}
-              style={styles.profileImage}
-            />
+            {userProfile?.avatar_url ? (
+              <Image
+                source={{ uri: userProfile.avatar_url }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View style={styles.defaultProfileIcon}>
+                <User size={40} color="#8E8E93" />
+              </View>
+            )}
             <TouchableOpacity style={styles.cameraButton}>
               <Camera size={16} color="white" />
             </TouchableOpacity>
@@ -164,49 +174,49 @@ export default function SettingsScreen() {
           />
 
           <SettingItem
-            icon={<Globe size={20} color="#1D1D1F" />}
+            icon={<Globe size={20} color={Colors.text.primary} />}
             title="Language & Region"
             onPress={() => console.log('Language & Region')}
           />
 
           <SettingItem
-            icon={<Moon size={20} color="#1D1D1F" />}
+            icon={<Moon size={20} color={Colors.text.primary} />}
             title="Dark Mode"
             onPress={() => console.log('Dark Mode')}
           />
           
           <SettingItem
-            icon={<HelpCircle size={20} color="#1D1D1F" />}
+            icon={<HelpCircle size={20} color={Colors.text.primary} />}
             title="Support"
             onPress={() => console.log('Support')}
           />
 
           <SettingItem
-            icon={<MessageCircle size={20} color="#1D1D1F" />}
+            icon={<MessageCircle size={20} color={Colors.text.primary} />}
             title="Contact Us"
             onPress={() => console.log('Contact Us')}
           />
           
           <SettingItem
-            icon={<Users size={20} color="#1D1D1F" />}
+            icon={<Users size={20} color={Colors.text.primary} />}
             title="Community & legal"
             onPress={() => console.log('Community & legal')}
           />
 
           <SettingItem
-            icon={<FileText size={20} color="#1D1D1F" />}
+            icon={<FileText size={20} color={Colors.text.primary} />}
             title="Terms of Service"
             onPress={() => console.log('Terms of Service')}
           />
 
           <SettingItem
-            icon={<Shield size={20} color="#1D1D1F" />}
+            icon={<Shield size={20} color={Colors.text.primary} />}
             title="Privacy Policy"
             onPress={() => console.log('Privacy Policy')}
           />
           
           <SettingItem
-            icon={<Info size={20} color="#1D1D1F" />}
+            icon={<Info size={20} color={Colors.text.primary} />}
             title="About us"
             onPress={() => console.log('About us')}
           />
@@ -232,7 +242,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
   },
   header: {
     flexDirection: 'row',
@@ -240,7 +250,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
   },
   headerIcons: {
     flexDirection: 'row',
@@ -251,7 +261,7 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     paddingHorizontal: 20,
     paddingVertical: 20,
     marginBottom: 20,
@@ -265,18 +275,26 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
   },
+  defaultProfileIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.background.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cameraButton: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#1D1D1F',
+    backgroundColor: Colors.primary.dark,
     width: 24,
     height: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: 'white',
+    borderColor: Colors.background.tertiary,
   },
   profileInfo: {
     flex: 1,
@@ -284,15 +302,15 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 2,
   },
   userTagline: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   settingsContainer: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
     marginHorizontal: 20,
     borderRadius: 12,
     paddingVertical: 8,
@@ -304,7 +322,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: Colors.background.secondary,
   },
   settingLeft: {
     flexDirection: 'row',
@@ -313,19 +331,19 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginLeft: 16,
     fontWeight: '400',
   },
   logoutText: {
-    color: '#FF3B30',
+    color: Colors.status.error,
   },
   arrow: {
     marginLeft: 12,
   },
   arrowText: {
     fontSize: 18,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     fontWeight: '300',
   },
   versionContainer: {
@@ -334,6 +352,6 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
 });

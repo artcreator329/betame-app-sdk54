@@ -1,33 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar } from 'lucide-react-native';
+import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { ImageService } from '@/lib/image-service';
 import { JobService, JobListing } from '@/lib/job-service';
-import { ServiceService } from '@/lib/service-service';
+import { Service as DBService, ServiceService } from '@/lib/service-service';
+import { Service as UIService } from '@/types/service';
+import ServiceCard from '@/components/ServiceCard';
 
-interface Service {
-  id?: string;
-  user_id: string;
-  title: string;
-  description: string;
-  price: number;
-  currency: string;
-  category_id?: string;
-  category_name?: string;
-  image_url?: string;
-  location?: string;
-  is_nearby?: boolean;
-  is_trending?: boolean;
-  rating?: number;
-  review_count?: number;
-  created_at?: string;
-  updated_at?: string;
-}
+
 
 interface Review {
   id: string;
@@ -42,8 +27,8 @@ interface Review {
 }
 
 export default function ProfileScreen() {
-  const [activeTab, setActiveTab] = useState('Services');
-  const [services, setServices] = useState<Service[]>([]);
+  const [activeTab, setActiveTab] = useState('');
+  const [services, setServices] = useState<DBService[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [jobListings, setJobListings] = useState<JobListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,11 +48,18 @@ export default function ProfileScreen() {
       return;
     }
 
+    let userServices = [];
+    let userJobs = [];
+    let reviewsWithProfiles = [];
+
     try {
       setLoading(true);
+      
       // Fetch user's services
       try {
-        const userServices = await ServiceService.getUserServices(user.id);
+        // Get all services and filter for current user to include variants
+        const allServices = await ServiceService.getAllServices();
+        userServices = allServices.filter(service => service.user_id === user.id);
         setServices(userServices);
       } catch (error) {
         console.error('Error fetching services:', error);
@@ -82,7 +74,6 @@ export default function ProfileScreen() {
         .order('created_at', { ascending: false });
 
       // Fetch reviewer profiles separately
-      let reviewsWithProfiles = [];
       if (reviewsData && reviewsData.length > 0) {
         const reviewerIds = reviewsData.map(review => review.reviewer_id);
         const { data: profilesData } = await supabase
@@ -103,14 +94,26 @@ export default function ProfileScreen() {
       }
 
       // Fetch user's job listings
-      const userJobs = await JobService.getUserJobs(user.id);
+      userJobs = await JobService.getUserJobs(user.id);
       setJobListings(userJobs);
+      
     } catch (error) {
       console.error('Error fetching profile data:', error);
     } finally {
       setLoading(false);
+      
+      // Set default active tab based on available content
+      if (!activeTab) {
+        if (userJobs.length > 0) {
+          setActiveTab('I\'m Hiring');
+        } else if (userServices.length > 0) {
+          setActiveTab('My Services');
+        } else {
+          setActiveTab('Reviews');
+        }
+      }
     }
-  }, [user]);
+  }, [user, activeTab]);
 
   useEffect(() => {
     fetchProfileData();
@@ -329,26 +332,42 @@ export default function ProfileScreen() {
                 <Text style={styles.emptyStateSuggestion}>Create your first service listing!</Text>
               </View>
             ) : (
-              services.map((service, index) => (
-                <View key={service.id || `service-${index}`} style={styles.serviceItem}>
-                  <Image source={{ uri: service.image_url || 'https://via.placeholder.com/80' }} style={styles.serviceImage} />
-                  <View style={styles.serviceInfo}>
-                    <Text style={styles.serviceTitle}>{service.title}</Text>
-                    <Text style={styles.serviceDescription} numberOfLines={3}>
-                      {service.description}
-                    </Text>
-                    <View style={styles.servicePricing}>
-                      <Text style={styles.servicePrice}>From {service.currency}{service.price}</Text>
-                      <TouchableOpacity 
-                        style={styles.seeOfferButton}
-                        onPress={() => service.id && router.push(`/service/${service.id}`)}
-                      >
-                        <Text style={styles.seeOfferText}>See Offer!</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              ))
+              services
+                .filter(service => service.id) // Only include services with valid IDs
+                .map((service, index) => {
+                 const uiService: UIService = {
+                     id: service.id!, // Non-null assertion since we filtered above
+                     title: service.title,
+                     description: service.description,
+                     price: service.price,
+                     currency: service.currency,
+                     image_url: service.image_url || 'https://via.placeholder.com/80',
+                     category_name: service.category_name || 'General',
+                     location: service.location || '',
+                     is_nearby: service.is_nearby || false,
+                     is_trending: service.is_trending || false,
+                     rating: service.rating || 0,
+                     review_count: service.review_count || 0,
+                     created_at: service.created_at || '',
+                     updated_at: service.updated_at || '',
+                     user_id: service.user_id,
+                     service_variants: service.service_variants || [],
+                     provider_name: 'You',
+                     provider_avatar: undefined,
+                     latitude: service.latitude,
+                     longitude: service.longitude,
+                     parent_service_id: service.parent_service_id
+                   };
+                 
+                 return (
+                   <ServiceCard
+                     key={service.id}
+                     service={uiService}
+                     showEditButton={true}
+                     userProfileAvatar={userProfile?.avatar_url}
+                   />
+                 );
+               })
             )}
             <TouchableOpacity 
               style={styles.addServiceButton}
@@ -471,12 +490,16 @@ export default function ProfileScreen() {
           )}
           
           <View style={styles.profileImageContainer}>
-            <Image
-              source={{
-                uri: userProfile?.avatar_url || 'https://via.placeholder.com/100',
-              }}
-              style={styles.profileImage}
-            />
+            {userProfile?.avatar_url ? (
+              <Image
+                source={{ uri: userProfile.avatar_url }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View style={styles.defaultProfileIcon}>
+                <User size={50} color="#8E8E93" />
+              </View>
+            )}
             <TouchableOpacity 
               style={styles.cameraButton}
               onPress={handleCameraPress}
@@ -606,6 +629,14 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
+  },
+  defaultProfileIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cameraButton: {
     position: 'absolute',

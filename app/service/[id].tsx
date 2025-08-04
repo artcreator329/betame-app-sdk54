@@ -13,7 +13,7 @@ import { ArrowLeft, Star, MessageCircle } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ServiceService, Service } from '@/lib/service-service';
-
+import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/lib/auth-service';
 
@@ -39,24 +39,56 @@ export default function ServiceDetailsScreen() {
   const [service, setService] = useState<Service | null>(null);
   const [serviceOwnerProfile, setServiceOwnerProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  console.log('🔍 ServiceDetailsScreen: Component mounted with ID:', id);
+  console.log('🔍 ServiceDetailsScreen: ID type:', typeof id);
+  console.log('🔍 ServiceDetailsScreen: ID value:', id);
+  console.log('🔍 ServiceDetailsScreen: ID array check:', Array.isArray(id));
+  console.log('🔍 ServiceDetailsScreen: User authenticated:', !!user);
 
   useEffect(() => {
+    // Temporarily remove auth check for debugging
+    // if (!user) {
+    //   console.log('❌ ServiceDetailsScreen: User not authenticated, redirecting to login');
+    //   router.replace('/auth/login');
+    //   return;
+    // }
+
     const fetchService = async () => {
-      if (typeof id === 'string') {
+      // Handle case where id might be an array from Expo Router
+      const serviceId = Array.isArray(id) ? id[0] : id;
+      
+      if (typeof serviceId === 'string' && serviceId.trim() !== '') {
+        console.log('🔍 ServiceDetailsScreen: Fetching service with ID:', serviceId);
+        
         try {
-          const serviceData = await ServiceService.getServiceById(id);
-          setService(serviceData);
+          const serviceData = await ServiceService.getServiceById(serviceId);
+          console.log('📦 ServiceDetailsScreen: Service data received:', serviceData);
           
-          // Fetch service owner's profile
-          if (serviceData?.user_id) {
-            const ownerProfile = await authService.getUserProfile(serviceData.user_id);
-            setServiceOwnerProfile(ownerProfile);
+          if (serviceData) {
+            setService(serviceData);
+            setError(null);
+            
+            // Fetch service owner's profile
+            if (serviceData?.user_id) {
+              const ownerProfile = await authService.getUserProfile(serviceData.user_id);
+              setServiceOwnerProfile(ownerProfile);
+            }
+          } else {
+            console.error('❌ ServiceDetailsScreen: No service found with ID:', serviceId);
+            setError(`Service with ID "${serviceId}" not found in database`);
           }
         } catch (error) {
-          console.error('Error fetching service:', error);
+          console.error('❌ ServiceDetailsScreen: Error fetching service:', error);
+          setError(`Error fetching service: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
           setIsLoading(false);
         }
+      } else {
+        console.log('❌ ServiceDetailsScreen: Invalid ID type or empty ID:', typeof serviceId, serviceId);
+        setError('Invalid service ID provided');
+        setIsLoading(false);
       }
     };
 
@@ -67,18 +99,23 @@ export default function ServiceDetailsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={Colors.primary.main} />
           <Text style={styles.loadingText}>Loading service...</Text>
         </View>
       </SafeAreaView>
     );
   }
   
-  if (!service) {
+  if (!service || error) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Service not found</Text>
+          <Text style={styles.errorText}>
+            {error || 'Service not found'}
+          </Text>
+          <Text style={styles.errorDetails}>
+            Service ID: {Array.isArray(id) ? id[0] : id}
+          </Text>
           <TouchableOpacity style={styles.backToServicesButton} onPress={() => router.push('/services')}>
             <Text style={styles.backToServicesText}>Back to Services</Text>
           </TouchableOpacity>
@@ -126,7 +163,7 @@ export default function ServiceDetailsScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <ArrowLeft size={24} color="white" />
+            <ArrowLeft size={24} color={Colors.text.white} />
           </TouchableOpacity>
         </View>
 
@@ -147,7 +184,9 @@ export default function ServiceDetailsScreen() {
                   <Text style={styles.providerName}>
                     {serviceOwnerProfile?.full_name || 'Service Provider'}
                   </Text>
-                  <Text style={styles.checkProfile}>Check provider's profile!</Text>
+                  <TouchableOpacity onPress={() => service?.user_id && router.push(`/user-profile/${service.user_id}`)}>
+                    <Text style={styles.checkProfile}>Check provider's profile!</Text>
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.ratingRow}>
                   <Star size={14} color="#FFD700" fill="#FFD700" />
@@ -223,7 +262,7 @@ export default function ServiceDetailsScreen() {
           <View style={styles.chatSection}>
             {!isOwnService ? (
               <TouchableOpacity style={styles.chatButton} onPress={handleChatWithSeller}>
-                <MessageCircle size={20} color="white" />
+                <MessageCircle size={20} color={Colors.text.white} />
                 <Text style={styles.chatButtonText}>Chat with seller</Text>
                 <Image
                   source={{ 
@@ -237,7 +276,7 @@ export default function ServiceDetailsScreen() {
                 style={styles.editButton} 
                 onPress={() => router.push(`/edit-service/${id}`)}
               >
-                <Ionicons name="pencil" size={20} color="white" />
+                <Ionicons name="pencil" size={20} color={Colors.text.white} />
                 <Text style={styles.editButtonText}>Edit Service</Text>
               </TouchableOpacity>
             )}
@@ -251,7 +290,7 @@ export default function ServiceDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: Colors.background.tertiary,
   },
   heroContainer: {
     position: 'relative',
@@ -293,7 +332,7 @@ const styles = StyleSheet.create({
   },
   listedBy: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginBottom: 2,
   },
   providerNameRow: {
@@ -304,12 +343,12 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginRight: 8,
   },
   checkProfile: {
     fontSize: 12,
-    color: '#007AFF',
+    color: Colors.primary.main,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -317,7 +356,7 @@ const styles = StyleSheet.create({
   },
   rating: {
     fontSize: 14,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginLeft: 4,
   },
   serviceSection: {
@@ -326,22 +365,22 @@ const styles = StyleSheet.create({
   serviceTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   serviceSubtitle: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   serviceDuration: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   serviceDetail: {
     fontSize: 16,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 4,
     lineHeight: 22,
   },
@@ -358,34 +397,34 @@ const styles = StyleSheet.create({
     marginRight: 12,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border.light,
   },
   selectedPricingTab: {
-    backgroundColor: '#1D1D1F',
-    borderColor: '#1D1D1F',
+    backgroundColor: Colors.text.primary,
+    borderColor: Colors.text.primary,
   },
   pricingTabText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   selectedPricingTabText: {
-    color: 'white',
+    color: Colors.text.white,
   },
   subPlanDetails: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
     padding: 16,
     borderRadius: 12,
   },
   subPlanTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   subPlanDetail: {
     fontSize: 14,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
     marginBottom: 4,
     lineHeight: 20,
   },
@@ -393,7 +432,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   chatButton: {
-    backgroundColor: '#1D1D1F',
+    backgroundColor: Colors.text.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -402,7 +441,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   chatButtonText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
@@ -422,7 +461,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
   },
   errorContainer: {
     flex: 1,
@@ -432,36 +471,42 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: '#1D1D1F',
+    color: Colors.text.primary,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  errorDetails: {
+    fontSize: 14,
+    color: Colors.text.secondary,
     marginBottom: 20,
     textAlign: 'center',
   },
   backToServicesButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary.main,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   backToServicesText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 16,
     fontWeight: '600',
   },
   priceContainer: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background.primary,
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
   },
   priceLabel: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginBottom: 4,
   },
   priceAmount: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1D1D1F',
+    color: Colors.text.primary,
   },
   categoryContainer: {
     flexDirection: 'row',
@@ -470,16 +515,16 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.text.secondary,
     marginRight: 8,
   },
   categoryName: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.text.tertiary,
     fontWeight: '500',
   },
   editButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary.main,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -489,7 +534,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   editButtonText: {
-    color: 'white',
+    color: Colors.text.white,
     fontSize: 16,
     fontWeight: '600',
   },
