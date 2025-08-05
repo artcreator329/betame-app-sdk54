@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ServiceService, Service } from '@/lib/service-service';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColors } from '@/contexts/ThemeContext';
 import { authService } from '@/lib/auth-service';
 
 interface SubPlan {
@@ -34,6 +35,7 @@ export default function ServiceDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
+  const colors = useColors();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [service, setService] = useState<Service | null>(null);
   const [serviceOwnerProfile, setServiceOwnerProfile] = useState<any>(null);
@@ -96,10 +98,10 @@ export default function ServiceDetailsScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary.main} />
-          <Text style={styles.loadingText}>Loading service...</Text>
+          <ActivityIndicator size="large" color={colors.primary.main} />
+          <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading service...</Text>
         </View>
       </SafeAreaView>
     );
@@ -107,16 +109,16 @@ export default function ServiceDetailsScreen() {
   
   if (!service || error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
+          <Text style={[styles.errorText, { color: colors.text.primary }]}>
             {error || 'Service not found'}
           </Text>
-          <Text style={styles.errorDetails}>
+          <Text style={[styles.errorDetails, { color: colors.text.secondary }]}>
             Service ID: {Array.isArray(id) ? id[0] : id}
           </Text>
-          <TouchableOpacity style={styles.backToServicesButton} onPress={() => router.push('/services')}>
-            <Text style={styles.backToServicesText}>Back to Services</Text>
+          <TouchableOpacity style={[styles.backToServicesButton, { backgroundColor: colors.primary.main }]} onPress={() => router.push('/services')}>
+            <Text style={[styles.backToServicesText, { color: colors.text.white }]}>Back to Services</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -148,8 +150,8 @@ export default function ServiceDetailsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: colors.background.primary }}>
         {/* Hero Image */}
         <View style={styles.heroContainer}>
           <Image
@@ -167,7 +169,7 @@ export default function ServiceDetailsScreen() {
         </View>
 
         {/* Content */}
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: colors.background.primary }]}>
           {/* Provider Info */}
           <View style={styles.providerSection}>
             <View style={styles.providerInfo}>
@@ -178,18 +180,18 @@ export default function ServiceDetailsScreen() {
                 style={styles.providerImage}
               />
               <View style={styles.providerDetails}>
-                <Text style={styles.listedBy}>Listed by</Text>
+                <Text style={[styles.listedBy, { color: colors.text.secondary }]}>Listed by</Text>
                 <View style={styles.providerNameRow}>
-                  <Text style={styles.providerName}>
-                    {serviceOwnerProfile?.full_name || 'Service Provider'}
-                  </Text>
+                  <Text style={[styles.providerName, { color: colors.text.primary }]}>
+                  {serviceOwnerProfile?.full_name || 'Service Provider'}
+                </Text>
                   <TouchableOpacity onPress={() => service?.user_id && router.push(`/user-profile/${service.user_id}`)}>
-                    <Text style={styles.checkProfile}>Check provider's profile!</Text>
-                  </TouchableOpacity>
+                      <Text style={[styles.checkProfile, { color: colors.primary.main }]}>Check provider's profile!</Text>
+                    </TouchableOpacity>
                 </View>
                 <View style={styles.ratingRow}>
                   <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Text style={styles.rating}>
+                  <Text style={[styles.rating, { color: colors.text.primary }]}>
                     {service.rating || 0} ({service.review_count || 0})
                   </Text>
                 </View>
@@ -199,25 +201,25 @@ export default function ServiceDetailsScreen() {
 
           {/* Service Details */}
           <View style={styles.serviceSection}>
-            <Text style={styles.serviceTitle}>{serviceDetails.title}</Text>
-            <Text style={styles.serviceSubtitle}>{serviceDetails.subtitle}</Text>
-            <Text style={styles.serviceDuration}>{serviceDetails.duration}</Text>
+            <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>{serviceDetails.title}</Text>
+            <Text style={[styles.serviceSubtitle, { color: colors.text.secondary }]}>{serviceDetails.subtitle}</Text>
+            <Text style={[styles.serviceDuration, { color: colors.text.secondary }]}>{serviceDetails.duration}</Text>
             
             <View style={styles.priceContainer}>
-              <Text style={styles.priceLabel}>Starting from</Text>
-              <Text style={styles.priceAmount}>
+              <Text style={[styles.priceLabel, { color: colors.text.secondary }]}>Starting from</Text>
+              <Text style={[styles.priceAmount, { color: colors.text.primary }]}>
                 {serviceDetails.currency}{serviceDetails.price}
               </Text>
             </View>
             
             {serviceDetails.location ? (
-              <Text style={styles.serviceDetail}>{serviceDetails.location}</Text>
+              <Text style={[styles.serviceDetail, { color: colors.text.secondary }]}>{serviceDetails.location}</Text>
             ) : null}
             
             {service.category_name && (
               <View style={styles.categoryContainer}>
-                <Text style={styles.categoryLabel}>Category:</Text>
-                <Text style={styles.categoryName}>{service.category_name}</Text>
+                <Text style={[styles.categoryLabel, { color: colors.text.secondary }]}>Category:</Text>
+                <Text style={[styles.categoryName, { color: colors.primary.main }]}>{service.category_name}</Text>
               </View>
             )}
           </View>
@@ -260,9 +262,9 @@ export default function ServiceDetailsScreen() {
           {/* Action Button - Chat or Edit based on ownership */}
           <View style={styles.chatSection}>
             {!isOwnService ? (
-              <TouchableOpacity style={styles.chatButton} onPress={handleChatWithSeller}>
-                <MessageCircle size={20} color={Colors.text.white} />
-                <Text style={styles.chatButtonText}>Chat with seller</Text>
+              <TouchableOpacity style={[styles.chatButton, { backgroundColor: colors.primary.main }]} onPress={handleChatWithSeller}>
+                <MessageCircle size={20} color={colors.text.white} />
+                <Text style={[styles.chatButtonText, { color: colors.text.white }]}>Chat with seller</Text>
                 <Image
                   source={{ 
                     uri: serviceOwnerProfile?.avatar_url || 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=100' 
@@ -272,11 +274,11 @@ export default function ServiceDetailsScreen() {
               </TouchableOpacity>
             ) : (
               <TouchableOpacity 
-                style={styles.editButton} 
+                style={[styles.editButton, { backgroundColor: colors.primary.main }]} 
                 onPress={() => router.push(`/edit-service/${id}`)}
               >
-                <Ionicons name="pencil" size={20} color={Colors.text.white} />
-                <Text style={styles.editButtonText}>Edit Service</Text>
+                <Ionicons name="pencil" size={20} color={colors.text.white} />
+                <Text style={[styles.editButtonText, { color: colors.text.white }]}>Edit Service</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -289,7 +291,6 @@ export default function ServiceDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.tertiary,
   },
   heroContainer: {
     position: 'relative',
@@ -331,7 +332,6 @@ const styles = StyleSheet.create({
   },
   listedBy: {
     fontSize: 12,
-    color: Colors.text.secondary,
     marginBottom: 2,
   },
   providerNameRow: {
@@ -342,12 +342,10 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
     marginRight: 8,
   },
   checkProfile: {
     fontSize: 12,
-    color: Colors.primary.main,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -355,7 +353,6 @@ const styles = StyleSheet.create({
   },
   rating: {
     fontSize: 14,
-    color: Colors.text.primary,
     marginLeft: 4,
   },
   serviceSection: {
@@ -364,22 +361,18 @@ const styles = StyleSheet.create({
   serviceTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: Colors.text.primary,
     marginBottom: 8,
   },
   serviceSubtitle: {
     fontSize: 16,
-    color: Colors.text.primary,
     marginBottom: 4,
   },
   serviceDuration: {
     fontSize: 16,
-    color: Colors.text.primary,
     marginBottom: 8,
   },
   serviceDetail: {
     fontSize: 16,
-    color: Colors.text.primary,
     marginBottom: 4,
     lineHeight: 22,
   },
@@ -396,34 +389,26 @@ const styles = StyleSheet.create({
     marginRight: 12,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border.light,
   },
   selectedPricingTab: {
-    backgroundColor: Colors.text.primary,
-    borderColor: Colors.text.primary,
   },
   pricingTabText: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
   },
   selectedPricingTabText: {
-    color: Colors.text.white,
   },
   subPlanDetails: {
-    backgroundColor: Colors.background.primary,
     padding: 16,
     borderRadius: 12,
   },
   subPlanTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
     marginBottom: 8,
   },
   subPlanDetail: {
     fontSize: 14,
-    color: Colors.text.primary,
     marginBottom: 4,
     lineHeight: 20,
   },
@@ -431,7 +416,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   chatButton: {
-    backgroundColor: Colors.text.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -440,7 +424,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   chatButtonText: {
-    color: Colors.text.white,
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
@@ -460,7 +443,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: Colors.text.secondary,
   },
   errorContainer: {
     flex: 1,
@@ -470,42 +452,35 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: Colors.text.primary,
     marginBottom: 20,
     textAlign: 'center',
   },
   errorDetails: {
     fontSize: 14,
-    color: Colors.text.secondary,
     marginBottom: 20,
     textAlign: 'center',
   },
   backToServicesButton: {
-    backgroundColor: Colors.primary.main,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   backToServicesText: {
-    color: Colors.text.white,
     fontSize: 16,
     fontWeight: '600',
   },
   priceContainer: {
-    backgroundColor: Colors.background.primary,
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
   },
   priceLabel: {
     fontSize: 14,
-    color: Colors.text.secondary,
     marginBottom: 4,
   },
   priceAmount: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: Colors.text.primary,
   },
   categoryContainer: {
     flexDirection: 'row',
@@ -514,16 +489,13 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     fontSize: 14,
-    color: Colors.text.secondary,
     marginRight: 8,
   },
   categoryName: {
     fontSize: 14,
-    color: Colors.text.tertiary,
     fontWeight: '500',
   },
   editButton: {
-    backgroundColor: Colors.primary.main,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -533,7 +505,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   editButtonText: {
-    color: Colors.text.white,
     fontSize: 16,
     fontWeight: '600',
   },

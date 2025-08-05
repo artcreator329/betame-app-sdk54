@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield } from 'lucide-react-native';
+import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
-import { useColors } from '@/contexts/ThemeContext';
+import { useColors, useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { ImageService } from '@/lib/image-service';
 import { JobService, JobListing } from '@/lib/job-service';
@@ -39,6 +39,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, userProfile, updateProfile } = useAuth();
   const colors = useColors();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   // Calculate average rating from reviews
   const averageRating = reviews.length > 0 
@@ -481,7 +482,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -517,6 +518,16 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.headerIcon}
+              onPress={toggleTheme}
+            >
+              {isDarkMode ? (
+                <Sun size={24} color={colors.text.primary} />
+              ) : (
+                <Moon size={24} color={colors.text.primary} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.headerIcon}
               onPress={() => router.push('/settings')}
             >
               <Settings size={24} color={colors.text.primary} />
@@ -526,47 +537,48 @@ export default function ProfileScreen() {
 
         {/* Profile Section */}
         <View style={[styles.profileSection, { backgroundColor: colors.background.primary }]}>
-          {userProfile?.bio && (
-            <View style={[styles.sellerBadge, { backgroundColor: colors.background.secondary }]}>
-              <Text style={[styles.sellerBadgeText, { color: colors.text.primary }]}>{userProfile.bio}</Text>
-            </View>
-          )}
-          
-          <View style={styles.profileImageContainer}>
-            {userProfile?.avatar_url ? (
-              <Image
-                source={{ uri: userProfile.avatar_url }}
-                style={styles.profileImage}
-              />
-            ) : (
-              <View style={[styles.defaultProfileIcon, { backgroundColor: colors.background.secondary }]}>
-                <User size={50} color={colors.text.secondary} />
-              </View>
-            )}
-            <TouchableOpacity 
-              style={styles.cameraButton}
-              onPress={handleCameraPress}
-              disabled={uploadingPhoto}
-            >
-              {uploadingPhoto ? (
-                <ActivityIndicator size="small" color="white" />
+          <View style={styles.profileContent}>
+            <View style={styles.profileImageContainer}>
+              {userProfile?.avatar_url ? (
+                <Image
+                  source={{ uri: userProfile.avatar_url }}
+                  style={styles.profileImage}
+                />
               ) : (
-                <Camera size={16} color="white" />
+                <View style={[styles.defaultProfileIcon, { backgroundColor: colors.background.secondary }]}>
+                  <User size={50} color={colors.text.secondary} />
+                </View>
               )}
-            </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.cameraButton}
+                onPress={handleCameraPress}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Camera size={16} color="white" />
+                )}
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.profileInfo}>
+              <Text style={[styles.userName, { color: colors.text.primary }]}>
+                {userProfile?.full_name || 'User'}
+              </Text>
+              {userProfile?.bio && (
+                <Text style={[styles.userBio, { color: colors.text.primary }]}>{userProfile.bio}</Text>
+              )}
+              <View style={styles.ratingContainer}>
+                <Text style={[styles.ratingText, { color: colors.text.primary }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
+                {averageRating > 0 && renderStars(averageRating)}
+                <Text style={[styles.reviewText, { color: colors.text.secondary }]}>({reviews.length} reviews)</Text>
+              </View>
+              {userProfile?.tagline && (
+                <Text style={[styles.userTagline, { color: colors.text.secondary }]}>{userProfile.tagline}</Text>
+              )}
+            </View>
           </View>
-          
-          <Text style={[styles.userName, { color: colors.text.primary }]}>
-            {userProfile?.full_name || 'User'}
-          </Text>
-          <View style={styles.ratingContainer}>
-            <Text style={[styles.ratingText, { color: colors.text.primary }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
-            {averageRating > 0 && renderStars(averageRating)}
-            <Text style={[styles.reviewText, { color: colors.text.secondary }]}>({reviews.length} reviews)</Text>
-          </View>
-          {userProfile?.tagline && (
-            <Text style={[styles.userTagline, { color: colors.text.secondary }]}>{userProfile.tagline}</Text>
-          )}
         </View>
 
         {/* Action Buttons */}
@@ -662,9 +674,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 32,
   },
+  profileContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    width: '100%',
+  },
   profileImageContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginRight: 20,
+  },
+  profileInfo: {
+    flex: 1,
+    alignItems: 'flex-start',
   },
   profileImage: {
     width: 100,
@@ -693,11 +715,18 @@ const styles = StyleSheet.create({
      fontSize: 24,
      fontWeight: '600',
      marginBottom: 8,
+     textAlign: 'left',
+   },
+  userBio: {
+     fontSize: 16,
+     fontWeight: '500',
+     marginBottom: 8,
+     textAlign: 'left',
    },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   ratingText: {
      fontSize: 16,
@@ -710,6 +739,8 @@ const styles = StyleSheet.create({
    },
   userTagline: {
      fontSize: 16,
+     textAlign: 'left',
+     marginTop: 4,
    },
   sellerBadge: {
      paddingHorizontal: 16,

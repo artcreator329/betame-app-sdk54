@@ -144,7 +144,7 @@ export default function ServicesScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
+      <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Services</Text>
         <TouchableOpacity>
           <Search size={24} color={colors.text.primary} />
@@ -152,7 +152,7 @@ export default function ServicesScreen() {
       </View>
 
       {/* Search Bar */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
+      <View style={[styles.searchContainer, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
         <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: colors.text.primary }]}
@@ -164,7 +164,7 @@ export default function ServicesScreen() {
       </View>
 
       {/* Filters */}
-      <View style={[styles.filtersContainer, { backgroundColor: colors.background.tertiary }]}>
+      <View style={styles.filtersContainer}>
         <TouchableOpacity
           style={[styles.filterDropdown, { backgroundColor: colors.background.secondary }]}
           onPress={() => setShowCategoryModal(true)}
@@ -251,6 +251,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingBottom: 20,
   },
   headerTitle: {
     fontSize: 18,
@@ -260,10 +261,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 20,
-    marginTop: 16,
+    marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
   },
   searchIcon: {
@@ -277,17 +278,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginTop: 1,
+    paddingBottom: 16,
   },
   filterDropdown: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     marginRight: 8,
   },
   filterText: {
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   content: {
     flex: 1,

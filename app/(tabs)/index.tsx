@@ -212,15 +212,22 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
-          <View style={[styles.searchContainer, { backgroundColor: colors.background.secondary }]}>
-            <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.text.primary }]}
-              placeholder="Search for Talents/Services..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor={colors.text.secondary}
+          <View style={styles.logoSearchContainer}>
+            <Image 
+              source={require('../../assets/images/icon.png')} 
+              style={styles.logoIcon}
+              resizeMode="contain"
             />
+            <View style={[styles.searchContainer, { backgroundColor: colors.background.secondary }]}>
+              <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text.primary }]}
+                placeholder="Search for Talents/Services..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor={colors.text.secondary}
+              />
+            </View>
           </View>
           {user ? (
             <View style={styles.headerIcons}>
@@ -487,16 +494,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 16,
+  },
+  logoSearchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  logoIcon: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    height: 40,
-    marginRight: 12,
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   searchIcon: {
     marginRight: 8,

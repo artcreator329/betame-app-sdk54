@@ -209,7 +209,7 @@ export default function WalletScreen() {
       />
       <SafeAreaView 
         style={[styles.container, { backgroundColor: colors.background.primary }]}
-        edges={['left', 'right', 'bottom']}
+        edges={['top', 'left', 'right', 'bottom']}
       >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
