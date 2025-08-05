@@ -11,12 +11,15 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, MapPin, Star, List, Map as MapIcon } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Star, List, Map as MapIcon, ChevronDown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { ServiceLocation } from '@/types/service-location';
 import { ServiceService, Service } from '@/lib/service-service';
 import { useAuth } from '@/contexts/AuthContext';
+import CategorySelectionModal from '@/components/CategorySelectionModal';
+import IndustrySelectionModal from '@/components/IndustrySelectionModal';
+import { Colors } from '@/constants/Colors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -48,12 +51,45 @@ export default function NearbyScreen() {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
   const [nearbyServices, setNearbyServices] = useState<ServiceLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
+  const [selectedIndustries, setSelectedIndustries] = useState<string[]>(['all']);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showIndustryModal, setShowIndustryModal] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
 
   useEffect(() => {
     loadNearbyServices();
   }, []);
+
+  const getCategoryDisplayText = () => {
+    if (selectedCategories.includes('all') || selectedCategories.length === 0) {
+      return 'All Categories';
+    }
+    if (selectedCategories.length === 1) {
+      const categoryMap: { [key: string]: string } = {
+        'fitness': 'Fitness',
+        'digital': 'Digital Marketing',
+        'education': 'Education',
+        'sports': 'Sports',
+        'beauty': 'Beauty',
+        'healthcare': 'Healthcare',
+      };
+      return categoryMap[selectedCategories[0]] || selectedCategories[0];
+    }
+    return `${selectedCategories.length} Categories`;
+  };
+
+  const getIndustryDisplayText = () => {
+    if (selectedIndustries.includes('all') || selectedIndustries.length === 0) {
+      return 'All Industries';
+    }
+    if (selectedIndustries.length === 1) {
+      const industryName = selectedIndustries[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      return industryName;
+    }
+    return `${selectedIndustries.length} Industries`;
+  };
 
   const loadNearbyServices = async () => {
     try {
@@ -85,6 +121,22 @@ export default function NearbyScreen() {
     router.push(`/service/${serviceId}`);
   };
 
+  // Filter services based on selected categories and industries
+  const filteredServices = nearbyServices.filter((service: ServiceLocation) => {
+    const matchesCategory = selectedCategories.includes('all') || 
+                           selectedCategories.length === 0 ||
+                           selectedCategories.some((cat: string) => 
+                             service.category?.toLowerCase().includes(cat.toLowerCase())
+                           );
+    const matchesIndustry = selectedIndustries.includes('all') ||
+                           selectedIndustries.some((ind: string) => {
+                             const industryName = ind.replace(/-/g, ' ');
+                             // Since ServiceLocation doesn't have industry field, we'll match against category for now
+                             return service.category?.toLowerCase().includes(industryName.toLowerCase());
+                           });
+    return matchesCategory && matchesIndustry;
+  });
+
   const renderMapView = () => (
     <View style={styles.mapContainer}>
       <MapView
@@ -99,7 +151,7 @@ export default function NearbyScreen() {
         showsUserLocation={true}
         showsMyLocationButton={true}
       >
-        {nearbyServices.map((service) => (
+        {filteredServices.map((service) => (
           <Marker
             key={service.id}
             coordinate={service.coordinate}
@@ -129,7 +181,7 @@ export default function NearbyScreen() {
       );
     }
 
-    if (nearbyServices.length === 0) {
+    if (filteredServices.length === 0) {
       return (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No nearby services found</Text>
@@ -139,7 +191,7 @@ export default function NearbyScreen() {
 
     return (
       <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
-        {nearbyServices.map((service) => (
+        {filteredServices.map((service) => (
         <TouchableOpacity
           key={service.id}
           style={styles.listItem}
@@ -174,7 +226,7 @@ export default function NearbyScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#1D1D1F" />
+          <ArrowLeft size={24} color={Colors.primary.main} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nearby Services</Text>
         <View style={styles.viewToggle}>
@@ -182,19 +234,51 @@ export default function NearbyScreen() {
             style={[styles.toggleButton, viewMode === 'map' && styles.activeToggle]}
             onPress={() => setViewMode('map')}
           >
-            <MapIcon size={20} color={viewMode === 'map' ? 'white' : '#8E8E93'} />
+            <MapIcon size={20} color={viewMode === 'map' ? Colors.text.white : Colors.primary.main} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.toggleButton, viewMode === 'list' && styles.activeToggle]}
             onPress={() => setViewMode('list')}
           >
-            <List size={20} color={viewMode === 'list' ? 'white' : '#8E8E93'} />
+            <List size={20} color={viewMode === 'list' ? Colors.text.white : Colors.primary.main} />
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* Filters */}
+      <View style={styles.filtersContainer}>
+        <TouchableOpacity
+          style={styles.filterDropdown}
+          onPress={() => setShowCategoryModal(true)}
+        >
+          <Text style={styles.filterText}>{getCategoryDisplayText()}</Text>
+          <ChevronDown size={16} color={Colors.primary.main} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.filterDropdown}
+          onPress={() => setShowIndustryModal(true)}
+        >
+          <Text style={styles.filterText}>{getIndustryDisplayText()}</Text>
+          <ChevronDown size={16} color={Colors.primary.main} />
+        </TouchableOpacity>
+      </View>
+
       {/* Content */}
       {viewMode === 'map' ? renderMapView() : renderListView()}
+
+      {/* Modals */}
+      <CategorySelectionModal
+        visible={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        selectedCategories={selectedCategories}
+        onCategoriesChange={setSelectedCategories}
+      />
+      <IndustrySelectionModal
+        visible={showIndustryModal}
+        onClose={() => setShowIndustryModal(false)}
+        selectedIndustries={selectedIndustries}
+        onIndustriesChange={setSelectedIndustries}
+      />
     </SafeAreaView>
   );
 }
@@ -377,5 +461,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#8E8E93',
     textAlign: 'center',
+  },
+  filtersContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+    gap: 12,
+  },
+  filterDropdown: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  filterText: {
+    fontSize: 14,
+    color: Colors.text.primary,
+    fontWeight: '500',
   },
 });

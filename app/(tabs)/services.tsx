@@ -14,6 +14,7 @@ import { Search, ChevronDown, SlidersHorizontal } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import ServiceCard from '@/components/ServiceCard';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
+import IndustrySelectionModal from '@/components/IndustrySelectionModal';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { Colors } from '@/constants/Colors';
@@ -45,7 +46,9 @@ const convertToUIService = (dbService: DBService): Service => ({
 
 export default function ServicesScreen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
+  const [selectedIndustries, setSelectedIndustries] = useState<string[]>(['all']);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showIndustryModal, setShowIndustryModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,15 +113,31 @@ export default function ServicesScreen() {
     return `${selectedCategories.length} Categories`;
   };
 
+  const getIndustryDisplayText = () => {
+    if (selectedIndustries.includes('all') || selectedIndustries.length === 0) {
+      return 'All Industries';
+    }
+    if (selectedIndustries.length === 1) {
+      const industryName = selectedIndustries[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      return industryName;
+    }
+    return `${selectedIndustries.length} Industries`;
+  };
+
   const filteredServices = services.filter((service: Service) => {
     const matchesCategory = selectedCategories.includes('all') || 
                            selectedCategories.length === 0 ||
                            selectedCategories.some(cat => 
                              service.category_name?.toLowerCase().includes(cat.toLowerCase())
                            );
+    const matchesIndustry = selectedIndustries.includes('all') ||
+                           selectedIndustries.some(ind => {
+                             const industryName = ind.replace(/-/g, ' ');
+                             return service.industry?.toLowerCase().includes(industryName.toLowerCase());
+                           });
     const matchesSearch = service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (service.provider_name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesIndustry && matchesSearch;
   });
 
   return (
@@ -146,14 +165,21 @@ export default function ServicesScreen() {
       {/* Filters */}
       <View style={styles.filtersContainer}>
         <TouchableOpacity
-          style={styles.categoryDropdown}
+          style={styles.filterDropdown}
           onPress={() => setShowCategoryModal(true)}
         >
-          <Text style={styles.categoryText}>{getCategoryDisplayText()}</Text>
-          <ChevronDown size={20} color={Colors.text.primary} />
+          <Text style={styles.filterText}>{getCategoryDisplayText()}</Text>
+          <ChevronDown size={16} color={Colors.text.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.filterDropdown}
+          onPress={() => setShowIndustryModal(true)}
+        >
+          <Text style={styles.filterText}>{getIndustryDisplayText()}</Text>
+          <ChevronDown size={16} color={Colors.text.primary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.filterButton}>
-          <SlidersHorizontal size={20} color={Colors.text.primary} />
+          <SlidersHorizontal size={20} color={Colors.primary.main} />
         </TouchableOpacity>
       </View>
 
@@ -198,6 +224,14 @@ export default function ServicesScreen() {
         onClose={() => setShowCategoryModal(false)}
         selectedCategories={selectedCategories}
         onCategoriesChange={setSelectedCategories}
+      />
+
+      {/* Industry Selection Modal */}
+      <IndustrySelectionModal
+        visible={showIndustryModal}
+        onClose={() => setShowIndustryModal(false)}
+        selectedIndustries={selectedIndustries}
+        onIndustriesChange={setSelectedIndustries}
       />
     </SafeAreaView>
   );
@@ -252,21 +286,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background.tertiary,
     marginTop: 1,
   },
-  categoryDropdown: {
+  filterDropdown: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     backgroundColor: Colors.background.secondary,
     borderRadius: 8,
-    marginRight: 12,
+    marginRight: 8,
   },
-  categoryText: {
-    fontSize: 16,
+  filterText: {
+    fontSize: 14,
     color: Colors.text.primary,
     fontWeight: '500',
+    flex: 1,
   },
   filterButton: {
     padding: 12,

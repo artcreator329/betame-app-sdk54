@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, View, Text } from 'react-native';
-import { Chrome as Home, Users, FileText, Bell, User } from 'lucide-react-native';
+import { Chrome as Home, Users, FileText, Bell, User, Briefcase } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 
@@ -73,8 +73,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ size, color }) => (
-            <Home size={size} color={color} />
+          tabBarIcon: ({ size }) => (
+            <Home size={size} color="white" />
           ),
         }}
       />
@@ -82,8 +82,8 @@ export default function TabLayout() {
         name="services"
         options={{
           title: 'Services',
-          tabBarIcon: ({ size, color }) => (
-            <Users size={size} color={color} />
+          tabBarIcon: ({ size }) => (
+            <Briefcase size={size} color="white" />
           ),
           href: isAuthenticated ? '/services' : null,
         }}
@@ -92,8 +92,8 @@ export default function TabLayout() {
         name="orders"
         options={{
           title: 'Orders',
-          tabBarIcon: ({ size, color }) => (
-            <FileText size={size} color={color} />
+          tabBarIcon: ({ size }) => (
+            <FileText size={size} color="white" />
           ),
           href: isAuthenticated ? '/orders' : null,
         }}
@@ -102,9 +102,9 @@ export default function TabLayout() {
         name="notifications"
         options={{
           title: 'Notifications',
-          tabBarIcon: ({ size, color }) => (
+          tabBarIcon: ({ size }) => (
             <View style={{ position: 'relative' }}>
-              <Bell size={size} color={color} />
+              <Bell size={size} color="white" />
               <NotificationBadge count={unreadCount} />
             </View>
           ),
@@ -115,8 +115,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ size, color }) => (
-            <User size={size} color={color} />
+          tabBarIcon: ({ size }) => (
+            <User size={size} color="white" />
           ),
         }}
       />

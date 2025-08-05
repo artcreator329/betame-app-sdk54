@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MessageCircle, Heart, ChevronRight, Wallet, MapPin, Calendar } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import ServiceCard from '@/components/ServiceCard';
-import NearbyServiceIcon from '@/components/NearbyServiceIcon';
+import NearbyCategoryIcon from '@/components/NearbyCategoryIcon';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { JobService, JobListing } from '@/lib/job-service';
@@ -211,30 +211,42 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.searchContainer}>
-            <Search size={20} color="#8E8E93" style={styles.searchIcon} />
+            <Search size={20} color={Colors.text.secondary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search for Talents/Services..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={Colors.text.secondary}
             />
           </View>
           {user ? (
             <View style={styles.headerIcons}>
               <TouchableOpacity 
                 style={styles.iconButton}
+                onPress={() => router.push('/wallet')}
+              >
+                <View style={styles.iconBackground}>
+                  <Wallet size={20} color={Colors.text.white} />
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.iconButton}
                 onPress={() => router.push('/favorites')}
               >
-                <Heart size={24} color="#1D1D1F" />
+                <View style={styles.iconBackground}>
+                  <Heart size={20} color={Colors.text.white} />
+                </View>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.iconButton}
                 onPress={() => router.push('/messages')}
               >
-                <View style={{ position: 'relative' }}>
-                  <MessageCircle size={24} color="#1D1D1F" />
-                  <MessageBadge count={totalUnreadCount} />
+                <View style={styles.iconBackground}>
+                  <View style={{ position: 'relative' }}>
+                    <MessageCircle size={20} color={Colors.text.white} />
+                    <MessageBadge count={totalUnreadCount} />
+                  </View>
                 </View>
               </TouchableOpacity>
             </View>
@@ -315,33 +327,33 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Nearby Services */}
+        {/* Nearby Categories */}
         <View style={styles.section}>
           <TouchableOpacity 
             style={styles.sectionHeader}
             onPress={() => router.push('/nearby')}
           >
             <Text style={styles.sectionTitle}>Nearby</Text>
-            <ChevronRight size={20} color={Colors.text.secondary} />
+            <ChevronRight size={20} color={Colors.primary.main} />
           </TouchableOpacity>
-          {isLoadingServices ? (
+          {isLoadingCategories ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={Colors.primary.main} />
-              <Text style={styles.loadingText}>Loading services...</Text>
+              <Text style={styles.loadingText}>Loading categories...</Text>
             </View>
-          ) : nearbyServices.length > 0 ? (
+          ) : categories.length > 0 ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.nearbyContent}
             >
-              {nearbyServices.map((service) => (
-                <NearbyServiceIcon key={service.id} service={service} />
+              {categories.slice(0, 8).map((category) => (
+                <NearbyCategoryIcon key={category.id} category={category} />
               ))}
             </ScrollView>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No nearby services available</Text>
+              <Text style={styles.emptyStateText}>No categories available</Text>
             </View>
           )}
         </View>
@@ -353,13 +365,13 @@ export default function HomeScreen() {
             onPress={() => router.push('/nearby')}
           >
             <Text style={styles.sectionTitle}>Trending</Text>
-            <ChevronRight size={20} color={Colors.text.secondary} />
+            <ChevronRight size={20} color={Colors.primary.main} />
           </TouchableOpacity>
           {isLoadingServices ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#007AFF" />
-              <Text style={styles.loadingText}>Loading services...</Text>
-            </View>
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={Colors.primary.main} />
+                <Text style={styles.loadingText}>Loading services...</Text>
+              </View>
           ) : trendingServices.length > 0 ? (
             <View style={styles.servicesGrid}>
               {trendingServices.slice(0, 4).map((service) => (
@@ -379,11 +391,11 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Latest Job Opportunities</Text>
-            <ChevronRight size={20} color="#8E8E93" />
+            <ChevronRight size={20} color={Colors.primary.main} />
           </View>
           {isLoadingJobs ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#007AFF" />
+              <ActivityIndicator size="small" color={Colors.primary.main} />
               <Text style={styles.loadingText}>Loading jobs...</Text>
             </View>
           ) : jobListings.length > 0 ? (
@@ -417,7 +429,7 @@ export default function HomeScreen() {
                     
                     {job.location_address && (
                       <View style={styles.jobLocation}>
-                        <MapPin size={12} color={Colors.text.secondary} />
+                        <MapPin size={12} color={Colors.primary.main} />
                         <Text style={styles.jobLocationText} numberOfLines={1}>
                           {job.location_address}
                         </Text>
@@ -431,7 +443,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                       <View style={styles.jobDate}>
-                        <Calendar size={10} color={Colors.text.secondary} />
+                        <Calendar size={10} color={Colors.primary.main} />
                         <Text style={styles.jobDateText}>
                           {job.created_at ? new Date(job.created_at).toLocaleDateString() : ''}
                         </Text>
@@ -499,6 +511,22 @@ const styles = StyleSheet.create({
   iconButton: {
     marginLeft: 12,
   },
+  iconBackground: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary.main,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.shadow.medium,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
   categoriesContainer: {
     backgroundColor: Colors.background.tertiary,
     paddingBottom: 16,
@@ -511,18 +539,28 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginRight: 12,
     borderRadius: 20,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: Colors.primary.main,
+    shadowColor: Colors.shadow.light,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   selectedCategoryTab: {
-    backgroundColor: Colors.primary.main,
+    backgroundColor: Colors.text.white,
+    borderWidth: 2,
+    borderColor: Colors.primary.main,
   },
   categoryText: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.text.primary,
+    color: Colors.text.white,
   },
   selectedCategoryText: {
-    color: Colors.text.white,
+    color: Colors.primary.main,
   },
   bannerContainer: {
     margin: 20,

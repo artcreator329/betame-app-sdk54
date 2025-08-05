@@ -5,6 +5,7 @@ export interface Service {
   price: number;
   currency: string;
   category_name: string;
+  industry?: string;
   image_url?: string;
   latitude?: number;
   longitude?: number;

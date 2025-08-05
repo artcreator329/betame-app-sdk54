@@ -252,7 +252,7 @@ export default function AdminTransactions() {
           />
         </View>
         <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color="#007AFF" />
+          <Filter size={20} color={Colors.primary.main} />
         </TouchableOpacity>
       </View>
 

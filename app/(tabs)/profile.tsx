@@ -487,7 +487,10 @@ export default function ProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity style={styles.headerIcon}>
+            <TouchableOpacity 
+              style={styles.headerIcon}
+              onPress={() => router.push('/wallet')}
+            >
               <Wallet size={24} color="#1D1D1F" />
             </TouchableOpacity>
             <TouchableOpacity 

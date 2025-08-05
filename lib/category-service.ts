@@ -16,6 +16,8 @@ export class CategoryService {
         .from('services')
         .select('category_name')
         .not('category_name', 'is', null)
+        .neq('category_name', 'General')
+        .neq('category_name', 'general')
         .order('category_name');
 
       if (error) {
@@ -23,8 +25,12 @@ export class CategoryService {
         return [];
       }
 
-      // Get unique categories and map them with icons
-      const uniqueCategories = [...new Set(data.map(item => item.category_name))];
+      // Get unique categories and map them with icons, excluding 'general' category
+      const uniqueCategories = [...new Set(data.map(item => item.category_name))]
+        .filter(categoryName => 
+          categoryName.toLowerCase() !== 'general' && 
+          categoryName.toLowerCase() !== 'other'
+        );
       
       return uniqueCategories.map((categoryName, index) => ({
         id: categoryName.toLowerCase().replace(/\s+/g, '-'),
@@ -41,54 +47,8 @@ export class CategoryService {
    * Get icon for a category based on its name
    */
   private static getCategoryIcon(categoryName: string): string {
-    const iconMap: { [key: string]: string } = {
-      'automotive': '🚗',
-      'design': '🎨',
-      'health & fitness': '💪',
-      'home services': '🏠',
-      'technology': '💻',
-      'education': '🎓',
-      'beauty': '💄',
-      'cleaning': '🧹',
-      'fitness': '💪',
-      'sports': '⚽',
-      'pet care': '🐕',
-      'food': '🍽️',
-      'photography': '📸',
-      'music': '🎵',
-      'art': '🎨',
-      'writing': '✍️',
-      'marketing': '📈',
-      'business': '💼',
-      'finance': '💰',
-      'legal': '⚖️',
-      'medical': '🏥',
-      'construction': '🔨',
-      'transportation': '🚚',
-      'entertainment': '🎭',
-      'travel': '✈️',
-      'consulting': '💡',
-      'repair': '🔧',
-      'gardening': '🌱',
-      'childcare': '👶',
-      'elderly care': '👴',
-      'tutoring': '📚',
-      'language': '🗣️',
-      'cooking': '👨‍🍳',
-      'event planning': '🎉',
-      'security': '🛡️',
-      'delivery': '📦',
-      'moving': '📦',
-      'handyman': '🔨',
-      'plumbing': '🚰',
-      'electrical': '⚡',
-      'painting': '🎨',
-      'landscaping': '🌿',
-      'veterinary': '🐾'
-    };
-
-    const key = categoryName.toLowerCase();
-    return iconMap[key] || iconMap[Object.keys(iconMap).find(k => key.includes(k)) || ''] || '📋';
+    // Return empty string to remove colored emoji icons from homepage tabs
+    return '';
   }
 
   /**
