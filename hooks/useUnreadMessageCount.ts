@@ -41,41 +41,9 @@ export function useUnreadMessageCount() {
         console.log('🚨🚨🚨 UNREAD COUNT INCREASED!!! Creating notification!');
         console.log('Previous count:', previousCount, 'New count:', totalCount);
         
-        // Get the latest message from the most recent chat to create proper notification
-        try {
-          const recentChats = await Promise.all(
-            userChats.map(async (chat) => {
-              const lastMessage = await supabaseChatService.getLastMessage(chat.id);
-              return { chat, lastMessage };
-            })
-          );
-          
-          // Find the most recent message
-          const mostRecentChat = recentChats
-            .filter(({ lastMessage }) => lastMessage)
-            .sort((a, b) => new Date(b.lastMessage!.created_at).getTime() - new Date(a.lastMessage!.created_at).getTime())[0];
-          
-          if (mostRecentChat && mostRecentChat.lastMessage) {
-            const { chat, lastMessage } = mostRecentChat;
-            
-            // Only create notification if the message is not from current user
-            if (lastMessage.sender_id !== user.id) {
-              console.log('🚨 Creating notification for message from:', lastMessage.sender_name);
-              
-              await notificationService.addChatNotification({
-                participantId: lastMessage.sender_id,
-                participantName: lastMessage.sender_name || 'Unknown User',
-                participantImage: lastMessage.sender_image || 'https://via.placeholder.com/50',
-                message: lastMessage.message,
-                chatId: chat.id
-              });
-              
-              console.log('🎉🎉🎉 NOTIFICATION CREATED FROM UNREAD COUNT CHANGE!!! 🎉🎉🎉');
-            }
-          }
-        } catch (error) {
-          console.error('❌ Error creating notification from unread count:', error);
-        }
+        // Skip notification creation from unread count change
+        // Notifications are handled by real-time message subscription below
+        console.log('📊 Unread count increased from', previousCount, 'to', totalCount);
       }
       
       setPreviousCount(totalCount);

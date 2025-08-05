@@ -411,7 +411,7 @@ export class ChatService {
           id: chat.id,
           participantId: otherParticipantId,
           participantName: otherParticipant?.full_name || 'Unknown User',
-          participantImage: otherParticipant?.avatar_url || 'https://via.placeholder.com/50',
+          participantImage: otherParticipant?.avatar_url || '',
           lastMessageAt: chat.last_message_at,
           createdAt: chat.created_at,
         };
@@ -625,21 +625,21 @@ export class ChatService {
         console.error('Error fetching participant profile:', error);
         return {
           name: 'Unknown User',
-          image: 'https://via.placeholder.com/50',
+          image: '',
           isOnline: false
         };
       }
 
       return {
         name: profile.full_name || 'Unknown User',
-        image: profile.avatar_url || 'https://via.placeholder.com/50',
+        image: profile.avatar_url || '',
         isOnline: false // TODO: Implement online status tracking
       };
     } catch (error) {
       console.error('Error fetching chat participant:', error);
       return {
         name: 'Unknown User',
-        image: 'https://via.placeholder.com/50',
+        image: '',
         isOnline: false
       };
     }

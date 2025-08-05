@@ -12,7 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
 
 function RootLayoutNav() {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -21,9 +21,28 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === 'auth';
     const inTabsGroup = segments[0] === '(tabs)';
+    const inAdminGroup = segments[0] === 'admin';
+    
+    console.log('🔍 Layout: Current segments:', segments);
+    console.log('🔍 Layout: User:', !!user, 'isAdmin:', isAdmin, 'loading:', loading);
+    console.log('🔍 Layout: Groups - auth:', inAuthGroup, 'tabs:', inTabsGroup, 'admin:', inAdminGroup);
     
     // Allow access to auth pages without authentication
     if (inAuthGroup) {
+      console.log('🔍 Layout: In auth group, allowing access');
+      return;
+    }
+    
+    // If user is authenticated and is admin, redirect to admin dashboard
+    if (user && isAdmin && !inAdminGroup) {
+      console.log('🔍 Layout: Admin user not in admin group, redirecting to /admin');
+      router.replace('/admin');
+      return;
+    }
+    
+    // If user is not admin but trying to access admin pages, redirect to homepage
+    if (inAdminGroup && (!user || !isAdmin)) {
+      router.replace('/(tabs)');
       return;
     }
     
@@ -55,12 +74,13 @@ function RootLayoutNav() {
     }
     
     // For authenticated users, allow access to all pages
-  }, [user, segments, loading]);
+  }, [user, isAdmin, segments, loading]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="auth/login" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="admin" />
       <Stack.Screen name="service/[id]" />
       <Stack.Screen name="user-profile/[userId]" />
       <Stack.Screen name="messages" />

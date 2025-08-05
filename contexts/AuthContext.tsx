@@ -4,11 +4,13 @@ import { authService } from '@/lib/auth-service';
 import { supabaseChatService } from '@/lib/supabase-chat-service';
 import { supabase } from '@/lib/supabase';
 import { notificationService } from '@/lib/notification-service';
+import { adminService } from '@/lib/admin-service';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   userProfile: any;
+  isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ user: User | null; error: any }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ user: User | null; error: any }>;
@@ -37,6 +39,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const chatSubscriptionRef = useRef<(() => void) | null>(null);
 
@@ -45,6 +48,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const profile = await authService.getUserProfile(userId);
       setUserProfile(profile);
+      
+      // Check admin status
+      const adminStatus = await adminService.isAdmin(userId);
+      console.log('🔍 AuthContext: Admin status for user', userId, ':', adminStatus);
+      setIsAdmin(adminStatus);
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
@@ -178,6 +186,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           } else {
             console.log('🔄 AuthContext: User signed out, cleaning up state');
             setUserProfile(null);
+            setIsAdmin(false);
             // Clean up chat subscription when user signs out
             cleanupChatSubscription();
           }
@@ -296,6 +305,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user,
     session,
     userProfile,
+    isAdmin,
     loading,
     signIn,
     signUp,

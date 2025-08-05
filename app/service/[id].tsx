@@ -25,9 +25,8 @@ interface SubPlan {
   details: string[];
 }
 
-// TODO: Replace with real subscription plans from database
 const getServicePlans = (serviceId: string): SubPlan[] => {
-  // Return empty array until subscription plans are implemented in database
+  // Subscription plans feature not yet implemented
   return [];
 };
 

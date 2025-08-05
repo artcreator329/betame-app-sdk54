@@ -33,57 +33,8 @@ function getPriceUnitLabel(priceUnit: string): string {
   return unitLabels[priceUnit] || '';
 }
 
-const INDUSTRIES = [
-  'Technology & Programming',
-  'Graphic Design & Creative',
-  'Writing & Translation',
-  'Digital Marketing & SEO',
-  'Video & Animation',
-  'Music & Audio',
-  'Business & Consulting',
-  'Data & Analytics',
-  'Photography',
-  'Web Development',
-  'Mobile App Development',
-  'UI/UX Design',
-  'Content Creation',
-  'Social Media Management',
-  'Virtual Assistant',
-  'Accounting & Finance',
-  'Legal Services',
-  'Education & Tutoring',
-  'Health & Wellness',
-  'Fitness & Personal Training',
-  'Beauty & Styling',
-  'Event Planning',
-  'Real Estate',
-  'Architecture & Engineering',
-  'Construction & Trades',
-  'Automotive Services',
-  'Home Services & Repair',
-  'Cleaning Services',
-  'Pet Care & Services',
-  'Food & Catering',
-  'Transportation & Delivery',
-  'Travel & Tourism',
-  'Entertainment & Performance',
-  'Gaming & Esports',
-  'Crafts & Handmade',
-  'Fashion & Apparel',
-  'Jewelry & Accessories',
-  'Sports & Recreation',
-  'Agriculture & Farming',
-  'Environmental Services',
-  'Security Services',
-  'Logistics & Supply Chain',
-  'Research & Development',
-  'Quality Assurance & Testing',
-  'Project Management',
-  'HR & Recruitment',
-  'Customer Service',
-  'Sales & Lead Generation',
-  'Other'
-];
+// TODO: Replace with dynamic industry list from database
+const INDUSTRIES: string[] = [];
 
 export default function CreateServiceListingScreen() {
   const [currentStep, setCurrentStep] = useState(1);

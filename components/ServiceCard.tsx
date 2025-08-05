@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Star, ChevronDown, ChevronUp, Edit3 } from 'lucide-react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Alert, Switch } from 'react-native';
+import { Star, ChevronDown, ChevronUp, Edit3, Eye, EyeOff } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Service } from '@/types/service';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
+import { ServiceService } from '@/lib/service-service';
 
 interface ServiceCardProps {
   service: Service;
   hideVariants?: boolean;
   showEditButton?: boolean;
+  showProfileToggle?: boolean;
   userProfileAvatar?: string;
+  onProfileVisibilityChange?: (serviceId: string, isVisible: boolean) => void;
 }
 
 interface ServiceVariantCardProps {
@@ -44,10 +47,12 @@ function ServiceVariantCard({ variant, onPress }: ServiceVariantCardProps) {
   );
 }
 
-export default function ServiceCard({ service, hideVariants = false, showEditButton = false, userProfileAvatar }: ServiceCardProps) {
+export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange }: ServiceCardProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [showVariants, setShowVariants] = useState(false);
+  const [isProfileVisible, setIsProfileVisible] = useState(service.show_on_profile ?? true);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const hasVariants = service.service_variants && service.service_variants.length > 0;
 
@@ -71,14 +76,35 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     router.push(`/edit-service/${service.id}`);
   };
 
+  const handleProfileVisibilityToggle = async (value: boolean) => {
+    if (isUpdating) return;
+    
+    setIsUpdating(true);
+    try {
+      const success = await ServiceService.toggleServiceProfileVisibility(service.id, value);
+      if (success) {
+        setIsProfileVisible(value);
+        onProfileVisibilityChange?.(service.id, value);
+      } else {
+        Alert.alert('Error', 'Failed to update profile visibility. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error toggling profile visibility:', error);
+      Alert.alert('Error', 'Failed to update profile visibility. Please try again.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const getServiceImage = () => {
-    if (service.image_url && service.image_url !== 'https://via.placeholder.com/80') {
+    if (service.image_url) {
       return service.image_url;
     }
     if (userProfileAvatar) {
       return userProfileAvatar;
     }
-    return 'https://images.pexels.com/photos/3997991/pexels-photo-3997991.jpeg?auto=compress&cs=tinysrgb&w=400';
+    // Return null to show no image instead of placeholder
+    return null;
   };
 
   const handleMainCardPress = () => {
@@ -108,16 +134,41 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     <View style={styles.cardContainer}>
       <TouchableOpacity style={styles.card} onPress={handleMainCardPress}>
         {showEditButton && (
-          <TouchableOpacity style={styles.editButton} onPress={handleEditPress}>
-            <Edit3 size={16} color="white" />
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.editButton} onPress={handleEditPress}>
+          <Edit3 size={16} color={Colors.background.primary} />
+        </TouchableOpacity>
+      )}
+      
+      {showProfileToggle && (
+        <View style={styles.profileToggleContainer}>
+          <View style={styles.profileToggleContent}>
+            {isProfileVisible ? (
+              <Eye size={14} color={Colors.text.secondary} />
+            ) : (
+              <EyeOff size={14} color={Colors.text.secondary} />
+            )}
+            <Text style={styles.profileToggleLabel}>
+              {isProfileVisible ? 'Visible on profile' : 'Hidden from profile'}
+            </Text>
+          </View>
+          <Switch
+            value={isProfileVisible}
+            onValueChange={handleProfileVisibilityToggle}
+            disabled={isUpdating}
+            trackColor={{ false: Colors.border.light, true: Colors.primary.light }}
+            thumbColor={isProfileVisible ? Colors.primary.main : Colors.background.tertiary}
+            ios_backgroundColor={Colors.border.light}
+          />
+        </View>
+      )}
+        {getServiceImage() && (
+          <Image 
+            source={{ 
+              uri: getServiceImage()!
+            }} 
+            style={styles.image} 
+          />
         )}
-        <Image 
-          source={{ 
-            uri: getServiceImage()
-          }} 
-          style={styles.image} 
-        />
         <View style={styles.content}>
           <View style={styles.ratingContainer}>
             <Star size={12} color="#FFD700" fill="#FFD700" />
@@ -192,6 +243,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    position: 'relative',
+  },
+  editButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: Colors.primary.main,
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    shadowColor: Colors.text.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   image: {
     width: '100%',
@@ -311,5 +383,38 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginBottom: 8,
     marginTop: 4,
+  },
+  profileToggleContainer: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: Colors.background.primary,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minWidth: 140,
+    zIndex: 1,
+    shadowColor: Colors.text.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  profileToggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  profileToggleLabel: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    fontWeight: '500',
   },
 });

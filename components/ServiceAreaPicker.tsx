@@ -10,8 +10,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
-import { MapPin, Plus, Minus } from 'lucide-react-native';
+import { MapPin, Plus, Minus, Search } from 'lucide-react-native';
 import * as Location from 'expo-location';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { GOOGLE_PLACES_API_KEY } from '../config/maps';
 import { Colors } from '../constants/Colors';
 
 const { width } = Dimensions.get('window');
@@ -48,6 +50,7 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
   const [radius, setRadius] = useState(initialLocation?.radius || 10);
   const [description, setDescription] = useState(initialLocation?.description || '');
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [searchText, setSearchText] = useState(initialLocation?.address || '');
 
   useEffect(() => {
     if (initialLocation) {
@@ -62,6 +65,7 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
         longitudeDelta: 0.0421,
       });
     }
+    setSearchText(initialLocation?.address || '');
   }, [initialLocation]);
 
   const getCurrentLocation = async () => {
@@ -92,6 +96,7 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
         const addr = reverseGeocode[0];
         const formattedAddress = `${addr.street || ''} ${addr.city || ''} ${addr.region || ''} ${addr.country || ''}`.trim();
         setAddress(formattedAddress);
+        setSearchText(formattedAddress);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to get current location');
@@ -110,9 +115,35 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
         const addr = reverseGeocode[0];
         const formattedAddress = `${addr.street || ''} ${addr.city || ''} ${addr.region || ''} ${addr.country || ''}`.trim();
         setAddress(formattedAddress);
+        setSearchText(formattedAddress);
       }
     } catch (error) {
       console.error('Error getting address:', error);
+    }
+  };
+
+  const handleLocationSelect = (data: any, details: any) => {
+    try {
+      if (data && details?.geometry?.location) {
+        const { lat, lng } = details.geometry.location;
+        const newLocation = { latitude: lat, longitude: lng };
+        const selectedAddress = data.description || data.structured_formatting?.main_text || 'Unknown location';
+        
+        setSelectedLocation(newLocation);
+        setAddress(selectedAddress);
+        setSearchText(selectedAddress);
+        
+        // Update map region to show selected location
+        setRegion({
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        });
+      }
+    } catch (error) {
+      console.error('Error selecting location:', error);
+      Alert.alert('Error', 'Failed to select location');
     }
   };
 
@@ -189,16 +220,63 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
 
       {/* Controls */}
       <View style={styles.controlsContainer}>
-        {/* Address Input */}
+        {/* Address Input with Autocomplete */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Service Location</Text>
-          <TextInput
-            style={styles.addressInput}
-            value={address}
-            onChangeText={setAddress}
-            placeholder="Enter your service location"
-            placeholderTextColor={Colors.text.secondary}
-          />
+          <View style={styles.searchContainer}>
+            <View style={styles.searchWrapper}>
+              <Search size={16} color={Colors.text.secondary} style={styles.searchIcon} />
+              <GooglePlacesAutocomplete
+                placeholder="Search for your service location..."
+                onPress={handleLocationSelect}
+                query={{
+                  key: GOOGLE_PLACES_API_KEY,
+                  language: 'en',
+                  components: 'country:my', // Restrict to Malaysia
+                }}
+                fetchDetails={true}
+                enablePoweredByContainer={false}
+                predefinedPlaces={[]}
+                predefinedPlacesAlwaysVisible={false}
+                listViewDisplayed={true}
+                minLength={2}
+                debounce={300}
+                textInputProps={{
+                  value: searchText,
+                  onChangeText: (text: string) => {
+                    setSearchText(text);
+                    setAddress(text);
+                  },
+                  autoCorrect: false,
+                  autoCapitalize: 'none',
+                  placeholder: "Search for your service location...",
+                  placeholderTextColor: Colors.text.secondary,
+                  style: styles.searchInput,
+                }}
+                styles={{
+                  textInputContainer: styles.searchInputContainer,
+                  listView: styles.searchResults,
+                  row: {
+                    backgroundColor: Colors.background.tertiary,
+                    padding: 12,
+                    minHeight: 44,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  },
+                  separator: {
+                    height: 0.5,
+                    backgroundColor: Colors.border.light,
+                  },
+                  description: {
+                    fontWeight: 'normal',
+                    color: Colors.text.primary,
+                    fontSize: 14,
+                    flex: 1,
+                  },
+                }}
+              />
+            </View>
+          </View>
         </View>
 
         {/* Service Area Radius */}
@@ -365,5 +443,48 @@ const styles = StyleSheet.create({
     color: Colors.text.white,
     fontSize: 16,
     fontWeight: '600',
+  },
+  searchContainer: {
+    position: 'relative',
+    zIndex: 1,
+  },
+  searchWrapper: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchIcon: {
+    position: 'absolute',
+    left: 12,
+    zIndex: 2,
+  },
+  searchInputContainer: {
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    borderBottomWidth: 0,
+  },
+  searchInput: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    paddingHorizontal: 40,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#1D1D1F',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    height: 44,
+  },
+  searchResults: {
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: 8,
+    marginTop: 4,
+    maxHeight: 200,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });

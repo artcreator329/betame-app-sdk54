@@ -26,6 +26,7 @@ export interface Service {
   updated_at?: string;
   parent_service_id?: string; // For service variants
   service_variants?: Service[]; // Child services/variants
+  show_on_profile?: boolean; // Whether to display this service on user's profile by default
 }
 
 export class ServiceService {
@@ -488,6 +489,31 @@ export class ServiceService {
     } catch (error) {
       console.error('Error in searchServices:', error);
       return [];
+    }
+  }
+
+  /**
+   * Toggle show_on_profile status for a service
+   */
+  static async toggleServiceProfileVisibility(serviceId: string, showOnProfile: boolean): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('services')
+        .update({ 
+          show_on_profile: showOnProfile,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', serviceId);
+
+      if (error) {
+        console.error('Error toggling service profile visibility:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in toggleServiceProfileVisibility:', error);
+      return false;
     }
   }
 }

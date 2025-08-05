@@ -1121,7 +1121,7 @@ export class SupabaseChatService {
       return {
         id: profile.id,
         name: profile.full_name || 'Unknown User',
-        image: profile.avatar_url || 'https://via.placeholder.com/50',
+        image: profile.avatar_url || '',
       };
     } catch (error) {
       console.error('Error fetching participant by ID:', error);

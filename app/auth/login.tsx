@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { adminService } from '@/lib/admin-service';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -23,6 +24,37 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { signIn, signUp, signInWithGoogle, signInWithApple } = useAuth();
+
+  const handleSignIn = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await signIn(email.trim(), password);
+      
+      if (result.error) {
+        Alert.alert('Error', result.error.message);
+      } else if (result.user) {
+        // Check if user is admin
+        const isAdmin = await adminService.isAdmin(result.user.id);
+        
+        if (isAdmin) {
+          // Navigate to admin dashboard
+          router.replace('/admin');
+        } else {
+          // Navigate to main app
+          router.replace('/(tabs)');
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEmailAuth = async () => {
     if (!email.trim()) {
@@ -35,30 +67,44 @@ export default function LoginScreen() {
       return;
     }
 
-    setLoading(true);
-    try {
-      let result;
-      if (isSignUp) {
-        if (!fullName.trim()) {
-          Alert.alert('Error', 'Please enter your full name');
-          setLoading(false);
-          return;
+    if (isSignUp) {
+      // Handle sign up
+      if (!fullName.trim()) {
+        Alert.alert('Error', 'Please enter your full name');
+        return;
+      }
+      
+      setLoading(true);
+      try {
+        const result = await signUp(email.trim(), password, fullName.trim());
+        
+        if (result.error) {
+          Alert.alert('Error', result.error.message);
+        } else if (result.user) {
+          console.log('🔍 Login: User authenticated:', result.user.id);
+          
+          // Check if user is admin
+          const isAdmin = await adminService.isAdmin(result.user.id);
+          console.log('🔍 Login: Admin status:', isAdmin);
+          
+          if (isAdmin) {
+            console.log('🔍 Login: Redirecting to admin dashboard');
+            // Navigate to admin dashboard
+            router.replace('/admin');
+          } else {
+            console.log('🔍 Login: Redirecting to main app');
+            // Navigate to main app
+            router.replace('/(tabs)');
+          }
         }
-        result = await signUp(email.trim(), password, fullName.trim());
-      } else {
-        result = await signIn(email.trim(), password);
+      } catch (error: any) {
+        Alert.alert('Error', error.message || 'An unexpected error occurred');
+      } finally {
+        setLoading(false);
       }
-
-      if (result.error) {
-        Alert.alert('Error', result.error.message);
-      } else {
-        // Navigation will be handled by the auth state change
-        router.replace('/(tabs)');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
+    } else {
+      // Handle sign in using the existing handleSignIn function
+      await handleSignIn();
     }
   };
 
@@ -68,6 +114,9 @@ export default function LoginScreen() {
       const { error } = await signInWithGoogle();
       if (error) {
         Alert.alert('Error', error.message);
+      } else {
+        // The routing will be handled by the AuthContext and main layout
+        // based on admin status, so we don't need to navigate here
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'An unexpected error occurred');
@@ -82,6 +131,9 @@ export default function LoginScreen() {
       const { error } = await signInWithApple();
       if (error) {
         Alert.alert('Error', error.message);
+      } else {
+        // The routing will be handled by the AuthContext and main layout
+        // based on admin status, so we don't need to navigate here
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'An unexpected error occurred');

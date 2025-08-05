@@ -20,6 +20,7 @@ export interface Service {
   provider_avatar?: string;
   parent_service_id?: string; // For service variants
   service_variants?: Service[]; // Child services/variants
+  show_on_profile?: boolean; // Whether to display this service on user's profile by default
 }
 
 export interface Category {

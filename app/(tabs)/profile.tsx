@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User } from 'lucide-react-native';
+import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +11,7 @@ import { JobService, JobListing } from '@/lib/job-service';
 import { Service as DBService, ServiceService } from '@/lib/service-service';
 import { Service as UIService } from '@/types/service';
 import ServiceCard from '@/components/ServiceCard';
+import { adminService } from '@/lib/admin-service';
 
 
 
@@ -28,11 +29,12 @@ interface Review {
 
 export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState('');
-  const [services, setServices] = useState<DBService[]>([]);
+  const [services, setServices] = useState<any[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [jobListings, setJobListings] = useState<JobListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
   const { user, userProfile, updateProfile } = useAuth();
 
@@ -42,6 +44,17 @@ export default function ProfileScreen() {
     : 0;
 
   // Fetch user's services and reviews from Supabase
+  const handleProfileVisibilityChange = useCallback(async (serviceId: string, isVisible: boolean) => {
+    // Update the local state immediately for better UX
+    setServices(prevServices => 
+      prevServices.map(service => 
+        service.id === serviceId 
+          ? { ...service, show_on_profile: isVisible }
+          : service
+      )
+    );
+  }, []);
+
   const fetchProfileData = useCallback(async () => {
     if (!user) {
       setLoading(false);
@@ -117,7 +130,20 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     fetchProfileData();
+    checkAdminStatus();
   }, [fetchProfileData]);
+
+  const checkAdminStatus = async () => {
+    if (!user) return;
+    
+    try {
+      const adminStatus = await adminService.isAdmin(user.id);
+      setIsAdmin(adminStatus);
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setIsAdmin(false);
+    }
+  };
 
   // Refetch profile data when screen comes into focus
   useFocusEffect(
@@ -341,7 +367,7 @@ export default function ProfileScreen() {
                      description: service.description,
                      price: service.price,
                      currency: service.currency,
-                     image_url: service.image_url || 'https://via.placeholder.com/80',
+                     image_url: service.image_url || undefined,
                      category_name: service.category_name || 'General',
                      location: service.location || '',
                      is_nearby: service.is_nearby || false,
@@ -356,7 +382,8 @@ export default function ProfileScreen() {
                      provider_avatar: undefined,
                      latitude: service.latitude,
                      longitude: service.longitude,
-                     parent_service_id: service.parent_service_id
+                     parent_service_id: service.parent_service_id,
+                     show_on_profile: service.show_on_profile ?? true
                    };
                  
                  return (
@@ -364,7 +391,9 @@ export default function ProfileScreen() {
                      key={service.id}
                      service={uiService}
                      showEditButton={true}
+                     showProfileToggle={true}
                      userProfileAvatar={userProfile?.avatar_url}
+                     onProfileVisibilityChange={handleProfileVisibilityChange}
                    />
                  );
                })
@@ -399,7 +428,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity key={review.id} style={styles.reviewCard}>
                   <View style={styles.reviewHeader}>
                     <Image
-                      source={{ uri: review.reviewer_profile?.avatar_url || 'https://via.placeholder.com/40' }}
+                      source={{ uri: review.reviewer_profile?.avatar_url || undefined }}
                       style={styles.reviewerImage}
                     />
                     <View style={styles.reviewerInfo}>
@@ -467,6 +496,14 @@ export default function ProfileScreen() {
             >
               <Trophy size={24} color="#1D1D1F" />
             </TouchableOpacity>
+            {isAdmin && (
+              <TouchableOpacity 
+                style={[styles.headerIcon, styles.adminIcon]}
+                onPress={() => router.push('/admin-dashboard')}
+              >
+                <Shield size={24} color="#FF6B35" />
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.headerIcon}>
@@ -1052,5 +1089,10 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     fontSize: 16,
     fontWeight: '500',
+  },
+  adminIcon: {
+    backgroundColor: '#FFF5F2',
+    borderWidth: 1,
+    borderColor: '#FF6B35',
   },
 });

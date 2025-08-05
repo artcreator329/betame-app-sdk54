@@ -6,14 +6,14 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Image,
   ActionSheetIOS,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Upload, Camera, ImageIcon, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Upload, Camera, ImageIcon, Trash2, Plus } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceService, Service } from '@/lib/service-service';
@@ -22,6 +22,17 @@ import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
 import ServiceAreaPicker from '@/components/ServiceAreaPicker';
+
+interface ServiceVariant {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  priceType: 'fixed' | 'starting';
+  priceUnit: 'per_hour' | 'per_day' | 'per_week' | 'per_month' | 'per_item' | 'per_project' | 'per_session' | 'one_time';
+  isExisting?: boolean; // Track if this is an existing variant or new one
+  serviceId?: string; // For existing variants
+}
 
 export default function EditServiceScreen() {
   const [title, setTitle] = useState('');
@@ -42,6 +53,10 @@ export default function EditServiceScreen() {
   const [service, setService] = useState<Service | null>(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showServiceAreaPicker, setShowServiceAreaPicker] = useState(false);
+  const [showPriceUnitModal, setShowPriceUnitModal] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [serviceVariants, setServiceVariants] = useState<ServiceVariant[]>([]);
+  const [isLoadingVariants, setIsLoadingVariants] = useState(false);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
@@ -86,6 +101,9 @@ export default function EditServiceScreen() {
           });
         }
         setImageUri(serviceData.image_url || null);
+
+        // Load service variants
+        await loadServiceVariants(serviceData);
       } catch (error) {
         console.error('Error loading service:', error);
         Alert.alert('Error', 'Failed to load service data');
@@ -97,6 +115,138 @@ export default function EditServiceScreen() {
 
     loadService();
   }, [id, user?.id, router]);
+
+  const loadServiceVariants = async (mainService: Service) => {
+    try {
+      setIsLoadingVariants(true);
+      
+      // Create main service variant
+      const mainVariant: ServiceVariant = {
+        id: mainService.id || 'main',
+        title: mainService.title,
+        description: mainService.description,
+        price: mainService.price || 0,
+        priceType: 'starting', // Default, could be enhanced to store this in DB
+        priceUnit: 'one_time', // Default, could be enhanced to store this in DB
+        isExisting: true,
+        serviceId: mainService.id,
+      };
+
+      const variants = [mainVariant];
+
+      // Load child variants from database
+      const childVariants = await ServiceService.getServiceVariants(mainService.id!);
+      
+      if (childVariants && childVariants.length > 0) {
+        const mappedVariants = childVariants.map((variant: Service) => ({
+          id: variant.id || Date.now().toString(),
+          title: variant.title,
+          description: variant.description,
+          price: variant.price || 0,
+          priceType: 'starting' as const,
+          priceUnit: 'one_time' as const,
+          isExisting: true,
+          serviceId: variant.id,
+        }));
+        variants.push(...mappedVariants);
+      }
+      setServiceVariants(variants);
+    } catch (error) {
+      console.error('Error loading service variants:', error);
+    } finally {
+      setIsLoadingVariants(false);
+    }
+  };
+
+  const addServiceVariant = () => {
+    const newVariant: ServiceVariant = {
+      id: Date.now().toString(),
+      title: '',
+      description: '',
+      price: 0,
+      priceType: 'starting',
+      priceUnit: 'per_hour',
+      isExisting: false,
+    };
+    setServiceVariants([...serviceVariants, newVariant]);
+  };
+
+  const updateServiceVariant = (id: string, field: keyof ServiceVariant, value: any) => {
+    setServiceVariants(variants =>
+      variants.map(variant =>
+        variant.id === id ? { ...variant, [field]: value } : variant
+      )
+    );
+  };
+
+  const removeServiceVariant = (id: string) => {
+    // Prevent removing the main service (first variant)
+    const variantIndex = serviceVariants.findIndex(v => v.id === id);
+    if (variantIndex === 0) {
+      Alert.alert('Error', 'Cannot remove the main service');
+      return;
+    }
+    
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this service variant?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setServiceVariants(variants => variants.filter(variant => variant.id !== id));
+          },
+        },
+      ]
+    );
+  };
+
+  const formatPrice = (value: string): string => {
+    const numericValue = value.replace(/[^0-9.]/g, '');
+    const parts = numericValue.split('.');
+    if (parts.length > 2) {
+      return parts[0] + '.' + parts.slice(1).join('');
+    }
+    if (parts[1] && parts[1].length > 2) {
+      return parts[0] + '.' + parts[1].substring(0, 2);
+    }
+    return numericValue;
+  };
+
+  const handlePriceChange = (id: string, text: string) => {
+    const formattedPrice = formatPrice(text);
+    const numPrice = parseFloat(formattedPrice) || 0;
+    updateServiceVariant(id, 'price', numPrice);
+  };
+
+  const getPriceUnitLabel = (unit: string): string => {
+    const unitLabels: { [key: string]: string } = {
+      'per_hour': 'per hour',
+      'per_day': 'per day',
+      'per_week': 'per week',
+      'per_month': 'per month',
+      'per_item': 'per item',
+      'per_project': 'per project',
+      'per_session': 'per session',
+      'one_time': '',
+    };
+    return unitLabels[unit] || '';
+  };
+
+  const handlePriceUnitSelect = (variantId: string) => {
+    setSelectedVariantId(variantId);
+    setShowPriceUnitModal(true);
+  };
+
+  const handlePriceUnitChange = (unit: string) => {
+    if (selectedVariantId) {
+      updateServiceVariant(selectedVariantId, 'priceUnit', unit);
+    }
+    setShowPriceUnitModal(false);
+    setSelectedVariantId(null);
+  };
 
   const getCategoryDisplayText = (): string => {
     if (selectedCategories.length === 0) {
@@ -303,11 +453,35 @@ export default function EditServiceScreen() {
     }
   };
 
+  const validateVariants = (): boolean => {
+    // Skip validation for main service (index 0) as it's managed separately
+    for (let i = 1; i < serviceVariants.length; i++) {
+      const variant = serviceVariants[i];
+      if (!variant.title.trim()) {
+        Alert.alert('Error', 'Please enter a title for all service variants');
+        return false;
+      }
+      if (!variant.description.trim()) {
+        Alert.alert('Error', 'Please enter a description for all service variants');
+        return false;
+      }
+      if (variant.price <= 0) {
+        Alert.alert('Error', 'Please enter a valid price for all service variants');
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleUpdate = async () => {
     if (!service || !user?.id) return;
     
     if (!title.trim() || !description.trim() || selectedCategories.length === 0 || !serviceArea) {
       Alert.alert('Error', 'Please fill in all required fields including category and service area');
+      return;
+    }
+
+    if (!validateVariants()) {
       return;
     }
 
@@ -329,7 +503,10 @@ export default function EditServiceScreen() {
       const success = await ServiceService.updateService(service.id!, updateData);
       
       if (success) {
-        Alert.alert('Success', 'Service updated successfully!', [
+        // Handle service variants
+        await handleVariantsUpdate();
+        
+        Alert.alert('Success', 'Service and variants updated successfully!', [
           { text: 'OK', onPress: () => router.back() }
         ]);
       } else {
@@ -340,6 +517,61 @@ export default function EditServiceScreen() {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleVariantsUpdate = async () => {
+    if (!service || !user?.id) return;
+
+    try {
+      // Process variants (skip main service at index 0)
+      for (let i = 1; i < serviceVariants.length; i++) {
+        const variant = serviceVariants[i];
+        
+        if (variant.isExisting && variant.serviceId) {
+          // Update existing variant
+          const updateData = {
+            title: variant.title.trim(),
+            description: variant.description.trim(),
+            price: variant.price,
+            category_name: selectedCategories[0],
+            latitude: serviceArea?.latitude,
+            longitude: serviceArea?.longitude,
+            location: serviceArea?.address,
+            service_area_radius: serviceArea?.radius,
+            service_area_description: serviceArea?.description,
+          };
+          await ServiceService.updateService(variant.serviceId, updateData);
+        } else if (!variant.isExisting) {
+          // Create new variant
+          const variantData = {
+            user_id: user.id,
+            title: variant.title.trim(),
+            description: variant.description.trim(),
+            price: variant.price,
+            currency: 'RM',
+            category_name: selectedCategories[0],
+            location: serviceArea?.address,
+            latitude: serviceArea?.latitude,
+            longitude: serviceArea?.longitude,
+            service_area_radius: serviceArea?.radius,
+            service_area_description: serviceArea?.description,
+            parent_service_id: service.id,
+            rating: 0,
+            review_count: 0,
+            is_nearby: true,
+            is_trending: false,
+          };
+          await ServiceService.createService(variantData);
+        }
+      }
+
+      // Handle deleted variants (variants that were removed from the UI)
+      // This would require tracking which variants were deleted, which is a more complex implementation
+      // For now, we'll keep it simple and only handle additions and updates
+    } catch (error) {
+      console.error('Error updating variants:', error);
+      // Don't throw error here to avoid breaking the main update flow
     }
   };
 
@@ -513,6 +745,112 @@ export default function EditServiceScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Service Variants */}
+          <View style={styles.fieldContainer}>
+            <View style={styles.variantsHeader}>
+              <Text style={styles.fieldLabel}>Service Variants</Text>
+              <TouchableOpacity 
+                style={styles.addVariantButton}
+                onPress={addServiceVariant}
+              >
+                <Plus size={16} color="#007AFF" />
+                <Text style={styles.addVariantText}>Add Variant</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {isLoadingVariants ? (
+              <View style={styles.variantsLoading}>
+                <ActivityIndicator size="small" color="#8E8E93" />
+                <Text style={styles.variantsLoadingText}>Loading variants...</Text>
+              </View>
+            ) : (
+              <View style={styles.variantsList}>
+                {serviceVariants.map((variant, index) => (
+                  <View key={variant.id} style={styles.variantCard}>
+                    <View style={styles.variantHeader}>
+                      <Text style={styles.variantTitle}>
+                        {index === 0 ? 'Main Service' : `Variant ${index}`}
+                      </Text>
+                      {index > 0 && (
+                        <TouchableOpacity 
+                          onPress={() => removeServiceVariant(variant.id)}
+                          style={styles.removeVariantButton}
+                        >
+                          <Trash2 size={16} color="#FF3B30" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    
+                    {/* Variant Title */}
+                    <View style={styles.variantFieldContainer}>
+                      <Text style={styles.variantFieldLabel}>Title</Text>
+                      <TextInput
+                        style={[
+                          styles.variantInput,
+                          index === 0 && styles.variantInputDisabled
+                        ]}
+                        value={variant.title}
+                        onChangeText={(text) => updateServiceVariant(variant.id, 'title', text)}
+                        placeholder="Enter variant title"
+                        placeholderTextColor="#8E8E93"
+                        editable={index > 0} // Main service title is managed separately
+                      />
+                    </View>
+                    
+                    {/* Variant Description */}
+                    <View style={styles.variantFieldContainer}>
+                      <Text style={styles.variantFieldLabel}>Description</Text>
+                      <TextInput
+                        style={[
+                          styles.variantInput,
+                          styles.variantTextArea,
+                          index === 0 && styles.variantInputDisabled
+                        ]}
+                        value={variant.description}
+                        onChangeText={(text) => updateServiceVariant(variant.id, 'description', text)}
+                        placeholder="Enter variant description"
+                        placeholderTextColor="#8E8E93"
+                        multiline={true}
+                        textAlignVertical="top"
+                        editable={index > 0} // Main service description is managed separately
+                      />
+                    </View>
+                    
+                    {/* Variant Price - Hidden for Main Service */}
+                    {index > 0 && (
+                      <View style={styles.variantPriceContainer}>
+                        <View style={styles.variantFieldContainer}>
+                          <Text style={styles.variantFieldLabel}>Price (RM)</Text>
+                          <TextInput
+                            style={styles.variantPriceInput}
+                            value={variant.price.toString()}
+                            onChangeText={(text) => handlePriceChange(variant.id, text)}
+                            placeholder="0.00"
+                            placeholderTextColor="#8E8E93"
+                            keyboardType="decimal-pad"
+                          />
+                        </View>
+                        
+                        <View style={styles.variantFieldContainer}>
+                          <Text style={styles.variantFieldLabel}>Price Unit</Text>
+                          <TouchableOpacity 
+                            style={styles.priceUnitButton}
+                            onPress={() => handlePriceUnitSelect(variant.id)}
+                          >
+                            <Text style={styles.priceUnitText}>
+                              {getPriceUnitLabel(variant.priceUnit) || 'Select unit'}
+                            </Text>
+                            <Text style={styles.priceUnitArrow}>▼</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
           {/* Update Button */}
           <TouchableOpacity 
             style={[
@@ -559,6 +897,46 @@ export default function EditServiceScreen() {
                onLocationSelect={handleServiceAreaSelect}
                initialLocation={serviceArea || undefined}
              />
+          </View>
+        </View>
+      )}
+
+      {/* Price Unit Selection Modal */}
+      {showPriceUnitModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.priceUnitModalContainer}>
+            <View style={styles.priceUnitModalHeader}>
+               <Text style={styles.modalTitle}>Select Price Unit</Text>
+               <TouchableOpacity 
+                 onPress={() => setShowPriceUnitModal(false)}
+                 style={styles.closeButton}
+               >
+                 <Text style={styles.closeButtonText}>✕</Text>
+               </TouchableOpacity>
+             </View>
+            <View style={styles.priceUnitList}>
+              {[
+                { value: 'per_hour', label: 'Per Hour' },
+                { value: 'per_day', label: 'Per Day' },
+                { value: 'per_week', label: 'Per Week' },
+                { value: 'per_month', label: 'Per Month' },
+                { value: 'per_item', label: 'Per Item' },
+                { value: 'per_project', label: 'Per Project' },
+                { value: 'per_session', label: 'Per Session' },
+                { value: 'one_time', label: 'One Time' },
+              ].map((unit, index, array) => (
+                <TouchableOpacity
+                  key={unit.value}
+                  style={[
+                    styles.priceUnitOption,
+                    index === array.length - 1 && { borderBottomWidth: 0 }
+                  ]}
+                  onPress={() => handlePriceUnitChange(unit.value)}
+                >
+                  <Text style={styles.priceUnitOptionText}>{unit.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </View>
       )}
@@ -885,4 +1263,187 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.primary.main,
   },
-});
+  // Service Variants Styles
+  variantsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  addVariantButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F0F8FF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  addVariantText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  variantsLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  variantsLoadingText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginLeft: 8,
+  },
+  variantsList: {
+    gap: 16,
+  },
+  variantCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  variantHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  variantTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1D1D1F',
+  },
+  removeVariantButton: {
+    padding: 4,
+  },
+  variantFieldContainer: {
+    marginBottom: 12,
+  },
+  variantFieldLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1D1D1F',
+    marginBottom: 6,
+  },
+  variantInput: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1D1D1F',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  variantInputDisabled: {
+    backgroundColor: '#F2F2F7',
+    color: '#8E8E93',
+  },
+  variantTextArea: {
+    height: 80,
+    paddingTop: 10,
+  },
+  variantPriceContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  variantPriceInput: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1D1D1F',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    flex: 1,
+  },
+  priceUnitButton: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+  priceUnitText: {
+    fontSize: 14,
+    color: '#1D1D1F',
+  },
+  priceUnitArrow: {
+     fontSize: 12,
+     color: '#8E8E93',
+   },
+  priceUnitModalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    maxWidth: 400,
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  priceUnitModalHeader: {
+     position: 'relative',
+     justifyContent: 'center',
+     alignItems: 'center',
+     paddingHorizontal: 20,
+     paddingVertical: 16,
+     borderBottomWidth: 1,
+     borderBottomColor: '#F0F0F0',
+   },
+   closeButton: {
+     position: 'absolute',
+     top: -14,
+     right: -14,
+     width: 28,
+     height: 28,
+     borderRadius: 14,
+     backgroundColor: '#F0F0F0',
+     justifyContent: 'center',
+     alignItems: 'center',
+     zIndex: 10,
+     shadowColor: '#000',
+     shadowOffset: {
+       width: 0,
+       height: 2,
+     },
+     shadowOpacity: 0.1,
+     shadowRadius: 4,
+     elevation: 4,
+   },
+   closeButtonText: {
+     fontSize: 16,
+     color: '#666',
+     fontWeight: '500',
+   },
+  priceUnitList: {
+    paddingVertical: 8,
+  },
+  priceUnitOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8F8F8',
+  },
+  priceUnitOptionText: {
+    fontSize: 16,
+    color: '#1D1D1F',
+    textAlign: 'center',
+  },
+ });

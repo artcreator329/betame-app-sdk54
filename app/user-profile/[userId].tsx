@@ -189,7 +189,9 @@ export default function UserProfileScreen() {
                   style={styles.serviceItem}
                   onPress={() => service.id && router.push(`/service/${service.id}`)}
                 >
-                  <Image source={{ uri: service.image_url || 'https://via.placeholder.com/80' }} style={styles.serviceImage} />
+                  {service.image_url && (
+                  <Image source={{ uri: service.image_url }} style={styles.serviceImage} />
+                )}
                   <View style={styles.serviceInfo}>
                     <Text style={styles.serviceTitle}>{service.title}</Text>
                     <Text style={styles.serviceDescription} numberOfLines={3}>
@@ -229,7 +231,7 @@ export default function UserProfileScreen() {
                   <View style={styles.reviewHeader}>
                     <Image
                       source={{
-                        uri: review.reviewer_profile?.avatar_url || 'https://via.placeholder.com/40',
+                        uri: review.reviewer_profile?.avatar_url || undefined,
                       }}
                       style={styles.reviewerImage}
                     />

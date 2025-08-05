@@ -1,6 +1,6 @@
 // Google Maps Configuration
-// Google Places API key configured
-export const GOOGLE_PLACES_API_KEY = '<REDACTED_GOOGLE_API_KEY>';
+// Google Places API key should be configured via environment variables
+export const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
 
 // You can get your API key from:
 // https://developers.google.com/maps/documentation/places/web-service/get-api-key
