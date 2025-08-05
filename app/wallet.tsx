@@ -216,17 +216,11 @@ export default function WalletScreen() {
             imageStyle={styles.balanceCardImage}
           >
             <View style={styles.balanceOverlay}>
-              <View style={styles.balanceHeader}>
-                <Text style={styles.balanceLabelWithBg}>Premium Stones</Text>
-                <View style={styles.stoneIcon}>
-                    <Image 
-                      source={require('../assets/images/diamond.webp')}
-                      style={styles.stoneImage}
-                    />
-                  </View>
-              </View>
-              <Text style={styles.balanceAmountWithBg}>{walletData?.betame_stones || 0} Stones</Text>
-            </View>
+               <View style={styles.balanceHeader}>
+                 <Text style={styles.balanceLabelWithBg}>Premium Stones</Text>
+               </View>
+               <Text style={styles.balanceAmountWithBg}>{walletData?.betame_stones || 0} Stones</Text>
+             </View>
           </ImageBackground>
 
           <ImageBackground 
@@ -235,15 +229,12 @@ export default function WalletScreen() {
             imageStyle={styles.balanceCardImage}
           >
             <View style={styles.balanceOverlay}>
-              <View style={styles.balanceHeader}>
-                <Text style={styles.balanceLabelWithBg}>BetaMe Credit Wallet</Text>
-                <View style={styles.creditIcon}>
-                  <Text style={styles.creditText}>B</Text>
-                </View>
-              </View>
-              <Text style={styles.balanceAmountWithBg}>{walletData?.betame_credits || 0} Credits</Text>
-              <Text style={styles.balanceSubtextWithBg}>Can buy BetaMe credits</Text>
-            </View>
+               <View style={styles.balanceHeader}>
+                 <Text style={styles.balanceLabelWithBg}>BetaMe Credit Wallet</Text>
+               </View>
+               <Text style={styles.balanceAmountWithBg}>{walletData?.betame_credits || 0} Credits</Text>
+               <Text style={styles.balanceSubtextWithBg}>Can buy BetaMe credits</Text>
+             </View>
           </ImageBackground>
         </View>
 
