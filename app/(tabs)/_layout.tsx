@@ -73,8 +73,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ size }) => (
-            <Home size={size} color="white" />
+          tabBarIcon: ({ color, size }) => (
+            <Home size={size} color={color} />
           ),
         }}
       />
@@ -82,8 +82,8 @@ export default function TabLayout() {
         name="services"
         options={{
           title: 'Services',
-          tabBarIcon: ({ size }) => (
-            <Briefcase size={size} color="white" />
+          tabBarIcon: ({ color, size }) => (
+            <Briefcase size={size} color={color} />
           ),
           href: isAuthenticated ? '/services' : null,
         }}
@@ -92,8 +92,8 @@ export default function TabLayout() {
         name="orders"
         options={{
           title: 'Orders',
-          tabBarIcon: ({ size }) => (
-            <FileText size={size} color="white" />
+          tabBarIcon: ({ color, size }) => (
+            <FileText size={size} color={color} />
           ),
           href: isAuthenticated ? '/orders' : null,
         }}
@@ -102,9 +102,9 @@ export default function TabLayout() {
         name="notifications"
         options={{
           title: 'Notifications',
-          tabBarIcon: ({ size }) => (
+          tabBarIcon: ({ color, size }) => (
             <View style={{ position: 'relative' }}>
-              <Bell size={size} color="white" />
+              <Bell size={size} color={color} />
               <NotificationBadge count={unreadCount} />
             </View>
           ),
@@ -115,8 +115,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ size }) => (
-            <User size={size} color="white" />
+          tabBarIcon: ({ color, size }) => (
+            <User size={size} color={color} />
           ),
         }}
       />

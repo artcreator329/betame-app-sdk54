@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   Image,
+  ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles } from 'lucide-react-native';
@@ -209,29 +210,41 @@ export default function WalletScreen() {
 
         {/* Wallet Balances */}
         <View style={styles.balanceSection}>
-          <View style={styles.balanceCard}>
-            <View style={styles.balanceHeader}>
-              <Text style={styles.balanceLabel}>Premium Stones</Text>
-              <View style={styles.stoneIcon}>
-                  <Image 
-                    source={require('../assets/images/diamond.webp')}
-                    style={styles.stoneImage}
-                  />
-                </View>
-            </View>
-            <Text style={styles.balanceAmount}>{walletData?.betame_stones || 0} Stones</Text>
-          </View>
-
-          <View style={styles.balanceCard}>
-            <View style={styles.balanceHeader}>
-              <Text style={styles.balanceLabel}>BetaMe Credit Wallet</Text>
-              <View style={styles.creditIcon}>
-                <Text style={styles.creditText}>B</Text>
+          <ImageBackground 
+            source={require('../assets/images/diamond-bg.jpeg')}
+            style={styles.balanceCard}
+            imageStyle={styles.balanceCardImage}
+          >
+            <View style={styles.balanceOverlay}>
+              <View style={styles.balanceHeader}>
+                <Text style={styles.balanceLabelWithBg}>Premium Stones</Text>
+                <View style={styles.stoneIcon}>
+                    <Image 
+                      source={require('../assets/images/diamond.webp')}
+                      style={styles.stoneImage}
+                    />
+                  </View>
               </View>
+              <Text style={styles.balanceAmountWithBg}>{walletData?.betame_stones || 0} Stones</Text>
             </View>
-            <Text style={styles.balanceAmount}>{walletData?.betame_credits || 0} Credits</Text>
-            <Text style={styles.balanceSubtext}>Can buy BetaMe credits</Text>
-          </View>
+          </ImageBackground>
+
+          <ImageBackground 
+            source={require('../assets/images/coin-bg.jpeg')}
+            style={styles.balanceCard}
+            imageStyle={styles.balanceCardImage}
+          >
+            <View style={styles.balanceOverlay}>
+              <View style={styles.balanceHeader}>
+                <Text style={styles.balanceLabelWithBg}>BetaMe Credit Wallet</Text>
+                <View style={styles.creditIcon}>
+                  <Text style={styles.creditText}>B</Text>
+                </View>
+              </View>
+              <Text style={styles.balanceAmountWithBg}>{walletData?.betame_credits || 0} Credits</Text>
+              <Text style={styles.balanceSubtextWithBg}>Can buy BetaMe credits</Text>
+            </View>
+          </ImageBackground>
         </View>
 
         {/* Conversion Section */}
@@ -420,6 +433,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    overflow: 'hidden',
+  },
+  balanceCardImage: {
+    borderRadius: 12,
+  },
+  balanceOverlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 12,
+    padding: 20,
+    margin: -20,
   },
   balanceHeader: {
     flexDirection: 'row',
@@ -431,6 +454,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#1D1D1F',
+  },
+  balanceLabelWithBg: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   stoneIcon: {
     width: 32,
@@ -467,9 +498,25 @@ const styles = StyleSheet.create({
     color: '#1D1D1F',
     marginBottom: 4,
   },
+  balanceAmountWithBg: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
   balanceSubtext: {
     fontSize: 14,
     color: '#8E8E93',
+  },
+  balanceSubtextWithBg: {
+    fontSize: 14,
+    color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   conversionSection: {
     padding: 20,
