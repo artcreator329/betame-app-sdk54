@@ -1,15 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useColors } from '@/contexts/ThemeContext';
 
 export default function OrdersScreen() {
+  const colors = useColors();
+  
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Orders</Text>
-        <Text style={styles.subtitle}>Track your service orders</Text>
-        <View style={styles.placeholder}>
-          <Text style={styles.placeholderText}>No orders yet...</Text>
+        <Text style={[styles.title, { color: colors.text.primary }]}>Orders</Text>
+        <Text style={[styles.subtitle, { color: colors.text.secondary }]}>Track your service orders</Text>
+        <View style={[styles.placeholder, { backgroundColor: colors.background.secondary }]}>
+          <Text style={[styles.placeholderText, { color: colors.text.secondary }]}>No orders yet...</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -19,7 +22,6 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
   },
   content: {
     flex: 1,
@@ -29,23 +31,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1D1D1F',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#8E8E93',
     marginBottom: 32,
   },
   placeholder: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 40,
     alignItems: 'center',
   },
   placeholderText: {
     fontSize: 16,
-    color: '#8E8E93',
     textAlign: 'center',
   },
 });

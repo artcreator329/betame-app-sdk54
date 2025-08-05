@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { SupabaseChatProvider } from '@/contexts/SupabaseChatContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
@@ -100,20 +101,27 @@ function RootLayoutNav() {
   );
 }
 
+function ThemedStatusBar() {
+  const { isDarkMode } = useTheme();
+  return <StatusBar style={isDarkMode ? 'light' : 'dark'} />;
+}
+
 export default function RootLayout() {
   useFrameworkReady();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <SupabaseChatProvider>
-              <StatusBar style="auto" />
-              <RootLayoutNav />
-            </SupabaseChatProvider>
-          </NotificationProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              <SupabaseChatProvider>
+                <ThemedStatusBar />
+                <RootLayoutNav />
+              </SupabaseChatProvider>
+            </NotificationProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

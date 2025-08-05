@@ -10,12 +10,14 @@ import {
   Modal,
   Image,
   ImageBackground,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { WalletService, WalletData, PurchasedFeature } from '../lib/wallet-service';
 import { useAuth } from '../contexts/AuthContext';
+import { useColors, useTheme } from '@/contexts/ThemeContext';
 
 interface Feature {
   id: string;
@@ -28,7 +30,8 @@ interface Feature {
   validity: string;
 }
 
-const availableFeatures: Feature[] = [
+// Move availableFeatures inside component to access colors
+const getAvailableFeatures = (colors: any): Feature[] => [
   {
     id: 'feature_2x',
     type: 'feature_2x',
@@ -36,7 +39,7 @@ const availableFeatures: Feature[] = [
     description: 'Feature your listing in the homepage & dedicated section! Valid for 2 weeks when people search related/relevant services.',
     cost: 100,
     icon: <Eye size={20} color="white" />,
-    color: '#4CAF50',
+    color: colors.status.success,
     validity: '2 weeks'
   },
   {
@@ -46,7 +49,7 @@ const availableFeatures: Feature[] = [
     description: 'Bump your listing to top in relevant section. It shown when people click on the categories, on top for a week.',
     cost: 20,
     icon: <Zap size={20} color="white" />,
-    color: '#FF9800',
+    color: colors.status.warning,
     validity: '1 week'
   },
   {
@@ -56,7 +59,7 @@ const availableFeatures: Feature[] = [
     description: 'Pin your listing at the top of relevant section. Valid for 2 weeks when people search related/relevant service.',
     cost: 50,
     icon: <Target size={20} color="white" />,
-    color: '#2196F3',
+    color: colors.primary.main,
     validity: '2 weeks'
   },
   {
@@ -66,7 +69,7 @@ const availableFeatures: Feature[] = [
     description: 'Feature your listing in the homepage & dedicated section! Valid for 2 weeks when people not even search related/relevant services.',
     cost: 200,
     icon: <Sparkles size={20} color="white" />,
-    color: '#9C27B0',
+    color: colors.status.info,
     validity: '2 weeks'
   },
 ];
@@ -74,6 +77,9 @@ const availableFeatures: Feature[] = [
 export default function WalletScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const colors = useColors();
+  const { isDarkMode } = useTheme();
+  const availableFeatures = getAvailableFeatures(colors);
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [purchasedFeatures, setPurchasedFeatures] = useState<PurchasedFeature[]>([]);
   const [convertAmount, setConvertAmount] = useState('10');
@@ -195,17 +201,28 @@ export default function WalletScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <>
+      <StatusBar 
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent={true}
+      />
+      <SafeAreaView 
+        style={[styles.container, { backgroundColor: colors.background.primary }]}
+        edges={['left', 'right', 'bottom']}
+      >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Wallet</Text>
-          <TouchableOpacity onPress={navigateToCheckIn}>
-            <Trophy size={24} color="#E91E63" />
-          </TouchableOpacity>
+        <View style={[styles.headerContainer, { backgroundColor: colors.background.primary }]}>
+          <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <ArrowLeft size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Wallet</Text>
+            <TouchableOpacity onPress={navigateToCheckIn}>
+              <Trophy size={24} color={colors.status.warning} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Wallet Balances */}
@@ -240,10 +257,10 @@ export default function WalletScreen() {
 
         {/* Conversion Section */}
         <View style={styles.conversionSection}>
-          <Text style={styles.conversionTitle}>Convert your stones to Credits!</Text>
-          <Text style={styles.conversionSubtitle}>Convert 10 premium stones into 1 BetaMe credit</Text>
+          <Text style={[styles.conversionTitle, { color: colors.text.primary }]}>Convert your stones to Credits!</Text>
+          <Text style={[styles.conversionSubtitle, { color: colors.text.secondary }]}>Convert 10 premium stones into 1 BetaMe credit</Text>
           
-          <View style={styles.conversionCard}>
+          <View style={[styles.conversionCard, { backgroundColor: colors.background.tertiary }]}>
             <View style={styles.conversionRow}>
               <View style={styles.conversionInput}>
                 <TextInput
@@ -252,6 +269,7 @@ export default function WalletScreen() {
                   onChangeText={setConvertAmount}
                   keyboardType="numeric"
                   placeholder="10"
+                  placeholderTextColor="rgba(255, 255, 255, 0.6)"
                 />
                 <Text style={styles.inputLabel}>💎</Text>
               </View>
@@ -270,10 +288,10 @@ export default function WalletScreen() {
 
         {/* Purchased Features */}
         <View style={styles.boostsSection}>
-          <Text style={styles.boostsTitle}>Your Purchased Features</Text>
+          <Text style={[styles.boostsTitle, { color: colors.text.primary }]}>Your Purchased Features</Text>
           {purchasedFeatures.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No features purchased yet</Text>
+            <View style={[styles.emptyState, { backgroundColor: colors.background.tertiary }]}>
+              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No features purchased yet</Text>
             </View>
           ) : (
             purchasedFeatures.map((feature) => {
@@ -281,18 +299,18 @@ export default function WalletScreen() {
               return (
                 <TouchableOpacity
                   key={feature.id}
-                  style={styles.boostCard}
+                  style={[styles.boostCard, { backgroundColor: colors.background.tertiary }]}
                   onPress={() => handleUseFeature(feature)}
                 >
                   <View style={[styles.boostIcon, { backgroundColor: featureConfig?.color || '#666' }]}>
                     {featureConfig?.icon || <Eye size={20} color="white" />}
                   </View>
                   <View style={styles.boostContent}>
-                    <Text style={styles.boostTitle}>{feature.feature_name}</Text>
-                    <Text style={styles.boostDescription}>Quantity: {feature.quantity} | Expires: {new Date(feature.expires_at).toLocaleDateString()}</Text>
+                    <Text style={[styles.boostTitle, { color: colors.text.primary }]}>{feature.feature_name}</Text>
+                    <Text style={[styles.boostDescription, { color: colors.text.secondary }]}>Quantity: {feature.quantity} | Expires: {new Date(feature.expires_at).toLocaleDateString()}</Text>
                   </View>
                   <View style={styles.boostPrice}>
-                    <Text style={styles.boostPriceText}>{feature.quantity}</Text>
+                    <Text style={[styles.boostPriceText, { color: colors.text.primary }]}>{feature.quantity}</Text>
                     <Text style={styles.boostPriceLabel}>Left</Text>
                   </View>
                 </TouchableOpacity>
@@ -303,24 +321,24 @@ export default function WalletScreen() {
 
         {/* Visibility Boosts */}
         <View style={styles.boostsSection}>
-          <Text style={styles.boostsTitle}>Boost to Convert...</Text>
-          <Text style={styles.boostsSubtitle}>Different feature to make the listing extra visibility by using BetaMe credits to boost</Text>
+          <Text style={[styles.boostsTitle, { color: colors.text.primary }]}>Boost to Convert...</Text>
+          <Text style={[styles.boostsSubtitle, { color: colors.text.secondary }]}>Different feature to make the listing extra visibility by using BetaMe credits to boost</Text>
           
           {availableFeatures.map((feature) => (
             <TouchableOpacity
               key={feature.id}
-              style={styles.boostCard}
+              style={[styles.boostCard, { backgroundColor: colors.background.tertiary }]}
               onPress={() => handleFeaturePurchase(feature)}
             >
               <View style={[styles.boostIcon, { backgroundColor: feature.color }]}>
                 {feature.icon}
               </View>
               <View style={styles.boostContent}>
-                <Text style={styles.boostTitle}>{feature.title}</Text>
-                <Text style={styles.boostDescription}>{feature.description}</Text>
+                <Text style={[styles.boostTitle, { color: colors.text.primary }]}>{feature.title}</Text>
+                <Text style={[styles.boostDescription, { color: colors.text.secondary }]}>{feature.description}</Text>
               </View>
               <View style={styles.boostPrice}>
-                <Text style={styles.boostPriceText}>{feature.cost}</Text>
+                <Text style={[styles.boostPriceText, { color: colors.text.primary }]}>{feature.cost}</Text>
                 <Text style={styles.boostPriceLabel}>B</Text>
               </View>
             </TouchableOpacity>
@@ -335,12 +353,12 @@ export default function WalletScreen() {
           onRequestClose={() => setShowPurchaseModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Purchase {selectedFeature?.title}</Text>
-              <Text style={styles.modalDescription}>{selectedFeature?.description}</Text>
+            <View style={[styles.modalContent, { backgroundColor: colors.background.tertiary }]}>
+              <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Purchase {selectedFeature?.title}</Text>
+              <Text style={[styles.modalDescription, { color: colors.text.secondary }]}>{selectedFeature?.description}</Text>
               
               <View style={styles.quantitySection}>
-                <Text style={styles.quantityLabel}>Quantity:</Text>
+                <Text style={[styles.quantityLabel, { color: colors.text.primary }]}>Quantity:</Text>
                 <View style={styles.quantityControls}>
                   <TouchableOpacity
                     style={styles.quantityButton}
@@ -348,7 +366,7 @@ export default function WalletScreen() {
                   >
                     <Text style={styles.quantityButtonText}>-</Text>
                   </TouchableOpacity>
-                  <Text style={styles.quantityValue}>{purchaseQuantity}</Text>
+                  <Text style={[styles.quantityValue, { color: colors.text.primary }]}>{purchaseQuantity}</Text>
                   <TouchableOpacity
                     style={styles.quantityButton}
                     onPress={() => setPurchaseQuantity(purchaseQuantity + 1)}
@@ -359,19 +377,19 @@ export default function WalletScreen() {
               </View>
               
               <View style={styles.totalSection}>
-                <Text style={styles.totalLabel}>Total Cost:</Text>
+                <Text style={[styles.totalLabel, { color: colors.text.primary }]}>Total Cost:</Text>
                 <Text style={styles.totalValue}>{(selectedFeature?.cost || 0) * purchaseQuantity} Credits</Text>
               </View>
               
               <View style={styles.modalButtons}>
                 <TouchableOpacity
-                  style={styles.cancelButton}
+                  style={[styles.cancelButton, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}
                   onPress={() => setShowPurchaseModal(false)}
                 >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                  <Text style={[styles.cancelButtonText, { color: colors.text.primary }]}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.purchaseButton}
+                  style={[styles.purchaseButton, { backgroundColor: colors.primary.main }]}
                   onPress={confirmPurchase}
                 >
                   <Text style={styles.purchaseButtonText}>Purchase</Text>
@@ -381,14 +399,17 @@ export default function WalletScreen() {
           </View>
         </Modal>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+  },
+  headerContainer: {
+    paddingTop: 0,
   },
   header: {
     flexDirection: 'row',
@@ -396,14 +417,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: 'transparent',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
   },
   placeholder: {
     width: 24,
@@ -413,10 +432,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   balanceCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'transparent',
     borderRadius: 12,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: 'transparent',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -444,7 +463,7 @@ const styles = StyleSheet.create({
   balanceLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1D1D1F',
+    color: 'white',
   },
   balanceLabelWithBg: {
     fontSize: 16,
@@ -458,7 +477,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -474,7 +493,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#FFD700',
+    backgroundColor: 'rgba(255, 215, 0, 0.8)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -486,7 +505,7 @@ const styles = StyleSheet.create({
   balanceAmount: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1D1D1F',
+    color: 'white',
     marginBottom: 4,
   },
   balanceAmountWithBg: {
@@ -500,7 +519,7 @@ const styles = StyleSheet.create({
   },
   balanceSubtext: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   balanceSubtextWithBg: {
     fontSize: 14,
@@ -515,19 +534,16 @@ const styles = StyleSheet.create({
   conversionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
     marginBottom: 8,
   },
   conversionSubtitle: {
     fontSize: 14,
-    color: '#8E8E93',
     marginBottom: 20,
   },
   conversionCard: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: 'transparent',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -545,7 +561,7 @@ const styles = StyleSheet.create({
   conversionInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -555,7 +571,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1D1D1F',
+    color: 'white',
     textAlign: 'center',
   },
   inputLabel: {
@@ -564,13 +580,13 @@ const styles = StyleSheet.create({
   },
   conversionArrow: {
     fontSize: 20,
-    color: '#8E8E93',
+    color: 'rgba(255, 255, 255, 0.8)',
     marginHorizontal: 16,
   },
   conversionOutput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -581,7 +597,7 @@ const styles = StyleSheet.create({
   outputValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: 'white',
   },
   outputLabel: {
     fontSize: 16,
@@ -606,23 +622,20 @@ const styles = StyleSheet.create({
   boostsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
     marginBottom: 8,
   },
   boostsSubtitle: {
     fontSize: 14,
-    color: '#8E8E93',
     marginBottom: 20,
     lineHeight: 20,
   },
   boostCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: 'transparent',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -645,12 +658,10 @@ const styles = StyleSheet.create({
   boostTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
     marginBottom: 4,
   },
   boostDescription: {
     fontSize: 14,
-    color: '#8E8E93',
     lineHeight: 18,
   },
   boostPrice: {
@@ -660,7 +671,6 @@ const styles = StyleSheet.create({
   boostPriceText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1D1D1F',
   },
   boostPriceLabel: {
     fontSize: 16,
@@ -669,7 +679,6 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   emptyState: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 40,
     alignItems: 'center',
@@ -677,17 +686,15 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#8E8E93',
     textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: 'white',
     borderRadius: 16,
     padding: 24,
     margin: 20,
@@ -697,13 +704,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1D1D1F',
     marginBottom: 12,
     textAlign: 'center',
   },
   modalDescription: {
     fontSize: 14,
-    color: '#8E8E93',
     lineHeight: 20,
     marginBottom: 24,
     textAlign: 'center',
@@ -717,7 +722,6 @@ const styles = StyleSheet.create({
   quantityLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
   },
   quantityControls: {
     flexDirection: 'row',
@@ -728,19 +732,18 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   quantityButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: 'white',
   },
   quantityValue: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
     minWidth: 30,
     textAlign: 'center',
   },
@@ -750,18 +753,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
     marginBottom: 24,
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
   },
   totalValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#E91E63',
+    color: '#FFD700',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -771,13 +773,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#F2F2F7',
+    borderWidth: 1,
     alignItems: 'center',
+    marginRight: 8,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8E8E93',
   },
   purchaseButton: {
     flex: 1,
@@ -785,6 +787,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#E91E63',
     alignItems: 'center',
+    marginLeft: 8,
   },
   purchaseButtonText: {
     fontSize: 16,

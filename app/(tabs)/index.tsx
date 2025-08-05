@@ -24,12 +24,13 @@ import { CategoryService, Category } from '@/lib/category-service';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/contexts/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 // Unread message badge component
 const MessageBadge = ({ count }: { count: number }) => {
+  const colors = useColors();
   if (count === 0) return null;
   
   return (
@@ -37,17 +38,17 @@ const MessageBadge = ({ count }: { count: number }) => {
       position: 'absolute',
       top: -2,
       right: -6,
-      backgroundColor: Colors.status.error,
+      backgroundColor: colors.status.error,
       borderRadius: 10,
       minWidth: 20,
       height: 20,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 2,
-      borderColor: Colors.text.white,
+      borderColor: colors.text.white,
     }}>
       <Text style={{
-        color: Colors.text.white,
+        color: colors.text.white,
         fontSize: 12,
         fontWeight: '600',
         textAlign: 'center',
@@ -118,6 +119,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { totalUnreadCount } = useUnreadMessageCount();
+  const colors = useColors();
 
   // Helper function to convert database service to UI service format
   const convertToUIService = (dbService: DBService): Service => {
@@ -196,28 +198,28 @@ export default function HomeScreen() {
     <View style={[styles.bannerSlide, { width: screenWidth - 40 }]}>
       <Image source={{ uri: item.image }} style={styles.bannerImage} />
       <View style={[styles.bannerOverlay, { backgroundColor: item.backgroundColor }]}>
-        <Text style={styles.bannerText}>{item.title}</Text>
-        <Text style={styles.bannerSubtext}>{item.subtitle}</Text>
+        <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
+        <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.subtitle}</Text>
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.searchContainer}>
-            <Search size={20} color={Colors.text.secondary} style={styles.searchIcon} />
+        <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
+          <View style={[styles.searchContainer, { backgroundColor: colors.background.secondary }]}>
+            <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text.primary }]}
               placeholder="Search for Talents/Services..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor={Colors.text.secondary}
+              placeholderTextColor={colors.text.secondary}
             />
           </View>
           {user ? (
@@ -226,25 +228,25 @@ export default function HomeScreen() {
                 style={styles.iconButton}
                 onPress={() => router.push('/wallet')}
               >
-                <View style={styles.iconBackground}>
-                  <Wallet size={20} color={Colors.text.white} />
+                <View style={[styles.iconBackground, { backgroundColor: colors.primary.main, shadowColor: colors.shadow.medium }]}>
+                  <Wallet size={20} color={colors.text.white} />
                 </View>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.iconButton}
                 onPress={() => router.push('/favorites')}
               >
-                <View style={styles.iconBackground}>
-                  <Heart size={20} color={Colors.text.white} />
+                <View style={[styles.iconBackground, { backgroundColor: colors.primary.main, shadowColor: colors.shadow.medium }]}>
+                  <Heart size={20} color={colors.text.white} />
                 </View>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.iconButton}
                 onPress={() => router.push('/messages')}
               >
-                <View style={styles.iconBackground}>
+                <View style={[styles.iconBackground, { backgroundColor: colors.primary.main, shadowColor: colors.shadow.medium }]}>
                   <View style={{ position: 'relative' }}>
-                    <MessageCircle size={20} color={Colors.text.white} />
+                    <MessageCircle size={20} color={colors.text.white} />
                     <MessageBadge count={totalUnreadCount} />
                   </View>
                 </View>
@@ -253,21 +255,21 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.authButtons}>
               <TouchableOpacity 
-                style={styles.signInButton}
+                style={[styles.signInButton, { backgroundColor: colors.primary.main }]}
                 onPress={() => router.push('/auth/login')}
               >
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Text style={[styles.signInButtonText, { color: colors.text.white }]}>Sign In</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
 
         {/* Categories */}
-        <View style={styles.categoriesContainer}>
+        <View style={[styles.categoriesContainer, { backgroundColor: colors.background.tertiary }]}>
           {isLoadingCategories ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={Colors.primary.main} />
-              <Text style={styles.loadingText}>Loading categories...</Text>
+              <ActivityIndicator size="small" color={colors.primary.main} />
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading categories...</Text>
             </View>
           ) : categories.length > 0 ? (
             <ScrollView
@@ -279,15 +281,17 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   key={category.id}
                   style={[
-                    styles.categoryTab,
-                    selectedCategory === category.name && styles.selectedCategoryTab,
-                  ]}
+                      styles.categoryTab,
+                      { backgroundColor: colors.primary.main, shadowColor: colors.shadow.light },
+                      selectedCategory === category.name && { backgroundColor: colors.text.white, borderWidth: 2, borderColor: colors.primary.main },
+                    ]}
                   onPress={() => setSelectedCategory(category.name)}
                 >
                   <Text
                     style={[
                       styles.categoryText,
-                      selectedCategory === category.name && styles.selectedCategoryText,
+                      { color: colors.text.white },
+                      selectedCategory === category.name && { color: colors.primary.main },
                     ]}
                   >
                     {category.icon} {category.name}
@@ -297,13 +301,13 @@ export default function HomeScreen() {
             </ScrollView>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No categories available</Text>
+              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No trending services available</Text>
             </View>
           )}
         </View>
 
         {/* Banner Ad Space */}
-        <View style={styles.bannerContainer}>
+        <View style={[styles.bannerContainer, { shadowColor: colors.shadow.medium }]}>
           <FlatList
             data={bannerSlides}
             renderItem={renderBannerItem}
@@ -328,17 +332,17 @@ export default function HomeScreen() {
         </View>
 
         {/* Nearby Categories */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
           <TouchableOpacity 
             style={styles.sectionHeader}
             onPress={() => router.push('/nearby')}
           >
-            <Text style={styles.sectionTitle}>Nearby</Text>
-            <ChevronRight size={20} color={Colors.primary.main} />
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Nearby</Text>
+            <ChevronRight size={20} color={colors.primary.main} />
           </TouchableOpacity>
           {isLoadingCategories ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={Colors.primary.main} />
+              <ActivityIndicator size="small" color={colors.primary.main} />
               <Text style={styles.loadingText}>Loading categories...</Text>
             </View>
           ) : categories.length > 0 ? (
@@ -353,24 +357,24 @@ export default function HomeScreen() {
             </ScrollView>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No categories available</Text>
+              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No categories available</Text>
             </View>
           )}
         </View>
 
         {/* Trending Services */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
           <TouchableOpacity 
             style={styles.sectionHeader}
             onPress={() => router.push('/nearby')}
           >
-            <Text style={styles.sectionTitle}>Trending</Text>
-            <ChevronRight size={20} color={Colors.primary.main} />
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Trending</Text>
+            <ChevronRight size={20} color={colors.primary.main} />
           </TouchableOpacity>
           {isLoadingServices ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color={Colors.primary.main} />
-                <Text style={styles.loadingText}>Loading services...</Text>
+                <ActivityIndicator size="small" color={colors.primary.main} />
+                <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading services...</Text>
               </View>
           ) : trendingServices.length > 0 ? (
             <View style={styles.servicesGrid}>
@@ -382,28 +386,28 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No trending services available</Text>
+              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No trending services available</Text>
             </View>
           )}
         </View>
 
         {/* Job Listings */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Latest Job Opportunities</Text>
-            <ChevronRight size={20} color={Colors.primary.main} />
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Latest Job Opportunities</Text>
+            <ChevronRight size={20} color={colors.primary.main} />
           </View>
           {isLoadingJobs ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={Colors.primary.main} />
-              <Text style={styles.loadingText}>Loading jobs...</Text>
+              <ActivityIndicator size="small" color={colors.primary.main} />
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading jobs...</Text>
             </View>
           ) : jobListings.length > 0 ? (
             <View style={styles.jobsGrid}>
               {jobListings.map((job) => (
                 <TouchableOpacity 
                   key={job.id} 
-                  style={styles.jobCard}
+                  style={[styles.jobCard, { backgroundColor: colors.background.secondary }]}
                   onPress={() => {
                     if (!user) {
                       Alert.alert(
@@ -421,16 +425,16 @@ export default function HomeScreen() {
                   activeOpacity={0.7}
                 >
                   {job.cover_photo && (
-                    <Image source={{ uri: job.cover_photo }} style={styles.jobImage} />
+                    <Image source={{ uri: job.cover_photo }} style={[styles.jobImage, { backgroundColor: colors.border.light }]} />
                   )}
                   <View style={styles.jobContent}>
-                    <Text style={styles.jobTitle} numberOfLines={2}>{job.title}</Text>
-                    <Text style={styles.jobDescription} numberOfLines={2}>{job.description}</Text>
+                    <Text style={[styles.jobTitle, { color: colors.text.primary }]} numberOfLines={2}>{job.title}</Text>
+                    <Text style={[styles.jobDescription, { color: colors.text.secondary }]} numberOfLines={2}>{job.description}</Text>
                     
                     {job.location_address && (
                       <View style={styles.jobLocation}>
-                        <MapPin size={12} color={Colors.primary.main} />
-                        <Text style={styles.jobLocationText} numberOfLines={1}>
+                        <MapPin size={12} color={colors.primary.main} />
+                        <Text style={[styles.jobLocationText, { color: colors.text.secondary }]} numberOfLines={1}>
                           {job.location_address}
                         </Text>
                       </View>
@@ -438,13 +442,13 @@ export default function HomeScreen() {
                     
                     <View style={styles.jobFooter}>
                       <View style={styles.jobBudget}>
-                        <Text style={styles.jobBudgetText}>
+                        <Text style={[styles.jobBudgetText, { color: colors.primary.main }]}>
                           {job.budget_amount ? `${job.currency} ${job.budget_amount}` : job.payment_type}
                         </Text>
                       </View>
                       <View style={styles.jobDate}>
-                        <Calendar size={10} color={Colors.primary.main} />
-                        <Text style={styles.jobDateText}>
+                        <Calendar size={10} color={colors.primary.main} />
+                        <Text style={[styles.jobDateText, { color: colors.text.secondary }]}>
                           {job.created_at ? new Date(job.created_at).toLocaleDateString() : ''}
                         </Text>
                       </View>
@@ -455,13 +459,13 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No job opportunities available at the moment</Text>
+              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No job opportunities available at the moment</Text>
               {user && (
                 <TouchableOpacity 
-                  style={styles.createJobButton}
+                  style={[styles.createJobButton, { backgroundColor: colors.primary.main }]}
                   onPress={() => router.push('/create-job-listing')}
                 >
-                  <Text style={styles.createJobButtonText}>Post a Job</Text>
+                  <Text style={[styles.createJobButtonText, { color: colors.text.white }]}>Post a Job</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -475,7 +479,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary,
   },
   scrollContent: {
     paddingBottom: 100,
@@ -485,13 +488,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: Colors.background.tertiary,
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background.secondary,
     borderRadius: 10,
     paddingHorizontal: 12,
     height: 40,
@@ -503,7 +504,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text.primary,
   },
   headerIcons: {
     flexDirection: 'row',
@@ -515,10 +515,8 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.primary.main,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: Colors.shadow.medium,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -528,7 +526,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   categoriesContainer: {
-    backgroundColor: Colors.background.tertiary,
     paddingBottom: 16,
   },
   categoriesContent: {
@@ -539,8 +536,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginRight: 12,
     borderRadius: 20,
-    backgroundColor: Colors.primary.main,
-    shadowColor: Colors.shadow.light,
     shadowOffset: {
       width: 0,
       height: 1,
@@ -550,17 +545,13 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   selectedCategoryTab: {
-    backgroundColor: Colors.text.white,
     borderWidth: 2,
-    borderColor: Colors.primary.main,
   },
   categoryText: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.text.white,
   },
   selectedCategoryText: {
-    color: Colors.primary.main,
   },
   bannerContainer: {
     margin: 20,
@@ -568,7 +559,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     height: 140,
-    shadowColor: Colors.shadow.medium,
+
     shadowOffset: {
       width: 0,
       height: 2,
@@ -598,10 +589,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingLeft: 20,
   },
-  bannerText: {
+  bannerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.text.white,
     marginBottom: 4,
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
@@ -609,7 +599,7 @@ const styles = StyleSheet.create({
   },
   bannerSubtext: {
     fontSize: 14,
-    color: Colors.text.white,
+
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -628,10 +618,10 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   activeIndicator: {
-    backgroundColor: Colors.text.white,
+    backgroundColor: 'rgba(255, 255, 255, 1)',
   },
   section: {
-    backgroundColor: Colors.background.tertiary,
+
     marginHorizontal: 20,
     marginBottom: 16,
     borderRadius: 12,
@@ -646,7 +636,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.text.primary,
+
   },
   nearbyContent: {
     paddingRight: 16,
@@ -669,7 +659,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginLeft: 8,
     fontSize: 14,
-    color: Colors.text.secondary,
+
   },
   jobsGrid: {
     flexDirection: 'row',
@@ -678,7 +668,7 @@ const styles = StyleSheet.create({
   },
   jobCard: {
     width: '48%',
-    backgroundColor: Colors.background.secondary,
+
     borderRadius: 12,
     marginBottom: 12,
     overflow: 'hidden',
@@ -686,7 +676,7 @@ const styles = StyleSheet.create({
   jobImage: {
     width: '100%',
     height: 80,
-    backgroundColor: Colors.border.light,
+
   },
   jobContent: {
     padding: 12,
@@ -694,12 +684,12 @@ const styles = StyleSheet.create({
   jobTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text.primary,
+
     marginBottom: 4,
   },
   jobDescription: {
     fontSize: 12,
-    color: Colors.text.secondary,
+
     marginBottom: 8,
     lineHeight: 16,
   },
@@ -710,7 +700,7 @@ const styles = StyleSheet.create({
   },
   jobLocationText: {
     fontSize: 11,
-    color: Colors.text.secondary,
+
     marginLeft: 4,
     flex: 1,
   },
@@ -725,7 +715,7 @@ const styles = StyleSheet.create({
   jobBudgetText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.primary.main,
+
   },
   jobDate: {
     flexDirection: 'row',
@@ -733,7 +723,7 @@ const styles = StyleSheet.create({
   },
   jobDateText: {
     fontSize: 10,
-    color: Colors.text.secondary,
+
     marginLeft: 2,
   },
   emptyState: {
@@ -742,18 +732,18 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 14,
-    color: Colors.text.secondary,
+
     textAlign: 'center',
     marginBottom: 12,
   },
   createJobButton: {
-    backgroundColor: Colors.primary.main,
+
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
   createJobButtonText: {
-    color: Colors.text.white,
+
     fontSize: 14,
     fontWeight: '600',
   },
@@ -762,13 +752,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signInButton: {
-    backgroundColor: Colors.primary.main,
+
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
   signInButtonText: {
-    color: Colors.text.white,
+
     fontSize: 14,
     fontWeight: '600',
   },

@@ -5,6 +5,7 @@ import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, 
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColors } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { ImageService } from '@/lib/image-service';
 import { JobService, JobListing } from '@/lib/job-service';
@@ -37,6 +38,7 @@ export default function ProfileScreen() {
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
   const { user, userProfile, updateProfile } = useAuth();
+  const colors = useColors();
 
   // Calculate average rating from reviews
   const averageRating = reviews.length > 0 
@@ -262,18 +264,18 @@ export default function ProfileScreen() {
           if (loading) {
             return (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#1D1D1F" />
-                <Text style={styles.loadingText}>Loading job listings...</Text>
+                <ActivityIndicator size="large" color={colors.primary.main} />
+                <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading job listings...</Text>
               </View>
             );
           }
           return (
             <View style={styles.tabSectionContainer}>
-              <Text style={styles.availableListings}>Job Postings ({jobListings.length})</Text>
+              <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Job Postings ({jobListings.length})</Text>
               {jobListings.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>You do not have any job postings</Text>
-                  <Text style={styles.emptyStateText}>Why don't you post your first job?</Text>
+                  <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>You do not have any job postings</Text>
+                  <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>Why don't you post your first job?</Text>
                 </View>
               ) : (
                 jobListings.map((job) => (
@@ -299,20 +301,20 @@ export default function ProfileScreen() {
                     {job.cover_photo && (
                       <Image source={{ uri: job.cover_photo }} style={styles.jobImage} />
                     )}
-                    <View style={styles.jobInfo}>
-                      <Text style={styles.jobTitle}>{job.title}</Text>
-                      <Text style={styles.jobDescription} numberOfLines={2}>
+                    <View style={[styles.jobInfo, { backgroundColor: colors.background.secondary }]}>
+                      <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{job.title}</Text>
+                      <Text style={[styles.jobDescription, { color: colors.text.secondary }]} numberOfLines={2}>
                         {job.description}
                       </Text>
                       {job.location_address && (
                         <View style={styles.jobLocation}>
-                          <MapPin size={14} color="#666" />
-                          <Text style={styles.jobLocationText}>{job.location_address}</Text>
+                          <MapPin size={14} color={colors.text.secondary} />
+                          <Text style={[styles.jobLocationText, { color: colors.text.secondary }]}>{job.location_address}</Text>
                         </View>
                       )}
                       <View style={styles.jobDetails}>
                         <View style={styles.jobBudget}>
-                          <Text style={styles.jobBudgetText}>
+                          <Text style={[styles.jobBudgetText, { color: colors.text.primary }]}>
                             {job.payment_type === 'negotiable' ? 'Negotiable' : `${job.currency}${job.budget_amount} (${job.payment_type})`}
                           </Text>
                         </View>
@@ -323,8 +325,8 @@ export default function ProfileScreen() {
                         </View>
                       </View>
                       <View style={styles.jobMeta}>
-                        <Calendar size={12} color="#999" />
-                        <Text style={styles.jobDate}>
+                        <Calendar size={12} color={colors.text.secondary} />
+                        <Text style={[styles.jobDate, { color: colors.text.secondary }]}>
                           {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Date not available'}
                         </Text>
                       </View>
@@ -333,29 +335,29 @@ export default function ProfileScreen() {
                 ))
               )}
               <TouchableOpacity 
-                style={styles.addButton}
+                style={[styles.addButton, { backgroundColor: colors.primary.main }]}
                 onPress={() => router.push('/create-job-listing')}
               >
-                <Text style={styles.addButtonText}>Hire Someone Now</Text>
+                <Text style={[styles.addButtonText, { color: colors.text.white }]}>Hire Someone Now</Text>
               </TouchableOpacity>
             </View>
           );
         case 'My Services':
         if (loading) {
           return (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#1D1D1F" />
-              <Text style={styles.loadingText}>Loading services...</Text>
-            </View>
-          );
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary.main} />
+                <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading services...</Text>
+              </View>
+            );
         }
         return (
           <View style={styles.servicesContent}>
-            <Text style={styles.availableListings}>Available Listings ({services.length})</Text>
+            <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Available Listings ({services.length})</Text>
             {services.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>You don't have any services yet</Text>
-                <Text style={styles.emptyStateSuggestion}>Create your first service listing!</Text>
+                <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>You don't have any services yet</Text>
+                <Text style={[styles.emptyStateSuggestion, { color: colors.text.secondary }]}>Create your first service listing!</Text>
               </View>
             ) : (
               services
@@ -399,11 +401,11 @@ export default function ProfileScreen() {
                })
             )}
             <TouchableOpacity 
-              style={styles.addServiceButton}
+              style={[styles.addServiceButton, { backgroundColor: colors.primary.main }]}
               onPress={() => router.push('/create-service-listing')}
             >
-              <Text style={styles.addServiceButtonIcon}>+</Text>
-              <Text style={styles.addServiceButtonText}>Offer Your Best Service/Product Now</Text>
+              <Text style={[styles.addServiceButtonIcon, { color: colors.text.white }]}>+</Text>
+              <Text style={[styles.addServiceButtonText, { color: colors.text.white }]}>Offer Your Best Service/Product Now</Text>
             </TouchableOpacity>
           </View>
         );
@@ -411,8 +413,8 @@ export default function ProfileScreen() {
         if (loading) {
           return (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#1D1D1F" />
-              <Text style={styles.loadingText}>Loading reviews...</Text>
+              <ActivityIndicator size="large" color={colors.primary.main} />
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading reviews...</Text>
             </View>
           );
         }
@@ -420,28 +422,28 @@ export default function ProfileScreen() {
           <View style={styles.reviewsContainer}>
             {reviews.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No reviews yet</Text>
-                <Text style={styles.emptyStateSuggestion}>Complete some services to get your first review!</Text>
-              </View>
+              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No reviews yet</Text>
+              <Text style={[styles.emptyStateSuggestion, { color: colors.text.secondary }]}>Complete some services to get your first review!</Text>
+            </View>
             ) : (
               reviews.map((review) => (
-                <TouchableOpacity key={review.id} style={styles.reviewCard}>
+                <TouchableOpacity key={review.id} style={[styles.reviewCard, { backgroundColor: colors.background.secondary }]}>
                   <View style={styles.reviewHeader}>
                     <Image
                       source={{ uri: review.reviewer_profile?.avatar_url || undefined }}
                       style={styles.reviewerImage}
                     />
                     <View style={styles.reviewerInfo}>
-                      <Text style={styles.reviewerName}>
+                      <Text style={[styles.reviewerName, { color: colors.text.primary }]}>
                         {review.reviewer_profile?.full_name || 'Anonymous User'}
                       </Text>
                       <View style={styles.ratingContainer}>
-                        <Text style={styles.ratingText}>{review.rating.toFixed(1)}</Text>
+                        <Text style={[styles.ratingText, { color: colors.text.primary }]}>{review.rating.toFixed(1)}</Text>
                         {renderStars(review.rating)}
                       </View>
                     </View>
                   </View>
-                  <Text style={styles.reviewText}>{review.comment || 'No comment provided'}</Text>
+                  <Text style={[styles.reviewText, { color: colors.text.secondary }]}>{review.comment || 'No comment provided'}</Text>
                 </TouchableOpacity>
               ))
             )}
@@ -455,23 +457,23 @@ export default function ProfileScreen() {
   // Show login prompt for non-authenticated users
   if (!user) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loginPromptContainer}>
-          <Text style={styles.loginPromptTitle}>Welcome to Your Profile</Text>
-          <Text style={styles.loginPromptText}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <View style={[styles.loginPromptContainer, { backgroundColor: colors.background.primary }]}>
+          <Text style={[styles.loginPromptTitle, { color: colors.text.primary }]}>Welcome to Your Profile</Text>
+          <Text style={[styles.loginPromptText, { color: colors.text.secondary }]}>
             Sign in to view your profile, manage your services, and track your job listings.
           </Text>
-          <TouchableOpacity 
-            style={styles.loginButton}
-            onPress={() => router.push('/auth/login')}
-          >
-            <Text style={styles.loginButtonText}>Sign In</Text>
-          </TouchableOpacity>
+          <TouchableOpacity
+          style={[styles.loginButton, { backgroundColor: colors.primary.main }]}
+          onPress={() => router.push('/auth/login')}
+        >
+          <Text style={[styles.loginButtonText, { color: colors.text.white }]}>Log In</Text>
+        </TouchableOpacity>
           <TouchableOpacity 
             style={styles.skipButton}
             onPress={() => router.push('/(tabs)')}
           >
-            <Text style={styles.skipButtonText}>Continue as Guest</Text>
+            <Text style={[styles.skipButtonText, { color: colors.text.secondary }]}>Continue as Guest</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -483,49 +485,50 @@ export default function ProfileScreen() {
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        style={{ backgroundColor: colors.background.primary }}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.background.primary }]}>
           <View style={styles.headerLeft}>
             <TouchableOpacity 
               style={styles.headerIcon}
               onPress={() => router.push('/wallet')}
             >
-              <Wallet size={24} color="#1D1D1F" />
+              <Wallet size={24} color={colors.text.primary} />
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.headerIcon}
               onPress={() => router.push('/check-in')}
             >
-              <Trophy size={24} color="#1D1D1F" />
+              <Trophy size={24} color={colors.text.primary} />
             </TouchableOpacity>
             {isAdmin && (
               <TouchableOpacity 
-                style={[styles.headerIcon, styles.adminIcon]}
-                onPress={() => router.push('/admin-dashboard')}
-              >
-                <Shield size={24} color="#FF6B35" />
-              </TouchableOpacity>
+                  style={[styles.headerIcon, styles.adminIcon, { borderColor: colors.status.warning }]}
+                  onPress={() => router.push('/admin-dashboard')}
+                >
+                  <Shield size={24} color={colors.status.warning} />
+                </TouchableOpacity>
             )}
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.headerIcon}>
-              <Heart size={24} color="#1D1D1F" />
+              <Heart size={24} color={colors.text.primary} />
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.headerIcon}
               onPress={() => router.push('/settings')}
             >
-              <Settings size={24} color="#1D1D1F" />
+              <Settings size={24} color={colors.text.primary} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Profile Section */}
-        <View style={styles.profileSection}>
+        <View style={[styles.profileSection, { backgroundColor: colors.background.primary }]}>
           {userProfile?.bio && (
-            <View style={styles.sellerBadge}>
-              <Text style={styles.sellerBadgeText}>{userProfile.bio}</Text>
+            <View style={[styles.sellerBadge, { backgroundColor: colors.background.secondary }]}>
+              <Text style={[styles.sellerBadgeText, { color: colors.text.primary }]}>{userProfile.bio}</Text>
             </View>
           )}
           
@@ -536,8 +539,8 @@ export default function ProfileScreen() {
                 style={styles.profileImage}
               />
             ) : (
-              <View style={styles.defaultProfileIcon}>
-                <User size={50} color="#8E8E93" />
+              <View style={[styles.defaultProfileIcon, { backgroundColor: colors.background.secondary }]}>
+                <User size={50} color={colors.text.secondary} />
               </View>
             )}
             <TouchableOpacity 
@@ -553,23 +556,23 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           
-          <Text style={styles.userName}>
+          <Text style={[styles.userName, { color: colors.text.primary }]}>
             {userProfile?.full_name || 'User'}
           </Text>
           <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
+            <Text style={[styles.ratingText, { color: colors.text.primary }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
             {averageRating > 0 && renderStars(averageRating)}
-            <Text style={styles.reviewText}>({reviews.length} reviews)</Text>
+            <Text style={[styles.reviewText, { color: colors.text.secondary }]}>({reviews.length} reviews)</Text>
           </View>
           {userProfile?.tagline && (
-            <Text style={styles.userTagline}>{userProfile.tagline}</Text>
+            <Text style={[styles.userTagline, { color: colors.text.secondary }]}>{userProfile.tagline}</Text>
           )}
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
+        <View style={[styles.actionButtons, { backgroundColor: colors.background.primary }]}>
           <TouchableOpacity 
-            style={styles.chatButton}
+            style={[styles.chatButton, { backgroundColor: colors.primary.main }]}
             onPress={() => {
               // If viewing own profile, go to messages dashboard
               // If viewing someone else's profile, start a chat with them
@@ -580,38 +583,39 @@ export default function ProfileScreen() {
               }
             }}
           >
-            <Text style={styles.chatButtonText}>
+            <Text style={[styles.chatButtonText, { color: colors.text.white }]}>
               {userProfile?.id === user?.id ? 'View Chat' : 'Chat to enquire'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={styles.actionButton}
+            style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
             onPress={() => router.push('/edit-profile')}
           >
-            <Text style={styles.actionButtonText}>Edit Profile</Text>
+            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Edit Profile</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={styles.actionButton}
+            style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
             onPress={handleShareProfile}
           >
-            <Text style={styles.actionButtonText}>Share Profile</Text>
+            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Share Profile</Text>
           </TouchableOpacity>
         </View>
 
         {/* Tab Navigation */}
-        <View style={styles.tabNavigation}>
+        <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }]}>
           {['I\'m Hiring', 'My Services', 'Reviews'].map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[
                 styles.tab,
-                activeTab === tab && styles.activeTab,
+                activeTab === tab && { borderBottomColor: colors.primary.main },
               ]}
               onPress={() => setActiveTab(tab)}
             >
               <Text
                 style={[
                   styles.tabText,
+                  { color: activeTab === tab ? colors.primary.main : colors.text.secondary },
                   activeTab === tab && styles.activeTabText,
                 ]}
               >
@@ -622,7 +626,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Tab Content */}
-        <View style={styles.tabContent}>
+        <View style={[styles.tabContent, { backgroundColor: colors.background.primary }]}>
           {renderTabContent()}
         </View>
       </ScrollView>
@@ -632,9 +636,8 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
+     flex: 1,
+   },
   scrollContent: {
     paddingBottom: 100,
   },
@@ -645,7 +648,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 24,
-    backgroundColor: 'white',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -659,7 +661,6 @@ const styles = StyleSheet.create({
   profileSection: {
     alignItems: 'center',
     paddingVertical: 32,
-    backgroundColor: 'white',
   },
   profileImageContainer: {
     position: 'relative',
@@ -674,82 +675,69 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#F2F2F7',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+     justifyContent: 'center',
+   },
   cameraButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#1D1D1F',
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: 'white',
-  },
+   },
   userName: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1D1D1F',
-    marginBottom: 8,
-  },
+     fontSize: 24,
+     fontWeight: '600',
+     marginBottom: 8,
+   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
   },
   ratingText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1D1D1F',
-    marginRight: 8,
-  },
+     fontSize: 16,
+     fontWeight: '600',
+     marginRight: 8,
+   },
   reviewText: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginLeft: 8,
-  },
+     fontSize: 14,
+     marginLeft: 8,
+   },
   userTagline: {
-    fontSize: 16,
-    color: '#8E8E93',
-  },
+     fontSize: 16,
+   },
   sellerBadge: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
+     paddingHorizontal: 16,
+     paddingVertical: 8,
+     borderRadius: 20,
+     marginBottom: 16,
+     alignItems: 'center',
+   },
   sellerBadgeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1976D2',
-    marginBottom: 2,
-  },
+     fontSize: 16,
+     fontWeight: '600',
+     marginBottom: 2,
+   },
   sellerBadgeSubtext: {
     fontSize: 12,
-    color: '#1976D2',
   },
   actionButtons: {
     flexDirection: 'column',
     paddingHorizontal: 20,
     paddingVertical: 20,
-    backgroundColor: 'white',
     gap: 8,
   },
   chatButton: {
-    backgroundColor: '#1D1D1F',
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
   },
   chatButtonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -759,19 +747,16 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#8E8E93',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   actionButtonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '500',
   },
   tabNavigation: {
     flexDirection: 'row',
-    backgroundColor: 'white',
     paddingHorizontal: 20,
     paddingTop: 20,
   },
@@ -783,19 +768,15 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#1D1D1F',
-  },
+   },
   tabText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    fontWeight: '500',
-  },
+     fontSize: 16,
+     fontWeight: '500',
+   },
   activeTabText: {
-    color: '#1D1D1F',
-    fontWeight: '600',
-  },
+     fontWeight: '600',
+   },
   tabContent: {
-    backgroundColor: 'white',
     minHeight: 400,
     paddingBottom: 40,
   },
@@ -806,13 +787,11 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#8E8E93',
     textAlign: 'center',
     marginBottom: 8,
   },
   emptyStateSuggestion: {
     fontSize: 14,
-    color: '#8E8E93',
     textAlign: 'center',
   },
   reviewsContainer: {
@@ -820,7 +799,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   reviewCard: {
-    backgroundColor: '#F2F2F7',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -842,7 +820,6 @@ const styles = StyleSheet.create({
   reviewerName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
     marginBottom: 4,
   },
   starsContainer: {
@@ -855,12 +832,10 @@ const styles = StyleSheet.create({
   availableListings: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8E8E93',
     marginBottom: 16,
   },
   serviceItem: {
     flexDirection: 'row',
-    backgroundColor: 'white',
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
@@ -904,16 +879,13 @@ const styles = StyleSheet.create({
   servicePrice: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1D1D1F',
   },
   seeOfferButton: {
-    backgroundColor: '#007AFF',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
   },
   seeOfferText: {
-    color: '#1D1D1F',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -926,7 +898,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
   },
   tabSectionContainer: {
     flex: 1,
@@ -934,7 +905,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   addButton: {
-    backgroundColor: '#007AFF',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -942,13 +912,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   addButtonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
   addServiceButton: {
     flexDirection: 'row',
-    backgroundColor: '#007AFF',
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -958,19 +926,16 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   addServiceButtonIcon: {
-    color: 'white',
     fontSize: 24,
     fontWeight: '600',
     marginRight: 12,
   },
   addServiceButtonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
   jobItem: {
     flexDirection: 'row',
-    backgroundColor: 'white',
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
@@ -997,12 +962,10 @@ const styles = StyleSheet.create({
   jobTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
     marginBottom: 4,
   },
   jobDescription: {
     fontSize: 13,
-    color: '#8E8E93',
     lineHeight: 18,
     marginBottom: 8,
   },
@@ -1013,7 +976,6 @@ const styles = StyleSheet.create({
   },
   jobLocationText: {
     fontSize: 12,
-    color: '#666',
     marginLeft: 4,
   },
   jobDetails: {
@@ -1028,7 +990,6 @@ const styles = StyleSheet.create({
   jobBudgetText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1D1D1F',
   },
   jobStatus: {
     alignItems: 'flex-end',
@@ -1044,7 +1005,6 @@ const styles = StyleSheet.create({
   },
   jobDate: {
     fontSize: 11,
-    color: '#999',
     marginLeft: 4,
   },
   loginPromptContainer: {
@@ -1052,24 +1012,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
-    backgroundColor: '#F2F2F7',
   },
   loginPromptTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1D1D1F',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
+     fontSize: 24,
+     fontWeight: '700',
+     marginBottom: 16,
+     textAlign: 'center',
+   },
   loginPromptText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
+     fontSize: 16,
+     textAlign: 'center',
+     lineHeight: 24,
+     marginBottom: 32,
+   },
   loginButton: {
-    backgroundColor: '#007AFF',
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 12,
@@ -1078,7 +1034,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   loginButtonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1089,13 +1044,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   skipButtonText: {
-    color: '#8E8E93',
-    fontSize: 16,
-    fontWeight: '500',
-  },
+     fontSize: 16,
+     fontWeight: '500',
+   },
   adminIcon: {
-    backgroundColor: '#FFF5F2',
-    borderWidth: 1,
-    borderColor: '#FF6B35',
-  },
+     borderWidth: 1,
+   },
 });

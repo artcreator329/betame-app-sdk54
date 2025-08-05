@@ -17,7 +17,7 @@ import CategorySelectionModal from '@/components/CategorySelectionModal';
 import IndustrySelectionModal from '@/components/IndustrySelectionModal';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/contexts/ThemeContext';
 
 // Convert DB service to UI service
 const convertToUIService = (dbService: DBService): Service => ({
@@ -53,6 +53,7 @@ export default function ServicesScreen() {
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const colors = useColors();
 
   const fetchServices = useCallback(async () => {
     try {
@@ -141,45 +142,45 @@ export default function ServicesScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Services</Text>
+      <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Services</Text>
         <TouchableOpacity>
-          <Search size={24} color={Colors.text.primary} />
+          <Search size={24} color={colors.text.primary} />
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Search size={20} color={Colors.text.secondary} style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
+        <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text.primary }]}
           placeholder="Search services..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor={Colors.text.secondary}
+          placeholderTextColor={colors.text.secondary}
         />
       </View>
 
       {/* Filters */}
-      <View style={styles.filtersContainer}>
+      <View style={[styles.filtersContainer, { backgroundColor: colors.background.tertiary }]}>
         <TouchableOpacity
-          style={styles.filterDropdown}
+          style={[styles.filterDropdown, { backgroundColor: colors.background.secondary }]}
           onPress={() => setShowCategoryModal(true)}
         >
-          <Text style={styles.filterText}>{getCategoryDisplayText()}</Text>
-          <ChevronDown size={16} color={Colors.text.primary} />
+          <Text style={[styles.filterText, { color: colors.text.primary }]}>{getCategoryDisplayText()}</Text>
+          <ChevronDown size={16} color={colors.text.primary} />
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.filterDropdown}
+          style={[styles.filterDropdown, { backgroundColor: colors.background.secondary }]}
           onPress={() => setShowIndustryModal(true)}
         >
-          <Text style={styles.filterText}>{getIndustryDisplayText()}</Text>
-          <ChevronDown size={16} color={Colors.text.primary} />
+          <Text style={[styles.filterText, { color: colors.text.primary }]}>{getIndustryDisplayText()}</Text>
+          <ChevronDown size={16} color={colors.text.primary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.filterButton}>
-          <SlidersHorizontal size={20} color={Colors.primary.main} />
+        <TouchableOpacity style={[styles.filterButton, { backgroundColor: colors.background.secondary }]}>
+          <SlidersHorizontal size={20} color={colors.primary.main} />
         </TouchableOpacity>
       </View>
 
@@ -192,15 +193,15 @@ export default function ServicesScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[Colors.primary.main]}
-            tintColor={Colors.primary.main}
+            colors={[colors.primary.main]}
+            tintColor={colors.primary.main}
           />
         }
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.primary.main} />
-            <Text style={styles.loadingText}>Loading services...</Text>
+            <ActivityIndicator size="large" color={colors.primary.main} />
+            <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading services...</Text>
           </View>
         ) : filteredServices.length > 0 ? (
           <View style={styles.servicesGrid}>
@@ -212,8 +213,8 @@ export default function ServicesScreen() {
           </View>
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No services available</Text>
-            <Text style={styles.emptySubtext}>Check back later for new services</Text>
+            <Text style={[styles.emptyText, { color: colors.text.primary }]}>No services available</Text>
+            <Text style={[styles.emptySubtext, { color: colors.text.secondary }]}>Check back later for new services</Text>
           </View>
         )}
       </ScrollView>
@@ -240,7 +241,6 @@ export default function ServicesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary,
   },
   scrollContent: {
     paddingBottom: 100,
@@ -251,24 +251,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: Colors.background.tertiary,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.text.primary,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background.tertiary,
     marginHorizontal: 20,
     marginTop: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.border.light,
   },
   searchIcon: {
     marginRight: 12,
@@ -276,14 +272,12 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text.primary,
   },
   filtersContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: Colors.background.tertiary,
     marginTop: 1,
   },
   filterDropdown: {
@@ -293,19 +287,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     marginRight: 8,
   },
   filterText: {
     fontSize: 14,
-    color: Colors.text.primary,
     fontWeight: '500',
     flex: 1,
   },
   filterButton: {
     padding: 12,
-    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
   },
   content: {
@@ -331,7 +322,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: Colors.text.secondary,
   },
   emptyContainer: {
     flex: 1,
@@ -342,12 +332,10 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.text.primary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: Colors.text.secondary,
     textAlign: 'center',
   },
 });

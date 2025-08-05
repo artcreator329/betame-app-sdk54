@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, Briefcase, Share, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '../constants/Colors';
+import { useTheme, useColors } from '@/contexts/ThemeContext';
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -20,20 +21,47 @@ interface SettingItemProps {
   hasArrow?: boolean;
   onPress?: () => void;
   isLogout?: boolean;
+  hasSwitch?: boolean;
+  switchValue?: boolean;
+  onSwitchChange?: (value: boolean) => void;
 }
 
-function SettingItem({ icon, title, hasArrow = true, onPress, isLogout = false }: SettingItemProps) {
+function SettingItem({ 
+  icon, 
+  title, 
+  hasArrow = true, 
+  onPress, 
+  isLogout = false,
+  hasSwitch = false,
+  switchValue = false,
+  onSwitchChange
+}: SettingItemProps) {
+  const colors = useColors();
+  
   return (
-    <TouchableOpacity style={styles.settingItem} onPress={onPress}>
+    <TouchableOpacity 
+      style={[styles.settingItem, { borderBottomColor: colors.background.secondary }]} 
+      onPress={onPress}
+      disabled={hasSwitch}
+    >
       <View style={styles.settingLeft}>
         {icon}
-        <Text style={[styles.settingTitle, isLogout && styles.logoutText]}>{title}</Text>
+        <Text style={[styles.settingTitle, { color: isLogout ? colors.status.error : colors.text.primary }]}>
+          {title}
+        </Text>
       </View>
-      {hasArrow && !isLogout && (
+      {hasSwitch ? (
+        <Switch
+          value={switchValue}
+          onValueChange={onSwitchChange}
+          trackColor={{ false: colors.border.light, true: colors.primary.main }}
+          thumbColor={switchValue ? colors.background.tertiary : colors.text.tertiary}
+        />
+      ) : hasArrow && !isLogout ? (
         <View style={styles.arrow}>
-          <Text style={styles.arrowText}>›</Text>
+          <Text style={[styles.arrowText, { color: colors.text.secondary }]}>›</Text>
         </View>
-      )}
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -41,6 +69,8 @@ function SettingItem({ icon, title, hasArrow = true, onPress, isLogout = false }
 export default function SettingsScreen() {
   const router = useRouter();
   const { userProfile, signOut } = useAuth();
+  const { isDarkMode, toggleTheme } = useTheme();
+  const colors = useColors();
 
   const handleLogout = () => {
     Alert.alert(
@@ -79,25 +109,25 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
           <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
+            <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.headerIcon}>
-              <Wallet size={24} color="#1D1D1F" />
+              <Wallet size={24} color={colors.text.primary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerIcon}>
-              <Trophy size={24} color="#1D1D1F" />
+              <Trophy size={24} color={colors.text.primary} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Profile Section */}
-        <View style={styles.profileSection}>
+        <View style={[styles.profileSection, { backgroundColor: colors.background.tertiary }]}>
           <View style={styles.profileImageContainer}>
             {userProfile?.avatar_url ? (
               <Image
@@ -105,124 +135,127 @@ export default function SettingsScreen() {
                 style={styles.profileImage}
               />
             ) : (
-              <View style={styles.defaultProfileIcon}>
-                <User size={40} color="#8E8E93" />
+              <View style={[styles.defaultProfileIcon, { backgroundColor: colors.background.secondary }]}>
+                <User size={40} color={colors.text.secondary} />
               </View>
             )}
-            <TouchableOpacity style={styles.cameraButton}>
+            <TouchableOpacity style={[styles.cameraButton, { backgroundColor: colors.primary.dark, borderColor: colors.background.tertiary }]}>
               <Camera size={16} color="white" />
             </TouchableOpacity>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.userName}>
+            <Text style={[styles.userName, { color: colors.text.primary }]}>
               {userProfile?.full_name || 'User'}
             </Text>
             {userProfile?.tagline && (
-              <Text style={styles.userTagline}>{userProfile.tagline}</Text>
+              <Text style={[styles.userTagline, { color: colors.text.secondary }]}>{userProfile.tagline}</Text>
             )}
           </View>
         </View>
 
         {/* Settings Menu */}
-        <View style={styles.settingsContainer}>
+        <View style={[styles.settingsContainer, { backgroundColor: colors.background.tertiary }]}>
           <SettingItem
-            icon={<Heart size={20} color="#1D1D1F" />}
+            icon={<Heart size={20} color={colors.text.primary} />}
             title="Favorite lists"
             onPress={() => router.push('/favorites')}
           />
           
           <SettingItem
-            icon={<Briefcase size={20} color="#1D1D1F" />}
+            icon={<Briefcase size={20} color={colors.text.primary} />}
             title="Become a seller"
             onPress={() => router.push('/become-seller')}
           />
           
           <SettingItem
-            icon={<Share size={20} color="#1D1D1F" />}
+            icon={<Share size={20} color={colors.text.primary} />}
             title="Invite friends"
             onPress={() => console.log('Invite friends')}
           />
           
           <SettingItem
-            icon={<SettingsIcon size={20} color="#1D1D1F" />}
+            icon={<SettingsIcon size={20} color={colors.text.primary} />}
             title="Settings"
             onPress={() => console.log('Settings')}
           />
           
           <SettingItem
-            icon={<User size={20} color="#1D1D1F" />}
+            icon={<User size={20} color={colors.text.primary} />}
             title="My account"
             onPress={() => router.push('/my-account')}
           />
 
           <SettingItem
-            icon={<Bell size={20} color="#1D1D1F" />}
+            icon={<Bell size={20} color={colors.text.primary} />}
             title="Notifications"
             onPress={() => console.log('Notifications')}
           />
 
           <SettingItem
-            icon={<Shield size={20} color="#1D1D1F" />}
+            icon={<Shield size={20} color={colors.text.primary} />}
             title="Privacy & Security"
             onPress={() => console.log('Privacy & Security')}
           />
 
           <SettingItem
-            icon={<CreditCard size={20} color="#1D1D1F" />}
+            icon={<CreditCard size={20} color={colors.text.primary} />}
             title="Payment Methods"
             onPress={() => console.log('Payment Methods')}
           />
 
           <SettingItem
-            icon={<Globe size={20} color={Colors.text.primary} />}
+            icon={<Globe size={20} color={colors.text.primary} />}
             title="Language & Region"
             onPress={() => console.log('Language & Region')}
           />
 
           <SettingItem
-            icon={<Moon size={20} color={Colors.text.primary} />}
+            icon={<Moon size={20} color={colors.text.primary} />}
             title="Dark Mode"
-            onPress={() => console.log('Dark Mode')}
+            hasArrow={false}
+            hasSwitch={true}
+            switchValue={isDarkMode}
+            onSwitchChange={toggleTheme}
           />
           
           <SettingItem
-            icon={<HelpCircle size={20} color={Colors.text.primary} />}
+            icon={<HelpCircle size={20} color={colors.text.primary} />}
             title="Support"
             onPress={() => console.log('Support')}
           />
 
           <SettingItem
-            icon={<MessageCircle size={20} color={Colors.text.primary} />}
+            icon={<MessageCircle size={20} color={colors.text.primary} />}
             title="Contact Us"
             onPress={() => console.log('Contact Us')}
           />
           
           <SettingItem
-            icon={<Users size={20} color={Colors.text.primary} />}
+            icon={<Users size={20} color={colors.text.primary} />}
             title="Community & legal"
             onPress={() => console.log('Community & legal')}
           />
 
           <SettingItem
-            icon={<FileText size={20} color={Colors.text.primary} />}
+            icon={<FileText size={20} color={colors.text.primary} />}
             title="Terms of Service"
             onPress={() => console.log('Terms of Service')}
           />
 
           <SettingItem
-            icon={<Shield size={20} color={Colors.text.primary} />}
+            icon={<Shield size={20} color={colors.text.primary} />}
             title="Privacy Policy"
             onPress={() => console.log('Privacy Policy')}
           />
           
           <SettingItem
-            icon={<Info size={20} color={Colors.text.primary} />}
+            icon={<Info size={20} color={colors.text.primary} />}
             title="About us"
             onPress={() => console.log('About us')}
           />
           
           <SettingItem
-            icon={<LogOut size={20} color="#FF3B30" />}
+            icon={<LogOut size={20} color={colors.status.error} />}
             title="Log out"
             hasArrow={false}
             isLogout={true}
@@ -232,7 +265,7 @@ export default function SettingsScreen() {
 
         {/* App Version */}
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>BetaMe v1.0.0</Text>
+          <Text style={[styles.versionText, { color: colors.text.secondary }]}>BetaMe v1.0.0</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -242,7 +275,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary,
   },
   header: {
     flexDirection: 'row',
@@ -250,7 +282,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: Colors.background.tertiary,
   },
   headerIcons: {
     flexDirection: 'row',
@@ -261,7 +292,6 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background.tertiary,
     paddingHorizontal: 20,
     paddingVertical: 20,
     marginBottom: 20,
@@ -279,7 +309,6 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.background.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -287,14 +316,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: Colors.primary.dark,
     width: 24,
     height: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: Colors.background.tertiary,
   },
   profileInfo: {
     flex: 1,
@@ -302,15 +329,12 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.text.primary,
     marginBottom: 2,
   },
   userTagline: {
     fontSize: 14,
-    color: Colors.text.secondary,
   },
   settingsContainer: {
-    backgroundColor: Colors.background.tertiary,
     marginHorizontal: 20,
     borderRadius: 12,
     paddingVertical: 8,
@@ -322,7 +346,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.background.secondary,
   },
   settingLeft: {
     flexDirection: 'row',
@@ -331,19 +354,16 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 16,
-    color: Colors.text.primary,
     marginLeft: 16,
     fontWeight: '400',
   },
   logoutText: {
-    color: Colors.status.error,
   },
   arrow: {
     marginLeft: 12,
   },
   arrowText: {
     fontSize: 18,
-    color: Colors.text.secondary,
     fontWeight: '300',
   },
   versionContainer: {
@@ -352,6 +372,5 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 14,
-    color: Colors.text.secondary,
   },
 });
