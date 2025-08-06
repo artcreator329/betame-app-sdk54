@@ -23,7 +23,13 @@ export default function AdminLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ 
+      headerShown: false,
+      animation: 'slide_from_right',
+      animationDuration: 450,
+      gestureEnabled: true,
+      gestureDirection: 'horizontal',
+    }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="users" />
       <Stack.Screen name="services" />

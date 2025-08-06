@@ -8,6 +8,7 @@ export class NotificationService {
   private listeners: ((notifications: Notification[]) => void)[] = [];
   private notifications: Notification[] = [];
   private isInitialized: boolean = false;
+  private currentUserId: string | null = null;
 
   static getInstance(): NotificationService {
     if (!NotificationService.instance) {
@@ -20,18 +21,35 @@ export class NotificationService {
     this.initializeService();
   }
 
-  private async initializeService(): Promise<void> {
-    if (!this.isInitialized) {
+  private async initializeService(userId?: string): Promise<void> {
+    if (!this.isInitialized || (userId && userId !== this.currentUserId)) {
+      this.currentUserId = userId || this.currentUserId;
       await this.loadNotifications();
       this.isInitialized = true;
     }
   }
 
+  // Set the current user ID for user-specific notifications
+  setCurrentUser(userId: string): void {
+    if (userId !== this.currentUserId) {
+      this.currentUserId = userId;
+      this.isInitialized = false; // Force re-initialization with new user
+    }
+  }
+
   private async loadNotifications(): Promise<void> {
     try {
-      const stored = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+      if (!this.currentUserId) {
+        console.warn('No current user ID set for notifications');
+        return;
+      }
+      
+      const userStorageKey = `${NOTIFICATIONS_STORAGE_KEY}_${this.currentUserId}`;
+      const stored = await AsyncStorage.getItem(userStorageKey);
       if (stored) {
-        this.notifications = JSON.parse(stored);
+        const allNotifications = JSON.parse(stored);
+        // Filter notifications for current user only
+        this.notifications = allNotifications.filter((n: Notification) => n.userId === this.currentUserId);
         this.notifyListeners();
       }
     } catch (error) {
@@ -41,7 +59,13 @@ export class NotificationService {
 
   private async saveNotifications(): Promise<void> {
     try {
-      await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(this.notifications));
+      if (!this.currentUserId) {
+        console.warn('No current user ID set for saving notifications');
+        return;
+      }
+      
+      const userStorageKey = `${NOTIFICATIONS_STORAGE_KEY}_${this.currentUserId}`;
+      await AsyncStorage.setItem(userStorageKey, JSON.stringify(this.notifications));
     } catch (error) {
       console.error('Error saving notifications:', error);
     }
@@ -78,18 +102,23 @@ export class NotificationService {
     };
   }
 
-  async addNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>): Promise<void> {
-    console.log('📝 NotificationService: addNotification called with:', notification);
+  async addNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'>, targetUserId: string): Promise<void> {
+    console.log('📝 NotificationService: addNotification called with:', notification, 'for user:', targetUserId);
     
-    // Ensure service is initialized
+    // Temporarily set the target user to save the notification
+    const originalUserId = this.currentUserId;
+    this.setCurrentUser(targetUserId);
+    
+    // Ensure service is initialized for the target user
     if (!this.isInitialized) {
       console.log('📝 NotificationService: Service not initialized, initializing...');
-      await this.initializeService();
+      await this.initializeService(targetUserId);
     }
     
     const newNotification: Notification = {
       ...notification,
       id: this.generateId(),
+      userId: targetUserId,
       timestamp: new Date().toISOString(),
       isRead: false,
     };
@@ -109,6 +138,12 @@ export class NotificationService {
     
     this.notifyListeners();
     console.log('📝 NotificationService: Notified listeners, listener count:', this.listeners.length);
+    
+    // Restore original user if it was different
+    if (originalUserId && originalUserId !== targetUserId) {
+      this.setCurrentUser(originalUserId);
+      await this.initializeService(originalUserId);
+    }
   }
 
   async markAsRead(notificationId: string): Promise<void> {
@@ -186,20 +221,29 @@ export class NotificationService {
     participantImage,
     message,
     chatId,
+    senderId,
   }: {
     participantId: string;
     participantName: string;
     participantImage: string;
     message: string;
     chatId: string;
+    senderId: string;
   }): Promise<void> {
     console.log('🔔 NotificationService: addChatNotification called with:', {
       participantId,
       participantName,
       message: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
       fullMessage: message,
-      chatId
+      chatId,
+      senderId
     });
+
+    // Validate that we have a senderId for navigation
+    if (!senderId) {
+      console.error('❌ NotificationService: senderId is required for chat notifications');
+      return;
+    }
     
     // Ensure service is initialized
     if (!this.isInitialized) {
@@ -213,15 +257,159 @@ export class NotificationService {
        message: message.length > 50 ? message.substring(0, 50) + '...' : message,
        data: {
          chatId,
-         participantId,
+         participantId: senderId, // Always use senderId for navigation (the person who sent the message)
          participantName,
          participantImage,
        },
      };
      
      console.log('🔔 NotificationService: Created notification object:', notification);
-     await this.addNotification(notification);
+     console.log('🔔 NotificationService: Notification will be sent TO:', participantId, 'with navigation TO:', senderId);
+     await this.addNotification(notification, participantId);
      console.log('🔔 NotificationService: addChatNotification completed');
+  }
+
+  // Helper method to add service offer notification
+  async addOfferNotification({
+    participantId,
+    participantName,
+    participantImage,
+    chatId,
+    offerId,
+    serviceTitle,
+    price,
+    currency,
+    senderId,
+    isIncoming = true,
+  }: {
+    participantId: string;
+    participantName: string;
+    participantImage: string;
+    chatId: string;
+    offerId: string;
+    serviceTitle: string;
+    price: number;
+    currency: string;
+    senderId: string;
+    isIncoming?: boolean;
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addOfferNotification called with:', {
+      participantId,
+      participantName,
+      offerId,
+      serviceTitle,
+      senderId
+    });
+
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'> = {
+      type: 'offer' as const,
+      title: isIncoming ? `New offer from ${participantName}` : `Offer sent to ${participantName}`,
+      message: `${serviceTitle} - ${currency} ${price}`,
+      data: {
+        chatId,
+        participantId: senderId, // Use senderId for navigation (the seller who made the offer)
+        participantName,
+        participantImage,
+        offerId,
+        offerStatus: 'pending',
+        serviceTitle,
+        price,
+        currency,
+      },
+    };
+    
+    console.log('🔔 NotificationService: Created offer notification:', notification);
+    await this.addNotification(notification, participantId);
+    console.log('🔔 NotificationService: Offer notification sent to:', participantId);
+  }
+
+  // Helper method to add offer acceptance notification
+  async addOfferAcceptedNotification({
+    participantId,
+    participantName,
+    participantImage,
+    chatId,
+    offerId,
+    serviceTitle,
+    price,
+    currency,
+    isAcceptedByMe = false,
+  }: {
+    participantId: string;
+    participantName: string;
+    participantImage: string;
+    chatId: string;
+    offerId: string;
+    serviceTitle: string;
+    price: number;
+    currency: string;
+    isAcceptedByMe?: boolean;
+  }): Promise<void> {
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'> = {
+      type: 'offer' as const,
+      title: isAcceptedByMe ? `You accepted ${participantName}'s offer` : `Your offer was accepted by ${participantName}`,
+      message: `${serviceTitle} - ${currency} ${price}`,
+      data: {
+        chatId,
+        participantId,
+        participantName,
+        participantImage,
+        offerId,
+        offerStatus: 'accepted',
+        serviceTitle,
+        price,
+        currency,
+      },
+    };
+    
+    await this.addNotification(notification, participantId);
+  }
+
+  // Helper method to add offer rejection notification
+  async addOfferRejectedNotification({
+    participantId,
+    participantName,
+    participantImage,
+    chatId,
+    offerId,
+    serviceTitle,
+    price,
+    currency,
+    rejectReason,
+    isRejectedByMe = false,
+  }: {
+    participantId: string;
+    participantName: string;
+    participantImage: string;
+    chatId: string;
+    offerId: string;
+    serviceTitle: string;
+    price: number;
+    currency: string;
+    rejectReason?: string;
+    isRejectedByMe?: boolean;
+  }): Promise<void> {
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'> = {
+      type: 'offer' as const,
+      title: isRejectedByMe ? `You rejected ${participantName}'s offer` : `Your offer was rejected by ${participantName}`,
+      message: rejectReason 
+        ? `${serviceTitle} - Reason: ${rejectReason}`
+        : `${serviceTitle} - ${currency} ${price}`,
+      data: {
+        chatId,
+        participantId,
+        participantName,
+        participantImage,
+        offerId,
+        offerStatus: 'rejected',
+        serviceTitle,
+        price,
+        currency,
+        rejectReason,
+      },
+    };
+    
+    await this.addNotification(notification, participantId);
   }
 
 

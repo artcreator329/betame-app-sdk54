@@ -8,7 +8,9 @@ import {
   Alert,
   Modal,
   ScrollView,
+  TextInput,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Check, X, Edit3, Clock, Tag } from 'lucide-react-native';
 import { LiveChatMessage } from '../types/chat';
 import { Colors } from '../constants/Colors';
@@ -17,7 +19,7 @@ interface ServiceOfferMessageProps {
   message: LiveChatMessage;
   isCurrentUser: boolean;
   onAcceptOffer?: (offerId: string) => void;
-  onRejectOffer?: (offerId: string) => void;
+  onRejectOffer?: (offerId: string, reason?: string) => void;
   onEditOffer?: (offerId: string) => void;
   onViewService?: (serviceId: string) => void;
 }
@@ -32,11 +34,15 @@ export function ServiceOfferMessage({
 }: ServiceOfferMessageProps) {
   const { serviceData, offerId, offerStatus, offerExpiresAt } = message;
   const [showCustomOfferModal, setShowCustomOfferModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   // Debug logging
   console.log('🔍 ServiceOfferMessage: Full message data:', message);
   console.log('🔍 ServiceOfferMessage: Service data:', serviceData);
   console.log('🔍 ServiceOfferMessage: Offer ID:', offerId);
+  console.log('🔍 ServiceOfferMessage: Offer Status:', offerStatus);
+  console.log('🔍 ServiceOfferMessage: Offer Expires At:', offerExpiresAt);
 
   if (!serviceData || !offerId) {
     console.log('❌ ServiceOfferMessage: Missing serviceData or offerId');
@@ -47,6 +53,15 @@ export function ServiceOfferMessage({
   const isPending = offerStatus === 'pending' || !offerStatus;
   const isAccepted = offerStatus === 'accepted';
   const isRejected = offerStatus === 'rejected';
+
+  // Debug status flags
+  console.log('🔍 ServiceOfferMessage: Status flags:', {
+    isExpired,
+    isPending,
+    isAccepted,
+    isRejected,
+    rawStatus: offerStatus
+  });
 
   const handleAccept = () => {
     if (!offerId) return;
@@ -66,18 +81,14 @@ export function ServiceOfferMessage({
 
   const handleReject = () => {
     if (!offerId) return;
-    Alert.alert(
-      'Reject Offer',
-      'Are you sure you want to reject this service offer?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: () => onRejectOffer?.(offerId),
-        },
-      ]
-    );
+    setShowRejectModal(true);
+  };
+
+  const handleConfirmReject = () => {
+    if (!offerId) return;
+    onRejectOffer?.(offerId, rejectReason.trim() || undefined);
+    setShowRejectModal(false);
+    setRejectReason('');
   };
 
   const handleEdit = () => {
@@ -114,7 +125,12 @@ export function ServiceOfferMessage({
 
   return (
     <View style={[styles.container, isCurrentUser ? styles.myOffer : styles.theirOffer]}>
-      <View style={styles.bubble}>
+      <LinearGradient
+        colors={isRejected ? ['#BDBDBD', '#9E9E9E', '#757575'] : ['#81C784', '#66BB6A', '#4CAF50']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.bubble, isRejected && styles.rejectedBubble]}
+      >
         {/* Header with Status */}
         <View style={styles.header}>
           <Text style={styles.offerTitle}>Service Offer</Text>
@@ -139,13 +155,13 @@ export function ServiceOfferMessage({
           {/* Right: Service Details */}
           <View style={styles.serviceDetails}>
             {/* Service Title */}
-            <Text style={styles.serviceTitle} numberOfLines={2}>
+            <Text style={[styles.serviceTitle, isRejected && styles.rejectedText]} numberOfLines={2}>
               {serviceData.title || 'Service Offer'}
             </Text>
 
             {/* Service Description */}
             {serviceData.description && (
-              <Text style={styles.serviceDescription} numberOfLines={2}>
+              <Text style={[styles.serviceDescription, isRejected && styles.rejectedText]} numberOfLines={2}>
                 {serviceData.description}
               </Text>
             )}
@@ -157,12 +173,12 @@ export function ServiceOfferMessage({
                   <Text style={styles.originalPrice}>
                     Original: RM {serviceData.price}
                   </Text>
-                  <Text style={styles.customPrice}>
+                  <Text style={[styles.customPrice, isRejected && styles.rejectedText]}>
                     Offer: RM {serviceData.customPrice}
                   </Text>
                 </View>
               ) : (
-                <Text style={styles.priceText}>
+                <Text style={[styles.priceText, isRejected && styles.rejectedText]}>
                   RM {serviceData.customPrice || serviceData.price || '0'}
                 </Text>
               )}
@@ -181,6 +197,32 @@ export function ServiceOfferMessage({
                 </Text>
               )}
             </View>
+
+            {/* Job Details */}
+            {serviceData.jobData && (
+              <View style={styles.jobDetailsContainer}>
+                <Text style={styles.jobDetailsLabel}>Job Details:</Text>
+                <Text style={styles.jobTitle} numberOfLines={1}>
+                  📋 {serviceData.jobData.title}
+                </Text>
+                <Text style={styles.jobDescription} numberOfLines={2}>
+                  {serviceData.jobData.description}
+                </Text>
+                <View style={styles.jobMetaRow}>
+                  <Text style={styles.jobBudget}>
+                    💰 {serviceData.jobData.budget_amount ? `${serviceData.jobData.currency} ${serviceData.jobData.budget_amount}` : 'Budget: Negotiable'}
+                  </Text>
+                  <Text style={styles.jobPaymentType}>
+                    📊 {serviceData.jobData.payment_type}
+                  </Text>
+                </View>
+                {serviceData.jobData.location_address && (
+                  <Text style={styles.jobLocation} numberOfLines={1}>
+                    📍 {serviceData.jobData.location_address}
+                  </Text>
+                )}
+              </View>
+            )}
 
             {/* Custom Description */}
             {serviceData.customDescription && (
@@ -235,6 +277,24 @@ export function ServiceOfferMessage({
                   </>
                 )}
               </>
+            )}
+
+            {/* Show rejected state buttons */}
+            {isRejected && (
+              <View style={styles.rejectedButtonContainer}>
+                <View style={styles.rejectedButton}>
+                  <Text style={styles.rejectedButtonText}>Rejected</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Show accepted state buttons */}
+            {isAccepted && (
+              <View style={styles.acceptedButtonContainer}>
+                <View style={styles.acceptedButton}>
+                  <Text style={styles.acceptedButtonText}>Accepted</Text>
+                </View>
+              </View>
             )}
           </View>
 
@@ -344,7 +404,65 @@ export function ServiceOfferMessage({
             </View>
           </View>
         </Modal>
-      </View>
+
+        {/* Reject Reason Modal */}
+        <Modal
+          visible={showRejectModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowRejectModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.rejectModalContainer}>
+              {/* Header */}
+              <View style={styles.rejectModalHeader}>
+                <Text style={styles.rejectModalTitle}>Reject Offer</Text>
+                <TouchableOpacity 
+                  style={styles.closeButton}
+                  onPress={() => setShowRejectModal(false)}
+                >
+                  <X size={24} color={Colors.text.secondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Content */}
+              <View style={styles.rejectModalContent}>
+                <Text style={styles.rejectModalDescription}>
+                  Please provide a reason for rejecting this offer (optional):
+                </Text>
+                
+                <TextInput
+                  style={styles.rejectReasonInput}
+                  placeholder="e.g., Price too high, timeline doesn't work, etc."
+                  placeholderTextColor={Colors.text.secondary}
+                  value={rejectReason}
+                  onChangeText={setRejectReason}
+                  multiline={true}
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              {/* Buttons */}
+              <View style={styles.rejectModalButtons}>
+                <TouchableOpacity 
+                  style={styles.rejectCancelButton}
+                  onPress={() => setShowRejectModal(false)}
+                >
+                  <Text style={styles.rejectCancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.rejectConfirmButton}
+                  onPress={handleConfirmReject}
+                >
+                  <Text style={styles.rejectConfirmButtonText}>Reject Offer</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </LinearGradient>
     </View>
   );
 }
@@ -363,7 +481,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   bubble: {
-    backgroundColor: Colors.background.tertiary,
     borderRadius: 16,
     padding: 16,
     shadowColor: Colors.text.primary,
@@ -375,8 +492,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 1,
-    borderColor: Colors.border.light,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     minHeight: 120,
+  },
+  rejectedBubble: {
+    opacity: 0.7,
+  },
+  rejectedText: {
+    opacity: 0.6,
   },
   header: {
     flexDirection: 'row',
@@ -387,7 +510,7 @@ const styles = StyleSheet.create({
   offerTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: '#FFFFFF',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -416,7 +539,7 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 10,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -427,13 +550,13 @@ const styles = StyleSheet.create({
   serviceTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: '#FFFFFF',
     lineHeight: 20,
     marginBottom: 4,
   },
   serviceDescription: {
     fontSize: 13,
-    color: Colors.text.secondary,
+    color: 'rgba(255, 255, 255, 0.9)',
     lineHeight: 18,
     marginBottom: 6,
   },
@@ -447,18 +570,18 @@ const styles = StyleSheet.create({
   originalPrice: {
     fontSize: 12,
     fontWeight: '500',
-    color: Colors.text.secondary,
+    color: 'rgba(255, 255, 255, 0.8)',
     textDecorationLine: 'line-through',
   },
   customPrice: {
     fontSize: 18,
     fontWeight: '800',
-    color: Colors.primary.main,
+    color: '#FFFFFF',
   },
   priceText: {
     fontSize: 18,
     fontWeight: '800',
-    color: Colors.primary.main,
+    color: '#FFFFFF',
   },
   detailsRow: {
     flexDirection: 'row',
@@ -470,8 +593,8 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.primary.main,
-    backgroundColor: Colors.background.secondary,
+    color: '#2E7D32',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -479,30 +602,81 @@ const styles = StyleSheet.create({
   deliveryText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.status.warning,
-    backgroundColor: Colors.background.secondary,
+    color: '#F57C00',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
+  jobDetailsContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 10,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#81C784',
+    marginBottom: 6,
+  },
+  jobDetailsLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#81C784',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  jobTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 3,
+  },
+  jobDescription: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
+    lineHeight: 16,
+    marginBottom: 4,
+  },
+  jobMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  jobBudget: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#A5D6A7',
+    flex: 1,
+  },
+  jobPaymentType: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#A5D6A7',
+    textTransform: 'capitalize',
+  },
+  jobLocation: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontStyle: 'italic',
+  },
   customDescriptionContainer: {
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     padding: 8,
     borderRadius: 8,
     borderLeftWidth: 3,
-    borderLeftColor: Colors.primary.main,
+    borderLeftColor: '#FFFFFF',
   },
   customDescriptionLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: Colors.primary.main,
+    color: '#FFFFFF',
     marginBottom: 2,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   customDescription: {
     fontSize: 12,
-    color: Colors.text.secondary,
+    color: 'rgba(255, 255, 255, 0.9)',
     lineHeight: 16,
     fontStyle: 'italic',
   },
@@ -512,7 +686,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: Colors.border.light,
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
   },
   actionsRow: {
     flexDirection: 'row',
@@ -522,43 +696,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderWidth: 1,
-    borderColor: Colors.primary.main,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     alignItems: 'center',
   },
   viewButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.primary.main,
+    color: '#2E7D32',
   },
   editButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderWidth: 1,
-    borderColor: Colors.status.warning,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     alignItems: 'center',
   },
   editButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.status.warning,
+    color: '#F57C00',
   },
   rejectButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderWidth: 1,
-    borderColor: Colors.status.error,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     alignItems: 'center',
   },
   rejectButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.status.error,
+    color: '#D32F2F',
   },
   acceptButton: {
     paddingHorizontal: 12,
@@ -574,7 +748,7 @@ const styles = StyleSheet.create({
   },
   expirationText: {
     fontSize: 10,
-    color: Colors.text.secondary,
+    color: 'rgba(255, 255, 255, 0.8)',
     fontStyle: 'italic',
     flex: 1,
     textAlign: 'right',
@@ -691,6 +865,120 @@ const styles = StyleSheet.create({
   },
   modalCloseButtonText: {
     fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text.white,
+  },
+  // Reject Modal Styles
+  rejectModalContainer: {
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: Colors.text.primary,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  rejectModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border.light,
+  },
+  rejectModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.text.primary,
+  },
+  rejectModalContent: {
+    padding: 20,
+  },
+  rejectModalDescription: {
+    fontSize: 16,
+    color: Colors.text.secondary,
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  rejectReasonInput: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: Colors.text.primary,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    minHeight: 100,
+    maxHeight: 150,
+  },
+  rejectModalButtons: {
+    flexDirection: 'row',
+    padding: 20,
+    paddingTop: 0,
+    gap: 12,
+  },
+  rejectCancelButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: Colors.background.secondary,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    alignItems: 'center',
+  },
+  rejectCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+  },
+  rejectConfirmButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: Colors.status.error,
+    alignItems: 'center',
+  },
+  rejectConfirmButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text.white,
+  },
+  // Rejected/Accepted State Styles
+  rejectedButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rejectedButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: Colors.status.error,
+    alignItems: 'center',
+  },
+  rejectedButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text.white,
+  },
+  acceptedButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  acceptedButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: Colors.status.success,
+    alignItems: 'center',
+  },
+  acceptedButtonText: {
+    fontSize: 12,
     fontWeight: '700',
     color: Colors.text.white,
   },

@@ -1,3 +1,14 @@
+export interface JobData {
+  id: string;
+  title: string;
+  description: string;
+  payment_type: 'fixed' | 'hourly' | 'daily' | 'negotiable';
+  budget_amount?: string;
+  currency: string;
+  location_address?: string;
+  cover_photo?: string;
+}
+
 export interface ServiceOfferData {
   id: string;
   title: string;
@@ -10,6 +21,7 @@ export interface ServiceOfferData {
   customDescription?: string;
   customDeliveryTime?: number;
   isCustomOffer?: boolean; // Flag to indicate if this is a custom offer (not tied to existing service)
+  jobData?: JobData; // Job details when offer is related to a job
 }
 
 export interface ServiceOffer {

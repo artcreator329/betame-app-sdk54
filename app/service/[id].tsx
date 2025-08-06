@@ -7,9 +7,11 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, MessageCircle } from 'lucide-react-native';
+import { ArrowLeft, Star, MessageCircle, X, Package } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ServiceService, Service } from '@/lib/service-service';
@@ -41,6 +43,9 @@ export default function ServiceDetailsScreen() {
   const [serviceOwnerProfile, setServiceOwnerProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [serviceVariantModalVisible, setServiceVariantModalVisible] = useState(false);
+  const [serviceVariants, setServiceVariants] = useState<Service[]>([]);
+  const [loadingVariants, setLoadingVariants] = useState(false);
 
   console.log('🔍 ServiceDetailsScreen: Component mounted with ID:', id);
   console.log('🔍 ServiceDetailsScreen: ID type:', typeof id);
@@ -76,6 +81,9 @@ export default function ServiceDetailsScreen() {
               const ownerProfile = await authService.getUserProfile(serviceData.user_id);
               setServiceOwnerProfile(ownerProfile);
             }
+            
+            // Load service variants
+            await loadServiceVariants(serviceData);
           } else {
             console.error('❌ ServiceDetailsScreen: No service found with ID:', serviceId);
             setError(`Service with ID "${serviceId}" not found in database`);
@@ -95,6 +103,29 @@ export default function ServiceDetailsScreen() {
 
     fetchService();
   }, [id]);
+
+  const loadServiceVariants = async (serviceData: Service) => {
+    try {
+      setLoadingVariants(true);
+      
+      // Create array with main service and its variants
+      const variants: Service[] = [serviceData]; // Main service first
+      
+      // Load child variants from database if service has variants
+      if (serviceData.id) {
+        const childVariants = await ServiceService.getServiceVariants(serviceData.id);
+        if (childVariants && childVariants.length > 0) {
+          variants.push(...childVariants);
+        }
+      }
+      
+      setServiceVariants(variants);
+    } catch (error) {
+      console.error('Error loading service variants:', error);
+    } finally {
+      setLoadingVariants(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -133,8 +164,33 @@ export default function ServiceDetailsScreen() {
   const isOwnService = user?.id === service?.user_id;
 
   const handleChatWithSeller = () => {
+    // If service has variants, show selection modal
+    if (serviceVariants.length > 1) {
+      setServiceVariantModalVisible(true);
+    } else {
+      // If no variants, proceed directly to chat
+      const participantId = getParticipantId();
+      router.push(`/chat/${participantId}`);
+    }
+  };
+
+  const handleVariantSelection = (selectedVariant: Service) => {
+    setServiceVariantModalVisible(false);
     const participantId = getParticipantId();
-    router.push(`/chat/${participantId}`);
+    // Navigate to chat with selected variant information
+    router.push({
+      pathname: '/chat/[participantId]' as any,
+      params: {
+        participantId,
+        selectedServiceId: selectedVariant.id,
+        selectedServiceTitle: selectedVariant.title,
+        selectedServicePrice: selectedVariant.price.toString(),
+        selectedServiceCurrency: selectedVariant.currency,
+        selectedServiceDescription: selectedVariant.description,
+        selectedServiceImage: selectedVariant.image_url || '',
+        selectedServiceCategory: selectedVariant.category_name || ''
+      }
+    });
   };
 
   const subPlans = getServicePlans(service.id || '');
@@ -284,6 +340,65 @@ export default function ServiceDetailsScreen() {
           </View>
         </View>
       </ScrollView>
+      
+      {/* Service Variant Selection Modal */}
+      <Modal
+        visible={serviceVariantModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setServiceVariantModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.variantModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Service Option</Text>
+              <TouchableOpacity
+                onPress={() => setServiceVariantModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <X size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            {loadingVariants ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary.main} />
+                <Text style={styles.loadingText}>Loading options...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={serviceVariants}
+                keyExtractor={(item) => item.id || `variant-${Math.random()}`}
+                renderItem={({ item, index }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.variantItem,
+                      index === 0 && styles.mainVariantItem
+                    ]}
+                    onPress={() => handleVariantSelection(item)}
+                  >
+                    <View style={styles.variantContent}>
+                      <View style={styles.variantHeader}>
+                        <Package size={20} color={colors.primary.main} />
+                        <Text style={styles.variantTitle}>
+                          {index === 0 ? `${item.title} (Main)` : item.title}
+                        </Text>
+                      </View>
+                      <Text style={styles.variantDescription} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                      <Text style={styles.variantPrice}>
+                        {item.currency} {item.price}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -507,5 +622,71 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  variantModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  variantItem: {
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  mainVariantItem: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2196f3',
+  },
+  variantContent: {
+    flex: 1,
+  },
+  variantHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  variantTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+    color: '#333',
+  },
+  variantDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  variantPrice: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2196f3',
   },
 });

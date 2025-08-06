@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Notification, NotificationContextType } from '@/types/notification';
 import { notificationService } from '@/lib/notification-service';
+import { useAuth } from '@/contexts/AuthContext';
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
@@ -11,9 +12,15 @@ interface NotificationProviderProps {
 export function NotificationProvider({ children }: NotificationProviderProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadNotifications = async () => {
+      if (!user?.id) return;
+      
+      // Set the current user for the notification service
+      notificationService.setCurrentUser(user.id);
+      
       const savedNotifications = await notificationService.getNotifications();
       setNotifications(savedNotifications);
       setUnreadCount(savedNotifications.filter(n => !n.isRead).length);
@@ -30,10 +37,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     });
 
     return unsubscribe;
-  }, []);
+  }, [user?.id]);
 
-  const addNotification = async (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => {
-    await notificationService.addNotification(notification);
+  const addNotification = async (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'>, targetUserId: string) => {
+    await notificationService.addNotification(notification, targetUserId);
   };
 
   const markAsRead = async (notificationId: string) => {

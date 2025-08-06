@@ -34,7 +34,27 @@ function getPriceUnitLabel(priceUnit: string): string {
 }
 
 // TODO: Replace with dynamic industry list from database
-const INDUSTRIES: string[] = [];
+const INDUSTRIES: string[] = [
+  'Professional Services',
+  'Construction & Maintenance',
+  'Technology & IT',
+  'Healthcare & Medical',
+  'Education & Training',
+  'Finance & Banking',
+  'Retail & E-commerce',
+  'Hospitality & Tourism',
+  'Manufacturing',
+  'Transportation & Logistics',
+  'Real Estate',
+  'Media & Entertainment',
+  'Agriculture & Farming',
+  'Automotive',
+  'Beauty & Wellness',
+  'Food & Beverage',
+  'Sports & Recreation',
+  'Non-Profit & Social Services',
+  'Government & Public Sector',
+];
 
 export default function CreateServiceListingScreen() {
   const [currentStep, setCurrentStep] = useState(1);

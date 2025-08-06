@@ -13,11 +13,12 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles } from 'lucide-react-native';
+import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles, ShoppingBag } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { WalletService, WalletData, PurchasedFeature } from '../lib/wallet-service';
 import { useAuth } from '../contexts/AuthContext';
 import { useColors, useTheme } from '@/contexts/ThemeContext';
+import { StoneMarketplace } from '../components/StoneMarketplace';
 
 interface Feature {
   id: string;
@@ -87,6 +88,7 @@ export default function WalletScreen() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
+  const [showMarketplace, setShowMarketplace] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -118,7 +120,17 @@ export default function WalletScreen() {
     
     const amount = parseInt(convertAmount);
     if (amount > walletData.betame_stones) {
-      Alert.alert('Insufficient Stones', 'You don\'t have enough BetaMe stones to convert.');
+      Alert.alert(
+        'Insufficient Stones',
+        'You don\'t have enough BetaMe stones to convert.',
+        [
+          { text: 'Cancel', style: 'cancel' as const },
+          {
+            text: 'Buy More Stones',
+            onPress: () => setShowMarketplace(true),
+          },
+        ]
+      );
       return;
     }
     if (amount < 10) {
@@ -138,6 +150,40 @@ export default function WalletScreen() {
   };
 
   const handleFeaturePurchase = (feature: Feature) => {
+    if (!walletData) return;
+    
+    // Check if user has enough credits for at least 1 quantity
+    if (walletData.betame_credits < feature.cost) {
+      // Calculate how many stones needed to get enough credits
+      const creditsNeeded = feature.cost - walletData.betame_credits;
+      const stonesNeeded = creditsNeeded * 10; // 10 stones = 1 credit
+      
+      const alertButtons = [
+         { text: 'Cancel', style: 'cancel' as const },
+         {
+           text: 'Buy Stones',
+           onPress: () => setShowMarketplace(true),
+         },
+       ];
+       
+       if (walletData.betame_stones >= stonesNeeded) {
+         alertButtons.push({
+           text: 'Convert Stones',
+           onPress: () => {
+             setConvertAmount(stonesNeeded.toString());
+             // Scroll to conversion section or highlight it
+           },
+         });
+       }
+       
+       Alert.alert(
+         'Insufficient Credits',
+         `You need ${creditsNeeded} more credit(s) to purchase this feature. You can convert ${stonesNeeded} stones to get ${creditsNeeded} credit(s), or buy more stones from the marketplace.`,
+         alertButtons
+       );
+      return;
+    }
+    
     setSelectedFeature(feature);
     setPurchaseQuantity(1);
     setShowPurchaseModal(true);
@@ -148,7 +194,35 @@ export default function WalletScreen() {
     
     const totalCost = selectedFeature.cost * purchaseQuantity;
     if (walletData.betame_credits < totalCost) {
-      Alert.alert('Insufficient Credits', 'You don\'t have enough BetaMe credits for this purchase.');
+      const creditsNeeded = totalCost - walletData.betame_credits;
+      const stonesNeeded = creditsNeeded * 10;
+      
+      const alertButtons = [
+        { text: 'Cancel', style: 'cancel' as const },
+        {
+          text: 'Buy Stones',
+          onPress: () => {
+            setShowPurchaseModal(false);
+            setShowMarketplace(true);
+          },
+        },
+      ];
+      
+      if (walletData.betame_stones >= stonesNeeded) {
+        alertButtons.push({
+          text: 'Convert Stones',
+          onPress: () => {
+            setShowPurchaseModal(false);
+            setConvertAmount(stonesNeeded.toString());
+          },
+        });
+      }
+      
+      Alert.alert(
+        'Insufficient Credits',
+        `You need ${creditsNeeded} more credit(s) for this purchase. You can convert ${stonesNeeded} stones to get ${creditsNeeded} credit(s), or buy more stones.`,
+        alertButtons
+      );
       return;
     }
     
@@ -235,8 +309,20 @@ export default function WalletScreen() {
             <View style={styles.balanceOverlay}>
                <View style={styles.balanceHeader}>
                  <Text style={styles.balanceLabelWithBg}>Premium Stones</Text>
+                 <TouchableOpacity 
+                   onPress={() => setShowMarketplace(true)}
+                   style={styles.marketplaceButton}
+                 >
+                   <ShoppingBag size={20} color="white" />
+                 </TouchableOpacity>
                </View>
                <Text style={styles.balanceAmountWithBg}>{walletData?.betame_stones || 0} Stones</Text>
+               <TouchableOpacity 
+                 onPress={() => setShowMarketplace(true)}
+                 style={styles.buyMoreButton}
+               >
+                 <Text style={styles.buyMoreText}>Buy More Stones</Text>
+               </TouchableOpacity>
              </View>
           </ImageBackground>
 
@@ -269,7 +355,7 @@ export default function WalletScreen() {
                   onChangeText={setConvertAmount}
                   keyboardType="numeric"
                   placeholder="10"
-                  placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                  placeholderTextColor="#7bb3f0"
                 />
                 <Text style={styles.inputLabel}>💎</Text>
               </View>
@@ -283,6 +369,18 @@ export default function WalletScreen() {
             <TouchableOpacity style={styles.convertButton} onPress={handleConvert}>
               <Text style={styles.convertButtonText}>Convert</Text>
             </TouchableOpacity>
+            
+            {/* Buy More Stones Option */}
+            <View style={styles.buyMoreSection}>
+              <Text style={[styles.buyMoreLabel, { color: colors.text.secondary }]}>Need more stones?</Text>
+              <TouchableOpacity 
+                style={[styles.buyMoreStoneButton, { backgroundColor: colors.primary.main }]}
+                onPress={() => setShowMarketplace(true)}
+              >
+                <ShoppingBag size={16} color="white" />
+                <Text style={styles.buyMoreStoneText}>Buy More Stones</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -398,6 +496,16 @@ export default function WalletScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Stone Marketplace */}
+        <StoneMarketplace
+          visible={showMarketplace}
+          onClose={() => setShowMarketplace(false)}
+          onPurchaseSuccess={() => {
+            setShowMarketplace(false);
+            loadWalletData();
+          }}
+        />
       </ScrollView>
       </SafeAreaView>
     </>
@@ -561,17 +669,19 @@ const styles = StyleSheet.create({
   conversionInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#e6f3ff',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     flex: 1,
     marginRight: 16,
+    borderWidth: 1,
+    borderColor: '#b8e0ff',
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: 'white',
+    color: '#1a365d',
     textAlign: 'center',
   },
   inputLabel: {
@@ -580,24 +690,26 @@ const styles = StyleSheet.create({
   },
   conversionArrow: {
     fontSize: 20,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#4a90e2',
     marginHorizontal: 16,
   },
   conversionOutput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#e6f3ff',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     flex: 1,
     marginLeft: 16,
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#b8e0ff',
   },
   outputValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
+    color: '#1a365d',
   },
   outputLabel: {
     fontSize: 16,
@@ -793,5 +905,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  marketplaceButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  buyMoreButton: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+  },
+  buyMoreText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  buyMoreSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+  },
+  buyMoreLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  buyMoreStoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  buyMoreStoneText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

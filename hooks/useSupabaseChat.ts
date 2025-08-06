@@ -61,11 +61,30 @@ export function useSupabaseChat({ chatId, currentUserId, currentUserName }: UseS
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
     };
 
+    const handleUpdateMessage = (updatedMessage: LiveChatMessage) => {
+      console.log('🔄 useSupabaseChat: Handling message update:', updatedMessage);
+      setMessages(prev => {
+        const updated = prev.map(msg => {
+          if (msg.id === updatedMessage.id) {
+            console.log('🔄 useSupabaseChat: Updating message:', {
+              oldStatus: msg.offerStatus,
+              newStatus: updatedMessage.offerStatus,
+              messageId: msg.id
+            });
+            return updatedMessage;
+          }
+          return msg;
+        });
+        return updated;
+      });
+    };
+
     unsubscribeMessagesRef.current = supabaseChatService.subscribeToMessages(
       chatId,
       currentUserId,
       handleNewMessage,
-      handleDeleteMessage
+      handleDeleteMessage,
+      handleUpdateMessage
     );
 
     return () => {

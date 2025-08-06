@@ -1,14 +1,33 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform, View, Text } from 'react-native';
+import React, { useEffect } from 'react';
+import { Platform, View, Text, Dimensions } from 'react-native';
 import { Chrome as Home, Users, FileText, Bell, User, Briefcase } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function TabLayout() {
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const { unreadCount } = useNotifications();
+  
+  const screenWidth = Dimensions.get('window').width;
+  const tabWidth = (screenWidth - 40) / 5; // 5 tabs, 40 for margins
+  const indicatorPosition = useSharedValue(0);
+  
+  const animatedIndicatorStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: indicatorPosition.value }],
+    };
+  });
+  
+  const moveIndicator = (index: number) => {
+    indicatorPosition.value = withSpring(index * tabWidth, {
+      damping: 15,
+      stiffness: 150,
+    });
+  };
 
   const NotificationBadge = ({ count }: { count: number }) => {
     if (count === 0) return null;
@@ -68,6 +87,29 @@ export default function TabLayout() {
           fontSize: 12,
           fontWeight: '500',
         },
+        tabBarBackground: () => (
+          <View style={{
+            flex: 1,
+            backgroundColor: 'white',
+            borderRadius: 25,
+            overflow: 'hidden',
+          }}>
+            <Animated.View
+              style={[
+                {
+                  position: 'absolute',
+                  top: 4,
+                  left: 8,
+                  width: tabWidth - 16,
+                  height: 4,
+                  backgroundColor: '#007AFF',
+                  borderRadius: 2,
+                },
+                animatedIndicatorStyle,
+              ]}
+            />
+          </View>
+        ),
       }}>
       <Tabs.Screen
         name="index"
@@ -76,6 +118,9 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Home size={size} color={color} />
           ),
+        }}
+        listeners={{
+          focus: () => moveIndicator(0),
         }}
       />
       <Tabs.Screen
@@ -87,6 +132,9 @@ export default function TabLayout() {
           ),
           href: isAuthenticated ? '/services' : null,
         }}
+        listeners={{
+          focus: () => moveIndicator(1),
+        }}
       />
       <Tabs.Screen
         name="orders"
@@ -96,6 +144,9 @@ export default function TabLayout() {
             <FileText size={size} color={color} />
           ),
           href: isAuthenticated ? '/orders' : null,
+        }}
+        listeners={{
+          focus: () => moveIndicator(2),
         }}
       />
       <Tabs.Screen
@@ -110,6 +161,9 @@ export default function TabLayout() {
           ),
           href: isAuthenticated ? '/notifications' : null,
         }}
+        listeners={{
+          focus: () => moveIndicator(3),
+        }}
       />
       <Tabs.Screen
         name="profile"
@@ -118,6 +172,9 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <User size={size} color={color} />
           ),
+        }}
+        listeners={{
+          focus: () => moveIndicator(4),
         }}
       />
     </Tabs>

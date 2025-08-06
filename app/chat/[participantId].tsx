@@ -25,8 +25,11 @@ import { useSupabaseChatContext } from '@/contexts/SupabaseChatContext';
 import { chatService } from '@/lib/chat-service';
 import { supabase } from '@/lib/supabase';
 import { ServiceService, Service } from '@/lib/service-service';
-import { ServiceOfferModal } from '../../components/ServiceOfferModal';
 import { ServiceOfferMessage } from '../../components/ServiceOfferMessage';
+import { ServiceOfferModal } from '../../components/ServiceOfferModal';
+import { PaymentModal } from '../../components/PaymentModal';
+import { JobProgressMonitor } from '../../components/JobProgressMonitor';
+import { notificationService } from '@/lib/notification-service';
 
 interface ModeratedMessage extends ChatMessage {
   isHidden?: boolean;
@@ -37,7 +40,16 @@ interface ModeratedMessage extends ChatMessage {
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { participantId } = useLocalSearchParams();
+  const { 
+    participantId,
+    selectedServiceId,
+    selectedServiceTitle,
+    selectedServicePrice,
+    selectedServiceCurrency,
+    selectedServiceDescription,
+    selectedServiceImage,
+    selectedServiceCategory
+  } = useLocalSearchParams();
   const { user, userProfile } = useAuth();
   const [message, setMessage] = useState('');
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -61,6 +73,14 @@ export default function ChatScreen() {
   const [editPrice, setEditPrice] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editDeliveryTime, setEditDeliveryTime] = useState('');
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedOfferForPayment, setSelectedOfferForPayment] = useState<{
+    offer: any;
+    serviceData: any;
+    sellerId: string;
+  } | null>(null);
+  const [showJobProgress, setShowJobProgress] = useState(false);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [participantInfo, setParticipantInfo] = useState<{
     name: string;
     image: string;
@@ -94,13 +114,15 @@ export default function ChatScreen() {
       
       setChatLoading(true);
       try {
-        console.log('Initializing chat with:', { participantId: participantIdStr, userId: user.id });
+        console.log('🔄 Initializing chat with:', { participantId: participantIdStr, userId: user.id });
         
         // Initialize chat and fetch participant info in parallel
         const [chat, participant] = await Promise.all([
           supabaseChatService.createOrGetChat(participantIdStr, user.id),
           chatService.getChatParticipant(participantIdStr)
         ]);
+        
+        console.log('🔄 Chat initialization results:', { chat: chat?.id, participant: participant?.name });
         
         if (chat) {
           setChatId(chat.id);
@@ -123,6 +145,29 @@ export default function ChatScreen() {
     initializeChat();
     fetchUserServices();
   }, [user?.id, participantId, supabaseChatService, router]);
+  
+  // Handle pre-selected service variant from service detail page
+  useEffect(() => {
+    if (selectedServiceId && selectedServiceTitle && selectedServicePrice && selectedServiceCurrency) {
+      const preSelectedService: Service = {
+        id: Array.isArray(selectedServiceId) ? selectedServiceId[0] : selectedServiceId,
+        title: Array.isArray(selectedServiceTitle) ? selectedServiceTitle[0] : selectedServiceTitle,
+        price: parseFloat(Array.isArray(selectedServicePrice) ? selectedServicePrice[0] : selectedServicePrice),
+        currency: Array.isArray(selectedServiceCurrency) ? selectedServiceCurrency[0] : selectedServiceCurrency,
+        description: Array.isArray(selectedServiceDescription) ? selectedServiceDescription[0] : selectedServiceDescription || '',
+        image_url: Array.isArray(selectedServiceImage) ? selectedServiceImage[0] : selectedServiceImage || '',
+        category_name: Array.isArray(selectedServiceCategory) ? selectedServiceCategory[0] : selectedServiceCategory || '',
+        user_id: '', // Will be filled by the service owner
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        parent_service_id: undefined,
+        service_variants: []
+      };
+      
+      setSelectedService(preSelectedService);
+      setServiceSelectionModalVisible(true);
+    }
+  }, [selectedServiceId, selectedServiceTitle, selectedServicePrice, selectedServiceCurrency, selectedServiceDescription, selectedServiceImage, selectedServiceCategory]);
   
   const fetchUserServices = async () => {
     if (!user?.id) return;
@@ -395,19 +440,130 @@ export default function ChatScreen() {
 
   const acceptServiceOffer = async (offerId: string) => {
     try {
-      // TODO: Implement service offer acceptance logic
       console.log('Accepting service offer:', offerId);
-      Alert.alert('Success', 'Service offer accepted!');
+      
+      // Find the message with this offer ID to get offer and service data
+      const offerMessage = messages.find(msg => msg.offerId === offerId);
+      if (!offerMessage || !offerMessage.serviceData) {
+        Alert.alert('Error', 'Could not find offer details');
+        return;
+      }
+
+      // Get the offer details from Supabase
+      const { data: offerData, error } = await supabase
+        .from('service_offers')
+        .select('*')
+        .eq('id', offerId)
+        .single();
+
+      if (error || !offerData) {
+        Alert.alert('Error', 'Could not load offer details');
+        return;
+      }
+
+      // Set up payment modal data
+      setSelectedOfferForPayment({
+        offer: {
+          id: offerData.id,
+          chatId: offerData.chat_id,
+          serviceId: offerData.service_id,
+          sellerId: offerData.seller_id,
+          buyerId: offerData.buyer_id,
+          originalPrice: offerData.original_price,
+          customPrice: offerData.custom_price,
+          customDescription: offerData.custom_description,
+          customDeliveryTime: offerData.custom_delivery_time,
+          status: offerData.status,
+          createdAt: new Date(offerData.created_at),
+          updatedAt: new Date(offerData.updated_at)
+        },
+        serviceData: offerMessage.serviceData,
+        sellerId: offerData.seller_id
+      });
+      
+      setPaymentModalVisible(true);
     } catch (error) {
-      console.error('Error accepting service offer:', error);
-      Alert.alert('Error', 'Failed to accept service offer');
+      console.error('Error preparing payment:', error);
+      Alert.alert('Error', 'Failed to prepare payment');
     }
   };
 
-  const rejectServiceOffer = async (offerId: string) => {
+  const handlePaymentSuccess = async (activeJobId: string) => {
     try {
-      // TODO: Implement service offer rejection logic
-      console.log('Rejecting service offer:', offerId);
+      // Update the offer status to accepted
+      if (selectedOfferForPayment) {
+        await supabaseChatService.acceptServiceOffer(selectedOfferForPayment.offer.id);
+        
+        // Add notification for offer acceptance (to the seller)
+        await notificationService.addOfferAcceptedNotification({
+          participantId: selectedOfferForPayment.sellerId, // This is the seller who will receive the notification
+          participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User', // This is the buyer who accepted
+          participantImage: userProfile?.avatar_url || '',
+          chatId: chatId || '',
+          offerId: selectedOfferForPayment.offer.id,
+          serviceTitle: selectedOfferForPayment.serviceData.title,
+          price: selectedOfferForPayment.serviceData.customPrice || selectedOfferForPayment.serviceData.price,
+          currency: selectedOfferForPayment.serviceData.currency,
+          isAcceptedByMe: false, // From seller's perspective, they didn't accept it
+        });
+      }
+      
+      setPaymentModalVisible(false);
+      setSelectedOfferForPayment(null);
+      
+      // Show job progress monitor
+      setCurrentJobId(activeJobId);
+      setShowJobProgress(true);
+    } catch (error) {
+      console.error('Error handling payment success:', error);
+      Alert.alert('Error', 'Payment was successful but there was an issue updating the offer status.');
+    }
+  };
+
+  const handlePaymentCancel = () => {
+    setPaymentModalVisible(false);
+    setSelectedOfferForPayment(null);
+  };
+
+  const rejectServiceOffer = async (offerId: string, reason?: string) => {
+    try {
+      console.log('Rejecting service offer:', offerId, 'with reason:', reason);
+      
+      // Find the message with this offer ID to get offer and service data
+      const offerMessage = messages.find(msg => msg.offerId === offerId);
+      if (!offerMessage || !offerMessage.serviceData) {
+        Alert.alert('Error', 'Could not find offer details');
+        return;
+      }
+
+      // Update the offer status to rejected in the database
+      console.log('🔄 Chat: About to reject offer:', offerId, 'with reason:', reason);
+      await supabaseChatService.rejectServiceOffer(offerId, reason);
+      console.log('✅ Chat: Offer rejection completed successfully');
+      
+      // Force a small delay to ensure the real-time update has time to propagate
+      setTimeout(() => {
+        console.log('🔄 Chat: Checking if offer status updated via real-time...');
+        const updatedMessage = messages.find(msg => msg.offerId === offerId);
+        if (updatedMessage && updatedMessage.offerStatus !== 'rejected') {
+          console.log('⚠️ Chat: Real-time update may have failed, status still:', updatedMessage.offerStatus);
+        }
+      }, 2000);
+      
+      // Add notification for offer rejection (to the seller)
+      await notificationService.addOfferRejectedNotification({
+        participantId: offerMessage.senderId, // This is the seller who will receive the notification
+        participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User', // This is the buyer who rejected
+        participantImage: userProfile?.avatar_url || '',
+        chatId: chatId || '',
+        offerId: offerId,
+        serviceTitle: offerMessage.serviceData.title,
+        price: offerMessage.serviceData.customPrice || offerMessage.serviceData.price,
+        currency: offerMessage.serviceData.currency,
+        rejectReason: reason,
+        isRejectedByMe: false, // From seller's perspective, they didn't reject it
+      });
+      
       Alert.alert('Success', 'Service offer rejected.');
     } catch (error) {
       console.error('Error rejecting service offer:', error);
@@ -1203,6 +1359,31 @@ export default function ChatScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Payment Modal */}
+        <PaymentModal
+          visible={paymentModalVisible}
+          offer={selectedOfferForPayment?.offer}
+          serviceData={selectedOfferForPayment?.serviceData}
+          buyerId={user?.id || ''}
+          sellerId={selectedOfferForPayment?.sellerId || ''}
+          onPaymentSuccess={handlePaymentSuccess}
+          onClose={handlePaymentCancel}
+        />
+
+        {/* Job Progress Monitor */}
+        <JobProgressMonitor
+          isVisible={showJobProgress}
+          jobId={currentJobId || ''}
+          onClose={() => {
+            setShowJobProgress(false);
+            setCurrentJobId(null);
+          }}
+          onSendMessage={() => {
+            setShowJobProgress(false);
+            setCurrentJobId(null);
+          }}
+        />
       </SafeAreaView>
     );
   }

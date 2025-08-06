@@ -1,6 +1,7 @@
 export interface Notification {
   id: string;
-  type: 'chat' | 'order' | 'service' | 'system';
+  userId: string; // Add user ID to make notifications user-specific
+  type: 'chat' | 'order' | 'service' | 'system' | 'offer';
   title: string;
   message: string;
   timestamp: string;
@@ -12,6 +13,12 @@ export interface Notification {
     participantImage?: string;
     orderId?: string;
     serviceId?: string;
+    offerId?: string;
+    offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
+    rejectReason?: string;
+    serviceTitle?: string;
+    price?: number;
+    currency?: string;
     [key: string]: any;
   };
 }
@@ -19,7 +26,7 @@ export interface Notification {
 export interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
-  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'>, targetUserId: string) => void;
   markAsRead: (notificationId: string) => void;
   markAllAsRead: () => void;
   clearNotification: (notificationId: string) => void;

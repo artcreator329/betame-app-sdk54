@@ -22,7 +22,7 @@ export interface PurchasedFeature {
 export interface Transaction {
   id?: string;
   user_id: string;
-  type: 'conversion' | 'feature_purchase' | 'stone_purchase' | 'credit_purchase' | 'daily_checkin' | 'referral_bonus';
+  type: 'conversion' | 'feature_purchase' | 'stone_purchase' | 'credit_purchase' | 'daily_checkin' | 'referral_bonus' | 'service_payment' | 'service_payment_received';
   amount: number;
   description: string;
   created_at?: string;
@@ -293,16 +293,33 @@ export class WalletService {
         stonesToAward = 10; // Monthly bonus
       }
 
-      // Update check-in data
-      const { error: upsertError } = await supabase
-        .from('checkins')
-        .upsert({
-          user_id: userId,
-          last_checkin_date: today,
-          streak_count: newStreak,
-          total_stones_earned: (checkInData?.total_stones_earned || 0) + stonesToAward,
-          updated_at: new Date().toISOString(),
-        });
+      // Update or insert check-in data
+      let upsertError;
+      if (checkInData) {
+        // Update existing record
+        const { error } = await supabase
+          .from('checkins')
+          .update({
+            last_checkin_date: today,
+            streak_count: newStreak,
+            total_stones_earned: checkInData.total_stones_earned + stonesToAward,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId);
+        upsertError = error;
+      } else {
+        // Insert new record
+        const { error } = await supabase
+          .from('checkins')
+          .insert({
+            user_id: userId,
+            last_checkin_date: today,
+            streak_count: newStreak,
+            total_stones_earned: stonesToAward,
+            updated_at: new Date().toISOString(),
+          });
+        upsertError = error;
+      }
 
       if (upsertError) {
         console.error('Error updating check-in:', upsertError);
@@ -562,6 +579,45 @@ export class WalletService {
     } catch (error) {
       console.error('Error in processReferralBonus:', error);
       return { success: false, error: 'Referral processing failed' };
+    }
+  }
+
+  /**
+   * Add stones to user's wallet (for stone purchases)
+   */
+  static async addStones(
+    userId: string,
+    stonesAmount: number
+  ): Promise<{ success: boolean; wallet?: WalletData; error?: string }> {
+    try {
+      // Get current wallet
+      const wallet = await this.getWallet(userId);
+      if (!wallet) {
+        return { success: false, error: 'Wallet not found' };
+      }
+
+      // Update wallet with new stones
+      const updatedWallet = await this.updateWallet({
+        ...wallet,
+        betame_stones: wallet.betame_stones + stonesAmount,
+      });
+
+      if (!updatedWallet) {
+        return { success: false, error: 'Failed to update wallet' };
+      }
+
+      // Record transaction
+      await this.recordTransaction({
+        user_id: userId,
+        type: 'stone_purchase',
+        amount: stonesAmount,
+        description: `Purchased ${stonesAmount} premium stones`,
+      });
+
+      return { success: true, wallet: updatedWallet };
+    } catch (error) {
+      console.error('Error in addStones:', error);
+      return { success: false, error: 'Failed to add stones' };
     }
   }
 }

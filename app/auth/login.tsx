@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,14 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,7 +31,30 @@ export default function LoginScreen() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { signIn, signUp, signInWithGoogle, signInWithApple } = useAuth();
+  const { signIn, signUp } = useAuth();
+
+  // Animation for gradient background
+  const animationProgress = useSharedValue(0);
+
+  useEffect(() => {
+    animationProgress.value = withRepeat(
+      withTiming(1, { duration: 8000 }),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedGradientStyle = useAnimatedStyle(() => {
+    const rotateZ = interpolate(animationProgress.value, [0, 1], [0, 360]);
+    const scale = interpolate(animationProgress.value, [0, 0.5, 1], [1, 1.1, 1]);
+    
+    return {
+      transform: [
+        { rotateZ: `${rotateZ}deg` },
+        { scale },
+      ],
+    };
+  });
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -108,42 +139,28 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      const { error } = await signInWithGoogle();
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        // The routing will be handled by the AuthContext and main layout
-        // based on admin status, so we don't need to navigate here
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleAppleSignIn = async () => {
-    setLoading(true);
-    try {
-      const { error } = await signInWithApple();
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        // The routing will be handled by the AuthContext and main layout
-        // based on admin status, so we don't need to navigate here
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Animated Gradient Background */}
+      <Animated.View style={[styles.gradientContainer, animatedGradientStyle]}>
+        <LinearGradient
+          colors={[
+            '#1E3A8A', // Deep blue
+            '#3B82F6', // Blue
+            '#60A5FA', // Light blue
+            '#93C5FD', // Very light blue
+            '#DBEAFE', // Pale blue
+            '#3B82F6', // Blue
+            '#1E3A8A', // Deep blue
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradient}
+        />
+      </Animated.View>
+      
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -249,31 +266,7 @@ export default function LoginScreen() {
                </TouchableOpacity>
             </View>
 
-            {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.divider} />
-            </View>
 
-            {/* Social Login */}
-            <View style={styles.socialContainer}>
-              <TouchableOpacity 
-                style={styles.socialButton} 
-                onPress={handleGoogleSignIn}
-                disabled={loading}
-              >
-                <Text style={styles.socialButtonText}>Continue with Google</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.socialButton} 
-                onPress={handleAppleSignIn}
-                disabled={loading}
-              >
-                <Text style={styles.socialButtonText}>Continue with Apple</Text>
-              </TouchableOpacity>
-            </View>
 
             {/* Terms */}
             <View style={styles.termsContainer}>
@@ -297,7 +290,19 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: 'transparent',
+  },
+  gradientContainer: {
+    position: 'absolute',
+    top: -300,
+    left: -300,
+    right: -300,
+    bottom: -300,
+    zIndex: -1,
+  },
+  gradient: {
+    flex: 1,
+    opacity: 0.9,
   },
   keyboardView: {
     flex: 1,
@@ -323,15 +328,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 8,
     },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
   },
   logoImage: {
     width: 160,
@@ -349,18 +354,24 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
     letterSpacing: -0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
     fontWeight: '400',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   formSection: {
     marginTop: 16,
@@ -369,22 +380,22 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   continueButton: {
     backgroundColor: '#007AFF',
@@ -410,49 +421,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-    color: '#9CA3AF',
-    fontWeight: '500',
-    backgroundColor: '#FAFAFA',
-    paddingHorizontal: 8,
-  },
-  socialContainer: {
-    marginBottom: 24,
-  },
-  socialButton: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#374151',
-  },
+
   bottomSection: {
     alignItems: 'center',
   },
@@ -463,12 +432,18 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 15,
-    color: '#6B7280',
+    color: 'rgba(255, 255, 255, 0.9)',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   toggleLink: {
     fontSize: 15,
-    color: '#007AFF',
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   termsContainer: {
     alignItems: 'center',
@@ -477,13 +452,14 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#000000',
     textAlign: 'center',
     lineHeight: 16,
     paddingHorizontal: 32,
   },
   termsLink: {
-    color: '#007AFF',
+    color: '#000000',
+    fontWeight: '600',
   },
   skipContainer: {
     alignItems: 'flex-end',
@@ -496,7 +472,10 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '500',
+    color: '#FFFFFF',
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

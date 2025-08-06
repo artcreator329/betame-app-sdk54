@@ -167,13 +167,17 @@ export class SupabaseChatService {
   async createOrGetChat(participantId: string, currentUserId: string): Promise<Chat | null> {
     try {
       // Check if chat already exists between these users
-      const { data: existingChat, error: searchError } = await supabase
+      console.log('🔍 Looking for existing chat between:', currentUserId, 'and', participantId);
+      const { data: existingChats, error: searchError } = await supabase
         .from('chats')
         .select('*')
-        .or(`and(participant1_id.eq.${currentUserId},participant2_id.eq.${participantId}),and(participant1_id.eq.${participantId},participant2_id.eq.${currentUserId})`)
-        .single();
+        .or(`and(participant1_id.eq.${currentUserId},participant2_id.eq.${participantId}),and(participant1_id.eq.${participantId},participant2_id.eq.${currentUserId})`);
 
-      if (existingChat && !searchError) {
+      const existingChat = existingChats && existingChats.length > 0 ? existingChats[0] : null;
+      console.log('🔍 Found existing chat:', existingChat);
+
+      if (existingChat) {
+        console.log('✅ Using existing chat:', existingChat.id);
         // Ensure participants exist in chat_participants table for existing chat
         const { data: existingParticipants } = await supabase
           .from('chat_participants')
@@ -202,15 +206,23 @@ export class SupabaseChatService {
         }
 
         if (missingParticipants.length > 0) {
-          await supabase
-            .from('chat_participants')
-            .insert(missingParticipants);
+          try {
+            await supabase
+              .from('chat_participants')
+              .upsert(missingParticipants, { 
+                onConflict: 'chat_id,user_id',
+                ignoreDuplicates: true 
+              });
+          } catch (insertError) {
+            console.error('Error upserting missing chat participants:', insertError);
+          }
         }
 
         return existingChat;
       }
 
       // Create new chat
+      console.log('🆕 Creating new chat between:', currentUserId, 'and', participantId);
       const { data: newChat, error: createError } = await supabase
         .from('chats')
         .insert({
@@ -242,12 +254,15 @@ export class SupabaseChatService {
         }
       ];
 
-      const { error: participantsError } = await supabase
-        .from('chat_participants')
-        .insert(participantsData);
-
-      if (participantsError) {
-        console.error('Error inserting chat participants:', participantsError);
+      try {
+        await supabase
+          .from('chat_participants')
+          .upsert(participantsData, { 
+            onConflict: 'chat_id,user_id',
+            ignoreDuplicates: true 
+          });
+      } catch (participantsError) {
+        console.error('Error upserting chat participants:', participantsError);
         // Don't throw here as the chat was created successfully
       }
 
@@ -320,6 +335,35 @@ export class SupabaseChatService {
         .eq('id', chatId);
 
       const transformedMessage = await this.transformMessage(data, senderId);
+
+      // Add notification for the other participant (only if message is not hidden)
+      if (!moderation.isHidden) {
+        try {
+          // Get the other participant in the chat
+          const { data: participants } = await supabase
+            .from('chat_participants')
+            .select('user_id')
+            .eq('chat_id', chatId)
+            .neq('user_id', senderId);
+
+          if (participants && participants.length > 0) {
+            const otherParticipantId = participants[0].user_id;
+            
+            // Add notification for incoming message (to the recipient)
+            await notificationService.addChatNotification({
+              participantId: otherParticipantId, // Send notification TO the other participant
+              participantName: senderName, // FROM the sender
+              participantImage: senderImage,
+              message: message,
+              chatId: chatId,
+              senderId: senderId, // Add sender ID for navigation
+            });
+          }
+        } catch (notificationError) {
+          console.error('Error adding chat notification:', notificationError);
+          // Don't fail the message sending if notification fails
+        }
+      }
 
       console.log('✅ Message sent successfully:', transformedMessage.id);
       return transformedMessage;
@@ -464,6 +508,28 @@ export class SupabaseChatService {
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', chatId);
 
+      // Add notification for the buyer about the new offer
+      try {
+        console.log('🔔 Creating offer notification for buyer:', buyerId, 'from seller:', senderId);
+        
+        await notificationService.addOfferNotification({
+          participantId: buyerId, // This is the buyer who will receive the notification
+          participantName: senderName, // This is the seller who made the offer
+          participantImage: senderImage,
+          chatId: chatId,
+          offerId: offerData.id,
+          serviceTitle: serviceData.title,
+          price: serviceData.customPrice || serviceData.price,
+          currency: serviceData.currency,
+          senderId: senderId, // Add seller ID for navigation
+          isIncoming: true,
+        });
+        console.log('✅ Offer notification sent successfully to buyer:', buyerId);
+      } catch (notificationError) {
+        console.error('❌ Error adding offer notification:', notificationError);
+        // Don't fail the offer creation if notification fails
+      }
+
       const transformedMessage = await this.transformMessage(data, senderId);
 
       console.log('✅ Service message sent successfully:', transformedMessage.id);
@@ -479,6 +545,8 @@ export class SupabaseChatService {
     serviceId: string,
     sellerId: string,
     buyerId: string,
+    senderName: string,
+    senderImage: string,
     serviceData: {
       id: string;
       title: string;
@@ -541,8 +609,8 @@ export class SupabaseChatService {
       const messageData = {
         chat_id: chatId,
         sender_id: sellerId,
-        sender_name: '', // Will be filled by the caller
-        sender_image: '', // Will be filled by the caller
+        sender_name: senderName,
+        sender_image: senderImage,
         message: messageText,
         message_type: 'offer',
         offer_id: offerData.id,
@@ -574,6 +642,44 @@ export class SupabaseChatService {
         .from('chats')
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', chatId);
+
+      // Add notification for the buyer about the new offer
+      try {
+        console.log('🔔 Creating offer notification for chat:', chatId, 'seller:', sellerId);
+        
+        // Get the buyer ID (the other participant in the chat)
+        const { data: participants } = await supabase
+          .from('chat_participants')
+          .select('user_id')
+          .eq('chat_id', chatId)
+          .neq('user_id', sellerId);
+
+        console.log('🔔 Found participants:', participants);
+
+        if (participants && participants.length > 0) {
+          const buyerId = participants[0].user_id;
+          console.log('🔔 Sending offer notification to buyer:', buyerId);
+          
+          await notificationService.addOfferNotification({
+            participantId: buyerId, // This is the buyer who will receive the notification
+            participantName: senderName, // This is the seller who made the offer
+            participantImage: senderImage,
+            chatId: chatId,
+            offerId: offerData.id,
+            serviceTitle: serviceData.title,
+            price: serviceData.customPrice || serviceData.price,
+            currency: serviceData.currency,
+            senderId: sellerId, // Add seller ID for navigation
+            isIncoming: true,
+          });
+          console.log('✅ Offer notification sent successfully');
+        } else {
+          console.log('❌ No participants found for offer notification');
+        }
+      } catch (notificationError) {
+        console.error('❌ Error adding offer notification:', notificationError);
+        // Don't fail the offer creation if notification fails
+      }
 
       return {
         offer: offerData,
@@ -636,10 +742,20 @@ export class SupabaseChatService {
       }
 
       // Update the corresponding message
-      await supabase
+      console.log('🔄 SupabaseChatService: Updating chat message status for accepted offer:', offerId);
+      const { data: messageUpdateData, error: messageError } = await supabase
         .from('chat_messages')
         .update({ offer_status: 'accepted' })
-        .eq('offer_id', offerId);
+        .eq('offer_id', offerId)
+        .select();
+
+      if (messageError) {
+        console.error('❌ SupabaseChatService: Error updating chat message status:', messageError);
+        // Don't throw here as the main offer update succeeded
+      } else {
+        console.log('✅ SupabaseChatService: Chat message status updated successfully');
+        console.log('✅ SupabaseChatService: Updated messages:', messageUpdateData);
+      }
 
       return data;
     } catch (error) {
@@ -648,14 +764,21 @@ export class SupabaseChatService {
     }
   }
 
-  async rejectServiceOffer(offerId: string): Promise<any> {
+  async rejectServiceOffer(offerId: string, reason?: string): Promise<any> {
     try {
+      const updateData: any = {
+        status: 'rejected',
+        updated_at: new Date().toISOString(),
+      };
+
+      // Add rejection reason if provided
+      if (reason) {
+        updateData.rejection_reason = reason;
+      }
+
       const { data, error } = await supabase
         .from('service_offers')
-        .update({
-          status: 'rejected',
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', offerId)
         .select()
         .single();
@@ -666,10 +789,20 @@ export class SupabaseChatService {
       }
 
       // Update the corresponding message
-      await supabase
+      console.log('🔄 SupabaseChatService: Updating chat message status for offer:', offerId);
+      const { data: messageUpdateData, error: messageError } = await supabase
         .from('chat_messages')
         .update({ offer_status: 'rejected' })
-        .eq('offer_id', offerId);
+        .eq('offer_id', offerId)
+        .select();
+
+      if (messageError) {
+        console.error('❌ SupabaseChatService: Error updating chat message status:', messageError);
+        // Don't throw here as the main offer update succeeded
+      } else {
+        console.log('✅ SupabaseChatService: Chat message status updated successfully');
+        console.log('✅ SupabaseChatService: Updated messages:', messageUpdateData);
+      }
 
       return data;
     } catch (error) {
@@ -823,7 +956,8 @@ export class SupabaseChatService {
     chatId: string,
     currentUserId: string,
     onMessage: (message: LiveChatMessage) => void,
-    onDelete: (messageId: string) => void
+    onDelete: (messageId: string) => void,
+    onUpdate?: (message: LiveChatMessage) => void
   ): () => void {
     console.log('📡 Subscribing to messages for chat:', chatId);
     
@@ -846,11 +980,12 @@ export class SupabaseChatService {
             if (participant) {
               try {
                 await notificationService.addChatNotification({
-                  participantId: payload.new.sender_id,
-                  participantName: participant.name,
+                  participantId: currentUserId, // Send notification TO the current user (recipient)
+                  participantName: participant.name, // FROM the sender
                   participantImage: participant.image,
                   message: payload.new.message,
-                  chatId: chatId
+                  chatId: chatId,
+                  senderId: payload.new.sender_id, // Add sender ID for navigation
                 });
               } catch (error) {
                 console.error('Error adding notification:', error);
@@ -859,6 +994,29 @@ export class SupabaseChatService {
           }
           
           onMessage(transformedMessage);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `chat_id=eq.${chatId}`,
+        },
+        async (payload) => {
+          console.log('📡 SupabaseChatService: UPDATE event received:', payload);
+          console.log('📡 SupabaseChatService: Updated fields:', payload.new);
+          console.log('📡 SupabaseChatService: Old fields:', payload.old);
+          
+          if (onUpdate) {
+            const transformedMessage = await this.transformMessage(payload.new, currentUserId);
+            console.log('📡 SupabaseChatService: Transformed updated message:', transformedMessage);
+            console.log('📡 SupabaseChatService: Message offer status:', transformedMessage.offerStatus);
+            onUpdate(transformedMessage);
+          } else {
+            console.log('📡 SupabaseChatService: No onUpdate callback provided');
+          }
         }
       )
       .on(
@@ -931,11 +1089,12 @@ export class SupabaseChatService {
                if (participant) {
                  console.log('🔔 UserChats: Participant found:', participant.name, 'Adding notification...');
                  await notificationService.addChatNotification({
-                   participantId: payload.new.sender_id,
+                   participantId: userId, // Send notification TO the current user
                    participantName: participant.name,
                    participantImage: participant.image,
                    message: payload.new.message,
-                   chatId: payload.new.chat_id
+                   chatId: payload.new.chat_id,
+                   senderId: payload.new.sender_id, // Add senderId for navigation
                  });
                  console.log('✅ UserChats: Notification added successfully');
                } else {
@@ -1187,11 +1346,12 @@ export class SupabaseChatService {
                 });
                 try {
                   await notificationService.addChatNotification({
-                    participantId: payload.new.sender_id,
+                    participantId: otherParticipantId, // Send notification TO the other participant
                     participantName: participant.name,
                     participantImage: participant.image,
                     message: payload.new.message,
-                    chatId: payload.new.chat_id
+                    chatId: payload.new.chat_id,
+                    senderId: payload.new.sender_id, // Add senderId for navigation
                   });
                   console.log('✅ Global notification created successfully for message type:', payload.new.message_type);
                 } catch (error) {

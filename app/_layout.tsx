@@ -78,21 +78,65 @@ function RootLayoutNav() {
   }, [user, isAdmin, segments, loading]);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="auth/login" />
+    <Stack 
+      screenOptions={{ 
+        headerShown: false,
+        animation: 'slide_from_right',
+        animationDuration: 450,
+        animationTypeForReplace: 'push',
+        gestureEnabled: true,
+        gestureDirection: 'horizontal',
+      }}>
+      <Stack.Screen 
+        name="auth/login" 
+        options={{ 
+          animation: 'fade',
+          animationDuration: 350,
+        }}
+      />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="admin" />
       <Stack.Screen name="service/[id]" />
       <Stack.Screen name="user-profile/[userId]" />
       <Stack.Screen name="messages" />
       <Stack.Screen name="chat/[participantId]" />
-      <Stack.Screen name="wallet" />
-      <Stack.Screen name="settings" />
+      <Stack.Screen 
+        name="wallet" 
+        options={{ 
+          animation: 'slide_from_bottom',
+          animationDuration: 500,
+        }}
+      />
+      <Stack.Screen 
+        name="settings" 
+        options={{ 
+          animation: 'slide_from_bottom',
+          animationDuration: 500,
+        }}
+      />
       <Stack.Screen name="edit-profile" />
-      <Stack.Screen name="become-seller" />
+      <Stack.Screen 
+        name="become-seller" 
+        options={{ 
+          animation: 'slide_from_bottom',
+          animationDuration: 500,
+        }}
+      />
       <Stack.Screen name="nearby" />
-      <Stack.Screen name="create-job-listing" />
-      <Stack.Screen name="create-service-listing" />
+      <Stack.Screen 
+        name="create-job-listing" 
+        options={{ 
+          animation: 'slide_from_bottom',
+          animationDuration: 500,
+        }}
+      />
+      <Stack.Screen 
+        name="create-service-listing" 
+        options={{ 
+          animation: 'slide_from_bottom',
+          animationDuration: 500,
+        }}
+      />
       <Stack.Screen name="favorites" />
       <Stack.Screen name="trending" />
       <Stack.Screen name="check-in" />
