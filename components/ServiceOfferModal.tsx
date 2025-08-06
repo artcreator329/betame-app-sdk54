@@ -9,8 +9,11 @@ import {
   Image,
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
-import { X, DollarSign, Clock, FileText } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { X, DollarSign, Clock, FileText, Calendar, MapPin, Briefcase, ChevronDown, Zap, Target, Star, AlertCircle } from 'lucide-react-native';
 import { Service } from '../lib/service-service';
 
 interface ServiceOfferModalProps {
@@ -22,6 +25,15 @@ interface ServiceOfferModalProps {
     customPrice?: number;
     customDescription?: string;
     customDeliveryTime?: number;
+    startDate?: string;
+    endDate?: string;
+    preferredStartTime?: string;
+    preferredEndTime?: string;
+    locationAddress?: string;
+    urgencyLevel?: 'low' | 'medium' | 'high' | 'urgent';
+    workType?: 'remote' | 'on_site' | 'hybrid';
+    estimatedHours?: number;
+    requirements?: string;
   }) => Promise<void>;
   isLoading?: boolean;
 }
@@ -33,9 +45,39 @@ export function ServiceOfferModal({
   onSendOffer,
   isLoading = false,
 }: ServiceOfferModalProps) {
+  // Enhanced null safety checks
+  if (!service || !visible) return null;
+  
+  // Additional safety checks for service properties
+  const safeService = {
+    id: service.id || '',
+    title: service.title || 'Untitled Service',
+    price: service.price || 0,
+    currency: service.currency || 'USD',
+    image_url: service.image_url || '',
+    description: service.description || '',
+    service_variants: service.service_variants || []
+  };
+
   const [customPrice, setCustomPrice] = useState('');
   const [customDescription, setCustomDescription] = useState('');
   const [customDeliveryTime, setCustomDeliveryTime] = useState('');
+  
+  // Hustle job attributes
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [preferredStartTime, setPreferredStartTime] = useState<Date | undefined>(undefined);
+  const [preferredEndTime, setPreferredEndTime] = useState<Date | undefined>(undefined);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [locationAddress, setLocationAddress] = useState('');
+  const [urgencyLevel, setUrgencyLevel] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
+
+  const [workType, setWorkType] = useState<'remote' | 'on_site' | 'hybrid'>('remote');
+  const [estimatedHours, setEstimatedHours] = useState('');
+  const [requirements, setRequirements] = useState('');
 
   const handleSendOffer = () => {
     if (!service) return;
@@ -53,32 +95,59 @@ export function ServiceOfferModal({
       return;
     }
 
-    if (!service.id) {
+    if (!safeService.id) {
       Alert.alert('Error', 'Invalid service selected.');
       return;
     }
 
+    const hours = estimatedHours ? parseFloat(estimatedHours) : undefined;
+
     onSendOffer({
-      serviceId: service.id,
+      serviceId: safeService.id,
       customPrice: price,
       customDescription: customDescription.trim() || undefined,
       customDeliveryTime: deliveryTime,
+      startDate: startDate ? startDate.toISOString().split('T')[0] : undefined,
+      endDate: endDate ? endDate.toISOString().split('T')[0] : undefined,
+      preferredStartTime: preferredStartTime ? preferredStartTime.toTimeString().slice(0, 5) : undefined,
+      preferredEndTime: preferredEndTime ? preferredEndTime.toTimeString().slice(0, 5) : undefined,
+      locationAddress: locationAddress.trim() || undefined,
+      urgencyLevel,
+      workType,
+      estimatedHours: hours,
+      requirements: requirements.trim() || undefined,
     });
 
     // Reset form
     setCustomPrice('');
     setCustomDescription('');
     setCustomDeliveryTime('');
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setPreferredStartTime(undefined);
+    setPreferredEndTime(undefined);
+    setLocationAddress('');
+    setUrgencyLevel('medium');
+    setWorkType('remote');
+    setEstimatedHours('');
+    setRequirements('');
   };
 
   const handleClose = () => {
     setCustomPrice('');
     setCustomDescription('');
     setCustomDeliveryTime('');
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setPreferredStartTime(undefined);
+    setPreferredEndTime(undefined);
+    setLocationAddress('');
+    setUrgencyLevel('medium');
+    setWorkType('remote');
+    setEstimatedHours('');
+    setRequirements('');
     onClose();
   };
-
-  if (!service) return null;
 
   return (
     <Modal
@@ -100,13 +169,13 @@ export function ServiceOfferModal({
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Service Preview */}
           <View style={styles.servicePreview}>
-            {service.image_url && (
-              <Image source={{ uri: service.image_url }} style={styles.serviceImage} />
+            {safeService.image_url && (
+              <Image source={{ uri: safeService.image_url }} style={styles.serviceImage} />
             )}
             <View style={styles.serviceInfo}>
-              <Text style={styles.serviceTitle}>{service.title}</Text>
+              <Text style={styles.serviceTitle}>{safeService.title}</Text>
               <Text style={styles.originalPrice}>
-                Original Price: ${service.price} {service.currency}
+                Original Price: ${safeService.price} {safeService.currency}
               </Text>
             </View>
           </View>
@@ -119,7 +188,7 @@ export function ServiceOfferModal({
             </View>
             <TextInput
               style={styles.textInput}
-              placeholder={`Original: $${service.price} ${service.currency}`}
+              placeholder={`Original: $${safeService.price} ${safeService.currency}`}
               value={customPrice}
               onChangeText={setCustomPrice}
               keyboardType="numeric"
@@ -159,6 +228,322 @@ export function ServiceOfferModal({
               textAlignVertical="top"
               placeholderTextColor="#999"
             />
+          </View>
+
+          {/* Hustle Job Attributes Section */}
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <Star size={24} color="#FF6B35" />
+              <Text style={styles.sectionTitle}>Customize Your Offer</Text>
+            </View>
+            <Text style={styles.sectionSubtitle}>Make your proposal stand out to win this job</Text>
+          </View>
+
+          {/* Project Timeline Card */}
+          <View style={styles.timelineCard}>
+            <View style={styles.cardHeader}>
+              <Calendar size={22} color="#4CAF50" />
+              <Text style={styles.cardTitle}>Project Timeline</Text>
+            </View>
+            
+            <View style={styles.dateRow}>
+              <View style={styles.dateInputContainer}>
+                <Text style={styles.dateLabel}>Start Date</Text>
+                <TouchableOpacity
+                  style={styles.dateInput}
+                  onPress={() => setShowStartDatePicker(true)}
+                >
+                  <Text style={[styles.dateText, !startDate && styles.placeholderText]}>
+                    {startDate ? startDate.toLocaleDateString() : 'Select start date'}
+                  </Text>
+                  <Calendar size={18} color="#007AFF" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.dateInputContainer}>
+                <Text style={styles.dateLabel}>End Date</Text>
+                <TouchableOpacity
+                  style={styles.dateInput}
+                  onPress={() => setShowEndDatePicker(true)}
+                >
+                  <Text style={[styles.dateText, !endDate && styles.placeholderText]}>
+                    {endDate ? endDate.toLocaleDateString() : 'Select end date'}
+                  </Text>
+                  <Calendar size={18} color="#007AFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Date Pickers */}
+            {showStartDatePicker && (
+              <DateTimePicker
+                value={startDate || new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, selectedDate) => {
+                  if (Platform.OS === 'android') {
+                    setShowStartDatePicker(false);
+                  }
+                  if (event.type === 'set' && selectedDate) {
+                    setStartDate(selectedDate);
+                    if (Platform.OS === 'ios') {
+                      setShowStartDatePicker(false);
+                    }
+                  } else if (event.type === 'dismissed') {
+                    setShowStartDatePicker(false);
+                  }
+                }}
+              />
+            )}
+            {showEndDatePicker && (
+              <DateTimePicker
+                value={endDate || new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, selectedDate) => {
+                  if (Platform.OS === 'android') {
+                    setShowEndDatePicker(false);
+                  }
+                  if (event.type === 'set' && selectedDate) {
+                    setEndDate(selectedDate);
+                    if (Platform.OS === 'ios') {
+                      setShowEndDatePicker(false);
+                    }
+                  } else if (event.type === 'dismissed') {
+                    setShowEndDatePicker(false);
+                  }
+                }}
+              />
+            )}
+          </View>
+
+          {/* Preferred Working Hours Card */}
+          <View style={styles.workingHoursCard}>
+            <View style={styles.cardHeader}>
+              <Clock size={22} color="#2196F3" />
+              <Text style={styles.cardTitle}>Preferred Working Hours</Text>
+            </View>
+            
+            <View style={styles.timeRow}>
+              <View style={styles.timeInputContainer}>
+                <Text style={styles.timeLabel}>Start Time</Text>
+                <TouchableOpacity
+                  style={styles.timeInput}
+                  onPress={() => setShowStartTimePicker(true)}
+                >
+                  <Text style={[styles.timeText, !preferredStartTime && styles.placeholderText]}>
+                    {preferredStartTime ? preferredStartTime.toTimeString().slice(0, 5) : 'Select start time'}
+                  </Text>
+                  <Clock size={18} color="#2196F3" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.timeSeparator}>
+                <Text style={styles.timeSeparatorText}>to</Text>
+              </View>
+              <View style={styles.timeInputContainer}>
+                <Text style={styles.timeLabel}>End Time</Text>
+                <TouchableOpacity
+                  style={styles.timeInput}
+                  onPress={() => setShowEndTimePicker(true)}
+                >
+                  <Text style={[styles.timeText, !preferredEndTime && styles.placeholderText]}>
+                    {preferredEndTime ? preferredEndTime.toTimeString().slice(0, 5) : 'Select end time'}
+                  </Text>
+                  <Clock size={18} color="#2196F3" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Time Pickers */}
+            {showStartTimePicker && (
+              <DateTimePicker
+                value={preferredStartTime || new Date()}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, selectedTime) => {
+                  if (Platform.OS === 'android') {
+                    setShowStartTimePicker(false);
+                  }
+                  if (event.type === 'set' && selectedTime) {
+                    setPreferredStartTime(selectedTime);
+                    if (Platform.OS === 'ios') {
+                      setShowStartTimePicker(false);
+                    }
+                  } else if (event.type === 'dismissed') {
+                    setShowStartTimePicker(false);
+                  }
+                }}
+              />
+            )}
+            {showEndTimePicker && (
+              <DateTimePicker
+                value={preferredEndTime || new Date()}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, selectedTime) => {
+                  if (Platform.OS === 'android') {
+                    setShowEndTimePicker(false);
+                  }
+                  if (event.type === 'set' && selectedTime) {
+                    setPreferredEndTime(selectedTime);
+                    if (Platform.OS === 'ios') {
+                      setShowEndTimePicker(false);
+                    }
+                  } else if (event.type === 'dismissed') {
+                    setShowEndTimePicker(false);
+                  }
+                }}
+              />
+            )}
+          </View>
+
+          {/* Location Card */}
+          <View style={styles.locationCard}>
+            <View style={styles.cardHeader}>
+              <MapPin size={22} color="#9C27B0" />
+              <Text style={styles.cardTitle}>Work Location</Text>
+            </View>
+            <GooglePlacesAutocomplete
+              placeholder="Enter work location address"
+              onPress={(data, details = null) => {
+                try {
+                  if (data && data.description) {
+                    setLocationAddress(data.description);
+                  }
+                } catch (error) {
+                  console.warn('Error handling location selection:', error);
+                }
+              }}
+              query={{
+                key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '<REDACTED_GOOGLE_API_KEY>',
+                language: 'en',
+              }}
+              textInputProps={{
+                onFocus: () => {},
+                onBlur: () => {},
+                placeholderTextColor: '#999',
+              }}
+              styles={{
+                textInputContainer: styles.locationInputContainer,
+                textInput: styles.locationInput,
+                listView: styles.locationListView,
+                row: styles.locationRow,
+                description: styles.locationDescription,
+              }}
+              fetchDetails={true}
+              enablePoweredByContainer={false}
+              debounce={200}
+              onFail={(error) => {
+                console.warn('GooglePlacesAutocomplete error:', error);
+              }}
+              onNotFound={() => {
+                console.warn('GooglePlacesAutocomplete: No results found');
+              }}
+              filterReverseGeocodingByTypes={[]}
+              predefinedPlaces={[]}
+              listEmptyComponent={() => null}
+            />
+          </View>
+
+          {/* Work Details Card */}
+          <View style={styles.workDetailsCard}>
+            <View style={styles.cardHeader}>
+              <Briefcase size={22} color="#FF9800" />
+              <Text style={styles.cardTitle}>Work Details</Text>
+            </View>
+            
+            <View style={styles.workDetailsRow}>
+              <View style={styles.workDetailItem}>
+                <Text style={styles.workDetailLabel}>Work Type</Text>
+                <TouchableOpacity
+                  style={styles.workTypeButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Select Work Type',
+                      '',
+                      [
+                        { text: 'Remote', onPress: () => setWorkType('remote') },
+                        { text: 'On-site', onPress: () => setWorkType('on_site') },
+                        { text: 'Hybrid', onPress: () => setWorkType('hybrid') },
+                        { text: 'Cancel', style: 'cancel' },
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={styles.workTypeButtonText}>
+                    {workType === 'on_site' ? 'On-site' : workType.charAt(0).toUpperCase() + workType.slice(1)}
+                  </Text>
+                  <ChevronDown size={18} color="#FF9800" />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.workDetailItem}>
+                <Text style={styles.workDetailLabel}>Urgency</Text>
+                <TouchableOpacity
+                  style={[styles.urgencyButton, urgencyLevel === 'urgent' && styles.urgentButton]}
+                  onPress={() => {
+                    Alert.alert(
+                      'Select Urgency Level',
+                      '',
+                      [
+                        { text: 'Low', onPress: () => setUrgencyLevel('low') },
+                        { text: 'Medium', onPress: () => setUrgencyLevel('medium') },
+                        { text: 'High', onPress: () => setUrgencyLevel('high') },
+                        { text: 'Urgent', onPress: () => setUrgencyLevel('urgent') },
+                        { text: 'Cancel', style: 'cancel' },
+                      ]
+                    );
+                  }}
+                >
+                  <Zap size={16} color={urgencyLevel === 'urgent' ? '#fff' : '#FF5722'} />
+                  <Text style={[styles.urgencyButtonText, urgencyLevel === 'urgent' && styles.urgentButtonText]}>
+                    {urgencyLevel.charAt(0).toUpperCase() + urgencyLevel.slice(1)}
+                  </Text>
+                  <ChevronDown size={16} color={urgencyLevel === 'urgent' ? '#fff' : '#FF5722'} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Project Specifications Card */}
+          <View style={styles.specificationsCard}>
+            <View style={styles.cardHeader}>
+              <Target size={22} color="#00BCD4" />
+              <Text style={styles.cardTitle}>Project Specifications</Text>
+            </View>
+            
+            <View style={styles.specificationItem}>
+              <View style={styles.specHeader}>
+                <Clock size={18} color="#00ACC1" />
+                <Text style={styles.specLabel}>Estimated Hours</Text>
+              </View>
+              <TextInput
+                style={styles.hoursInput}
+                placeholder="e.g., 40 hours"
+                value={estimatedHours}
+                onChangeText={setEstimatedHours}
+                keyboardType="numeric"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+
+
+            <View style={styles.specificationItem}>
+              <View style={styles.specHeader}>
+                <FileText size={18} color="#00ACC1" />
+                <Text style={styles.specLabel}>Additional Requirements</Text>
+              </View>
+              <TextInput
+                style={styles.requirementsInput}
+                placeholder="Share any specific requirements, preferences, or notes that will help you deliver the best results..."
+                value={requirements}
+                onChangeText={setRequirements}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                placeholderTextColor="#999"
+              />
+            </View>
           </View>
         </ScrollView>
 
@@ -274,37 +659,337 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
     gap: 12,
+    backgroundColor: '#FAFAFA',
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
   cancelButtonText: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#666',
+    fontWeight: '600',
+    color: '#757575',
   },
   sendButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#4CAF50',
     alignItems: 'center',
+    shadowColor: '#4CAF50',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   sendButtonDisabled: {
     backgroundColor: '#B0B0B0',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   sendButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
+    letterSpacing: 0.5,
+  },
+  sectionHeader: {
+    marginTop: 24,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#F8F9FF',
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B35',
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginLeft: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+    marginLeft: 32,
+  },
+  timelineCard: {
+    backgroundColor: '#F0F8F0',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E8F5E8',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2E7D32',
+    marginLeft: 8,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dateInputContainer: {
+    flex: 1,
+  },
+  dateLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4CAF50',
+    marginBottom: 6,
+  },
+  dateInput: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  dateText: {
+    fontSize: 16,
+    color: '#1A1A1A',
+  },
+  placeholderText: {
+    color: '#999',
+  },
+  workingHoursCard: {
+    backgroundColor: '#F0F8FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E3F2FD',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+  },
+  timeInputContainer: {
+    flex: 1,
+  },
+  timeLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1976D2',
+    marginBottom: 6,
+  },
+  timeInput: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BBDEFB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  timeText: {
+    fontSize: 16,
+    color: '#1A1A1A',
+  },
+  timeSeparator: {
+    paddingBottom: 10,
+    alignItems: 'center',
+  },
+  timeSeparatorText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#2196F3',
+  },
+  locationCard: {
+    backgroundColor: '#F8F0FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E1BEE7',
+  },
+  locationInput: {
+    borderWidth: 1,
+    borderColor: '#CE93D8',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1A1A1A',
+    backgroundColor: '#fff',
+    marginTop: 8,
+  },
+  locationInputContainer: {
+    marginTop: 8,
+  },
+  locationListView: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginTop: 4,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  locationRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  locationDescription: {
+    fontSize: 16,
+    color: '#333',
+  },
+  workDetailsCard: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
+  },
+  workDetailsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  workDetailItem: {
+    flex: 1,
+  },
+  workDetailLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#F57C00',
+    marginBottom: 8,
+  },
+  workTypeButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFB74D',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  workTypeButtonText: {
+    fontSize: 15,
+    color: '#E65100',
+    fontWeight: '500',
+  },
+  urgencyButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FF8A65',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+    gap: 4,
+  },
+  urgentButton: {
+    backgroundColor: '#FF5722',
+    borderColor: '#FF5722',
+  },
+  urgencyButtonText: {
+    fontSize: 14,
+    color: '#FF5722',
+    fontWeight: '600',
+  },
+  urgentButtonText: {
+    color: '#fff',
+  },
+  specificationsCard: {
+    backgroundColor: '#E0F7FA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#B2EBF2',
+  },
+  specificationItem: {
+    marginBottom: 16,
+  },
+  specHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  specLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#00838F',
+    marginLeft: 6,
+  },
+  hoursInput: {
+    borderWidth: 1,
+    borderColor: '#4DD0E1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1A1A1A',
+    backgroundColor: '#fff',
+    textAlign: 'center',
+  },
+
+  requirementsInput: {
+    borderWidth: 1,
+    borderColor: '#4DD0E1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1A1A1A',
+    backgroundColor: '#fff',
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    color: '#000',
   },
 });

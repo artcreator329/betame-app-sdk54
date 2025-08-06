@@ -112,21 +112,25 @@ export default function LoginScreen() {
         if (result.error) {
           Alert.alert('Error', result.error.message);
         } else if (result.user) {
-          console.log('🔍 Login: User authenticated:', result.user.id);
+          console.log('🔍 Login: User signed up:', result.user.id);
           
-          // Check if user is admin
-          const isAdmin = await adminService.isAdmin(result.user.id);
-          console.log('🔍 Login: Admin status:', isAdmin);
-          
-          if (isAdmin) {
-            console.log('🔍 Login: Redirecting to admin dashboard');
-            // Navigate to admin dashboard
-            router.replace('/admin');
-          } else {
-            console.log('🔍 Login: Redirecting to main app');
-            // Navigate to main app
-            router.replace('/(tabs)');
-          }
+          // Show success message and inform user to check email
+          Alert.alert(
+            'Account Created!',
+            'Please check your email and click the verification link to complete your registration. The link will automatically redirect you back to the app.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  // Reset form
+                  setEmail('');
+                  setPassword('');
+                  setFullName('');
+                  setIsSignUp(false);
+                }
+              }
+            ]
+          );
         }
       } catch (error: any) {
         Alert.alert('Error', error.message || 'An unexpected error occurred');

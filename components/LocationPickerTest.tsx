@@ -62,6 +62,12 @@ export default function LocationPickerTest() {
         predefinedPlaces={[]}
         predefinedPlacesAlwaysVisible={false}
         listViewDisplayed={false}
+        onFail={(error) => {
+          console.warn('GooglePlacesAutocomplete error in LocationPickerTest:', error);
+        }}
+        onNotFound={() => {
+          console.warn('GooglePlacesAutocomplete: No results found in LocationPickerTest');
+        }}
         styles={{
           textInputContainer: styles.searchInputContainer,
           textInput: styles.searchInput,

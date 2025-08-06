@@ -22,6 +22,19 @@ export interface ServiceOfferData {
   customDeliveryTime?: number;
   isCustomOffer?: boolean; // Flag to indicate if this is a custom offer (not tied to existing service)
   jobData?: JobData; // Job details when offer is related to a job
+  // Hustle job attributes
+  startDate?: string;
+  endDate?: string;
+  preferredStartTime?: string;
+  preferredEndTime?: string;
+  locationAddress?: string;
+  locationLatitude?: number;
+  locationLongitude?: number;
+  urgencyLevel?: 'low' | 'medium' | 'high' | 'urgent';
+  skillsRequired?: string[];
+  workType?: 'remote' | 'on_site' | 'hybrid';
+  estimatedHours?: number;
+  requirements?: string;
 }
 
 export interface ServiceOffer {
@@ -38,6 +51,19 @@ export interface ServiceOffer {
   expiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  // Hustle job attributes
+  startDate?: string;
+  endDate?: string;
+  preferredStartTime?: string;
+  preferredEndTime?: string;
+  locationAddress?: string;
+  locationLatitude?: number;
+  locationLongitude?: number;
+  urgencyLevel?: 'low' | 'medium' | 'high' | 'urgent';
+  skillsRequired?: string[];
+  workType?: 'remote' | 'on_site' | 'hybrid';
+  estimatedHours?: number;
+  requirements?: string;
 }
 
 export interface ChatMessage {

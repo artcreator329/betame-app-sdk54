@@ -42,6 +42,7 @@ class AuthService {
           data: {
             full_name: full_name || email.split('@')[0],
           },
+          emailRedirectTo: 'betame://auth/verify-email',
         },
       });
 
@@ -87,7 +88,7 @@ class AuthService {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: 'exp://192.168.1.1:8081', // Update with your app's redirect URL
+        redirectTo: 'betame://auth/callback',
       },
     });
 
@@ -99,7 +100,7 @@ class AuthService {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: {
-        redirectTo: 'exp://192.168.1.1:8081', // Update with your app's redirect URL
+        redirectTo: 'betame://auth/callback',
       },
     });
 
@@ -122,7 +123,7 @@ class AuthService {
   // Reset password
   async resetPassword(email: string): Promise<{ error: AuthError | null }> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'exp://192.168.1.1:8081/reset-password', // Update with your app's redirect URL
+      redirectTo: 'betame://auth/reset-password',
     });
 
     return { error };

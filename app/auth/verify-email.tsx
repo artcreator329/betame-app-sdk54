@@ -1,0 +1,234 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { adminService } from '@/lib/admin-service';
+
+export default function VerifyEmailScreen() {
+  const [loading, setLoading] = useState(true);
+  const [verificationStatus, setVerificationStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+  const router = useRouter();
+  const { user } = useAuth();
+  const params = useLocalSearchParams();
+
+  useEffect(() => {
+    handleEmailVerification();
+  }, []);
+
+  const handleEmailVerification = async () => {
+    try {
+      // Extract token_hash from URL parameters (sent from email template)
+      const tokenHash = (params.token_hash || params.token) as string;
+      const type = params.type as string;
+
+      if (!tokenHash) {
+        console.error('No token_hash found in URL parameters');
+        setVerificationStatus('error');
+        setLoading(false);
+        return;
+      }
+
+      // Support multiple verification types
+      const validTypes = ['signup', 'magiclink', 'recovery'];
+      if (!validTypes.includes(type)) {
+        console.error('Invalid verification type:', type);
+        setVerificationStatus('error');
+        setLoading(false);
+        return;
+      }
+
+      // Verify the email token using token_hash
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: type as 'signup' | 'magiclink' | 'recovery'
+      });
+
+      if (error) {
+        console.error('Email verification error:', error);
+        setVerificationStatus('error');
+        const errorMessage = type === 'recovery' 
+          ? 'Unable to verify password reset link. Please try again.'
+          : 'Unable to verify your email. Please try signing up again.';
+        Alert.alert('Verification Failed', errorMessage);
+      } else if (data.user) {
+        console.log(`Email verified successfully (${type}):`, data.user.id);
+        setVerificationStatus('success');
+        
+        // Handle different verification types
+        if (type === 'recovery') {
+          // For password recovery, redirect to reset password screen
+          setTimeout(() => {
+            router.replace('/auth/reset-password');
+          }, 2000);
+        } else {
+          // For signup and magiclink, check if user is admin and navigate accordingly
+          const isAdmin = await adminService.isAdmin(data.user.id);
+          
+          setTimeout(() => {
+            if (isAdmin) {
+              router.replace('/admin');
+            } else {
+              router.replace('/(tabs)');
+            }
+          }, 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Unexpected verification error:', error);
+      setVerificationStatus('error');
+      Alert.alert('Verification Failed', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderContent = () => {
+    const type = params.type as string;
+    
+    switch (verificationStatus) {
+      case 'verifying':
+        const verifyingTitle = type === 'recovery' ? 'Verifying reset link...' : 'Verifying your email...';
+        const verifyingSubtitle = type === 'recovery' 
+          ? 'Please wait while we verify your password reset request'
+          : 'Please wait while we confirm your account';
+        return (
+          <>
+            <ActivityIndicator size="large" color="#FFFFFF" style={styles.spinner} />
+            <Text style={styles.title}>{verifyingTitle}</Text>
+            <Text style={styles.subtitle}>{verifyingSubtitle}</Text>
+          </>
+        );
+      case 'success':
+        const successTitle = type === 'recovery' ? 'Link Verified!' : 'Email Verified!';
+        const successSubtitle = type === 'recovery'
+          ? 'Your password reset link has been verified. Redirecting you to reset your password...'
+          : 'Your account has been successfully verified. Redirecting you to the app...';
+        return (
+          <>
+            <View style={styles.successIcon}>
+              <Text style={styles.checkmark}>✓</Text>
+            </View>
+            <Text style={styles.title}>{successTitle}</Text>
+            <Text style={styles.subtitle}>{successSubtitle}</Text>
+          </>
+        );
+      case 'error':
+        return (
+          <>
+            <View style={styles.errorIcon}>
+              <Text style={styles.errorMark}>✗</Text>
+            </View>
+            <Text style={styles.title}>Verification Failed</Text>
+            <Text style={styles.subtitle}>Unable to verify your email. Please try signing up again or contact support.</Text>
+          </>
+        );
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={[
+          '#1E3A8A', // Deep blue
+          '#3B82F6', // Blue
+          '#60A5FA', // Light blue
+          '#93C5FD', // Very light blue
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
+      />
+      
+      <View style={styles.content}>
+        {renderContent()}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  gradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  spinner: {
+    marginBottom: 24,
+  },
+  successIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    borderWidth: 2,
+    borderColor: '#22C55E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  errorIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 2,
+    borderColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  checkmark: {
+    fontSize: 40,
+    color: '#22C55E',
+    fontWeight: 'bold',
+  },
+  errorMark: {
+    fontSize: 40,
+    color: '#EF4444',
+    fontWeight: 'bold',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 16,
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 22,
+    fontWeight: '400',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+    paddingHorizontal: 20,
+  },
+});

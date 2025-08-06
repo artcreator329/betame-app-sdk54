@@ -241,6 +241,12 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
                 listViewDisplayed={true}
                 minLength={2}
                 debounce={300}
+                onFail={(error) => {
+                  console.warn('GooglePlacesAutocomplete error in ServiceAreaPicker:', error);
+                }}
+                onNotFound={() => {
+                  console.warn('GooglePlacesAutocomplete: No results found in ServiceAreaPicker');
+                }}
                 textInputProps={{
                   value: searchText,
                   onChangeText: (text: string) => {

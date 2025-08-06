@@ -209,6 +209,16 @@ export class ChatService {
       customPrice?: number;
       customDescription?: string;
       customDeliveryTime?: number;
+      startDate?: string;
+      endDate?: string;
+      preferredStartTime?: string;
+      preferredEndTime?: string;
+      locationAddress?: string;
+      urgencyLevel?: 'low' | 'medium' | 'high' | 'urgent';
+      skillsRequired?: string[];
+      workType?: 'remote' | 'on_site' | 'hybrid';
+      estimatedHours?: number;
+      requirements?: string;
     }
   ): Promise<{ offer: any; message: LiveChatMessage | null }> {
     try {
@@ -224,7 +234,17 @@ export class ChatService {
           custom_price: serviceData.customPrice || serviceData.price,
           custom_description: serviceData.customDescription,
           custom_delivery_time: serviceData.customDeliveryTime,
-          status: 'pending'
+          status: 'pending',
+          start_date: serviceData.startDate,
+          end_date: serviceData.endDate,
+          preferred_start_time: serviceData.preferredStartTime,
+          preferred_end_time: serviceData.preferredEndTime,
+          location_address: serviceData.locationAddress,
+          urgency_level: serviceData.urgencyLevel,
+          skills_required: serviceData.skillsRequired,
+          work_type: serviceData.workType,
+          estimated_hours: serviceData.estimatedHours,
+          requirements: serviceData.requirements
         })
         .select()
         .single();
@@ -234,7 +254,57 @@ export class ChatService {
       }
 
       // Send a message about the offer
-      const offerMessage = `📋 Service Offer\n🛍️ ${serviceData.title}\n💰 Price: ${serviceData.customPrice || serviceData.price} ${serviceData.currency}\n${serviceData.customDescription ? `📝 Custom: ${serviceData.customDescription}` : ''}\n${serviceData.customDeliveryTime ? `⏰ Delivery: ${serviceData.customDeliveryTime} days` : ''}`;
+      let offerMessage = `📋 Service Offer\n🛍️ ${serviceData.title}\n💰 Price: ${serviceData.customPrice || serviceData.price} ${serviceData.currency}`;
+      
+      if (serviceData.customDescription) {
+        offerMessage += `\n📝 Custom: ${serviceData.customDescription}`;
+      }
+      
+      if (serviceData.customDeliveryTime) {
+        offerMessage += `\n⏰ Delivery: ${serviceData.customDeliveryTime} days`;
+      }
+      
+      // Add hustle job attributes
+      if (serviceData.startDate) {
+        offerMessage += `\n📅 Start Date: ${serviceData.startDate}`;
+      }
+      
+      if (serviceData.endDate) {
+        offerMessage += `\n📅 End Date: ${serviceData.endDate}`;
+      }
+      
+      if (serviceData.preferredStartTime) {
+        offerMessage += `\n🕐 Start Time: ${serviceData.preferredStartTime}`;
+      }
+      
+      if (serviceData.preferredEndTime) {
+        offerMessage += `\n🕐 End Time: ${serviceData.preferredEndTime}`;
+      }
+      
+      if (serviceData.locationAddress) {
+        offerMessage += `\n📍 Location: ${serviceData.locationAddress}`;
+      }
+      
+      if (serviceData.workType) {
+        const workTypeDisplay = serviceData.workType === 'on_site' ? 'On-site' : serviceData.workType.charAt(0).toUpperCase() + serviceData.workType.slice(1);
+        offerMessage += `\n💼 Work Type: ${workTypeDisplay}`;
+      }
+      
+      if (serviceData.urgencyLevel) {
+        offerMessage += `\n⚡ Urgency: ${serviceData.urgencyLevel.charAt(0).toUpperCase() + serviceData.urgencyLevel.slice(1)}`;
+      }
+      
+      if (serviceData.estimatedHours) {
+        offerMessage += `\n⏱️ Estimated Hours: ${serviceData.estimatedHours}`;
+      }
+      
+      if (serviceData.skillsRequired && serviceData.skillsRequired.length > 0) {
+        offerMessage += `\n🛠️ Skills: ${serviceData.skillsRequired.join(', ')}`;
+      }
+      
+      if (serviceData.requirements) {
+        offerMessage += `\n📋 Requirements: ${serviceData.requirements}`;
+      }
       
       const messageData = {
         chat_id: chatId,

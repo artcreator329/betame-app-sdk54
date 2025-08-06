@@ -10,6 +10,8 @@ import {
   Alert,
   Modal,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Upload, CreditCard as Edit3, MapPin, X, Search } from 'lucide-react-native';
@@ -271,7 +273,11 @@ export default function CreateJobListingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <ArrowLeft size={24} color={Colors.text.primary} />
@@ -437,7 +443,8 @@ export default function CreateJobListingScreen() {
             <Text style={styles.listButtonText}>Post Job</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <Modal
         visible={showLocationPicker}
@@ -536,11 +543,13 @@ export default function CreateJobListingScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background.primary,
+  },
+  keyboardView: {
+    flex: 1,
   },
   header: {
     paddingHorizontal: 20,

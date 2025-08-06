@@ -119,7 +119,7 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     if (!hasVariants) return service.price;
     
     // Get all variant prices
-    const variantPrices = service.service_variants!.map(v => v.price).filter(price => price > 0);
+    const variantPrices = (service.service_variants || []).map(v => v.price).filter(price => price > 0);
     
     // If main service has a valid price (> 0), include it
     const validPrices = service.price > 0 ? [service.price, ...variantPrices] : variantPrices;
@@ -192,7 +192,7 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
               {hasVariants && !hideVariants && (
                 <View style={styles.variantIndicator}>
                   <Text style={styles.variantCount}>
-                    {service.service_variants!.length} option{service.service_variants!.length !== 1 ? 's' : ''}
+                    {service.service_variants?.length || 0} option{(service.service_variants?.length || 0) !== 1 ? 's' : ''}
                   </Text>
                   {showVariants ? (
                     <ChevronUp size={16} color={Colors.primary.main} />
@@ -215,13 +215,13 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
       {hasVariants && showVariants && !hideVariants && (
         <View style={styles.variantsContainer}>
           {/* Only show actual service variants, not the main service */}
-          {service.service_variants!.map((variant, index) => (
+          {service.service_variants?.map((variant, index) => (
             <ServiceVariantCard
               key={variant.id}
               variant={variant}
               onPress={() => handlePress(variant.id)}
             />
-          ))}
+          )) || []}
         </View>
       )}
     </View>

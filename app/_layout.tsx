@@ -29,8 +29,18 @@ function RootLayoutNav() {
     console.log('🔍 Layout: Groups - auth:', inAuthGroup, 'tabs:', inTabsGroup, 'admin:', inAdminGroup);
     
     // Allow access to auth pages without authentication
+    // Also allow access when there are verification tokens in the URL
     if (inAuthGroup) {
       console.log('🔍 Layout: In auth group, allowing access');
+      return;
+    }
+    
+    // Allow access to pages with verification tokens for deep linking
+    const hasVerificationToken = segments.some(segment => 
+      segment?.includes('token=') || segment?.includes('code=') || segment?.includes('verification=')
+    );
+    if (hasVerificationToken) {
+      console.log('🔍 Layout: Verification token detected, allowing access');
       return;
     }
     
@@ -89,6 +99,27 @@ function RootLayoutNav() {
       }}>
       <Stack.Screen 
         name="auth/login" 
+        options={{ 
+          animation: 'fade',
+          animationDuration: 350,
+        }}
+      />
+      <Stack.Screen 
+        name="auth/verify-email" 
+        options={{ 
+          animation: 'fade',
+          animationDuration: 350,
+        }}
+      />
+      <Stack.Screen 
+        name="auth/callback" 
+        options={{ 
+          animation: 'fade',
+          animationDuration: 350,
+        }}
+      />
+      <Stack.Screen 
+        name="auth/reset-password" 
         options={{ 
           animation: 'fade',
           animationDuration: 350,

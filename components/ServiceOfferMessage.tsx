@@ -33,7 +33,7 @@ export function ServiceOfferMessage({
   onViewService,
 }: ServiceOfferMessageProps) {
   const { serviceData, offerId, offerStatus, offerExpiresAt } = message;
-  const [showCustomOfferModal, setShowCustomOfferModal] = useState(false);
+  const [showOfferDetailsModal, setShowOfferDetailsModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
 
@@ -97,21 +97,12 @@ export function ServiceOfferMessage({
   };
 
   const handleViewService = () => {
-    if (!serviceData.id) return;
     console.log('🔗 ServiceOfferMessage: View Service clicked with serviceData:', serviceData);
     console.log('🔗 ServiceOfferMessage: Service ID:', serviceData.id);
     console.log('🔗 ServiceOfferMessage: Service title:', serviceData.title);
     
-    // Check if this is a custom offer with no service reference
-    if (serviceData.isCustomOffer && 
-        (serviceData.id.startsWith('custom-offer-') || 
-         serviceData.id.startsWith('fallback-'))) {
-      console.log('🔗 ServiceOfferMessage: This is a custom offer with no service reference, showing modal');
-      setShowCustomOfferModal(true);
-    } else {
-      // This is a regular service or custom offer based on existing service, call the onViewService callback
-      onViewService?.(serviceData.id);
-    }
+    // Always show the detailed offer modal for all service offers
+    setShowOfferDetailsModal(true);
   };
 
   const getStatusConfig = () => {
@@ -224,6 +215,83 @@ export function ServiceOfferMessage({
               </View>
             )}
 
+            {/* Hustle Job Attributes */}
+            {(serviceData.startDate || serviceData.endDate || serviceData.locationAddress || serviceData.workType || serviceData.urgencyLevel) && (
+              <View style={styles.hustleDetailsContainer}>
+                <Text style={styles.hustleDetailsLabel}>Job Details:</Text>
+                
+                {/* Date Range */}
+                {(serviceData.startDate || serviceData.endDate) && (
+                  <View style={styles.hustleDetailRow}>
+                    <Text style={styles.hustleDetailText}>
+                      📅 {serviceData.startDate ? new Date(serviceData.startDate).toLocaleDateString() : 'TBD'} - {serviceData.endDate ? new Date(serviceData.endDate).toLocaleDateString() : 'TBD'}
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Time Preferences */}
+                {(serviceData.preferredStartTime || serviceData.preferredEndTime) && (
+                  <View style={styles.hustleDetailRow}>
+                    <Text style={styles.hustleDetailText}>
+                      ⏰ {serviceData.preferredStartTime || 'Flexible'} - {serviceData.preferredEndTime || 'Flexible'}
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Location */}
+                {serviceData.locationAddress && (
+                  <View style={styles.hustleDetailRow}>
+                    <Text style={styles.hustleDetailText} numberOfLines={1}>
+                      📍 {serviceData.locationAddress}
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Work Type & Urgency */}
+                <View style={styles.hustleTagsRow}>
+                  {serviceData.workType && (
+                    <Text style={[styles.hustleTag, styles.workTypeTag]}>
+                      🏢 {serviceData.workType.replace('_', ' ').toUpperCase()}
+                    </Text>
+                  )}
+                  {serviceData.urgencyLevel && (
+                    <Text style={[styles.hustleTag, styles.urgencyTag, 
+                      serviceData.urgencyLevel === 'urgent' ? styles.urgentTag : 
+                      serviceData.urgencyLevel === 'high' ? styles.highTag : styles.normalTag]}>
+                      ⚡ {serviceData.urgencyLevel.toUpperCase()}
+                    </Text>
+                  )}
+                </View>
+                
+                {/* Estimated Hours */}
+                {serviceData.estimatedHours && (
+                  <View style={styles.hustleDetailRow}>
+                    <Text style={styles.hustleDetailText}>
+                      ⏱️ Est. {serviceData.estimatedHours} hours
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Skills Required */}
+                {serviceData.skillsRequired && serviceData.skillsRequired.length > 0 && (
+                  <View style={styles.hustleDetailRow}>
+                    <Text style={styles.hustleDetailText}>
+                      🛠️ Skills: {serviceData.skillsRequired.join(', ')}
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Requirements */}
+                {serviceData.requirements && (
+                  <View style={styles.hustleDetailRow}>
+                    <Text style={styles.hustleDetailText} numberOfLines={2}>
+                      📋 {serviceData.requirements}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Custom Description */}
             {serviceData.customDescription && (
               <View style={styles.customDescriptionContainer}>
@@ -306,22 +374,22 @@ export function ServiceOfferMessage({
           )}
         </View>
 
-        {/* Custom Offer Details Modal */}
+        {/* Offer Details Modal */}
         <Modal
-          visible={showCustomOfferModal}
+          visible={showOfferDetailsModal}
           transparent={true}
           animationType="fade"
-          onRequestClose={() => setShowCustomOfferModal(false)}
+          onRequestClose={() => setShowOfferDetailsModal(false)}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <ScrollView showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Custom Service Offer</Text>
+                  <Text style={styles.modalTitle}>Service Offer Details</Text>
                   <TouchableOpacity 
                     style={styles.closeButton}
-                    onPress={() => setShowCustomOfferModal(false)}
+                    onPress={() => setShowOfferDetailsModal(false)}
                   >
                     <X size={24} color={Colors.text.secondary} />
                   </TouchableOpacity>
@@ -340,8 +408,18 @@ export function ServiceOfferMessage({
                 {/* Service Details */}
                 <View style={styles.modalContent}>
                   <Text style={styles.modalServiceTitle}>
-                    {serviceData.title || 'Custom Service Offer'}
+                    {serviceData.title || 'Service Offer'}
                   </Text>
+
+                  {/* Offer Status */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>Offer Status</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+                      <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                        {statusConfig.text}
+                      </Text>
+                    </View>
+                  </View>
 
                   {serviceData.description && (
                     <View style={styles.modalSection}>
@@ -363,9 +441,20 @@ export function ServiceOfferMessage({
 
                   <View style={styles.modalSection}>
                     <Text style={styles.modalSectionTitle}>Price</Text>
-                    <Text style={styles.modalPrice}>
-                      RM {serviceData.customPrice || serviceData.price || '0'}
-                    </Text>
+                    {serviceData.customPrice && serviceData.customPrice !== serviceData.price ? (
+                      <View>
+                        <Text style={styles.modalOriginalPrice}>
+                          Original: RM {serviceData.price}
+                        </Text>
+                        <Text style={styles.modalPrice}>
+                          Offer: RM {serviceData.customPrice}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.modalPrice}>
+                        RM {serviceData.customPrice || serviceData.price || '0'}
+                      </Text>
+                    )}
                   </View>
 
                   {serviceData.category_name && (
@@ -386,9 +475,288 @@ export function ServiceOfferMessage({
                     </View>
                   )}
 
+                  {/* Enhanced Date & Time Information */}
+                  {(serviceData.startDate || serviceData.endDate) && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>📅 Project Timeline</Text>
+                      <View style={styles.dateTimeContainer}>
+                        {serviceData.startDate && (
+                          <View style={styles.dateTimeRow}>
+                            <Text style={styles.dateTimeLabel}>Start Date:</Text>
+                            <Text style={styles.dateTimeValue}>
+                              {new Date(serviceData.startDate).toLocaleDateString('en-MY', {
+                                weekday: 'short',
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </Text>
+                          </View>
+                        )}
+                        {serviceData.endDate && (
+                          <View style={styles.dateTimeRow}>
+                            <Text style={styles.dateTimeLabel}>End Date:</Text>
+                            <Text style={styles.dateTimeValue}>
+                              {new Date(serviceData.endDate).toLocaleDateString('en-MY', {
+                                weekday: 'short',
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </Text>
+                          </View>
+                        )}
+                        {serviceData.startDate && serviceData.endDate && (
+                          <View style={styles.dateTimeRow}>
+                            <Text style={styles.dateTimeLabel}>Duration:</Text>
+                            <Text style={styles.dateTimeValue}>
+                              {Math.ceil((new Date(serviceData.endDate).getTime() - new Date(serviceData.startDate).getTime()) / (1000 * 60 * 60 * 24))} days
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )}
+
+                  {(serviceData.preferredStartTime || serviceData.preferredEndTime) && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>⏰ Working Hours</Text>
+                      <View style={styles.timeContainer}>
+                        <View style={styles.timeRow}>
+                          <Text style={styles.timeLabel}>Preferred Hours:</Text>
+                          <Text style={styles.timeValue}>
+                            {serviceData.preferredStartTime || 'Flexible'} - {serviceData.preferredEndTime || 'Flexible'}
+                          </Text>
+                        </View>
+                        {serviceData.estimatedHours && (
+                          <View style={styles.timeRow}>
+                            <Text style={styles.timeLabel}>Estimated Duration:</Text>
+                            <Text style={styles.timeValue}>
+                              {serviceData.estimatedHours} hours total
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Enhanced Location & Work Arrangement */}
+                  {(serviceData.locationAddress || serviceData.workType) && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>📍 Work Location & Arrangement</Text>
+                      <View style={styles.locationContainer}>
+                        {serviceData.workType && (
+                          <View style={styles.workTypeContainer}>
+                            <View style={[styles.workTypeBadge, 
+                              serviceData.workType === 'remote' ? styles.remoteBadge :
+                              serviceData.workType === 'on_site' ? styles.onsiteBadge : styles.hybridBadge
+                            ]}>
+                              <Text style={[styles.workTypeText,
+                                serviceData.workType === 'remote' ? styles.remoteText :
+                                serviceData.workType === 'on_site' ? styles.onsiteText : styles.hybridText
+                              ]}>
+                                {serviceData.workType === 'remote' ? '🏠 Remote Work' :
+                                 serviceData.workType === 'on_site' ? '🏢 On-site Work' : '🔄 Hybrid Work'}
+                              </Text>
+                            </View>
+                            <Text style={styles.workTypeDescription}>
+                              {serviceData.workType === 'remote' ? 'Work can be completed remotely from any location' :
+                               serviceData.workType === 'on_site' ? 'Physical presence required at specified location' :
+                               'Combination of remote and on-site work as needed'}
+                            </Text>
+                          </View>
+                        )}
+                        {serviceData.locationAddress && (
+                          <View style={styles.addressContainer}>
+                            <Text style={styles.addressLabel}>
+                              {serviceData.workType === 'remote' ? 'Service Area:' : 'Work Location:'}
+                            </Text>
+                            <Text style={styles.addressValue}>
+                              {serviceData.locationAddress}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )}
+
+                  {serviceData.urgencyLevel && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>⚡ Priority Level</Text>
+                      <View style={styles.urgencyContainer}>
+                        <View style={[styles.urgencyBadge,
+                           serviceData.urgencyLevel === 'urgent' ? styles.urgentModalBadge :
+                           serviceData.urgencyLevel === 'high' ? styles.highUrgencyModalBadge :
+                           serviceData.urgencyLevel === 'medium' ? styles.mediumUrgencyModalBadge : styles.lowUrgencyModalBadge
+                         ]}>
+                           <Text style={[styles.urgencyModalText,
+                             serviceData.urgencyLevel === 'urgent' ? styles.urgentModalText :
+                             serviceData.urgencyLevel === 'high' ? styles.highUrgencyModalText :
+                             serviceData.urgencyLevel === 'medium' ? styles.mediumUrgencyModalText : styles.lowUrgencyModalText
+                           ]}>
+                            {serviceData.urgencyLevel === 'urgent' ? '🔥 URGENT' :
+                             serviceData.urgencyLevel === 'high' ? '⚠️ HIGH PRIORITY' :
+                             serviceData.urgencyLevel === 'medium' ? '📋 MEDIUM PRIORITY' : '📝 LOW PRIORITY'}
+                          </Text>
+                        </View>
+                        <Text style={styles.urgencyDescription}>
+                          {serviceData.urgencyLevel === 'urgent' ? 'Immediate attention required - ASAP delivery' :
+                           serviceData.urgencyLevel === 'high' ? 'High priority - Quick turnaround needed' :
+                           serviceData.urgencyLevel === 'medium' ? 'Standard priority - Normal timeline' :
+                           'Low priority - Flexible timeline'}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {serviceData.skillsRequired && serviceData.skillsRequired.length > 0 && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Skills Required</Text>
+                      <Text style={styles.modalSectionText}>
+                        {serviceData.skillsRequired.join(', ')}
+                      </Text>
+                    </View>
+                  )}
+
+                  {serviceData.requirements && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Additional Requirements</Text>
+                      <Text style={styles.modalSectionText}>
+                        {serviceData.requirements}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Enhanced Job Data Details */}
+                  {serviceData.jobData && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>🎯 Related Job Posting</Text>
+                      <View style={styles.jobDataContainer}>
+                        <Text style={styles.modalJobTitle}>
+                          {serviceData.jobData.title}
+                        </Text>
+                        <Text style={styles.modalSectionText}>
+                          {serviceData.jobData.description}
+                        </Text>
+                        
+                        <View style={styles.jobMetaContainer}>
+                          {serviceData.jobData.budget_amount && (
+                            <View style={styles.jobMetaRow}>
+                              <Text style={styles.jobMetaLabel}>💰 Budget:</Text>
+                              <Text style={styles.modalJobBudget}>
+                                {serviceData.jobData.currency} {serviceData.jobData.budget_amount}
+                              </Text>
+                            </View>
+                          )}
+                          
+                          {serviceData.jobData.payment_type && (
+                            <View style={styles.jobMetaRow}>
+                              <Text style={styles.jobMetaLabel}>💳 Payment:</Text>
+                              <Text style={styles.jobPaymentType}>
+                                {serviceData.jobData.payment_type.charAt(0).toUpperCase() + serviceData.jobData.payment_type.slice(1)}
+                              </Text>
+                            </View>
+                          )}
+                          
+                          {serviceData.jobData.location_address && (
+                            <View style={styles.jobMetaRow}>
+                              <Text style={styles.jobMetaLabel}>📍 Job Location:</Text>
+                              <Text style={styles.jobLocationText}>
+                                {serviceData.jobData.location_address}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Enhanced Expiration Information */}
+                  {offerExpiresAt && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>⏳ Offer Validity</Text>
+                      <View style={styles.expirationContainer}>
+                        <View style={[styles.expirationBadge, isExpired ? styles.expiredBadge : styles.activeBadge]}>
+                          <Text style={[styles.expirationStatus, isExpired ? styles.expiredText : styles.activeText]}>
+                            {isExpired ? '❌ EXPIRED' : '✅ ACTIVE'}
+                          </Text>
+                        </View>
+                        <View style={styles.expirationDetails}>
+                          <Text style={styles.expirationLabel}>
+                            {isExpired ? 'Expired on:' : 'Valid until:'}
+                          </Text>
+                          <Text style={[styles.expirationDateTime, isExpired && { color: Colors.status.error }]}>
+                            {offerExpiresAt.toLocaleDateString('en-MY', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </Text>
+                          <Text style={[styles.expirationTime, isExpired && { color: Colors.status.error }]}>
+                            at {offerExpiresAt.toLocaleTimeString('en-MY', { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              hour12: true 
+                            })}
+                          </Text>
+                          {!isExpired && (
+                            <Text style={styles.timeRemaining}>
+                              {(() => {
+                                const now = new Date();
+                                const timeLeft = offerExpiresAt.getTime() - now.getTime();
+                                const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                                const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                
+                                if (daysLeft > 0) {
+                                  return `${daysLeft} day${daysLeft > 1 ? 's' : ''} remaining`;
+                                } else if (hoursLeft > 0) {
+                                  return `${hoursLeft} hour${hoursLeft > 1 ? 's' : ''} remaining`;
+                                } else {
+                                  return 'Expires soon';
+                                }
+                              })()
+                            }
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Offer Creation Details */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>📋 Offer Information</Text>
+                    <View style={styles.offerInfoContainer}>
+                      <View style={styles.offerInfoRow}>
+                        <Text style={styles.offerInfoLabel}>Offer Type:</Text>
+                        <Text style={styles.offerInfoValue}>
+                          {serviceData.isCustomOffer ? 'Custom Offer' : 'Standard Service'}
+                        </Text>
+                      </View>
+                      
+                      {message.timestamp && (
+                        <View style={styles.offerInfoRow}>
+                          <Text style={styles.offerInfoLabel}>Created:</Text>
+                          <Text style={styles.offerInfoValue}>
+                            {new Date(message.timestamp).toLocaleDateString('en-MY', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
                   <View style={styles.modalFooter}>
                     <Text style={styles.modalNote}>
-                      This is a custom offer created specifically for this conversation.
+                      {serviceData.isCustomOffer ? 
+                        'This is a custom offer created specifically for this conversation with tailored terms and conditions.' :
+                        'This offer is based on an existing service with customized details for your specific requirements.'}
                     </Text>
                   </View>
                 </View>
@@ -397,7 +765,7 @@ export function ServiceOfferMessage({
               {/* Close Button */}
               <TouchableOpacity 
                 style={styles.modalCloseButton}
-                onPress={() => setShowCustomOfferModal(false)}
+                onPress={() => setShowOfferDetailsModal(false)}
               >
                 <Text style={styles.modalCloseButtonText}>Close</Text>
               </TouchableOpacity>
@@ -838,9 +1206,27 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   modalPrice: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '800',
     color: Colors.primary.main,
+  },
+  modalOriginalPrice: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    textDecorationLine: 'line-through',
+    marginBottom: 4,
+  },
+  modalJobTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    marginBottom: 8,
+  },
+  modalJobBudget: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary.main,
+    marginTop: 4,
   },
   modalFooter: {
     marginTop: 20,
@@ -981,5 +1367,312 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: Colors.text.white,
+  },
+  // Hustle Job Attributes Styles
+  hustleDetailsContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FFD700',
+  },
+  hustleDetailsLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  hustleDetailRow: {
+    marginBottom: 6,
+  },
+  hustleDetailText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.95)',
+    lineHeight: 16,
+  },
+  hustleTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
+  hustleTag: {
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  workTypeTag: {
+    backgroundColor: '#4CAF50',
+    color: '#FFFFFF',
+  },
+  urgencyTag: {
+    color: '#FFFFFF',
+  },
+  urgentTag: {
+    backgroundColor: '#F44336',
+  },
+  highTag: {
+    backgroundColor: '#FF9800',
+  },
+  normalTag: {
+    backgroundColor: '#2196F3',
+  },
+  // Enhanced Modal Styles
+  dateTimeContainer: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  dateTimeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+  },
+  dateTimeValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text.primary,
+  },
+  timeContainer: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  timeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+  },
+  timeValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text.primary,
+  },
+  locationContainer: {
+    marginTop: 8,
+  },
+  workTypeContainer: {
+    marginBottom: 16,
+  },
+  workTypeBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  remoteBadge: {
+    backgroundColor: '#E3F2FD',
+  },
+  onsiteBadge: {
+    backgroundColor: '#F3E5F5',
+  },
+  hybridBadge: {
+    backgroundColor: '#E8F5E8',
+  },
+  workTypeText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  remoteText: {
+    color: '#1976D2',
+  },
+  onsiteText: {
+    color: '#7B1FA2',
+  },
+  hybridText: {
+    color: '#388E3C',
+  },
+  workTypeDescription: {
+    fontSize: 13,
+    color: Colors.text.secondary,
+    lineHeight: 18,
+  },
+  addressContainer: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+  },
+  addressLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+    marginBottom: 4,
+  },
+  addressValue: {
+    fontSize: 14,
+    color: Colors.text.primary,
+    lineHeight: 20,
+  },
+  urgencyContainer: {
+    marginTop: 8,
+  },
+  urgencyBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  urgentModalBadge: {
+    backgroundColor: '#FFEBEE',
+  },
+  highUrgencyModalBadge: {
+    backgroundColor: '#FFF3E0',
+  },
+  mediumUrgencyModalBadge: {
+    backgroundColor: '#FFF8E1',
+  },
+  lowUrgencyModalBadge: {
+    backgroundColor: '#F1F8E9',
+  },
+  urgencyModalText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  urgentModalText: {
+    color: '#C62828',
+  },
+  highUrgencyModalText: {
+    color: '#E65100',
+  },
+  mediumUrgencyModalText: {
+    color: '#F57F17',
+  },
+  lowUrgencyModalText: {
+    color: '#33691E',
+  },
+  urgencyDescription: {
+    fontSize: 13,
+    color: Colors.text.secondary,
+    lineHeight: 18,
+  },
+  jobDataContainer: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  jobMetaContainer: {
+    marginTop: 12,
+  },
+  jobMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  jobMetaLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+  },
+  jobPaymentType: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary.main,
+  },
+  jobLocationText: {
+    fontSize: 14,
+    color: Colors.text.primary,
+    flex: 1,
+    textAlign: 'right',
+  },
+  expirationContainer: {
+    marginTop: 8,
+  },
+  expirationBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  activeBadge: {
+    backgroundColor: '#E8F5E8',
+  },
+  expiredBadge: {
+    backgroundColor: '#FFEBEE',
+  },
+  expirationStatus: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  activeText: {
+    color: '#2E7D32',
+  },
+  expiredText: {
+    color: '#C62828',
+  },
+  expirationDetails: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+  },
+  expirationLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+    marginBottom: 4,
+  },
+  expirationDateTime: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    marginBottom: 2,
+  },
+  expirationTime: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    marginBottom: 8,
+  },
+  timeRemaining: {
+    fontSize: 13,
+    color: Colors.primary.main,
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
+  offerInfoContainer: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  offerInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  offerInfoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+  },
+  offerInfoValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text.primary,
   },
 });

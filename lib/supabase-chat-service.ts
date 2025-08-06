@@ -105,6 +105,17 @@ export class SupabaseChatService {
                 customDescription: offerData.custom_description,
                 customDeliveryTime: offerData.custom_delivery_time,
                 isCustomOffer: offerData.custom_price || offerData.custom_description || offerData.custom_delivery_time, // Flag if any customizations exist
+                // Hustle job attributes
+                startDate: offerData.start_date,
+                endDate: offerData.end_date,
+                preferredStartTime: offerData.preferred_start_time,
+                preferredEndTime: offerData.preferred_end_time,
+                locationAddress: offerData.location_address,
+                urgencyLevel: offerData.urgency_level,
+                skillsRequired: offerData.skills_required,
+                workType: offerData.work_type,
+                estimatedHours: offerData.estimated_hours,
+                requirements: offerData.requirements,
               };
               console.log('🔍 SupabaseChatService: Service data constructed from existing service:', serviceData);
             } else {
@@ -121,6 +132,17 @@ export class SupabaseChatService {
                 customDescription: offerData.custom_description,
                 customDeliveryTime: offerData.custom_delivery_time,
                 isCustomOffer: true, // Flag to indicate this is a custom offer
+                // Hustle job attributes
+                startDate: offerData.start_date,
+                endDate: offerData.end_date,
+                preferredStartTime: offerData.preferred_start_time,
+                preferredEndTime: offerData.preferred_end_time,
+                locationAddress: offerData.location_address,
+                urgencyLevel: offerData.urgency_level,
+                skillsRequired: offerData.skills_required,
+                workType: offerData.work_type,
+                estimatedHours: offerData.estimated_hours,
+                requirements: offerData.requirements,
               };
               console.log('🔍 SupabaseChatService: Custom offer data constructed:', serviceData);
             }
@@ -142,6 +164,17 @@ export class SupabaseChatService {
           customDescription: dbMessage.custom_description,
           customDeliveryTime: dbMessage.custom_delivery_time,
           isCustomOffer: true, // Flag to indicate this is a custom offer
+          // Hustle job attributes (fallback to undefined)
+          startDate: undefined,
+          endDate: undefined,
+          preferredStartTime: undefined,
+          preferredEndTime: undefined,
+          locationAddress: undefined,
+          urgencyLevel: undefined,
+          skillsRequired: undefined,
+          workType: undefined,
+          estimatedHours: undefined,
+          requirements: undefined,
         };
         console.log('🔍 SupabaseChatService: Fallback service data constructed:', serviceData);
       }
@@ -1346,7 +1379,7 @@ export class SupabaseChatService {
                 });
                 try {
                   await notificationService.addChatNotification({
-                    participantId: otherParticipantId, // Send notification TO the other participant
+                    participantId: userId, // Send notification TO the current user (recipient)
                     participantName: participant.name,
                     participantImage: participant.image,
                     message: payload.new.message,

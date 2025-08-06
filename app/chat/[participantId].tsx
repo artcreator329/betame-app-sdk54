@@ -389,6 +389,15 @@ export default function ChatScreen() {
     customPrice?: number;
     customDescription?: string;
     customDeliveryTime?: number;
+    startDate?: string;
+    endDate?: string;
+    preferredStartTime?: string;
+    preferredEndTime?: string;
+    locationAddress?: string;
+    urgencyLevel?: 'low' | 'medium' | 'high' | 'urgent';
+    workType?: 'remote' | 'on_site' | 'hybrid';
+    estimatedHours?: number;
+    requirements?: string;
   }) => {
     if (!user?.id || !userProfile || !chatId || !selectedService) return;
 
@@ -410,6 +419,16 @@ export default function ChatScreen() {
         customPrice: offerData.customPrice,
         customDescription: offerData.customDescription,
         customDeliveryTime: offerData.customDeliveryTime,
+        // Hustle job attributes
+        startDate: offerData.startDate,
+        endDate: offerData.endDate,
+        preferredStartTime: offerData.preferredStartTime,
+        preferredEndTime: offerData.preferredEndTime,
+        locationAddress: offerData.locationAddress,
+        urgencyLevel: offerData.urgencyLevel,
+        workType: offerData.workType,
+        estimatedHours: offerData.estimatedHours,
+        requirements: offerData.requirements,
       };
 
       console.log('🔍 Chat: Creating service offer with serviceData:', serviceData);
@@ -1183,7 +1202,7 @@ export default function ChatScreen() {
                 </View>
               ) : (
                 <FlatList
-                  data={userServices.filter(service => service.id && service.id.trim() !== '')}
+                  data={(userServices || []).filter(service => service.id && service.id.trim() !== '')}
                   keyExtractor={(item) => item.id || ''}
                   renderItem={({ item }) => (
                     <TouchableOpacity 
