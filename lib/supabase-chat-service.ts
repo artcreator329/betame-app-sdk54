@@ -83,28 +83,47 @@ export class SupabaseChatService {
       // Try to get the actual service data from service_offers table
       if (dbMessage.offer_id) {
         try {
-          const { data: offerData } = await supabase
+          console.log('🔍 SupabaseChatService: Looking up service offer with ID:', dbMessage.offer_id);
+          
+          // Debug: Check what's actually in the service_offers table
+          await this.debugServiceOffer(dbMessage.offer_id);
+          
+          const { data: offerData, error: offerError } = await supabase
             .from('service_offers')
-            .select('*, services(title, description, price, currency, image_url, category_name)')
+            .select('*')
             .eq('id', dbMessage.offer_id)
             .maybeSingle();
           
-          if (offerData) {
-            // Check if this offer references an existing service
-            if (offerData.services && offerData.service_id) {
+          console.log('🔍 SupabaseChatService: Offer lookup query for ID:', dbMessage.offer_id);
+          console.log('🔍 SupabaseChatService: Offer lookup result:', { offerData, offerError });
+          
+            if (offerData) {
+              console.log('🔍 SupabaseChatService: Found offer data with hustle fields:', {
+                start_date: offerData.start_date,
+                end_date: offerData.end_date,
+                preferred_start_time: offerData.preferred_start_time,
+                preferred_end_time: offerData.preferred_end_time,
+                location_address: offerData.location_address,
+                urgency_level: offerData.urgency_level,
+                work_type: offerData.work_type,
+                estimated_hours: offerData.estimated_hours,
+                requirements: offerData.requirements,
+              });
+              // Check if this offer references an existing service
+              if (offerData.service_id) {
               // This is an offer for an existing service (with or without customizations)
               serviceData = {
                 id: offerData.service_id,
-                title: offerData.services.title,
-                description: offerData.services.description,
-                price: offerData.services.price,
-                currency: offerData.services.currency || 'USD',
-                image_url: offerData.services.image_url,
-                category_name: offerData.services.category_name,
+                title: offerData.custom_description || 'Service Offer',
+                description: offerData.custom_description || '',
+                price: offerData.custom_price || offerData.original_price || 0,
+                currency: 'USD',
+                image_url: undefined,
+                category_name: 'Service Offer',
                 customPrice: offerData.custom_price,
                 customDescription: offerData.custom_description,
                 customDeliveryTime: offerData.custom_delivery_time,
-                isCustomOffer: offerData.custom_price || offerData.custom_description || offerData.custom_delivery_time, // Flag if any customizations exist
+                isCustomOffer: true, // Flag if any customizations exist
                 // Hustle job attributes
                 startDate: offerData.start_date,
                 endDate: offerData.end_date,
@@ -118,6 +137,17 @@ export class SupabaseChatService {
                 requirements: offerData.requirements,
               };
               console.log('🔍 SupabaseChatService: Service data constructed from existing service:', serviceData);
+              console.log('🔍 SupabaseChatService: Hustle job fields from offerData:', {
+                start_date: offerData.start_date,
+                end_date: offerData.end_date,
+                preferred_start_time: offerData.preferred_start_time,
+                preferred_end_time: offerData.preferred_end_time,
+                location_address: offerData.location_address,
+                urgency_level: offerData.urgency_level,
+                work_type: offerData.work_type,
+                estimated_hours: offerData.estimated_hours,
+                requirements: offerData.requirements,
+              });
             } else {
               // This is a custom offer with no service reference (shouldn't happen in normal flow)
               serviceData = {
@@ -154,6 +184,14 @@ export class SupabaseChatService {
       
       // Fallback to constructing from message data if service lookup fails
       if (!serviceData) {
+        console.log('🔍 SupabaseChatService: Using fallback service data construction');
+        console.log('🔍 SupabaseChatService: Message data for fallback:', {
+          id: dbMessage.id,
+          custom_description: dbMessage.custom_description,
+          custom_price: dbMessage.custom_price,
+          custom_delivery_time: dbMessage.custom_delivery_time,
+          offer_id: dbMessage.offer_id
+        });
         serviceData = {
           id: `fallback-${dbMessage.id}`, // Use a fallback ID
           title: dbMessage.custom_description || 'Service Offer',
@@ -422,6 +460,16 @@ export class SupabaseChatService {
       customPrice?: number;
       customDescription?: string;
       customDeliveryTime?: number;
+      // Hustle job attributes
+      startDate?: string;
+      endDate?: string;
+      preferredStartTime?: string;
+      preferredEndTime?: string;
+      locationAddress?: string;
+      urgencyLevel?: 'low' | 'medium' | 'high' | 'urgent';
+      workType?: 'remote' | 'on_site' | 'hybrid';
+      estimatedHours?: number;
+      requirements?: string;
     }
   ): Promise<LiveChatMessage | null> {
     try {
@@ -479,11 +527,32 @@ export class SupabaseChatService {
         custom_price: serviceData.customPrice || serviceData.price,
         custom_description: serviceData.customDescription,
         custom_delivery_time: serviceData.customDeliveryTime,
+        // Hustle job attributes
+        start_date: serviceData.startDate,
+        end_date: serviceData.endDate,
+        preferred_start_time: serviceData.preferredStartTime,
+        preferred_end_time: serviceData.preferredEndTime,
+        location_address: serviceData.locationAddress,
+        urgency_level: serviceData.urgencyLevel,
+        work_type: serviceData.workType,
+        estimated_hours: serviceData.estimatedHours,
+        requirements: serviceData.requirements,
         status: 'pending',
         expires_at: expiresAt.toISOString(),
       };
 
       console.log('🔍 SupabaseChatService: Inserting service offer with data:', offerInsertData);
+      console.log('🔍 SupabaseChatService: Hustle job fields being stored:', {
+        start_date: serviceData.startDate,
+        end_date: serviceData.endDate,
+        preferred_start_time: serviceData.preferredStartTime,
+        preferred_end_time: serviceData.preferredEndTime,
+        location_address: serviceData.locationAddress,
+        urgency_level: serviceData.urgencyLevel,
+        work_type: serviceData.workType,
+        estimated_hours: serviceData.estimatedHours,
+        requirements: serviceData.requirements,
+      });
 
       const { data: offerData, error: offerError } = await supabase
         .from('service_offers')
@@ -498,6 +567,17 @@ export class SupabaseChatService {
 
       console.log('🔍 SupabaseChatService: Service offer created with service_id:', serviceData.id);
       console.log('🔍 SupabaseChatService: Offer data:', offerData);
+      console.log('🔍 SupabaseChatService: Stored hustle job fields:', {
+        start_date: offerData.start_date,
+        end_date: offerData.end_date,
+        preferred_start_time: offerData.preferred_start_time,
+        preferred_end_time: offerData.preferred_end_time,
+        location_address: offerData.location_address,
+        urgency_level: offerData.urgency_level,
+        work_type: offerData.work_type,
+        estimated_hours: offerData.estimated_hours,
+        requirements: offerData.requirements,
+      });
 
       const messageText = `Shared a service: ${serviceData.title}`;
       
@@ -591,6 +671,16 @@ export class SupabaseChatService {
       customPrice?: number;
       customDescription?: string;
       customDeliveryTime?: number;
+      // Hustle job attributes
+      startDate?: string;
+      endDate?: string;
+      preferredStartTime?: string;
+      preferredEndTime?: string;
+      locationAddress?: string;
+      urgencyLevel?: 'low' | 'medium' | 'high' | 'urgent';
+      workType?: 'remote' | 'on_site' | 'hybrid';
+      estimatedHours?: number;
+      requirements?: string;
     }
   ): Promise<{ offer: any; message: LiveChatMessage | null }> {
     try {
@@ -614,20 +704,45 @@ export class SupabaseChatService {
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24); // Expires in 24 hours
 
+      const offerInsertData = {
+        chat_id: chatId,
+        service_id: serviceId,
+        seller_id: sellerId,
+        buyer_id: buyerId, // Use the provided buyerId
+        original_price: serviceData.price,
+        custom_price: serviceData.customPrice || serviceData.price,
+        custom_description: serviceData.customDescription,
+        custom_delivery_time: serviceData.customDeliveryTime,
+        // Hustle job attributes
+        start_date: serviceData.startDate,
+        end_date: serviceData.endDate,
+        preferred_start_time: serviceData.preferredStartTime,
+        preferred_end_time: serviceData.preferredEndTime,
+        location_address: serviceData.locationAddress,
+        urgency_level: serviceData.urgencyLevel,
+        work_type: serviceData.workType,
+        estimated_hours: serviceData.estimatedHours,
+        requirements: serviceData.requirements,
+        status: 'pending',
+        expires_at: expiresAt.toISOString(),
+      };
+
+      console.log('🔍 SupabaseChatService: Creating service offer with data:', offerInsertData);
+      console.log('🔍 SupabaseChatService: Hustle job fields for createServiceOffer:', {
+        start_date: serviceData.startDate,
+        end_date: serviceData.endDate,
+        preferred_start_time: serviceData.preferredStartTime,
+        preferred_end_time: serviceData.preferredEndTime,
+        location_address: serviceData.locationAddress,
+        urgency_level: serviceData.urgencyLevel,
+        work_type: serviceData.workType,
+        estimated_hours: serviceData.estimatedHours,
+        requirements: serviceData.requirements,
+      });
+
       const { data: offerData, error: offerError } = await supabase
         .from('service_offers')
-        .insert({
-          chat_id: chatId,
-          service_id: serviceId,
-          seller_id: sellerId,
-          buyer_id: buyerId, // Use the provided buyerId
-          original_price: serviceData.price,
-          custom_price: serviceData.customPrice || serviceData.price,
-          custom_description: serviceData.customDescription,
-          custom_delivery_time: serviceData.customDeliveryTime,
-          status: 'pending',
-          expires_at: expiresAt.toISOString(),
-        })
+        .insert(offerInsertData)
         .select()
         .single();
 
@@ -724,6 +839,23 @@ export class SupabaseChatService {
     }
   }
 
+  // Debug function to check what's in the service_offers table
+  async debugServiceOffer(offerId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('service_offers')
+        .select('*')
+        .eq('id', offerId)
+        .single();
+      
+      console.log('🔍 DEBUG: Service offer data for ID', offerId, ':', { data, error });
+      return { data, error };
+    } catch (error) {
+      console.error('🔍 DEBUG: Error querying service offer:', error);
+      return { data: null, error };
+    }
+  }
+
   async updateServiceOffer(
     offerId: string,
     updates: {
@@ -774,6 +906,22 @@ export class SupabaseChatService {
       if (error) {
         console.error('Error updating service offer:', error);
         throw error;
+      }
+
+      // Also update the corresponding chat message to trigger real-time updates
+      const messageUpdateData: any = {};
+      if (updates.customPrice !== undefined) messageUpdateData.custom_price = updates.customPrice;
+      if (updates.customDescription !== undefined) messageUpdateData.custom_description = updates.customDescription;
+      if (updates.customDeliveryTime !== undefined) messageUpdateData.custom_delivery_time = updates.customDeliveryTime;
+
+      const { error: messageError } = await supabase
+        .from('chat_messages')
+        .update(messageUpdateData)
+        .eq('offer_id', offerId);
+
+      if (messageError) {
+        console.error('Error updating chat message:', messageError);
+        // Don't throw here as the main offer update succeeded
       }
 
       return data;
@@ -1135,6 +1283,31 @@ export class SupabaseChatService {
         },
         (payload) => {
           onDelete(payload.old.id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'service_offers',
+          filter: `chat_id=eq.${chatId}`,
+        },
+        async (payload) => {
+          console.log('📡 SupabaseChatService: Service offer UPDATE event received:', payload);
+          
+          // Find the corresponding chat message and trigger an update
+          const { data: messageData } = await supabase
+            .from('chat_messages')
+            .select('*')
+            .eq('offer_id', payload.new.id)
+            .single();
+          
+          if (messageData && onUpdate) {
+            const transformedMessage = await this.transformMessage(messageData, currentUserId);
+            console.log('📡 SupabaseChatService: Transformed updated service offer message:', transformedMessage);
+            onUpdate(transformedMessage);
+          }
         }
       )
       .subscribe();

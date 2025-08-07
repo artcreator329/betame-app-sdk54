@@ -258,14 +258,7 @@ export default function HomeScreen() {
                   </View>
                 </View>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.iconButton}
-                onPress={() => router.push('/test-map')}
-              >
-                <View style={[styles.iconBackground, { backgroundColor: colors.status.error, shadowColor: colors.shadow.medium }]}>
-                  <Text style={{ color: colors.text.white, fontSize: 12, fontWeight: 'bold' }}>T</Text>
-                </View>
-              </TouchableOpacity>
+
             </View>
           ) : (
             <View style={styles.authButtons}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,8 @@ import {
   Platform,
   SafeAreaView,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import CalendarPicker from './CalendarPicker';
+import TimePicker from './TimePicker';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { X, DollarSign, Clock, FileText, Calendar, MapPin, Briefcase, ChevronDown, Zap, Target, Star, AlertCircle, Search } from 'lucide-react-native';
 import { Service } from '../lib/service-service';
@@ -40,6 +41,22 @@ interface ServiceOfferModalProps {
     requirements?: string;
   }) => Promise<void>;
   isLoading?: boolean;
+  isEditing?: boolean;
+  editingOfferId?: string;
+  existingOfferData?: {
+    customPrice?: number;
+    customDescription?: string;
+    customDeliveryTime?: number;
+    startDate?: string;
+    endDate?: string;
+    preferredStartTime?: string;
+    preferredEndTime?: string;
+    locationAddress?: string;
+    urgencyLevel?: 'low' | 'medium' | 'high' | 'urgent';
+    workType?: 'remote' | 'on_site' | 'hybrid';
+    estimatedHours?: number;
+    requirements?: string;
+  };
 }
 
 export function ServiceOfferModal({
@@ -48,6 +65,9 @@ export function ServiceOfferModal({
   service,
   onSendOffer,
   isLoading = false,
+  isEditing = false,
+  editingOfferId,
+  existingOfferData,
 }: ServiceOfferModalProps) {
   // All useState hooks must be declared before any conditional returns
   const [customPrice, setCustomPrice] = useState('');
@@ -82,7 +102,33 @@ export function ServiceOfferModal({
   const [estimatedHours, setEstimatedHours] = useState('');
   const [requirements, setRequirements] = useState('');
 
-
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (isEditing && existingOfferData) {
+      setCustomPrice(existingOfferData.customPrice?.toString() || '');
+      setCustomDescription(existingOfferData.customDescription || '');
+      setCustomDeliveryTime(existingOfferData.customDeliveryTime?.toString() || '');
+      
+      if (existingOfferData.startDate) {
+        setStartDate(new Date(existingOfferData.startDate));
+      }
+      if (existingOfferData.endDate) {
+        setEndDate(new Date(existingOfferData.endDate));
+      }
+      if (existingOfferData.preferredStartTime) {
+        setPreferredStartTime(new Date(`2000-01-01T${existingOfferData.preferredStartTime}`));
+      }
+      if (existingOfferData.preferredEndTime) {
+        setPreferredEndTime(new Date(`2000-01-01T${existingOfferData.preferredEndTime}`));
+      }
+      
+      setLocationAddress(existingOfferData.locationAddress || '');
+      setUrgencyLevel(existingOfferData.urgencyLevel || 'medium');
+      setWorkType(existingOfferData.workType || 'remote');
+      setEstimatedHours(existingOfferData.estimatedHours?.toString() || '');
+      setRequirements(existingOfferData.requirements || '');
+    }
+  }, [isEditing, existingOfferData, visible]);
 
   // Enhanced null safety checks - moved after hooks to comply with Rules of Hooks
   if (!service || !visible) return null;
@@ -327,7 +373,7 @@ export function ServiceOfferModal({
         <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
-            Customize Service Offer
+            {isEditing ? 'Edit Service Offer' : 'Customize Service Offer'}
           </Text>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
             <X size={24} color="#666" />
@@ -446,47 +492,25 @@ export function ServiceOfferModal({
               </View>
             </View>
 
-            {/* Date Pickers */}
-            {showStartDatePicker && (
-              <DateTimePicker
-                value={startDate || new Date()}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, selectedDate) => {
-                  if (Platform.OS === 'android') {
-                    setShowStartDatePicker(false);
-                  }
-                  if (event.type === 'set' && selectedDate) {
-                    setStartDate(selectedDate);
-                    if (Platform.OS === 'ios') {
-                      setShowStartDatePicker(false);
-                    }
-                  } else if (event.type === 'dismissed') {
-                    setShowStartDatePicker(false);
-                  }
-                }}
-              />
-            )}
-            {showEndDatePicker && (
-              <DateTimePicker
-                value={endDate || new Date()}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, selectedDate) => {
-                  if (Platform.OS === 'android') {
-                    setShowEndDatePicker(false);
-                  }
-                  if (event.type === 'set' && selectedDate) {
-                    setEndDate(selectedDate);
-                    if (Platform.OS === 'ios') {
-                      setShowEndDatePicker(false);
-                    }
-                  } else if (event.type === 'dismissed') {
-                    setShowEndDatePicker(false);
-                  }
-                }}
-              />
-            )}
+            {/* Calendar Picker */}
+            <CalendarPicker
+              visible={showStartDatePicker || showEndDatePicker}
+              onClose={() => {
+                setShowStartDatePicker(false);
+                setShowEndDatePicker(false);
+              }}
+              onDateSelect={(selectedStartDate, selectedEndDate) => {
+                if (showStartDatePicker) {
+                  setStartDate(selectedStartDate);
+                  setShowStartDatePicker(false);
+                } else if (showEndDatePicker) {
+                  setEndDate(selectedStartDate);
+                  setShowEndDatePicker(false);
+                }
+              }}
+              allowRange={false}
+              minDate={new Date()}
+            />
           </View>
 
           {/* Preferred Working Hours Card */}
@@ -527,46 +551,24 @@ export function ServiceOfferModal({
             </View>
 
             {/* Time Pickers */}
-            {showStartTimePicker && (
-              <DateTimePicker
-                value={preferredStartTime || new Date()}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, selectedTime) => {
-                  if (Platform.OS === 'android') {
-                    setShowStartTimePicker(false);
-                  }
-                  if (event.type === 'set' && selectedTime) {
-                    setPreferredStartTime(selectedTime);
-                    if (Platform.OS === 'ios') {
-                      setShowStartTimePicker(false);
-                    }
-                  } else if (event.type === 'dismissed') {
-                    setShowStartTimePicker(false);
-                  }
-                }}
-              />
-            )}
-            {showEndTimePicker && (
-              <DateTimePicker
-                value={preferredEndTime || new Date()}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, selectedTime) => {
-                  if (Platform.OS === 'android') {
-                    setShowEndTimePicker(false);
-                  }
-                  if (event.type === 'set' && selectedTime) {
-                    setPreferredEndTime(selectedTime);
-                    if (Platform.OS === 'ios') {
-                      setShowEndTimePicker(false);
-                    }
-                  } else if (event.type === 'dismissed') {
-                    setShowEndTimePicker(false);
-                  }
-                }}
-              />
-            )}
+            <TimePicker
+              visible={showStartTimePicker}
+              onClose={() => setShowStartTimePicker(false)}
+              onTimeSelect={(time) => {
+                setPreferredStartTime(time);
+                setShowStartTimePicker(false);
+              }}
+              initialTime={preferredStartTime || new Date()}
+            />
+            <TimePicker
+              visible={showEndTimePicker}
+              onClose={() => setShowEndTimePicker(false)}
+              onTimeSelect={(time) => {
+                setPreferredEndTime(time);
+                setShowEndTimePicker(false);
+              }}
+              initialTime={preferredEndTime || new Date()}
+            />
           </View>
 
           {/* Location Card */}
@@ -735,7 +737,7 @@ export function ServiceOfferModal({
             disabled={isLoading}
           >
             <Text style={styles.sendButtonText}>
-              {isLoading ? 'Sending...' : 'Send Offer'}
+              {isLoading ? 'Saving...' : (isEditing ? 'Update Offer' : 'Send Offer')}
             </Text>
           </TouchableOpacity>
         </View>
