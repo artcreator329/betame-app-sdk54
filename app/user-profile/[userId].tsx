@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, MessageCircle, User } from 'lucide-react-native';
+import { ArrowLeft, Star, MessageCircle, User, Heart, Share as ShareIcon } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { LightTheme } from '@/constants/Colors';
 import { supabase } from '@/lib/supabase';
 import { ServiceService } from '@/lib/service-service';
 
@@ -47,11 +49,26 @@ export default function UserProfileScreen() {
   const router = useRouter();
   const { userId } = useLocalSearchParams();
   const { user } = useAuth();
+  
+  // Add fallback for theme context
+  let colors;
+  let isDarkMode = false;
+  
+  try {
+    const themeContext = useTheme();
+    colors = themeContext.theme;
+    isDarkMode = themeContext.isDarkMode;
+  } catch (error) {
+    // Fallback to light theme if theme context is not available
+    colors = LightTheme;
+    isDarkMode = false;
+  }
+  
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('Services');
+  const [activeTab, setActiveTab] = useState('My Services');
 
   // Calculate average rating from reviews
   const averageRating = reviews.length > 0 
@@ -100,36 +117,37 @@ export default function UserProfileScreen() {
           .eq('reviewee_id', userId)
           .order('created_at', { ascending: false });
 
-        // Fetch reviewer profiles separately
-        let reviewsWithProfiles = [];
-        if (reviewsData && reviewsData.length > 0) {
-          const reviewerIds = reviewsData.map(review => review.reviewer_id);
-          const { data: profilesData } = await supabase
-            .from('profiles')
-            .select('id, full_name, avatar_url')
-            .in('id', reviewerIds);
-
-          reviewsWithProfiles = reviewsData.map(review => ({
-            ...review,
-            reviewer_profile: profilesData?.find(profile => profile.id === review.reviewer_id)
-          }));
-        }
-
         if (reviewsError) {
           console.error('Error fetching reviews:', reviewsError);
+          setReviews([]);
         } else {
-          setReviews(reviewsWithProfiles || []);
+          // Fetch reviewer profiles for reviews
+          if (reviewsData && reviewsData.length > 0) {
+            const reviewerIds = reviewsData.map(review => review.reviewer_id);
+            const { data: profilesData } = await supabase
+              .from('profiles')
+              .select('id, full_name, avatar_url')
+              .in('id', reviewerIds);
+
+            const reviewsWithProfiles = reviewsData.map(review => ({
+              ...review,
+              reviewer_profile: profilesData?.find(p => p.id === review.reviewer_id)
+            }));
+            setReviews(reviewsWithProfiles);
+          } else {
+            setReviews([]);
+          }
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
-        Alert.alert('Error', 'Failed to load user profile');
+        Alert.alert('Error', 'Failed to load user data');
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserData();
-  }, [userId]);
+  }, [userId, router]);
 
   const handleChatWithUser = () => {
     if (!user) {
@@ -143,9 +161,20 @@ export default function UserProfileScreen() {
       );
       return;
     }
-    
-    if (userId) {
-      router.push(`/chat/${userId}`);
+    router.push(`/chat/${userId}`);
+  };
+
+  const handleShareProfile = async () => {
+    if (!userProfile) return;
+
+    try {
+      const shareUrl = `https://betame.app/user/${userProfile.id}`;
+      await Share.share({
+        message: `Check out ${userProfile.full_name}'s profile on BetaMe: ${shareUrl}`,
+        url: shareUrl,
+      });
+    } catch (error) {
+      console.error('Error sharing profile:', error);
     }
   };
 
@@ -156,7 +185,7 @@ export default function UserProfileScreen() {
           <Star
             key={star}
             size={12}
-            color="#FFD700"
+            color={star <= rating ? "#FFD700" : "#E5E5EA"}
             fill={star <= rating ? "#FFD700" : "transparent"}
           />
         ))}
@@ -166,88 +195,65 @@ export default function UserProfileScreen() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'Services':
-        if (loading) {
-          return (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#1D1D1F" />
-              <Text style={styles.loadingText}>Loading services...</Text>
-            </View>
-          );
-        }
+      case 'I\'m Hiring':
         return (
-          <View style={styles.servicesContent}>
-            <Text style={styles.availableListings}>Available Services ({services.length})</Text>
+          <View style={styles.tabContentContainer}>
+            <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
+              No job listings yet
+            </Text>
+          </View>
+        );
+      case 'My Services':
+        return (
+          <View style={styles.tabContentContainer}>
             {services.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No services available</Text>
-              </View>
+              <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
+                No services listed yet
+              </Text>
             ) : (
-              services.map((service, index) => (
-                <TouchableOpacity
-                  key={service.id || `service-${index}`}
-                  style={styles.serviceItem}
-                  onPress={() => service.id && router.push(`/service/${service.id}`)}
-                >
-                  {service.image_url && (
-                  <Image source={{ uri: service.image_url }} style={styles.serviceImage} />
-                )}
-                  <View style={styles.serviceInfo}>
-                    <Text style={styles.serviceTitle}>{service.title}</Text>
-                    <Text style={styles.serviceDescription} numberOfLines={3}>
-                      {service.description}
-                    </Text>
-                    <View style={styles.servicePricing}>
-                      <Text style={styles.servicePrice}>From {service.currency}{service.price}</Text>
-                      <View style={styles.serviceRating}>
-                        <Star size={12} color="#FFD700" fill="#FFD700" />
-                        <Text style={styles.ratingText}>{service.rating || 0}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
+              services.map((service) => (
+                <View key={service.id} style={[styles.serviceCard, { backgroundColor: colors.background.secondary }]}>
+                  <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>
+                    {service.title}
+                  </Text>
+                  <Text style={[styles.serviceDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+                    {service.description}
+                  </Text>
+                  <Text style={[styles.servicePrice, { color: colors.primary.main }]}>
+                    From {service.currency}{service.price}
+                  </Text>
+                </View>
               ))
             )}
           </View>
         );
       case 'Reviews':
-        if (loading) {
-          return (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#1D1D1F" />
-              <Text style={styles.loadingText}>Loading reviews...</Text>
-            </View>
-          );
-        }
         return (
-          <View style={styles.reviewsContainer}>
+          <View style={styles.tabContentContainer}>
             {reviews.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No reviews yet</Text>
-              </View>
+              <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
+                No reviews yet
+              </Text>
             ) : (
               reviews.map((review) => (
-                <View key={review.id} style={styles.reviewItem}>
+                <View key={review.id} style={[styles.reviewCard, { backgroundColor: colors.background.secondary }]}>
                   <View style={styles.reviewHeader}>
                     <Image
-                      source={{
+                      source={{ 
                         uri: review.reviewer_profile?.avatar_url || undefined,
                       }}
-                      style={styles.reviewerImage}
+                      style={styles.reviewerAvatar}
                     />
                     <View style={styles.reviewerInfo}>
-                      <Text style={styles.reviewerName}>
+                      <Text style={[styles.reviewerName, { color: colors.text.primary }]}>
                         {review.reviewer_profile?.full_name || 'Anonymous'}
                       </Text>
-                      <View style={styles.reviewRating}>
-                        {renderStars(review.rating)}
-                        <Text style={styles.reviewDate}>
-                          {new Date(review.created_at).toLocaleDateString()}
-                        </Text>
-                      </View>
+                      {renderStars(review.rating)}
                     </View>
                   </View>
-                  <Text style={styles.reviewComment}>{review.comment}</Text>
+                  <Text style={[styles.reviewComment, { color: colors.text.primary }]}>
+                    {review.comment}
+                  </Text>
                 </View>
               ))
             )}
@@ -258,12 +264,12 @@ export default function UserProfileScreen() {
     }
   };
 
-  if (loading && !userProfile) {
+  if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+          <ActivityIndicator size="large" color={colors.primary.main} />
+          <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading profile...</Text>
         </View>
       </SafeAreaView>
     );
@@ -271,93 +277,131 @@ export default function UserProfileScreen() {
 
   if (!userProfile) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Profile not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
+          <Text style={[styles.errorText, { color: colors.text.primary }]}>User not found</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <View style={{ width: 24 }} />
+        <View style={[styles.header, { backgroundColor: colors.background.primary }]}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <ArrowLeft size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Profile</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.headerIcon}>
+              <Heart size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.headerIcon}
+              onPress={handleShareProfile}
+            >
+              <ShareIcon size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Profile Section */}
-        <View style={styles.profileSection}>
-          {userProfile.bio && (
-            <View style={styles.sellerBadge}>
-              <Text style={styles.sellerBadgeText}>{userProfile.bio}</Text>
+        <View style={[styles.profileSection, { backgroundColor: colors.background.primary }]}>
+          <View style={styles.profileContent}>
+            <View style={styles.profileImageContainer}>
+              {userProfile.avatar_url ? (
+                <Image
+                  source={{ uri: userProfile.avatar_url }}
+                  style={styles.profileImage}
+                />
+              ) : (
+                <View style={[styles.defaultProfileIcon, { backgroundColor: colors.background.secondary }]}>
+                  <User size={50} color={colors.text.secondary} />
+                </View>
+              )}
             </View>
-          )}
-          
-          <View style={styles.profileImageContainer}>
-            {userProfile.avatar_url ? (
-              <Image
-                source={{ uri: userProfile.avatar_url }}
-                style={styles.profileImage}
-              />
-            ) : (
-              <View style={styles.defaultProfileIcon}>
-                <User size={50} color="#8E8E93" />
+            
+            <View style={styles.profileInfo}>
+              <Text style={[styles.userName, { color: colors.text.primary }]}>
+                {userProfile.full_name || 'User'}
+              </Text>
+              {userProfile.bio && (
+                <Text style={[styles.userBio, { color: colors.text.primary }]} numberOfLines={3}>
+                  {userProfile.bio}
+                </Text>
+              )}
+              <View style={styles.ratingContainer}>
+                <Text style={[styles.ratingText, { color: colors.text.primary }]}>
+                  {averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}
+                </Text>
+                {averageRating > 0 && renderStars(averageRating)}
+                <Text style={[styles.reviewText, { color: colors.text.secondary }]}>
+                  ({reviews.length} reviews)
+                </Text>
               </View>
-            )}
+              {userProfile.tagline && (
+                <Text style={[styles.userTagline, { color: colors.text.secondary }]}>
+                  {userProfile.tagline}
+                </Text>
+              )}
+            </View>
           </View>
-          
-          <Text style={styles.userName}>
-            {userProfile.full_name || 'User'}
-          </Text>
-          <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
-            {averageRating > 0 && renderStars(averageRating)}
-            <Text style={styles.reviewText}>({reviews.length} reviews)</Text>
-          </View>
-          {userProfile.tagline && (
-            <Text style={styles.userTagline}>{userProfile.tagline}</Text>
-          )}
         </View>
 
-        {/* Action Button */}
-        {user && user.id !== userId && (
-          <View style={styles.actionButtons}>
+        {/* Action Buttons */}
+        <View style={[styles.actionButtons, { backgroundColor: colors.background.primary }]}>
+          {user && user.id !== userId ? (
             <TouchableOpacity 
-              style={styles.chatButton}
+              style={[styles.chatButton, { backgroundColor: colors.primary.main }]}
               onPress={handleChatWithUser}
             >
-              <MessageCircle size={20} color="white" />
-              <Text style={styles.chatButtonText}>Chat to enquire</Text>
+              <MessageCircle size={20} color={colors.text.white} />
+              <Text style={[styles.chatButtonText, { color: colors.text.white }]}>Chat to enquire</Text>
             </TouchableOpacity>
-          </View>
-        )}
+          ) : (
+            <TouchableOpacity 
+              style={[styles.chatButton, { backgroundColor: colors.primary.main }]}
+              onPress={() => router.push('/messages')}
+            >
+              <Text style={[styles.chatButtonText, { color: colors.text.white }]}>View Chat</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity 
+            style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
+            onPress={handleShareProfile}
+          >
+            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Share Profile</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Tab Navigation */}
-        <View style={styles.tabNavigation}>
-          {['Services', 'Reviews'].map((tab) => (
+        <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }]}>
+          {['I\'m Hiring', 'My Services', 'Reviews'].map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[
                 styles.tab,
-                activeTab === tab && styles.activeTab,
+                activeTab === tab && { borderBottomColor: colors.primary.main },
               ]}
               onPress={() => setActiveTab(tab)}
             >
               <Text
                 style={[
                   styles.tabText,
+                  { 
+                    color: activeTab === tab 
+                      ? colors.text.primary  // Use primary text color for better contrast
+                      : colors.text.secondary 
+                  },
                   activeTab === tab && styles.activeTabText,
                 ]}
               >
@@ -368,7 +412,7 @@ export default function UserProfileScreen() {
         </View>
 
         {/* Tab Content */}
-        <View style={styles.tabContent}>
+        <View style={[styles.tabContent, { backgroundColor: colors.background.primary }]}>
           {renderTabContent()}
         </View>
       </ScrollView>
@@ -379,7 +423,6 @@ export default function UserProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
   scrollContent: {
     paddingBottom: 20,
@@ -582,42 +625,113 @@ const styles = StyleSheet.create({
     margin: 12,
     borderRadius: 8,
   },
-  serviceInfo: {
+  // New styles for the updated profile page
+  headerLeft: {
+    width: 40,
+  },
+  headerCenter: {
     flex: 1,
-    padding: 12,
-    paddingLeft: 0,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    width: 80,
+  },
+  headerIcon: {
+    marginLeft: 15,
+  },
+  profileContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    width: '100%',
+  },
+  profileImageContainer: {
+    position: 'relative',
+    marginRight: 20,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  defaultProfileIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileInfo: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'left',
+  },
+  userBio: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 8,
+    textAlign: 'left',
+    lineHeight: 22,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  ratingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  reviewText: {
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  userTagline: {
+    fontSize: 16,
+    textAlign: 'left',
+    marginTop: 4,
+  },
+  tabContentContainer: {
+    paddingVertical: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  serviceCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   serviceTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
     marginBottom: 4,
   },
   serviceDescription: {
     fontSize: 13,
-    color: '#8E8E93',
-    lineHeight: 18,
     marginBottom: 8,
-  },
-  servicePricing: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   servicePrice: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1D1D1F',
   },
-  serviceRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reviewsContainer: {
-    flex: 1,
-  },
-  reviewItem: {
-    backgroundColor: 'white',
+  reviewCard: {
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -634,7 +748,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 12,
   },
-  reviewerImage: {
+  reviewerAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -646,21 +760,44 @@ const styles = StyleSheet.create({
   reviewerName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1D1D1F',
     marginBottom: 4,
-  },
-  reviewRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: '#8E8E93',
-    marginLeft: 8,
   },
   reviewComment: {
     fontSize: 14,
-    color: '#1D1D1F',
     lineHeight: 20,
+  },
+  actionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  tabNavigation: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  activeTabText: {
+    fontWeight: '600',
+  },
+  tabContent: {
+    flex: 1,
   },
 });

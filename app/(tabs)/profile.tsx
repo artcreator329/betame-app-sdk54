@@ -538,7 +538,23 @@ export default function ProfileScreen() {
         {/* Profile Section */}
         <View style={[styles.profileSection, { backgroundColor: colors.background.primary }]}>
           <View style={styles.profileContent}>
-            <View style={styles.profileImageContainer}>
+            <TouchableOpacity 
+              onPress={() => {
+                if (user) {
+                  router.push(`/user-profile/${user.id}`);
+                } else {
+                  Alert.alert(
+                    'Sign In Required',
+                    'Please sign in to view your profile.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Sign In', onPress: () => router.push('/auth/login') }
+                    ]
+                  );
+                }
+              }}
+              style={styles.profileImageContainer}
+            >
               {userProfile?.avatar_url ? (
                 <Image
                   source={{ uri: userProfile.avatar_url }}
@@ -560,7 +576,7 @@ export default function ProfileScreen() {
                   <Camera size={16} color="white" />
                 )}
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
             
             <View style={styles.profileInfo}>
               <Text style={[styles.userName, { color: colors.text.primary }]}>

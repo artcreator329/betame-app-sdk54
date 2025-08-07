@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,29 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  RefreshControl,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, ChevronDown, SlidersHorizontal, ArrowLeft } from 'lucide-react-native';
+import { 
+  Search, 
+  ChevronDown, 
+  SlidersHorizontal, 
+  ArrowLeft, 
+  TrendingUp, 
+  Flame, 
+  Star, 
+  Eye,
+  Heart
+} from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import ServiceCard from '@/components/ServiceCard';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
+import LayoutToggle from '@/components/LayoutToggle';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { useRouter } from 'expo-router';
+import { useColors } from '@/contexts/ThemeContext';
 
 // Convert DB service to UI service
 const convertToUIService = (dbService: DBService): Service => ({
@@ -39,47 +54,146 @@ const convertToUIService = (dbService: DBService): Service => ({
   provider_avatar: dbService.provider_avatar,
 });
 
+// Trending Service Card Component
+const TrendingServiceCard = ({ service, index }: { service: Service; index: number }) => {
+  const colors = useColors();
+  const router = useRouter();
+  
+  const getTrendingBadge = () => {
+    if (index < 3) {
+      return (
+        <View style={[styles.trendingBadge, { backgroundColor: colors.status.success }]}>
+          <Flame size={12} color={colors.text.white} />
+          <Text style={[styles.trendingBadgeText, { color: colors.text.white }]}>
+            #{index + 1} Trending
+          </Text>
+        </View>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <TouchableOpacity
+      style={[styles.trendingCard, { backgroundColor: colors.background.secondary }]}
+      onPress={() => router.push(`/service/${service.id}`)}
+      activeOpacity={0.8}
+    >
+      <View style={styles.trendingCardHeader}>
+        {getTrendingBadge()}
+        <TouchableOpacity style={styles.favoriteButton}>
+          <Heart size={16} color={colors.text.secondary} />
+        </TouchableOpacity>
+      </View>
+      
+      <Image 
+        source={{ uri: service.image_url }} 
+        style={styles.trendingCardImage}
+        resizeMode="cover"
+      />
+      
+      <View style={styles.trendingCardContent}>
+        <View style={styles.trendingCardTitleRow}>
+          <Text style={[styles.trendingCardTitle, { color: colors.text.primary }]} numberOfLines={2}>
+            {service.title}
+          </Text>
+          <View style={styles.trendingCardRating}>
+            <Star size={12} color={colors.status.warning} fill={colors.status.warning} />
+            <Text style={[styles.trendingCardRatingText, { color: colors.text.secondary }]}>
+              {service.rating.toFixed(1)}
+            </Text>
+          </View>
+        </View>
+        
+        <Text style={[styles.trendingCardDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+          {service.description}
+        </Text>
+        
+        <View style={styles.trendingCardFooter}>
+          <View style={styles.trendingCardProvider}>
+            {service.provider_avatar && (
+              <Image 
+                source={{ uri: service.provider_avatar }} 
+                style={styles.providerAvatar}
+              />
+            )}
+            <Text style={[styles.providerName, { color: colors.text.secondary }]} numberOfLines={1}>
+              {service.provider_name}
+            </Text>
+          </View>
+          
+          <View style={styles.trendingCardPrice}>
+            <Text style={[styles.priceText, { color: colors.primary.main }]}>
+              {service.currency} {service.price}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.popularityIndicator}>
+          <Eye size={12} color={colors.text.secondary} />
+          <Text style={[styles.popularityText, { color: colors.text.secondary }]}>
+            {Math.floor(Math.random() * 1000 + 100).toLocaleString()} views
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
 export default function TrendingScreen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isGridLayout, setIsGridLayout] = useState(true);
   const router = useRouter();
+  const colors = useColors();
+
+  const fetchServices = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [trending, nearby] = await Promise.all([
+        ServiceService.getTrendingServices(),
+        ServiceService.getNearbyServices(),
+      ]);
+      
+      const allServices = [...trending, ...nearby];
+      const uniqueServices = allServices.filter((service, index, self) => 
+        index === self.findIndex(s => s.id === service.id)
+      );
+      
+      setServices(uniqueServices.map(convertToUIService));
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      setServices([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchServices();
+    setRefreshing(false);
+  }, [fetchServices]);
 
   useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        setIsLoading(true);
-        const [trending, nearby] = await Promise.all([
-          ServiceService.getTrendingServices(),
-          ServiceService.getNearbyServices(),
-        ]);
-        
-        // Combine trending and nearby services, removing duplicates
-        const allServices = [...trending, ...nearby];
-        const uniqueServices = allServices.filter((service, index, self) => 
-          index === self.findIndex(s => s.id === service.id)
-        );
-        
-        setServices(uniqueServices.map(convertToUIService));
-      } catch (error) {
-        console.error('Error fetching services:', error);
-        setServices([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchServices();
-  }, []);
+  }, [fetchServices]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchServices();
+    }, [fetchServices])
+  );
 
   const getCategoryDisplayText = () => {
     if (selectedCategories.includes('all') || selectedCategories.length === 0) {
       return 'All Categories';
     }
     if (selectedCategories.length === 1) {
-      // Map category IDs to display names
       const categoryMap: { [key: string]: string } = {
         'fitness': 'Fitness',
         'digital': 'Digital Marketing',
@@ -87,7 +201,6 @@ export default function TrendingScreen() {
         'sports': 'Sports',
         'beauty': 'Beauty',
         'healthcare': 'Healthcare',
-        // Add more mappings as needed
       };
       return categoryMap[selectedCategories[0]] || selectedCategories[0];
     }
@@ -106,63 +219,117 @@ export default function TrendingScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#1D1D1F" />
+          <ArrowLeft size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Trending</Text>
-        <TouchableOpacity>
-          <Search size={24} color="#1D1D1F" />
-        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Trending</Text>
+        <View style={styles.headerActions}>
+          <LayoutToggle 
+            isGridLayout={isGridLayout} 
+            onToggle={() => setIsGridLayout(!isGridLayout)} 
+          />
+          <TouchableOpacity style={styles.searchButton}>
+            <Search size={24} color={colors.text.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Search size={20} color="#8E8E93" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search services..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholderTextColor="#8E8E93"
-        />
-      </View>
+      <ScrollView 
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary.main]}
+            tintColor={colors.primary.main}
+          />
+        }
+      >
+        {/* Trending Header */}
+        <View style={[styles.trendingHeader, { backgroundColor: colors.background.tertiary }]}>
+          <View style={styles.trendingHeaderContent}>
+            <View style={styles.trendingTitleRow}>
+              <TrendingUp size={24} color={colors.primary.main} />
+              <Text style={[styles.trendingTitle, { color: colors.text.primary }]}>
+                Trending Now
+              </Text>
+            </View>
+            <Text style={[styles.trendingSubtitle, { color: colors.text.secondary }]}>
+              Discover the most popular services this week
+            </Text>
+          </View>
+          
+          <View style={styles.trendingStats}>
+            <View style={[styles.statItem, { backgroundColor: colors.background.secondary }]}>
+              <Text style={[styles.statNumber, { color: colors.primary.main }]}>
+                {filteredServices.length}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.text.secondary }]}>
+                Services
+              </Text>
+            </View>
+            <View style={[styles.statItem, { backgroundColor: colors.background.secondary }]}>
+              <Text style={[styles.statNumber, { color: colors.status.success }]}>
+                +12%
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.text.secondary }]}>
+                Growth
+              </Text>
+            </View>
+          </View>
+        </View>
 
-      {/* Filters */}
-      <View style={styles.filtersContainer}>
-        <TouchableOpacity
-          style={styles.categoryDropdown}
-          onPress={() => setShowCategoryModal(true)}
-        >
-          <Text style={styles.categoryText}>{getCategoryDisplayText()}</Text>
-          <ChevronDown size={20} color="#1D1D1F" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.filterButton}>
-          <SlidersHorizontal size={20} color="#1D1D1F" />
-        </TouchableOpacity>
-      </View>
+        {/* Search Bar */}
+        <View style={[styles.searchContainer, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
+          <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.text.primary }]}
+            placeholder="Search trending services..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor={colors.text.secondary}
+          />
+        </View>
 
-      {/* Services Grid */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Filters */}
+        <View style={styles.filtersContainer}>
+          <TouchableOpacity
+            style={[styles.filterDropdown, { backgroundColor: colors.background.secondary }]}
+            onPress={() => setShowCategoryModal(true)}
+          >
+            <Text style={[styles.filterText, { color: colors.text.primary }]}>{getCategoryDisplayText()}</Text>
+            <ChevronDown size={16} color={colors.text.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.filterButton, { backgroundColor: colors.background.secondary }]}>
+            <SlidersHorizontal size={20} color={colors.primary.main} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Trending Services */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.loadingText}>Loading services...</Text>
+            <ActivityIndicator size="large" color={colors.primary.main} />
+            <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading trending services...</Text>
           </View>
         ) : filteredServices.length > 0 ? (
-          <View style={styles.servicesGrid}>
-            {filteredServices.map((service: Service) => (
-              <View key={service.id} style={styles.serviceCardContainer}>
-                <ServiceCard service={service} />
+          <View style={isGridLayout ? styles.trendingServicesContainer : styles.trendingServicesList}>
+            {filteredServices.map((service, index) => (
+              <View key={service.id} style={isGridLayout ? styles.trendingCardWrapper : styles.trendingListItem}>
+                <TrendingServiceCard service={service} index={index} />
               </View>
             ))}
           </View>
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No services available</Text>
-            <Text style={styles.emptySubtext}>Check back later for new services</Text>
+            <Flame size={48} color={colors.text.secondary} />
+            <Text style={[styles.emptyText, { color: colors.text.primary }]}>No trending services found</Text>
+            <Text style={[styles.emptySubtext, { color: colors.text.secondary }]}>
+              Check back later for trending services
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -181,7 +348,6 @@ export default function TrendingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
   },
   header: {
     flexDirection: 'row',
@@ -189,24 +355,70 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  searchButton: {
+    padding: 4,
+  },
+  content: {
+    flex: 1,
+  },
+  trendingHeader: {
+    padding: 20,
+    marginBottom: 16,
+  },
+  trendingHeaderContent: {
+    marginBottom: 16,
+  },
+  trendingTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  trendingTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  trendingSubtitle: {
+    fontSize: 14,
+    marginLeft: 32,
+  },
+  trendingStats: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statItem: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 4,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
     marginHorizontal: 20,
-    marginTop: 16,
+    marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
   },
   searchIcon: {
     marginRight: 12,
@@ -214,50 +426,161 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1D1D1F',
   },
   filtersContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: 'white',
-    marginTop: 1,
+    paddingBottom: 16,
   },
-  categoryDropdown: {
+  filterDropdown: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 8,
-    marginRight: 12,
+    borderRadius: 12,
+    marginRight: 8,
   },
-  categoryText: {
-    fontSize: 16,
-    color: '#1D1D1F',
+  filterText: {
+    fontSize: 14,
     fontWeight: '500',
   },
   filterButton: {
     padding: 12,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 8,
+    borderRadius: 12,
   },
-  content: {
-    flex: 1,
-    paddingTop: 16,
-  },
-  servicesGrid: {
+  trendingServicesContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
     justifyContent: 'space-between',
   },
-  serviceCardContainer: {
+  trendingServicesList: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  trendingCardWrapper: {
     width: '48%',
     marginBottom: 16,
+  },
+  trendingListItem: {
+    marginBottom: 12,
+    width: '100%',
+  },
+  trendingCard: {
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  trendingCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 12,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+  },
+  trendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  trendingBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  favoriteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trendingCardImage: {
+    width: '100%',
+    height: 160,
+  },
+  trendingCardContent: {
+    padding: 16,
+  },
+  trendingCardTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  trendingCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 8,
+  },
+  trendingCardRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trendingCardRatingText: {
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  trendingCardDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  trendingCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  trendingCardProvider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  providerAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  providerName: {
+    fontSize: 12,
+    flex: 1,
+  },
+  trendingCardPrice: {
+    alignItems: 'flex-end',
+  },
+  priceText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  popularityIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  popularityText: {
+    fontSize: 11,
+    marginLeft: 4,
   },
   loadingContainer: {
     flex: 1,
@@ -268,7 +591,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#8E8E93',
   },
   emptyContainer: {
     flex: 1,
@@ -279,12 +601,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+    marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#8E8E93',
     textAlign: 'center',
   },
-});
+}); 

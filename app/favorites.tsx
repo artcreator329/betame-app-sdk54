@@ -8,57 +8,53 @@ import {
   Image,
   Dimensions,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, MapPin, Star, Filter } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
+import { FavoritesService, FavoriteService } from '@/lib/favorites-service';
+import { Service } from '@/lib/service-service';
 
 const { width } = Dimensions.get('window');
 
-interface FavoriteService {
-  id: string;
-  title: string;
-  provider_name?: string;
-  rating: number;
-  review_count: number;
-  price: number;
-  currency: string;
-  image_url?: string;
-  location: string;
-  description: string;
-  isFavorited: boolean;
+interface FavoriteServiceWithDetails extends FavoriteService {
+  service: Service;
 }
-
-// TODO: Implement favorites functionality with Supabase
-// For now, return empty array until favorites table is created
-const getFavoriteServices = async (): Promise<FavoriteService[]> => {
-  return [];
-};
 
 export default function FavoritesScreen() {
   const router = useRouter();
-  const { user } = useAuth();
-  const [favorites, setFavorites] = useState<FavoriteService[]>([]);
+  const { user, userProfile } = useAuth();
+  const [favorites, setFavorites] = useState<FavoriteServiceWithDetails[]>([]);
   const [savedCount, setSavedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadFavorites = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const favoriteServices = await FavoritesService.getUserFavorites(user.id);
+      setFavorites(favoriteServices as FavoriteServiceWithDetails[]);
+      setSavedCount(favoriteServices.length);
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+      Alert.alert('Error', 'Failed to load favorites. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const loadFavorites = async () => {
-      try {
-        const favoriteServices = await getFavoriteServices();
-        setFavorites(favoriteServices);
-        setSavedCount(favoriteServices.length);
-      } catch (error) {
-        console.error('Error loading favorites:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadFavorites();
-  }, []);
+  }, [user]);
 
   const handleBack = () => {
     router.back();
@@ -79,31 +75,56 @@ export default function FavoritesScreen() {
     router.push(`/service/${serviceId}`);
   };
 
-  const toggleFavorite = (serviceId: string) => {
-    setFavorites((prev: FavoriteService[]) => 
-      prev.map((service: FavoriteService) => 
-        service.id === serviceId 
-          ? { ...service, isFavorited: !service.isFavorited }
-          : service
-      )
-    );
+  const toggleFavorite = async (serviceId: string) => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to manage favorites.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+      return;
+    }
+
+    try {
+      const result = await FavoritesService.toggleFavorite(user.id, serviceId);
+      if (result.success) {
+        // Refresh the favorites list
+        await loadFavorites();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to update favorite');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorite. Please try again.');
+    }
   };
 
-  const renderServiceCard = (service: FavoriteService) => {
+  const renderServiceCard = (favorite: FavoriteServiceWithDetails) => {
+    const service = favorite.service;
+    const isFavorited = true; // Since this is in favorites list, it's always favorited
+
     return (
       <TouchableOpacity
-        key={service.id}
+        key={favorite.id}
         style={styles.serviceCard}
-        onPress={() => handleServicePress(service.id)}
+        onPress={() => handleServicePress(service.id!)}
       >
-        <Image source={{ uri: service.image_url || 'https://images.pexels.com/photos/3997991/pexels-photo-3997991.jpeg?auto=compress&cs=tinysrgb&w=400' }} style={styles.serviceImage} />
+        <Image 
+          source={{ 
+            uri: service.image_url || 'https://images.pexels.com/photos/3997991/pexels-photo-3997991.jpeg?auto=compress&cs=tinysrgb&w=400' 
+          }} 
+          style={styles.serviceImage} 
+        />
         <View style={styles.serviceInfo}>
           <View style={styles.serviceHeader}>
             <Text style={styles.serviceTitle}>{service.title}</Text>
             <View style={styles.ratingContainer}>
               <Star size={14} color="#FFD700" fill="#FFD700" />
-              <Text style={styles.ratingText}>{service.rating}</Text>
-              <Text style={styles.reviewCount}>({service.review_count})</Text>
+              <Text style={styles.ratingText}>{service.rating || 0}</Text>
+              <Text style={styles.reviewCount}>({service.review_count || 0})</Text>
             </View>
           </View>
           
@@ -114,7 +135,7 @@ export default function FavoritesScreen() {
           <View style={styles.locationContainer}>
             <MapPin size={12} color={Colors.text.secondary} />
             <Text style={styles.locationText} numberOfLines={1}>
-              {service.location}
+              {service.location || 'Location not specified'}
             </Text>
           </View>
           
@@ -124,12 +145,12 @@ export default function FavoritesScreen() {
             </Text>
             <TouchableOpacity 
               style={styles.favoriteButton}
-              onPress={() => toggleFavorite(service.id)}
+              onPress={() => toggleFavorite(service.id!)}
             >
               <Heart 
                 size={20} 
-                color={service.isFavorited ? Colors.status.error : Colors.text.secondary}
-                fill={service.isFavorited ? Colors.status.error : "transparent"}
+                color={isFavorited ? Colors.status.error : Colors.text.secondary}
+                fill={isFavorited ? Colors.status.error : "transparent"}
               />
             </TouchableOpacity>
           </View>
@@ -137,6 +158,29 @@ export default function FavoritesScreen() {
       </TouchableOpacity>
     );
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <ArrowLeft size={24} color={Colors.text.primary} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Favorite Lists</Text>
+            <Text style={styles.headerSubtitle}>({savedCount} saved)</Text>
+          </View>
+          <TouchableOpacity style={styles.filterButton}>
+            <Filter size={20} color={Colors.text.primary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary.main} />
+          <Text style={styles.loadingText}>Loading favorites...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -157,17 +201,44 @@ export default function FavoritesScreen() {
       {/* Profile Section */}
       <View style={styles.profileSection}>
         <View style={styles.profileInfo}>
-          <Image 
-            source={{ uri: 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=400' }}
-            style={styles.profileImage}
-          />
+          <TouchableOpacity 
+            onPress={() => {
+              if (user) {
+                router.push(`/user-profile/${user.id}`);
+              } else {
+                Alert.alert(
+                  'Sign In Required',
+                  'Please sign in to view your profile.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Sign In', onPress: () => router.push('/auth/login') }
+                  ]
+                );
+              }
+            }}
+            style={styles.profileImageContainer}
+          >
+            <Image 
+              source={{ 
+                uri: userProfile?.avatar_url || 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=400' 
+              }}
+              style={styles.profileImage}
+            />
+          </TouchableOpacity>
           <View style={styles.profileDetails}>
-            <Text style={styles.profileName}>Anvenia Tan</Text>
-            <Text style={styles.profileBio}>Believe in God ✨</Text>
+            <Text style={styles.profileName}>
+              {userProfile?.full_name || 'User'}
+            </Text>
+            <Text style={styles.profileBio}>
+              {userProfile?.bio || 'Welcome to BetaMe!'}
+            </Text>
           </View>
         </View>
         <View style={styles.profileActions}>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/edit-profile')}
+          >
             <Text style={styles.actionButtonText}>Edit Profile</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton}>
@@ -181,6 +252,17 @@ export default function FavoritesScreen() {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadFavorites();
+            }}
+            colors={[Colors.primary.main]}
+            tintColor={Colors.primary.main}
+          />
+        }
       >
         <View style={styles.listHeader}>
           <Text style={styles.listTitle}>Favorite Lists ({savedCount} saved)</Text>
@@ -191,7 +273,23 @@ export default function FavoritesScreen() {
         </View>
 
         <View style={styles.servicesList}>
-          {favorites.map(renderServiceCard)}
+          {favorites.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Heart size={48} color={Colors.text.secondary} />
+              <Text style={styles.emptyStateTitle}>No favorites yet</Text>
+              <Text style={styles.emptyStateSubtitle}>
+                Start exploring services and add them to your favorites!
+              </Text>
+              <TouchableOpacity 
+                style={styles.exploreButton}
+                onPress={() => router.push('/')}
+              >
+                <Text style={styles.exploreButtonText}>Explore Services</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            favorites.map(renderServiceCard)
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -245,11 +343,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  profileImageContainer: {
+    marginRight: 16,
+  },
   profileImage: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    marginRight: 16,
   },
   profileDetails: {
     flex: 1,
@@ -391,5 +491,45 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     padding: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: Colors.text.secondary,
+    fontSize: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    marginTop: 20,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  exploreButton: {
+    backgroundColor: Colors.primary.main,
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+  },
+  exploreButtonText: {
+    color: Colors.text.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

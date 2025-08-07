@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Alert, Switch } from 'react-native';
-import { Star, ChevronDown, ChevronUp, Edit3, Eye, EyeOff } from 'lucide-react-native';
+import { Star, ChevronDown, ChevronUp, Edit3, Eye, EyeOff, Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Service } from '@/types/service';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
 import { ServiceService } from '@/lib/service-service';
+import { FavoritesService } from '@/lib/favorites-service';
 
 interface ServiceCardProps {
   service: Service;
@@ -14,6 +15,7 @@ interface ServiceCardProps {
   showProfileToggle?: boolean;
   userProfileAvatar?: string;
   onProfileVisibilityChange?: (serviceId: string, isVisible: boolean) => void;
+  style?: any;
 }
 
 interface ServiceVariantCardProps {
@@ -47,14 +49,63 @@ function ServiceVariantCard({ variant, onPress }: ServiceVariantCardProps) {
   );
 }
 
-export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange }: ServiceCardProps) {
+export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange, style }: ServiceCardProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [showVariants, setShowVariants] = useState(false);
   const [isProfileVisible, setIsProfileVisible] = useState(service.show_on_profile ?? true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
 
   const hasVariants = service.service_variants && service.service_variants.length > 0;
+
+  // Check if service is favorited on mount
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!user || !service.id) return;
+      
+      try {
+        const favorited = await FavoritesService.isFavorited(user.id, service.id);
+        setIsFavorited(favorited);
+      } catch (error) {
+        console.error('Error checking favorite status:', error);
+      }
+    };
+
+    checkFavoriteStatus();
+  }, [user, service.id]);
+
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to manage favorites.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+      return;
+    }
+
+    if (!service.id || isFavoriteLoading) return;
+
+    setIsFavoriteLoading(true);
+    try {
+      const result = await FavoritesService.toggleFavorite(user.id, service.id);
+      if (result.success) {
+        setIsFavorited(result.isFavorited);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to update favorite');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorite. Please try again.');
+    } finally {
+      setIsFavoriteLoading(false);
+    }
+  };
 
   const handlePress = (serviceId: string = service.id) => {
     if (!user) {
@@ -131,13 +182,26 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
   const shouldShowPricing = !isMainService || hasVariants;
 
   return (
-    <View style={styles.cardContainer}>
+    <View style={[styles.cardContainer, style]}>
       <TouchableOpacity style={styles.card} onPress={handleMainCardPress}>
         {showEditButton && (
         <TouchableOpacity style={styles.editButton} onPress={handleEditPress}>
           <Edit3 size={16} color={Colors.background.primary} />
         </TouchableOpacity>
       )}
+      
+      {/* Favorite Button */}
+      <TouchableOpacity 
+        style={[styles.favoriteButton, isFavorited && styles.favoriteButtonActive]} 
+        onPress={handleToggleFavorite}
+        disabled={isFavoriteLoading}
+      >
+        <Heart 
+          size={16} 
+          color={isFavorited ? Colors.text.white : Colors.text.secondary}
+          fill={isFavorited ? Colors.text.white : "transparent"}
+        />
+      </TouchableOpacity>
       
       {showProfileToggle && (
         <View style={styles.profileToggleContainer}>
@@ -264,6 +328,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  favoriteButton: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    shadowColor: Colors.text.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  favoriteButtonActive: {
+    backgroundColor: Colors.status.error,
   },
   image: {
     width: '100%',

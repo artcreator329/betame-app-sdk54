@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, ChevronDown, SlidersHorizontal } from 'lucide-react-native';
+import LayoutToggle from '@/components/LayoutToggle';
 import { useFocusEffect } from '@react-navigation/native';
 import ServiceCard from '@/components/ServiceCard';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
@@ -53,6 +54,7 @@ export default function ServicesScreen() {
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isGridLayout, setIsGridLayout] = useState(true);
   const colors = useColors();
 
   const fetchServices = useCallback(async () => {
@@ -146,9 +148,15 @@ export default function ServicesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Services</Text>
-        <TouchableOpacity>
-          <Search size={24} color={colors.text.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <LayoutToggle 
+            isGridLayout={isGridLayout} 
+            onToggle={() => setIsGridLayout(!isGridLayout)} 
+          />
+          <TouchableOpacity style={styles.searchButton}>
+            <Search size={24} color={colors.text.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -204,9 +212,9 @@ export default function ServicesScreen() {
             <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading services...</Text>
           </View>
         ) : filteredServices.length > 0 ? (
-          <View style={styles.servicesGrid}>
+          <View style={isGridLayout ? styles.servicesGrid : styles.servicesList}>
             {filteredServices.map((service: Service) => (
-              <View key={service.id} style={styles.serviceCardContainer}>
+              <View key={service.id} style={isGridLayout ? styles.serviceCardContainer : styles.serviceListItem}>
                 <ServiceCard service={service} />
               </View>
             ))}
@@ -256,6 +264,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  searchButton: {
+    padding: 4,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -312,6 +328,12 @@ const styles = StyleSheet.create({
   serviceCardContainer: {
     width: '48%',
     marginBottom: 16,
+  },
+  servicesList: {
+    paddingHorizontal: 20,
+  },
+  serviceListItem: {
+    marginBottom: 12,
   },
   loadingContainer: {
     flex: 1,

@@ -385,7 +385,7 @@ export default function HomeScreen() {
         <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
           <TouchableOpacity 
             style={styles.sectionHeader}
-            onPress={() => router.push('/nearby')}
+            onPress={() => router.push('/trending')}
           >
             <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Trending</Text>
             <ChevronRight size={20} color={colors.primary.main} />

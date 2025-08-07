@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, MapPin, List, Map as MapIcon, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, MapPin, List, Map as MapIcon, ChevronDown, Grid3X3 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { ServiceService, Service as ServiceFromLib } from '@/lib/service-service';
@@ -27,6 +27,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function NearbyScreen() {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
+  const [listLayout, setListLayout] = useState<'grid' | 'list'>('list');
   const [nearbyServices, setNearbyServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
@@ -93,6 +94,23 @@ export default function NearbyScreen() {
       console.error('Error loading nearby services:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleListToggle = () => {
+    console.log('List button pressed!');
+    console.log('Current viewMode:', viewMode);
+    console.log('Current listLayout:', listLayout);
+    
+    if (viewMode === 'list') {
+      // If already in list mode, toggle between grid and list layout
+      const newLayout = listLayout === 'grid' ? 'list' : 'grid';
+      console.log('Toggling layout to:', newLayout);
+      setListLayout(newLayout);
+    } else {
+      // If in map mode, switch to list mode with current layout
+      console.log('Switching to list mode');
+      setViewMode('list');
     }
   };
 
@@ -166,14 +184,24 @@ export default function NearbyScreen() {
       );
     }
 
+    console.log('Rendering list view with layout:', listLayout);
+    console.log('Using grid style:', listLayout === 'grid');
+    console.log('Services count:', filteredServices.length);
+    console.log('Grid container style:', listLayout === 'grid' ? 'servicesGrid' : 'servicesList');
+    console.log('Card container style:', listLayout === 'grid' ? 'serviceCardContainer' : 'serviceListItem');
+    
     return (
       <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
-        {filteredServices.map((service: Service) => (
-          <ServiceCard
-            key={service.id}
-            service={service}
-          />
-        ))}
+        <View style={listLayout === 'grid' ? styles.servicesGrid : styles.servicesList}>
+          {filteredServices.map((service: Service) => (
+            <View key={`${service.id}-${listLayout}`} style={listLayout === 'grid' ? styles.serviceCardContainer : styles.serviceListItem}>
+              <ServiceCard
+                service={service}
+                style={listLayout === 'grid' ? { width: '100%' } : { width: '100%' }}
+              />
+            </View>
+          ))}
+        </View>
       </ScrollView>
     );
   };
@@ -186,19 +214,27 @@ export default function NearbyScreen() {
           <ArrowLeft size={24} color={Colors.primary.main} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{category ? `${category} Services` : 'Nearby Services'}</Text>
-        <View style={styles.viewToggle}>
-          <TouchableOpacity
-            style={[styles.toggleButton, viewMode === 'map' && styles.activeToggle]}
-            onPress={() => setViewMode('map')}
-          >
-            <MapIcon size={20} color={viewMode === 'map' ? Colors.text.white : Colors.primary.main} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleButton, viewMode === 'list' && styles.activeToggle]}
-            onPress={() => setViewMode('list')}
-          >
-            <List size={20} color={viewMode === 'list' ? Colors.text.white : Colors.primary.main} />
-          </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <View style={styles.viewToggle}>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'map' && styles.activeToggle]}
+              onPress={() => setViewMode('map')}
+            >
+              <MapIcon size={20} color={viewMode === 'map' ? Colors.text.white : Colors.primary.main} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'list' && styles.activeToggle]}
+              onPress={handleListToggle}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {viewMode === 'list' && listLayout === 'grid' ? (
+                <Grid3X3 size={20} color={Colors.text.white} />
+              ) : (
+                <List size={20} color={viewMode === 'list' ? Colors.text.white : Colors.primary.main} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -263,6 +299,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: 20,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 120,
+  },
+
   viewToggle: {
     flexDirection: 'row',
     backgroundColor: '#F2F2F7',
@@ -324,6 +367,32 @@ const styles = StyleSheet.create({
   listContainer: {
     flex: 1,
     padding: 20,
+  },
+  servicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    width: '100%',
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+  },
+  serviceCardContainer: {
+    width: '48%',
+    marginBottom: 16,
+  },
+  servicesList: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: 'rgba(0, 255, 0, 0.1)',
+  },
+  serviceListItem: {
+    marginBottom: 12,
+    width: '100%',
+  },
+  serviceCardWrapper: {
+    width: '100%',
+  },
+  serviceCardFullWidth: {
+    width: '100%',
   },
 
   loadingContainer: {
