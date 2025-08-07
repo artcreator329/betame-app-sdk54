@@ -10,7 +10,6 @@ import {
   Image,
   ActionSheetIOS,
   Platform,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Upload, Camera, ImageIcon, MapPin } from 'lucide-react-native';
@@ -397,25 +396,20 @@ export default function CreateServiceListingScreen() {
 
    return (
      <SafeAreaView style={styles.container}>
-       <KeyboardAvoidingView 
-         style={styles.keyboardView}
-         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-       >
-         {/* Header */}
-         <View style={styles.header}>
-           <TouchableOpacity onPress={currentStep === 1 ? () => router.back() : handlePreviousStep}>
-             <ArrowLeft size={24} color="#1D1D1F" />
-           </TouchableOpacity>
-           <Text style={styles.headerTitle}>Create Service</Text>
-           <View style={{ width: 24 }} />
-         </View>
+       {/* Header */}
+       <View style={styles.header}>
+         <TouchableOpacity onPress={currentStep === 1 ? () => router.back() : handlePreviousStep}>
+           <ArrowLeft size={24} color="#1D1D1F" />
+         </TouchableOpacity>
+         <Text style={styles.headerTitle}>Create Service</Text>
+         <View style={{ width: 24 }} />
+       </View>
 
-         {/* Step Indicator */}
-         {renderStepIndicator()}
+       {/* Step Indicator */}
+       {renderStepIndicator()}
 
-         {/* Content */}
-         {currentStep === 1 ? renderBasicInfoStep() : renderServiceAreaStep()}
-       </KeyboardAvoidingView>
+       {/* Content */}
+       {currentStep === 1 ? renderBasicInfoStep() : renderServiceAreaStep()}
      </SafeAreaView>
    );
 }
@@ -424,9 +418,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',
-  },
-  keyboardView: {
-    flex: 1,
   },
   header: {
     paddingHorizontal: 20,

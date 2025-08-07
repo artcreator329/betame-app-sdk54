@@ -108,17 +108,13 @@ export default function VerifyEmailScreen() {
           </>
         );
       case 'success':
-        const successTitle = type === 'recovery' ? 'Link Verified!' : 'Email Verified!';
-        const successSubtitle = type === 'recovery'
-          ? 'Your password reset link has been verified. Redirecting you to reset your password...'
-          : 'Your account has been successfully verified. Redirecting you to the app...';
         return (
           <>
             <View style={styles.successIcon}>
               <Text style={styles.checkmark}>✓</Text>
             </View>
-            <Text style={styles.title}>{successTitle}</Text>
-            <Text style={styles.subtitle}>{successSubtitle}</Text>
+            <Text style={styles.title}>Email Verified!</Text>
+            <Text style={styles.subtitle}>Your account has been successfully verified. Redirecting you to the app...</Text>
           </>
         );
       case 'error':

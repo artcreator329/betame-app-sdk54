@@ -245,6 +245,7 @@ export function useSupabaseChat({ chatId, currentUserId, currentUserName }: UseS
     updateServiceOffer: supabaseChatService.updateServiceOffer.bind(supabaseChatService),
     acceptServiceOffer: supabaseChatService.acceptServiceOffer.bind(supabaseChatService),
     rejectServiceOffer: supabaseChatService.rejectServiceOffer.bind(supabaseChatService),
+    cancelServiceOffer: supabaseChatService.cancelServiceOffer.bind(supabaseChatService),
   };
 }
 

@@ -10,11 +10,15 @@ import {
   ScrollView,
   Alert,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import { X, DollarSign, Clock, FileText, Calendar, MapPin, Briefcase, ChevronDown, Zap, Target, Star, AlertCircle } from 'lucide-react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { X, DollarSign, Clock, FileText, Calendar, MapPin, Briefcase, ChevronDown, Zap, Target, Star, AlertCircle, Search } from 'lucide-react-native';
 import { Service } from '../lib/service-service';
+import { GOOGLE_PLACES_API_KEY } from '../config/maps';
+import Colors from '../constants/Colors';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
 interface ServiceOfferModalProps {
   visible: boolean;
@@ -45,20 +49,7 @@ export function ServiceOfferModal({
   onSendOffer,
   isLoading = false,
 }: ServiceOfferModalProps) {
-  // Enhanced null safety checks
-  if (!service || !visible) return null;
-  
-  // Additional safety checks for service properties
-  const safeService = {
-    id: service.id || '',
-    title: service.title || 'Untitled Service',
-    price: service.price || 0,
-    currency: service.currency || 'USD',
-    image_url: service.image_url || '',
-    description: service.description || '',
-    service_variants: service.service_variants || []
-  };
-
+  // All useState hooks must be declared before any conditional returns
   const [customPrice, setCustomPrice] = useState('');
   const [customDescription, setCustomDescription] = useState('');
   const [customDeliveryTime, setCustomDeliveryTime] = useState('');
@@ -73,11 +64,39 @@ export function ServiceOfferModal({
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [locationAddress, setLocationAddress] = useState('');
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    address: string;
+  } | null>(null);
+  const [isLocationButtonPressed, setIsLocationButtonPressed] = useState(false);
+  const [mapRegion, setMapRegion] = useState({
+    latitude: 3.139, // Kuala Lumpur center
+    longitude: 101.6869,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
   const [urgencyLevel, setUrgencyLevel] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
-
   const [workType, setWorkType] = useState<'remote' | 'on_site' | 'hybrid'>('remote');
   const [estimatedHours, setEstimatedHours] = useState('');
   const [requirements, setRequirements] = useState('');
+
+
+
+  // Enhanced null safety checks - moved after hooks to comply with Rules of Hooks
+  if (!service || !visible) return null;
+  
+  // Additional safety checks for service properties
+  const safeService = {
+    id: service.id || '',
+    title: service.title || 'Untitled Service',
+    price: service.price || 0,
+    currency: service.currency || 'USD',
+    image_url: service.image_url || '',
+    description: service.description || '',
+    service_variants: service.service_variants || []
+  };
 
   const handleSendOffer = () => {
     if (!service) return;
@@ -127,6 +146,7 @@ export function ServiceOfferModal({
     setPreferredStartTime(undefined);
     setPreferredEndTime(undefined);
     setLocationAddress('');
+    setSelectedLocation(null);
     setUrgencyLevel('medium');
     setWorkType('remote');
     setEstimatedHours('');
@@ -142,6 +162,7 @@ export function ServiceOfferModal({
     setPreferredStartTime(undefined);
     setPreferredEndTime(undefined);
     setLocationAddress('');
+    setSelectedLocation(null);
     setUrgencyLevel('medium');
     setWorkType('remote');
     setEstimatedHours('');
@@ -150,13 +171,160 @@ export function ServiceOfferModal({
   };
 
   return (
+    <>
     <Modal
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <View style={styles.container}>
+      {showMapModal ? (
+        // Map View
+        <SafeAreaView style={styles.mapModalContainer}>
+          <View style={styles.mapModalHeader}>
+            <TouchableOpacity onPress={() => setShowMapModal(false)}>
+              <Text style={styles.mapModalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.mapModalTitle}>Select Work Location</Text>
+            <TouchableOpacity 
+              onPress={() => {
+                if (selectedLocation) {
+                  setLocationAddress(selectedLocation.address);
+                  setShowMapModal(false);
+                }
+              }}
+              disabled={!selectedLocation}
+            >
+              <Text style={[
+                styles.mapModalDoneText,
+                !selectedLocation && styles.mapModalDoneTextDisabled
+              ]}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchWrapper}>
+              <Search size={20} color={Colors.text.secondary} style={styles.searchIcon} />
+              <GooglePlacesAutocomplete
+                placeholder="Search for a location..."
+                onPress={(data: any, details: any) => {
+                  try {
+                    
+                    if (data && details?.geometry?.location) {
+                      const locationData = {
+                        latitude: details.geometry.location.lat,
+                        longitude: details.geometry.location.lng,
+                        address: data.description || data.structured_formatting?.main_text || 'Unknown location',
+                      };
+                      setSelectedLocation(locationData);
+                      setMapRegion({
+                        latitude: details.geometry.location.lat,
+                        longitude: details.geometry.location.lng,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
+                      });
+                    } else {
+                      console.warn('ServiceOfferModal - Invalid location data received');
+                    }
+                  } catch (error) {
+                    console.error('ServiceOfferModal - Error selecting location:', error);
+                  }
+                }}
+                query={{
+                  key: GOOGLE_PLACES_API_KEY,
+                  language: 'en',
+                  components: 'country:my', // Restrict to Malaysia
+                }}
+                fetchDetails={true}
+                enablePoweredByContainer={false}
+                predefinedPlaces={[]}
+                predefinedPlacesAlwaysVisible={false}
+                listViewDisplayed={true}
+                minLength={2}
+                debounce={200}
+                onFail={(error: any) => {
+                  console.error('ServiceOfferModal - GooglePlacesAutocomplete error:', error);
+                }}
+                onNotFound={() => {
+                  console.warn('ServiceOfferModal - GooglePlacesAutocomplete: No results found');
+                }}
+                textInputProps={{
+                  onFocus: () => {},
+                  onBlur: () => {},
+                  autoCorrect: false,
+                  autoCapitalize: 'none',
+                  placeholder: "Search for a location...",
+                  placeholderTextColor: Colors.text.secondary,
+                }}
+                styles={{
+                  textInputContainer: styles.searchInputContainer,
+                  textInput: styles.searchInput,
+                  listView: styles.searchResults,
+                  row: {
+                    backgroundColor: Colors.background.tertiary,
+                    padding: 13,
+                    height: 44,
+                    flexDirection: 'row',
+                  },
+                  separator: {
+                    height: 0.5,
+                    backgroundColor: Colors.border.light,
+                  },
+                  description: {
+                    fontWeight: 'normal',
+                    color: Colors.text.primary,
+                    fontSize: 15,
+                  },
+                }}
+              />
+            </View>
+          </View>
+          
+          <View style={styles.mapContainer}>
+            <MapView
+              style={styles.map}
+              provider={PROVIDER_GOOGLE}
+              region={mapRegion}
+              showsUserLocation={true}
+              showsMyLocationButton={true}
+              onPress={(event) => {
+                try {
+                  const coordinate = event.nativeEvent.coordinate;
+                  
+                  const locationData = {
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude,
+                    address: `${coordinate.latitude.toFixed(6)}, ${coordinate.longitude.toFixed(6)}`,
+                  };
+                  setSelectedLocation(locationData);
+                  setMapRegion({
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude,
+                    latitudeDelta: 0.0922,
+                    longitudeDelta: 0.0421,
+                  });
+                } catch (error) {
+                  console.error('ServiceOfferModal - Error in map press:', error);
+                }
+              }}
+            >
+              {selectedLocation && (
+                <Marker
+                  coordinate={{
+                    latitude: selectedLocation.latitude,
+                    longitude: selectedLocation.longitude,
+                  }}
+                  title="Selected Location"
+                  description={selectedLocation.address}
+                />
+              )}
+            </MapView>
+          </View>
+        </SafeAreaView>
+      ) : (
+        // Normal Service Offer View
+        <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
             Customize Service Offer
@@ -166,7 +334,12 @@ export function ServiceOfferModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled={true}
+        >
           {/* Service Preview */}
           <View style={styles.servicePreview}>
             {safeService.image_url && (
@@ -397,52 +570,7 @@ export function ServiceOfferModal({
           </View>
 
           {/* Location Card */}
-          <View style={styles.locationCard}>
-            <View style={styles.cardHeader}>
-              <MapPin size={22} color="#9C27B0" />
-              <Text style={styles.cardTitle}>Work Location</Text>
-            </View>
-            <GooglePlacesAutocomplete
-              placeholder="Enter work location address"
-              onPress={(data, details = null) => {
-                try {
-                  if (data && data.description) {
-                    setLocationAddress(data.description);
-                  }
-                } catch (error) {
-                  console.warn('Error handling location selection:', error);
-                }
-              }}
-              query={{
-                key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '<REDACTED_GOOGLE_API_KEY>',
-                language: 'en',
-              }}
-              textInputProps={{
-                onFocus: () => {},
-                onBlur: () => {},
-                placeholderTextColor: '#999',
-              }}
-              styles={{
-                textInputContainer: styles.locationInputContainer,
-                textInput: styles.locationInput,
-                listView: styles.locationListView,
-                row: styles.locationRow,
-                description: styles.locationDescription,
-              }}
-              fetchDetails={true}
-              enablePoweredByContainer={false}
-              debounce={200}
-              onFail={(error) => {
-                console.warn('GooglePlacesAutocomplete error:', error);
-              }}
-              onNotFound={() => {
-                console.warn('GooglePlacesAutocomplete: No results found');
-              }}
-              filterReverseGeocodingByTypes={[]}
-              predefinedPlaces={[]}
-              listEmptyComponent={() => null}
-            />
-          </View>
+
 
           {/* Work Details Card */}
           <View style={styles.workDetailsCard}>
@@ -461,7 +589,11 @@ export function ServiceOfferModal({
                       'Select Work Type',
                       '',
                       [
-                        { text: 'Remote', onPress: () => setWorkType('remote') },
+                        { text: 'Remote', onPress: () => {
+                          setWorkType('remote');
+                          setLocationAddress(''); // Clear location for remote work
+                          setSelectedLocation(null); // Clear selected location
+                        }},
                         { text: 'On-site', onPress: () => setWorkType('on_site') },
                         { text: 'Hybrid', onPress: () => setWorkType('hybrid') },
                         { text: 'Cancel', style: 'cancel' },
@@ -501,6 +633,47 @@ export function ServiceOfferModal({
                   <ChevronDown size={16} color={urgencyLevel === 'urgent' ? '#fff' : '#FF5722'} />
                 </TouchableOpacity>
               </View>
+            </View>
+            
+            {/* Work Location Section */}
+            <View style={styles.workLocationSection}>
+              <Text style={styles.workDetailLabel}>Work Location</Text>
+              <TouchableOpacity
+                style={[
+                  styles.locationButton,
+                  workType === 'remote' && styles.locationButtonDisabled
+                ]}
+                onPress={() => {
+                  // For testing, allow map to open regardless of work type
+                  if (!showMapModal && !isLocationButtonPressed) {
+                    setIsLocationButtonPressed(true);
+                    setShowMapModal(true);
+                    // Reset the button state after a short delay
+                    setTimeout(() => {
+                      setIsLocationButtonPressed(false);
+                    }, 500);
+                  }
+                }}
+                disabled={false} // Allow button to work regardless of work type for testing
+              >
+                <MapPin size={20} color={workType === 'remote' ? '#ccc' : '#9C27B0'} />
+                <Text style={[
+                  styles.locationButtonText,
+                  workType === 'remote' && styles.locationButtonTextDisabled
+                ]}>
+                  {locationAddress || (workType === 'remote' ? 'Not required for remote work' : 'Select work location on map')}
+                </Text>
+                {workType !== 'remote' && (
+                  <Text style={styles.locationButtonHint}>Tap to open map</Text>
+                )}
+              </TouchableOpacity>
+              
+              {/* Debug: Test button to force open map */}
+              {workType === 'remote' && (
+                <View style={styles.remoteWorkOverlay}>
+                  <Text style={styles.remoteWorkText}>Location not required for remote work</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -567,7 +740,9 @@ export function ServiceOfferModal({
           </TouchableOpacity>
         </View>
       </View>
+      )}
     </Modal>
+    </>
   );
 }
 
@@ -870,6 +1045,150 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  workLocationSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#FFE0B2',
+  },
+  locationContainer: {
+    marginTop: 8,
+    position: 'relative',
+  },
+  locationContainerDisabled: {
+    opacity: 0.5,
+  },
+  locationTextInput: {
+    fontSize: 16,
+    color: '#1A1A1A',
+  },
+  locationTextInputDisabled: {
+    color: '#ccc',
+  },
+  locationInputContainerDisabled: {
+    opacity: 0.6,
+  },
+  locationInputDisabled: {
+    backgroundColor: '#f5f5f5',
+    color: '#ccc',
+  },
+  remoteWorkOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(245, 245, 245, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    zIndex: 1,
+  },
+  remoteWorkText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  
+  // Location Button Styles
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#CE93D8',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  locationButtonDisabled: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#ddd',
+    opacity: 0.6,
+  },
+  locationButtonText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1A1A1A',
+    marginLeft: 8,
+  },
+  locationButtonTextDisabled: {
+    color: '#ccc',
+  },
+  locationButtonHint: {
+    fontSize: 12,
+    color: '#9C27B0',
+    fontStyle: 'italic',
+  },
+  
+  // Map Modal Styles
+  mapModalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  mapContainer: {
+    height: 400,
+    margin: 16,
+  },
+  mapModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    backgroundColor: '#fff',
+  },
+  mapModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  mapModalCancelText: {
+    fontSize: 16,
+    color: '#FF3B30',
+  },
+  mapModalDoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  mapModalDoneTextDisabled: {
+    color: '#ccc',
+  },
+  map: {
+    height: '100%',
+    width: '100%',
+  },
+  selectedLocationInfo: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  selectedLocationTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
+  },
+  selectedLocationAddress: {
+    fontSize: 16,
+    color: '#1A1A1A',
+  },
+  mapInstructions: {
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  mapInstructionsText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
   workDetailsCard: {
     backgroundColor: '#FFF8E1',
     borderRadius: 12,
@@ -991,5 +1310,37 @@ const styles = StyleSheet.create({
   pickerButtonText: {
     fontSize: 16,
     color: '#000',
+  },
+  searchContainer: {
+    marginBottom: 16,
+  },
+  searchWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInputContainer: {
+    flex: 1,
+  },
+  searchInput: {
+    fontSize: 16,
+    color: '#333',
+    paddingVertical: 0,
+  },
+  searchResults: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginTop: 4,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
 });

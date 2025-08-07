@@ -11,8 +11,6 @@ import {
   Image,
   ImageBackground,
   StatusBar,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles, ShoppingBag } from 'lucide-react-native';
@@ -287,10 +285,6 @@ export default function WalletScreen() {
         style={[styles.container, { backgroundColor: colors.background.primary }]}
         edges={['top', 'left', 'right', 'bottom']}
       >
-      <KeyboardAvoidingView 
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={[styles.headerContainer, { backgroundColor: colors.background.primary }]}>
@@ -513,7 +507,6 @@ export default function WalletScreen() {
           }}
         />
       </ScrollView>
-      </KeyboardAvoidingView>
       </SafeAreaView>
     </>
   );
@@ -521,9 +514,6 @@ export default function WalletScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  keyboardView: {
     flex: 1,
   },
   headerContainer: {

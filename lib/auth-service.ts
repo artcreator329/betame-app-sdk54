@@ -88,7 +88,7 @@ class AuthService {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: 'betame://auth/callback',
+        redirectTo: 'exp://192.168.1.1:8081', // Update with your app's redirect URL
       },
     });
 
@@ -100,7 +100,7 @@ class AuthService {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: {
-        redirectTo: 'betame://auth/callback',
+        redirectTo: 'exp://192.168.1.1:8081', // Update with your app's redirect URL
       },
     });
 

@@ -15,8 +15,10 @@ import {
   ActivityIndicator,
   FlatList,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import MapView, { Marker } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, MoveVertical as MoreVertical, Smile, Send, Shield, Flag, Ban, Trash2, Package, X } from 'lucide-react-native';
+import { ArrowLeft, MoveVertical as MoreVertical, Smile, Send, Shield, Flag, Ban, Trash2, Package, X, MapPin } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChatMessage, LiveChatMessage } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,10 +71,41 @@ export default function ChatScreen() {
     currentDescription: string;
     currentDeliveryTime: number;
     serviceTitle: string;
+    // Hustle job details
+    currentStartDate?: string;
+    currentEndDate?: string;
+    currentPreferredStartTime?: string;
+    currentPreferredEndTime?: string;
+    currentLocationAddress?: string;
+    currentUrgencyLevel?: 'low' | 'medium' | 'high' | 'urgent';
+    currentWorkType?: 'remote' | 'on_site' | 'hybrid';
+    currentEstimatedHours?: number;
+    currentRequirements?: string;
   } | null>(null);
   const [editPrice, setEditPrice] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editDeliveryTime, setEditDeliveryTime] = useState('');
+  
+  // Hustle job details for editing
+  const [editStartDate, setEditStartDate] = useState<Date | undefined>(undefined);
+  const [editEndDate, setEditEndDate] = useState<Date | undefined>(undefined);
+  const [editShowStartDatePicker, setEditShowStartDatePicker] = useState(false);
+  const [editShowEndDatePicker, setEditShowEndDatePicker] = useState(false);
+  const [editPreferredStartTime, setEditPreferredStartTime] = useState<Date | undefined>(undefined);
+  const [editPreferredEndTime, setEditPreferredEndTime] = useState<Date | undefined>(undefined);
+  const [editShowStartTimePicker, setEditShowStartTimePicker] = useState(false);
+  const [editShowEndTimePicker, setEditShowEndTimePicker] = useState(false);
+  const [editLocationAddress, setEditLocationAddress] = useState('');
+  const [editShowMapModal, setEditShowMapModal] = useState(false);
+  const [editSelectedLocation, setEditSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    address: string;
+  } | null>(null);
+  const [editUrgencyLevel, setEditUrgencyLevel] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
+  const [editWorkType, setEditWorkType] = useState<'remote' | 'on_site' | 'hybrid'>('remote');
+  const [editEstimatedHours, setEditEstimatedHours] = useState('');
+  const [editRequirements, setEditRequirements] = useState('');
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedOfferForPayment, setSelectedOfferForPayment] = useState<{
     offer: any;
@@ -590,12 +623,69 @@ export default function ChatScreen() {
     }
   };
 
+  const cancelServiceOffer = async (offerId: string) => {
+    try {
+      console.log('Cancelling service offer:', offerId);
+      
+      // Find the message with this offer ID to get offer and service data
+      const offerMessage = messages.find(msg => msg.offerId === offerId);
+      if (!offerMessage || !offerMessage.serviceData) {
+        Alert.alert('Error', 'Could not find offer details');
+        return;
+      }
+
+      // Update the offer status to cancelled in the database
+      console.log('🔄 Chat: About to cancel offer:', offerId);
+      await supabaseChatService.cancelServiceOffer(offerId, 'Cancelled by seller');
+      console.log('✅ Chat: Offer cancellation completed successfully');
+      
+      // Force a small delay to ensure the real-time update has time to propagate
+      setTimeout(() => {
+        console.log('🔄 Chat: Checking if offer status updated via real-time...');
+        const updatedMessage = messages.find(msg => msg.offerId === offerId);
+        if (updatedMessage && updatedMessage.offerStatus !== 'cancelled') {
+          console.log('⚠️ Chat: Real-time update may have failed, status still:', updatedMessage.offerStatus);
+        }
+      }, 2000);
+      
+      // Add notification for offer cancellation (to the buyer)
+      await notificationService.addOfferRejectedNotification({
+        participantId: offerMessage.recipientId || '', // This is the buyer who will receive the notification
+        participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User', // This is the seller who cancelled
+        participantImage: userProfile?.avatar_url || '',
+        chatId: chatId || '',
+        offerId: offerId,
+        serviceTitle: offerMessage.serviceData.title,
+        price: offerMessage.serviceData.customPrice || offerMessage.serviceData.price,
+        currency: offerMessage.serviceData.currency,
+        rejectReason: 'Cancelled by seller',
+        isRejectedByMe: true, // From buyer's perspective, the seller cancelled it
+      });
+      
+      Alert.alert('Success', 'Service offer cancelled.');
+    } catch (error) {
+      console.error('Error cancelling service offer:', error);
+      Alert.alert('Error', 'Failed to cancel service offer');
+    }
+  };
+
   // Effect to populate edit form when editing offer is set
   useEffect(() => {
     if (editingOffer) {
       setEditPrice(editingOffer.currentPrice.toString());
       setEditDescription(editingOffer.currentDescription);
       setEditDeliveryTime(editingOffer.currentDeliveryTime.toString());
+      
+      // Populate hustle details
+      setEditStartDate(editingOffer.currentStartDate ? new Date(editingOffer.currentStartDate) : undefined);
+      setEditEndDate(editingOffer.currentEndDate ? new Date(editingOffer.currentEndDate) : undefined);
+      setEditPreferredStartTime(editingOffer.currentPreferredStartTime ? new Date(`2000-01-01T${editingOffer.currentPreferredStartTime}`) : undefined);
+      setEditPreferredEndTime(editingOffer.currentPreferredEndTime ? new Date(`2000-01-01T${editingOffer.currentPreferredEndTime}`) : undefined);
+      setEditLocationAddress(editingOffer.currentLocationAddress || '');
+      setEditUrgencyLevel(editingOffer.currentUrgencyLevel || 'medium');
+      setEditWorkType(editingOffer.currentWorkType || 'remote');
+      setEditEstimatedHours(editingOffer.currentEstimatedHours?.toString() || '');
+      setEditRequirements(editingOffer.currentRequirements || '');
     }
   }, [editingOffer]);
 
@@ -616,11 +706,28 @@ export default function ChatScreen() {
         return;
       }
 
+      // Validate estimated hours if provided
+      const newEstimatedHours = editEstimatedHours ? parseFloat(editEstimatedHours) : undefined;
+      if (editEstimatedHours && (isNaN(newEstimatedHours!) || newEstimatedHours! <= 0)) {
+        Alert.alert('Invalid Hours', 'Please enter a valid number of estimated hours');
+        return;
+      }
+
       // Call the supabase service to update the offer
       await supabaseChatService.updateServiceOffer(editingOffer.offerId, {
         customPrice: newPrice,
         customDescription: editDescription.trim(),
         customDeliveryTime: newDeliveryTime,
+        // Include hustle details
+        startDate: editStartDate ? editStartDate.toISOString().split('T')[0] : undefined,
+        endDate: editEndDate ? editEndDate.toISOString().split('T')[0] : undefined,
+        preferredStartTime: editPreferredStartTime ? editPreferredStartTime.toTimeString().slice(0, 5) : undefined,
+        preferredEndTime: editPreferredEndTime ? editPreferredEndTime.toTimeString().slice(0, 5) : undefined,
+        locationAddress: editLocationAddress.trim() || undefined,
+        urgencyLevel: editUrgencyLevel,
+        workType: editWorkType,
+        estimatedHours: newEstimatedHours,
+        requirements: editRequirements.trim() || undefined,
       });
 
       Alert.alert('Success', 'Offer updated successfully!');
@@ -641,6 +748,18 @@ export default function ChatScreen() {
     setEditPrice('');
     setEditDescription('');
     setEditDeliveryTime('');
+    
+    // Reset hustle details
+    setEditStartDate(undefined);
+    setEditEndDate(undefined);
+    setEditPreferredStartTime(undefined);
+    setEditPreferredEndTime(undefined);
+    setEditLocationAddress('');
+    setEditSelectedLocation(null);
+    setEditUrgencyLevel('medium');
+    setEditWorkType('remote');
+    setEditEstimatedHours('');
+    setEditRequirements('');
   };
 
   const handleBlockUser = async () => {
@@ -883,11 +1002,22 @@ export default function ChatScreen() {
                   currentPrice: offerMessage.serviceData.customPrice || offerMessage.serviceData.price || 0,
                   currentDescription: offerMessage.serviceData.customDescription || '',
                   currentDeliveryTime: offerMessage.serviceData.customDeliveryTime || 3,
-                  serviceTitle: offerMessage.serviceData.title || 'Service Offer'
+                  serviceTitle: offerMessage.serviceData.title || 'Service Offer',
+                  // Include current hustle details
+                  currentStartDate: offerMessage.serviceData.startDate,
+                  currentEndDate: offerMessage.serviceData.endDate,
+                  currentPreferredStartTime: offerMessage.serviceData.preferredStartTime,
+                  currentPreferredEndTime: offerMessage.serviceData.preferredEndTime,
+                  currentLocationAddress: offerMessage.serviceData.locationAddress,
+                  currentUrgencyLevel: offerMessage.serviceData.urgencyLevel,
+                  currentWorkType: offerMessage.serviceData.workType,
+                  currentEstimatedHours: offerMessage.serviceData.estimatedHours,
+                  currentRequirements: offerMessage.serviceData.requirements,
                 });
                 setEditOfferModalVisible(true);
               }
             }}
+            onCancelOffer={cancelServiceOffer}
             onViewService={(serviceId) => router.push(`/service/${serviceId}`)}
           />
         ) : (
@@ -1317,7 +1447,15 @@ export default function ChatScreen() {
               <Text style={styles.editModalTitle}>Edit Service Offer</Text>
               <Text style={styles.editModalSubtitle}>{editingOffer?.serviceTitle}</Text>
               
-              <View style={styles.editFormContainer}>
+              <ScrollView 
+                style={styles.editFormContainer} 
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled={true}
+              >
+                {/* Basic Offer Details */}
+                <Text style={styles.editSectionTitle}>Basic Details</Text>
+                
                 {/* Price Input */}
                 <View style={styles.editInputContainer}>
                   <Text style={styles.editInputLabel}>Price (RM)</Text>
@@ -1353,11 +1491,238 @@ export default function ChatScreen() {
                     onChangeText={setEditDescription}
                     placeholder="Add custom description for this offer..."
                     multiline
-                    numberOfLines={4}
+                    numberOfLines={3}
                     placeholderTextColor="#8E8E93"
                   />
                 </View>
-              </View>
+
+                {/* Job Schedule Section */}
+                <Text style={styles.editSectionTitle}>Job Schedule</Text>
+                
+                {/* Start Date */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Start Date (Optional)</Text>
+                  <TouchableOpacity 
+                    style={styles.editDateButton}
+                    onPress={() => setEditShowStartDatePicker(true)}
+                  >
+                    <Text style={styles.editDateButtonText}>
+                      {editStartDate ? editStartDate.toLocaleDateString() : 'Select start date'}
+                    </Text>
+                  </TouchableOpacity>
+                  {editShowStartDatePicker && (
+                    <DateTimePicker
+                      value={editStartDate || new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={(event, selectedDate) => {
+                        setEditShowStartDatePicker(false);
+                        if (selectedDate) setEditStartDate(selectedDate);
+                      }}
+                    />
+                  )}
+                </View>
+
+                {/* End Date */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>End Date (Optional)</Text>
+                  <TouchableOpacity 
+                    style={styles.editDateButton}
+                    onPress={() => setEditShowEndDatePicker(true)}
+                  >
+                    <Text style={styles.editDateButtonText}>
+                      {editEndDate ? editEndDate.toLocaleDateString() : 'Select end date'}
+                    </Text>
+                  </TouchableOpacity>
+                  {editShowEndDatePicker && (
+                    <DateTimePicker
+                      value={editEndDate || new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={(event, selectedDate) => {
+                        setEditShowEndDatePicker(false);
+                        if (selectedDate) setEditEndDate(selectedDate);
+                      }}
+                    />
+                  )}
+                </View>
+
+                {/* Working Hours */}
+                <Text style={styles.editSectionTitle}>Working Hours</Text>
+                
+                {/* Start Time */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Preferred Start Time (Optional)</Text>
+                  <TouchableOpacity 
+                    style={styles.editDateButton}
+                    onPress={() => setEditShowStartTimePicker(true)}
+                  >
+                    <Text style={styles.editDateButtonText}>
+                      {editPreferredStartTime ? editPreferredStartTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Select start time'}
+                    </Text>
+                  </TouchableOpacity>
+                  {editShowStartTimePicker && (
+                    <DateTimePicker
+                      value={editPreferredStartTime || new Date()}
+                      mode="time"
+                      display="default"
+                      onChange={(event, selectedTime) => {
+                        setEditShowStartTimePicker(false);
+                        if (selectedTime) setEditPreferredStartTime(selectedTime);
+                      }}
+                    />
+                  )}
+                </View>
+
+                {/* End Time */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Preferred End Time (Optional)</Text>
+                  <TouchableOpacity 
+                    style={styles.editDateButton}
+                    onPress={() => setEditShowEndTimePicker(true)}
+                  >
+                    <Text style={styles.editDateButtonText}>
+                      {editPreferredEndTime ? editPreferredEndTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Select end time'}
+                    </Text>
+                  </TouchableOpacity>
+                  {editShowEndTimePicker && (
+                    <DateTimePicker
+                      value={editPreferredEndTime || new Date()}
+                      mode="time"
+                      display="default"
+                      onChange={(event, selectedTime) => {
+                        setEditShowEndTimePicker(false);
+                        if (selectedTime) setEditPreferredEndTime(selectedTime);
+                      }}
+                    />
+                  )}
+                </View>
+
+                {/* Estimated Hours */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Estimated Hours (Optional)</Text>
+                  <TextInput
+                    style={styles.editInput}
+                    value={editEstimatedHours}
+                    onChangeText={setEditEstimatedHours}
+                    placeholder="Enter estimated hours"
+                    keyboardType="numeric"
+                    placeholderTextColor="#8E8E93"
+                  />
+                </View>
+
+                {/* Location & Work Type */}
+                <Text style={styles.editSectionTitle}>Location & Work Arrangement</Text>
+                
+                {/* Work Type */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Work Type</Text>
+                  <View style={styles.editWorkTypeContainer}>
+                    {(['remote', 'on_site', 'hybrid'] as const).map((type) => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[
+                          styles.editWorkTypeButton,
+                          editWorkType === type && styles.editWorkTypeButtonActive
+                        ]}
+                        onPress={() => {
+                          setEditWorkType(type);
+                          if (type === 'remote') {
+                            setEditLocationAddress(''); // Clear location for remote work
+                            setEditSelectedLocation(null); // Clear selected location
+                          }
+                        }}
+                      >
+                        <Text style={[
+                          styles.editWorkTypeButtonText,
+                          editWorkType === type && styles.editWorkTypeButtonTextActive
+                        ]}>
+                          {type === 'remote' ? '🏠 Remote' : 
+                           type === 'on_site' ? '🏢 On-site' : '🔄 Hybrid'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Location Address */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Location Address (Optional)</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.editLocationButton,
+                      editWorkType === 'remote' && styles.editLocationButtonDisabled
+                    ]}
+                    onPress={() => {
+                      if (editWorkType !== 'remote') {
+                        setEditShowMapModal(true);
+                      }
+                    }}
+                    disabled={editWorkType === 'remote'}
+                  >
+                    <MapPin size={20} color={editWorkType === 'remote' ? '#ccc' : '#007AFF'} />
+                    <Text style={[
+                      styles.editLocationButtonText,
+                      editWorkType === 'remote' && styles.editLocationButtonTextDisabled
+                    ]}>
+                      {editLocationAddress || (editWorkType === 'remote' ? 'Not required for remote work' : 'Select work location on map')}
+                    </Text>
+                    {editWorkType !== 'remote' && (
+                      <Text style={styles.editLocationButtonHint}>Tap to open map</Text>
+                    )}
+                  </TouchableOpacity>
+                  {editWorkType === 'remote' && (
+                    <View style={styles.editRemoteWorkOverlay}>
+                      <Text style={styles.editRemoteWorkText}>Location not required for remote work</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Priority & Requirements */}
+                <Text style={styles.editSectionTitle}>Priority & Requirements</Text>
+                
+                {/* Urgency Level */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Priority Level</Text>
+                  <View style={styles.editUrgencyContainer}>
+                    {(['low', 'medium', 'high', 'urgent'] as const).map((level) => (
+                      <TouchableOpacity
+                        key={level}
+                        style={[
+                          styles.editUrgencyButton,
+                          editUrgencyLevel === level && styles.editUrgencyButtonActive,
+                          level === 'urgent' && styles.editUrgentButton,
+                          level === 'high' && styles.editHighButton
+                        ]}
+                        onPress={() => setEditUrgencyLevel(level)}
+                      >
+                        <Text style={[
+                          styles.editUrgencyButtonText,
+                          editUrgencyLevel === level && styles.editUrgencyButtonTextActive
+                        ]}>
+                          {level === 'urgent' ? '🔥 URGENT' :
+                           level === 'high' ? '⚠️ HIGH' :
+                           level === 'medium' ? '📋 MEDIUM' : '📝 LOW'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Requirements */}
+                <View style={styles.editInputContainer}>
+                  <Text style={styles.editInputLabel}>Additional Requirements (Optional)</Text>
+                  <TextInput
+                    style={[styles.editInput, styles.editTextArea]}
+                    value={editRequirements}
+                    onChangeText={setEditRequirements}
+                    placeholder="Any specific requirements or notes..."
+                    multiline
+                    numberOfLines={3}
+                    placeholderTextColor="#8E8E93"
+                  />
+                </View>
+              </ScrollView>
 
               {/* Action Buttons */}
               <View style={styles.editModalActions}>
@@ -1403,6 +1768,102 @@ export default function ChatScreen() {
             setCurrentJobId(null);
           }}
         />
+
+        {/* Edit Map Location Picker Modal */}
+        <Modal
+          visible={editShowMapModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setEditShowMapModal(false)}
+        >
+          <View style={styles.editMapModalContainer}>
+            <View style={styles.editMapModalHeader}>
+              <TouchableOpacity onPress={() => setEditShowMapModal(false)}>
+                <Text style={styles.editMapModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.editMapModalTitle}>Select Work Location</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (editSelectedLocation) {
+                    setEditLocationAddress(editSelectedLocation.address);
+                    setEditShowMapModal(false);
+                  }
+                }}
+                disabled={!editSelectedLocation}
+              >
+                <Text style={[
+                  styles.editMapModalDoneText,
+                  !editSelectedLocation && styles.editMapModalDoneTextDisabled
+                ]}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <MapView
+              style={styles.editMap}
+              initialRegion={{
+                latitude: 3.139, // Kuala Lumpur center
+                longitude: 101.6869,
+                latitudeDelta: 0.0922,
+                longitudeDelta: 0.0421,
+              }}
+              onPress={async (event) => {
+                const coordinate = event.nativeEvent.coordinate;
+                
+                try {
+                  // Reverse geocoding to get address
+                  const response = await fetch(
+                    `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coordinate.latitude},${coordinate.longitude}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}`
+                  );
+                  const data = await response.json();
+                  
+                  if (data.results && data.results.length > 0) {
+                    const address = data.results[0].formatted_address;
+                    setEditSelectedLocation({
+                      latitude: coordinate.latitude,
+                      longitude: coordinate.longitude,
+                      address: address
+                    });
+                  } else {
+                    setEditSelectedLocation({
+                      latitude: coordinate.latitude,
+                      longitude: coordinate.longitude,
+                      address: `${coordinate.latitude.toFixed(6)}, ${coordinate.longitude.toFixed(6)}`
+                    });
+                  }
+                } catch (error) {
+                  console.error('Error getting address:', error);
+                  setEditSelectedLocation({
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude,
+                    address: `${coordinate.latitude.toFixed(6)}, ${coordinate.longitude.toFixed(6)}`
+                  });
+                }
+              }}
+            >
+              {editSelectedLocation && (
+                <Marker
+                  coordinate={{
+                    latitude: editSelectedLocation.latitude,
+                    longitude: editSelectedLocation.longitude,
+                  }}
+                  title="Selected Location"
+                  description={editSelectedLocation.address}
+                />
+              )}
+            </MapView>
+            
+            {editSelectedLocation && (
+              <View style={styles.editSelectedLocationInfo}>
+                <Text style={styles.editSelectedLocationTitle}>Selected Location:</Text>
+                <Text style={styles.editSelectedLocationAddress}>{editSelectedLocation.address}</Text>
+              </View>
+            )}
+            
+            <View style={styles.editMapInstructions}>
+              <Text style={styles.editMapInstructionsText}>Tap on the map to select your work location</Text>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -2004,7 +2465,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     width: '90%',
-    maxHeight: '80%',
+    maxHeight: '90%',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -2031,6 +2492,7 @@ const styles = StyleSheet.create({
   },
   editFormContainer: {
     paddingHorizontal: 20,
+    flex: 1,
   },
   editInputContainer: {
     marginBottom: 20,
@@ -2083,6 +2545,242 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  
+  // New styles for enhanced edit modal
+  editSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    marginTop: 20,
+    marginBottom: 15,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E8E8',
+  },
+  editDateButton: {
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  editDateButtonText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  editWorkTypeContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editWorkTypeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    backgroundColor: '#F8F9FA',
+    alignItems: 'center',
+  },
+  editWorkTypeButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  editWorkTypeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  editWorkTypeButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  editUrgencyContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  editUrgencyButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    backgroundColor: '#F8F9FA',
+  },
+  editUrgencyButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  editUrgentButton: {
+    borderColor: '#FF3B30',
+    backgroundColor: '#FFEBEE',
+  },
+  editHighButton: {
+    borderColor: '#FF9500',
+    backgroundColor: '#FFF3E0',
+  },
+  editUrgencyButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  editUrgencyButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  
+  // Edit location styles
+  editLocationContainer: {
+    position: 'relative',
+  },
+  editLocationContainerDisabled: {
+    opacity: 0.5,
+  },
+  editLocationInput: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  editLocationInputContainer: {
+    // Container styles handled by editInput
+  },
+  editLocationInputContainerDisabled: {
+    opacity: 0.6,
+  },
+  editLocationInputDisabled: {
+    backgroundColor: '#f5f5f5',
+    color: '#ccc',
+  },
+  editLocationListView: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginTop: 4,
+    elevation: 3,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  editLocationRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  editLocationDescription: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  editRemoteWorkOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(245, 245, 245, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  editRemoteWorkText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    fontStyle: 'italic',
+  },
+  
+  // Edit Location Button Styles
+  editLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  editLocationButtonDisabled: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#ddd',
+    opacity: 0.6,
+  },
+  editLocationButtonText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1C1C1E',
+    marginLeft: 8,
+  },
+  editLocationButtonTextDisabled: {
+    color: '#ccc',
+  },
+  editLocationButtonHint: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontStyle: 'italic',
+  },
+  
+  // Edit Map Modal Styles
+  editMapModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  editMapModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E8E8',
+    backgroundColor: '#FFFFFF',
+  },
+  editMapModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+  editMapModalCancelText: {
+    fontSize: 16,
+    color: '#FF3B30',
+  },
+  editMapModalDoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  editMapModalDoneTextDisabled: {
+    color: '#ccc',
+  },
+  editMap: {
+    flex: 1,
+  },
+  editSelectedLocationInfo: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E8E8E8',
+  },
+  editSelectedLocationTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  editSelectedLocationAddress: {
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  editMapInstructions: {
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  editMapInstructionsText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 
 });

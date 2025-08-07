@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -71,6 +71,11 @@ export default function CreateJobListingScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
+  // Debug: Monitor modal state changes
+  useEffect(() => {
+    // console.log('showLocationPicker state changed:', showLocationPicker);
+  }, [showLocationPicker]);
+
   const handleTitleChange = (text: string) => {
     if (text.length <= 25) {
       setTitle(text);
@@ -107,13 +112,21 @@ export default function CreateJobListingScreen() {
   };
 
   const handleMapPress = (event: any) => {
-    const { latitude, longitude } = event.nativeEvent.coordinate;
-    // For map press, we'll use reverse geocoding or just coordinates
-    const locationData: LocationData = {
-      address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-      coordinate: { latitude, longitude },
-    };
-    setSelectedLocation(locationData);
+    // console.log('Map pressed!', event.nativeEvent);
+    try {
+      const { latitude, longitude } = event.nativeEvent.coordinate;
+      // console.log('Coordinates:', { latitude, longitude });
+      
+      // For map press, we'll use reverse geocoding or just coordinates
+      const locationData: LocationData = {
+        address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+        coordinate: { latitude, longitude },
+      };
+      // console.log('Setting selected location:', locationData);
+      setSelectedLocation(locationData);
+    } catch (error) {
+      console.error('Error in handleMapPress:', error);
+    }
   };
 
   const handleUploadPhoto = async () => {
@@ -427,7 +440,11 @@ export default function CreateJobListingScreen() {
             <Text style={styles.fieldLabel}>Work Location</Text>
             <TouchableOpacity 
               style={styles.locationSelector}
-              onPress={() => setShowLocationPicker(true)}
+              activeOpacity={0.7}
+              onPress={() => {
+                // console.log('Location selector pressed!');
+                setShowLocationPicker(true);
+              }}
             >
               <MapPin size={20} color={Colors.text.secondary} style={styles.locationIcon} />
               <Text style={[
@@ -450,6 +467,13 @@ export default function CreateJobListingScreen() {
         visible={showLocationPicker}
         animationType="slide"
         presentationStyle="pageSheet"
+        onShow={() => {
+          // console.log('Location picker modal opened');
+        }}
+        onRequestClose={() => {
+          // console.log('Location picker modal closing');
+          setShowLocationPicker(false);
+        }}
       >
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -474,6 +498,12 @@ export default function CreateJobListingScreen() {
               <GooglePlacesAutocomplete
                 placeholder="Search for a location..."
                 onPress={handleLocationSelect}
+                onFail={(error) => {
+                  // console.error('GooglePlacesAutocomplete error:', error);
+                }}
+                onNotFound={() => {
+                  // console.warn('GooglePlacesAutocomplete: No results found');
+                }}
                 query={{
                    key: GOOGLE_PLACES_API_KEY,
                    language: 'en',
@@ -525,6 +555,9 @@ export default function CreateJobListingScreen() {
             onPress={handleMapPress}
             showsUserLocation={true}
             showsMyLocationButton={true}
+            onMapReady={() => {
+              // console.log('Map is ready');
+            }}
           >
             {selectedLocation && (
               <Marker
@@ -546,7 +579,7 @@ export default function CreateJobListingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary,
+    backgroundColor: '#F2F2F7',
   },
   keyboardView: {
     flex: 1,

@@ -7,8 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Check } from 'lucide-react-native';
@@ -246,11 +244,7 @@ export default function MyAccountScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
@@ -333,8 +327,7 @@ export default function MyAccountScreen() {
             <Text style={styles.saveButtonText}>Save Changes</Text>
           </TouchableOpacity>
         </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -343,9 +336,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',
-  },
-  keyboardView: {
-    flex: 1,
   },
   header: {
     flexDirection: 'row',

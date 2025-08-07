@@ -75,5 +75,9 @@
     <string>Automatic</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This app needs access to your location to show your position on the map and allow you to select a work location.</string>
+    <key>GMSApiKey</key>
+    <string>$(EXPO_PUBLIC_GOOGLE_PLACES_API_KEY)</string>
   </dict>
 </plist>

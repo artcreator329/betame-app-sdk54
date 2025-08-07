@@ -730,17 +730,43 @@ export class SupabaseChatService {
       customPrice?: number;
       customDescription?: string;
       customDeliveryTime?: number;
+      // Hustle job details
+      startDate?: string;
+      endDate?: string;
+      preferredStartTime?: string;
+      preferredEndTime?: string;
+      locationAddress?: string;
+      urgencyLevel?: 'low' | 'medium' | 'high' | 'urgent';
+      workType?: 'remote' | 'on_site' | 'hybrid';
+      estimatedHours?: number;
+      requirements?: string;
     }
   ): Promise<any> {
     try {
+      // Build update object dynamically to only include provided fields
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+
+      // Basic fields
+      if (updates.customPrice !== undefined) updateData.custom_price = updates.customPrice;
+      if (updates.customDescription !== undefined) updateData.custom_description = updates.customDescription;
+      if (updates.customDeliveryTime !== undefined) updateData.custom_delivery_time = updates.customDeliveryTime;
+
+      // Hustle details
+      if (updates.startDate !== undefined) updateData.start_date = updates.startDate;
+      if (updates.endDate !== undefined) updateData.end_date = updates.endDate;
+      if (updates.preferredStartTime !== undefined) updateData.preferred_start_time = updates.preferredStartTime;
+      if (updates.preferredEndTime !== undefined) updateData.preferred_end_time = updates.preferredEndTime;
+      if (updates.locationAddress !== undefined) updateData.location_address = updates.locationAddress;
+      if (updates.urgencyLevel !== undefined) updateData.urgency_level = updates.urgencyLevel;
+      if (updates.workType !== undefined) updateData.work_type = updates.workType;
+      if (updates.estimatedHours !== undefined) updateData.estimated_hours = updates.estimatedHours;
+      if (updates.requirements !== undefined) updateData.requirements = updates.requirements;
+
       const { data, error } = await supabase
         .from('service_offers')
-        .update({
-          custom_price: updates.customPrice,
-          custom_description: updates.customDescription,
-          custom_delivery_time: updates.customDeliveryTime,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', offerId)
         .select()
         .single();
@@ -840,6 +866,53 @@ export class SupabaseChatService {
       return data;
     } catch (error) {
       console.error('Error rejecting service offer:', error);
+      throw error;
+    }
+  }
+
+  async cancelServiceOffer(offerId: string, reason?: string): Promise<any> {
+    try {
+      const updateData: any = {
+        status: 'cancelled',
+        updated_at: new Date().toISOString(),
+      };
+
+      // Add cancellation reason if provided
+      if (reason) {
+        updateData.rejection_reason = reason;
+      }
+
+      const { data, error } = await supabase
+        .from('service_offers')
+        .update(updateData)
+        .eq('id', offerId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error cancelling service offer:', error);
+        throw error;
+      }
+
+      // Update the corresponding message
+      console.log('🔄 SupabaseChatService: Updating chat message status for cancelled offer:', offerId);
+      const { data: messageUpdateData, error: messageError } = await supabase
+        .from('chat_messages')
+        .update({ offer_status: 'cancelled' })
+        .eq('offer_id', offerId)
+        .select();
+
+      if (messageError) {
+        console.error('❌ SupabaseChatService: Error updating chat message status:', messageError);
+        // Don't throw here as the main offer update succeeded
+      } else {
+        console.log('✅ SupabaseChatService: Chat message status updated successfully');
+        console.log('✅ SupabaseChatService: Updated messages:', messageUpdateData);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error cancelling service offer:', error);
       throw error;
     }
   }

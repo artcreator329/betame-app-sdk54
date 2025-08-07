@@ -7,8 +7,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -123,11 +121,7 @@ export default function ResetPasswordScreen() {
         style={styles.gradient}
       />
       
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <View style={styles.content}>
+      <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Reset Password</Text>
           <Text style={styles.subtitle}>Enter your new password below</Text>
@@ -168,8 +162,7 @@ export default function ResetPasswordScreen() {
             )}
           </TouchableOpacity>
         </View>
-        </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -185,9 +178,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-  },
-  keyboardView: {
-    flex: 1,
   },
   content: {
     flex: 1,

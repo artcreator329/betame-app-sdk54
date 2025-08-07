@@ -5,15 +5,21 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "betame",
+    "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.betame.app"
+      "config": {
+        "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}"
+      }
     },
     "android": {
-      "package": "com.betame.app"
+      "config": {
+        "googleMaps": {
+          "apiKey": "${EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

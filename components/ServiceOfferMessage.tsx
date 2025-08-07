@@ -21,6 +21,7 @@ interface ServiceOfferMessageProps {
   onAcceptOffer?: (offerId: string) => void;
   onRejectOffer?: (offerId: string, reason?: string) => void;
   onEditOffer?: (offerId: string) => void;
+  onCancelOffer?: (offerId: string) => void;
   onViewService?: (serviceId: string) => void;
 }
 
@@ -30,6 +31,7 @@ export function ServiceOfferMessage({
   onAcceptOffer,
   onRejectOffer,
   onEditOffer,
+  onCancelOffer,
   onViewService,
 }: ServiceOfferMessageProps) {
   const { serviceData, offerId, offerStatus, offerExpiresAt } = message;
@@ -53,6 +55,7 @@ export function ServiceOfferMessage({
   const isPending = offerStatus === 'pending' || !offerStatus;
   const isAccepted = offerStatus === 'accepted';
   const isRejected = offerStatus === 'rejected';
+  const isCancelled = offerStatus === 'cancelled';
 
   // Debug status flags
   console.log('🔍 ServiceOfferMessage: Status flags:', {
@@ -60,6 +63,7 @@ export function ServiceOfferMessage({
     isPending,
     isAccepted,
     isRejected,
+    isCancelled,
     rawStatus: offerStatus
   });
 
@@ -96,10 +100,38 @@ export function ServiceOfferMessage({
     onEditOffer?.(offerId);
   };
 
+  const handleCancel = () => {
+    if (!offerId) return;
+    Alert.alert(
+      'Cancel Offer',
+      'Are you sure you want to cancel this service offer? This action cannot be undone.',
+      [
+        { text: 'Keep Offer', style: 'cancel' },
+        {
+          text: 'Cancel Offer',
+          style: 'destructive',
+          onPress: () => onCancelOffer?.(offerId),
+        },
+      ]
+    );
+  };
+
   const handleViewService = () => {
     console.log('🔗 ServiceOfferMessage: View Service clicked with serviceData:', serviceData);
     console.log('🔗 ServiceOfferMessage: Service ID:', serviceData.id);
     console.log('🔗 ServiceOfferMessage: Service title:', serviceData.title);
+    console.log('🔗 ServiceOfferMessage: Hustle details check:', {
+      startDate: serviceData.startDate,
+      endDate: serviceData.endDate,
+      preferredStartTime: serviceData.preferredStartTime,
+      preferredEndTime: serviceData.preferredEndTime,
+      locationAddress: serviceData.locationAddress,
+      urgencyLevel: serviceData.urgencyLevel,
+      workType: serviceData.workType,
+      estimatedHours: serviceData.estimatedHours,
+      requirements: serviceData.requirements,
+      skillsRequired: serviceData.skillsRequired
+    });
     
     // Always show the detailed offer modal for all service offers
     setShowOfferDetailsModal(true);
@@ -109,6 +141,7 @@ export function ServiceOfferMessage({
     if (isExpired) return { color: Colors.text.secondary, bgColor: Colors.background.secondary, text: 'Expired' };
     if (isAccepted) return { color: Colors.status.success, bgColor: Colors.background.secondary, text: 'Accepted' };
     if (isRejected) return { color: Colors.status.error, bgColor: Colors.background.secondary, text: 'Rejected' };
+    if (isCancelled) return { color: '#FF9500', bgColor: Colors.background.secondary, text: 'Cancelled' };
     return { color: Colors.primary.main, bgColor: Colors.background.secondary, text: 'Pending' };
   };
 
@@ -120,7 +153,7 @@ export function ServiceOfferMessage({
         colors={isRejected ? ['#BDBDBD', '#9E9E9E', '#757575'] : ['#81C784', '#66BB6A', '#4CAF50']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.bubble, isRejected && styles.rejectedBubble]}
+        style={[styles.bubble, (isRejected || isCancelled) && styles.rejectedBubble]}
       >
         {/* Header with Status */}
         <View style={styles.header}>
@@ -146,13 +179,13 @@ export function ServiceOfferMessage({
           {/* Right: Service Details */}
           <View style={styles.serviceDetails}>
             {/* Service Title */}
-            <Text style={[styles.serviceTitle, isRejected && styles.rejectedText]} numberOfLines={2}>
+            <Text style={[styles.serviceTitle, (isRejected || isCancelled) && styles.rejectedText]} numberOfLines={2}>
               {serviceData.title || 'Service Offer'}
             </Text>
 
             {/* Service Description */}
             {serviceData.description && (
-              <Text style={[styles.serviceDescription, isRejected && styles.rejectedText]} numberOfLines={2}>
+              <Text style={[styles.serviceDescription, (isRejected || isCancelled) && styles.rejectedText]} numberOfLines={2}>
                 {serviceData.description}
               </Text>
             )}
@@ -164,12 +197,12 @@ export function ServiceOfferMessage({
                   <Text style={styles.originalPrice}>
                     Original: RM {serviceData.price}
                   </Text>
-                  <Text style={[styles.customPrice, isRejected && styles.rejectedText]}>
+                  <Text style={[styles.customPrice, (isRejected || isCancelled) && styles.rejectedText]}>
                     Offer: RM {serviceData.customPrice}
                   </Text>
                 </View>
               ) : (
-                <Text style={[styles.priceText, isRejected && styles.rejectedText]}>
+                <Text style={[styles.priceText, (isRejected || isCancelled) && styles.rejectedText]}>
                   RM {serviceData.customPrice || serviceData.price || '0'}
                 </Text>
               )}
@@ -319,13 +352,22 @@ export function ServiceOfferMessage({
             {isPending && !isExpired && (
               <>
                 {isCurrentUser ? (
-                  <TouchableOpacity 
-                    style={styles.editButton} 
-                    onPress={handleEdit}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </TouchableOpacity>
+                  <>
+                    <TouchableOpacity 
+                      style={styles.editButton} 
+                      onPress={handleEdit}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.editButtonText}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.cancelButton} 
+                      onPress={handleCancel}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </>
                 ) : (
                   <>
                     <TouchableOpacity 
@@ -361,6 +403,15 @@ export function ServiceOfferMessage({
               <View style={styles.acceptedButtonContainer}>
                 <View style={styles.acceptedButton}>
                   <Text style={styles.acceptedButtonText}>Accepted</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Show cancelled state buttons */}
+            {isCancelled && (
+              <View style={styles.cancelledButtonContainer}>
+                <View style={styles.cancelledButton}>
+                  <Text style={styles.cancelledButtonText}>Cancelled</Text>
                 </View>
               </View>
             )}
@@ -475,10 +526,48 @@ export function ServiceOfferMessage({
                     </View>
                   )}
 
+                  {/* Job Details Summary - Show key hustle info prominently */}
+                  {(serviceData.startDate || serviceData.endDate || serviceData.preferredStartTime || serviceData.preferredEndTime || serviceData.locationAddress || serviceData.urgencyLevel) && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>📋 Job Details</Text>
+                      <View style={styles.jobSummaryContainer}>
+                        {(serviceData.startDate || serviceData.endDate) && (
+                          <Text style={styles.jobSummaryText}>
+                            📅 {serviceData.startDate ? new Date(serviceData.startDate).toLocaleDateString() : 'TBD'} - {serviceData.endDate ? new Date(serviceData.endDate).toLocaleDateString() : 'TBD'}
+                          </Text>
+                        )}
+                        {(serviceData.preferredStartTime || serviceData.preferredEndTime) && (
+                          <Text style={styles.jobSummaryText}>
+                            ⏰ {serviceData.preferredStartTime || 'Flexible'} - {serviceData.preferredEndTime || 'Flexible'}
+                          </Text>
+                        )}
+                        {serviceData.locationAddress && (
+                          <Text style={styles.jobSummaryText}>
+                            📍 {serviceData.locationAddress}
+                          </Text>
+                        )}
+                        {serviceData.urgencyLevel && (
+                          <Text style={[styles.jobSummaryText, 
+                            serviceData.urgencyLevel === 'urgent' ? { color: '#FF5722' } :
+                            serviceData.urgencyLevel === 'high' ? { color: '#FF9800' } : 
+                            { color: Colors.text.primary }
+                          ]}>
+                            ⚡ {serviceData.urgencyLevel.toUpperCase()} Priority
+                          </Text>
+                        )}
+                        {serviceData.estimatedHours && (
+                          <Text style={styles.jobSummaryText}>
+                            ⏱️ Est. {serviceData.estimatedHours} hours
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  )}
+
                   {/* Enhanced Date & Time Information */}
                   {(serviceData.startDate || serviceData.endDate) && (
                     <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>📅 Project Timeline</Text>
+                      <Text style={styles.modalSectionTitle}>📅 Job Schedule</Text>
                       <View style={styles.dateTimeContainer}>
                         {serviceData.startDate && (
                           <View style={styles.dateTimeRow}>
@@ -668,6 +757,16 @@ export function ServiceOfferMessage({
                           )}
                         </View>
                       </View>
+                    </View>
+                  )}
+
+                  {/* Debug Section - Show when hustle details are missing */}
+                  {!(serviceData.startDate || serviceData.endDate || serviceData.preferredStartTime || serviceData.preferredEndTime || serviceData.locationAddress || serviceData.urgencyLevel || serviceData.workType || serviceData.estimatedHours || serviceData.requirements || serviceData.skillsRequired) && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>ℹ️ Job Details</Text>
+                      <Text style={styles.modalSectionText}>
+                        No specific job details were provided with this offer. This is a standard service offer without custom scheduling or location requirements.
+                      </Text>
                     </View>
                   )}
 
@@ -1088,6 +1187,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#F57C00',
   },
+  cancelButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FF3B30',
+  },
   rejectButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1368,6 +1481,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text.white,
   },
+  cancelledButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cancelledButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FF9500',
+    alignItems: 'center',
+  },
+  cancelledButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text.white,
+  },
   // Hustle Job Attributes Styles
   hustleDetailsContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
@@ -1598,6 +1727,18 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     flex: 1,
     textAlign: 'right',
+  },
+  jobSummaryContainer: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  jobSummaryText: {
+    fontSize: 14,
+    color: Colors.text.primary,
+    marginBottom: 8,
+    lineHeight: 20,
   },
   expirationContainer: {
     marginTop: 8,

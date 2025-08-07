@@ -23,9 +23,6 @@ export default function LocationPickerTest() {
 
   const handleLocationSelect = (data: any, details: any) => {
     try {
-      console.log('Location data:', data);
-      console.log('Location details:', details);
-      
       if (data && details?.geometry?.location) {
         const locationData: LocationData = {
           address: data.description || data.structured_formatting?.main_text || 'Unknown location',
@@ -37,10 +34,9 @@ export default function LocationPickerTest() {
         setSelectedLocation(locationData);
         Alert.alert('Location Selected', `Address: ${locationData.address}`);
       } else {
-        console.warn('Invalid location data received');
+        Alert.alert('Error', 'Invalid location data received');
       }
     } catch (error) {
-      console.error('Error selecting location:', error);
       Alert.alert('Error', 'Failed to select location');
     }
   };
@@ -63,10 +59,12 @@ export default function LocationPickerTest() {
         predefinedPlacesAlwaysVisible={false}
         listViewDisplayed={false}
         onFail={(error) => {
-          console.warn('GooglePlacesAutocomplete error in LocationPickerTest:', error);
+          console.error('LocationPickerTest - GooglePlacesAutocomplete error:', error);
+          Alert.alert('API Error', `Google Places API error: ${error}`);
         }}
         onNotFound={() => {
-          console.warn('GooglePlacesAutocomplete: No results found in LocationPickerTest');
+          console.warn('LocationPickerTest - GooglePlacesAutocomplete: No results found');
+          Alert.alert('No Results', 'No locations found for your search');
         }}
         styles={{
           textInputContainer: styles.searchInputContainer,
@@ -77,11 +75,11 @@ export default function LocationPickerTest() {
       
       {selectedLocation && (
         <View style={styles.selectedLocation}>
-          <Text style={styles.selectedTitle}>Selected Location:</Text>
-          <Text style={styles.selectedAddress}>{selectedLocation.address}</Text>
-          <Text style={styles.selectedCoords}>
-            Lat: {selectedLocation.coordinate.latitude.toFixed(6)}, 
-            Lng: {selectedLocation.coordinate.longitude.toFixed(6)}
+          <Text style={styles.selectedLocationText}>
+            Selected: {selectedLocation.address}
+          </Text>
+          <Text style={styles.selectedLocationText}>
+            Coordinates: {selectedLocation.coordinate.latitude}, {selectedLocation.coordinate.longitude}
           </Text>
         </View>
       )}
@@ -98,6 +96,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: Colors.text.secondary,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -130,18 +134,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border.light,
   },
-  selectedTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 5,
-  },
-  selectedAddress: {
+  selectedLocationText: {
     fontSize: 14,
     color: Colors.text.primary,
     marginBottom: 5,
-  },
-  selectedCoords: {
-    fontSize: 12,
-    color: Colors.text.secondary,
   },
 });
