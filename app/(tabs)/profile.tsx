@@ -513,7 +513,10 @@ export default function ProfileScreen() {
             )}
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIcon}>
+            <TouchableOpacity 
+              style={styles.headerIcon}
+              onPress={() => router.push('/favorites')}
+            >
               <Heart size={24} color={colors.text.primary} />
             </TouchableOpacity>
             <TouchableOpacity 

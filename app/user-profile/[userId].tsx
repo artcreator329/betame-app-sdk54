@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { LightTheme } from '@/constants/Colors';
 import { supabase } from '@/lib/supabase';
 import { ServiceService } from '@/lib/service-service';
+import { UserFavoritesService } from '@/lib/user-favorites-service';
 
 interface UserProfile {
   id: string;
@@ -69,6 +70,8 @@ export default function UserProfileScreen() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('My Services');
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   // Calculate average rating from reviews
   const averageRating = reviews.length > 0 
@@ -138,6 +141,12 @@ export default function UserProfileScreen() {
             setReviews([]);
           }
         }
+
+        // Check if current user has favorited this user
+        if (user && user.id !== userId) {
+          const favorited = await UserFavoritesService.isFavorited(user.id, userId);
+          setIsFavorited(favorited);
+        }
       } catch (error) {
         console.error('Error fetching user data:', error);
         Alert.alert('Error', 'Failed to load user data');
@@ -147,7 +156,7 @@ export default function UserProfileScreen() {
     };
 
     fetchUserData();
-  }, [userId, router]);
+  }, [userId, router, user]);
 
   const handleChatWithUser = () => {
     if (!user) {
@@ -175,6 +184,44 @@ export default function UserProfileScreen() {
       });
     } catch (error) {
       console.error('Error sharing profile:', error);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to add users to your favorites.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+      return;
+    }
+
+    if (!userId || typeof userId !== 'string') return;
+
+    try {
+      setFavoriteLoading(true);
+      const result = await UserFavoritesService.toggleFavorite(user.id, userId);
+      
+      if (result.success) {
+        setIsFavorited(result.isFavorited);
+        Alert.alert(
+          result.isFavorited ? 'Added to Favorites' : 'Removed from Favorites',
+          result.isFavorited 
+            ? `${userProfile?.full_name} has been added to your favorites.`
+            : `${userProfile?.full_name} has been removed from your favorites.`
+        );
+      } else {
+        Alert.alert('Error', result.error || 'Failed to update favorites');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorites');
+    } finally {
+      setFavoriteLoading(false);
     }
   };
 
@@ -302,9 +349,19 @@ export default function UserProfileScreen() {
             <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Profile</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Heart size={24} color={colors.text.primary} />
-            </TouchableOpacity>
+            {user && user.id !== userId && (
+              <TouchableOpacity 
+                style={styles.headerIcon}
+                onPress={handleToggleFavorite}
+                disabled={favoriteLoading}
+              >
+                <Heart 
+                  size={24} 
+                  color={isFavorited ? '#FF6B6B' : colors.text.primary}
+                  fill={isFavorited ? '#FF6B6B' : 'transparent'}
+                />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity 
               style={styles.headerIcon}
               onPress={handleShareProfile}
@@ -646,31 +703,9 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     width: '100%',
   },
-  profileImageContainer: {
-    position: 'relative',
-    marginRight: 20,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  defaultProfileIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   profileInfo: {
     flex: 1,
     alignItems: 'flex-start',
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '600',
-    marginBottom: 8,
-    textAlign: 'left',
   },
   userBio: {
     fontSize: 16,
@@ -678,20 +713,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'left',
     lineHeight: 22,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginRight: 8,
-  },
-  reviewText: {
-    fontSize: 14,
-    marginLeft: 8,
   },
   userTagline: {
     fontSize: 16,
@@ -777,27 +798,5 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  tabNavigation: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  activeTabText: {
-    fontWeight: '600',
-  },
-  tabContent: {
-    flex: 1,
   },
 });
