@@ -10,15 +10,38 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { useEffect } from 'react';
+
+function LoadingScreen() {
+  return (
+    <View style={{ 
+      flex: 1, 
+      justifyContent: 'center', 
+      alignItems: 'center',
+      backgroundColor: '#ffffff'
+    }}>
+      <ActivityIndicator size="large" color="#007AFF" />
+      <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
+        Loading...
+      </Text>
+    </View>
+  );
+}
 
 function RootLayoutNav() {
   const { user, isAdmin, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
+  console.log('🔄 RootLayoutNav: Rendering with user:', !!user, 'isAdmin:', isAdmin, 'loading:', loading, 'segments:', segments);
+
   useEffect(() => {
-    if (loading) return;
+    console.log('🔄 RootLayoutNav: useEffect triggered with loading:', loading);
+    if (loading) {
+      console.log('⏳ RootLayoutNav: Still loading, returning early');
+      return;
+    }
 
     const inAuthGroup = segments[0] === 'auth';
     const inTabsGroup = segments[0] === '(tabs)';
@@ -64,9 +87,11 @@ function RootLayoutNav() {
       
       // Allow homepage access for everyone, require auth for other tabs
       if (!isHomePage && !user) {
+        console.log('🔍 Layout: Non-homepage tab without auth, redirecting to login');
         router.replace('/auth/login');
         return;
       }
+      console.log('🔍 Layout: In tabs group, allowing access');
       return;
     }
     
@@ -75,17 +100,28 @@ function RootLayoutNav() {
     const currentPage = segments[0];
     
     if (publicPages.includes(currentPage)) {
+      console.log('🔍 Layout: Public page, allowing access');
       return;
     }
     
     // If user is not authenticated and not in auth, tabs, or public pages, redirect to homepage
     if (!user) {
+      console.log('🔍 Layout: No user and not in allowed pages, redirecting to tabs');
       router.replace('/(tabs)');
       return;
     }
     
     // For authenticated users, allow access to all pages
+    console.log('🔍 Layout: Authenticated user, allowing access to all pages');
   }, [user, isAdmin, segments, loading]);
+
+  console.log('🔄 RootLayoutNav: About to render Stack with segments:', segments);
+
+  // Show loading screen while auth is loading
+  if (loading) {
+    console.log('⏳ RootLayoutNav: Showing loading screen');
+    return <LoadingScreen />;
+  }
 
   return (
     <Stack 
@@ -183,6 +219,8 @@ function ThemedStatusBar() {
 
 export default function RootLayout() {
   useFrameworkReady();
+
+  console.log('🔄 App: Rendering RootLayout...');
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

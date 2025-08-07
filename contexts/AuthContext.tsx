@@ -5,6 +5,8 @@ import { supabaseChatService } from '@/lib/supabase-chat-service';
 import { supabase } from '@/lib/supabase';
 import { notificationService } from '@/lib/notification-service';
 import { adminService } from '@/lib/admin-service';
+import { WalletService } from '@/lib/wallet-service';
+
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +21,7 @@ interface AuthContextType {
   signOut: () => Promise<{ error: any }>;
   updateProfile: (updates: any) => Promise<{ data: any; error: any }>;
   refreshProfile: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +45,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const chatSubscriptionRef = useRef<(() => void) | null>(null);
+  const sessionRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch user profile from database
   const fetchUserProfile = async (userId: string) => {
@@ -53,8 +57,74 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const adminStatus = await adminService.isAdmin(userId);
       console.log('🔍 AuthContext: Admin status for user', userId, ':', adminStatus);
       setIsAdmin(adminStatus);
+      
+      // Ensure wallet exists for the user
+      console.log('🔄 AuthContext: Ensuring wallet exists for user:', userId);
+      await WalletService.ensureWalletExists(userId);
     } catch (error) {
       console.error('Error fetching user profile:', error);
+    }
+  };
+
+  // Refresh session to prevent timeouts
+  const refreshSession = async () => {
+    try {
+      console.log('🔄 AuthContext: Refreshing session...');
+      const { data: { session: refreshedSession }, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error('❌ AuthContext: Session refresh failed:', error);
+        // If refresh fails, try to get current session
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+        } else {
+          // Session is truly invalid, sign out
+          console.log('🔄 AuthContext: Session invalid, signing out...');
+          await signOut();
+        }
+      } else if (refreshedSession) {
+        setSession(refreshedSession);
+        setUser(refreshedSession.user);
+        console.log('✅ AuthContext: Session refreshed successfully');
+      }
+    } catch (error) {
+      console.error('❌ AuthContext: Session refresh exception:', error);
+    }
+  };
+
+  // Setup session refresh interval
+  const setupSessionRefresh = () => {
+    // Clear existing interval
+    if (sessionRefreshIntervalRef.current) {
+      clearInterval(sessionRefreshIntervalRef.current);
+    }
+    
+    // Refresh session every 25 minutes to prevent timeouts
+    sessionRefreshIntervalRef.current = setInterval(async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession) {
+          console.log('🔄 AuthContext: Auto-refreshing session...');
+          const { error } = await supabase.auth.refreshSession();
+          if (error) {
+            console.error('❌ AuthContext: Auto session refresh error:', error);
+          } else {
+            console.log('✅ AuthContext: Auto session refresh successful');
+          }
+        }
+      } catch (error) {
+        console.error('❌ AuthContext: Auto session refresh exception:', error);
+      }
+    }, 25 * 60 * 1000) as unknown as NodeJS.Timeout; // 25 minutes
+  };
+
+  // Clean up session refresh interval
+  const cleanupSessionRefresh = () => {
+    if (sessionRefreshIntervalRef.current) {
+      clearInterval(sessionRefreshIntervalRef.current);
+      sessionRefreshIntervalRef.current = null;
     }
   };
 
@@ -112,7 +182,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                   participantName: participant.name,
                   participantImage: participant.image,
                   message: payload.new.message,
-                  chatId: payload.new.chat_id
+                  chatId: payload.new.chat_id,
+                  senderId: payload.new.sender_id
                 });
                 console.log('🎉🎉🎉 AuthContext: NOTIFICATION CREATED SUCCESSFULLY!!! 🎉🎉🎉');
               }
@@ -147,27 +218,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     async function getInitialSession() {
       try {
+        console.log('🔄 AuthContext: Getting initial session...');
+        
         const session = await authService.getCurrentSession();
+        console.log('🔄 AuthContext: Session result:', !!session);
         
         if (mounted) {
           setSession(session);
           setUser(session?.user ?? null);
           
           if (session?.user) {
-            await fetchUserProfile(session.user.id);
+            console.log('✅ AuthContext: User authenticated, setting up profile and chat');
+            // Fetch profile in background, don't block loading
+            fetchUserProfile(session.user.id);
             // Set up global chat subscription for notifications
             setupChatSubscription(session.user.id);
+            // Setup session refresh
+            setupSessionRefresh();
+          } else {
+            console.log('ℹ️ AuthContext: No initial session found');
           }
+          
+          // Set loading to false immediately after setting session
+          console.log('🔄 AuthContext: Setting loading to false');
+          setLoading(false);
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
-      } finally {
+        console.error('❌ AuthContext: Error getting initial session:', error);
         if (mounted) {
+          console.log('🔄 AuthContext: Setting loading to false after error');
           setLoading(false);
         }
       }
     }
 
+    console.log('🔄 AuthContext: Starting getInitialSession...');
     getInitialSession();
 
     // Listen for auth changes
@@ -180,29 +265,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
           if (session?.user) {
             console.log('🔄 AuthContext: User authenticated, setting up profile and chat');
-            await fetchUserProfile(session.user.id);
+            // Fetch profile in background, don't block
+            fetchUserProfile(session.user.id);
             // Set up global chat subscription for notifications
             setupChatSubscription(session.user.id);
+            // Setup session refresh
+            setupSessionRefresh();
           } else {
             console.log('🔄 AuthContext: User signed out, cleaning up state');
             setUserProfile(null);
             setIsAdmin(false);
             // Clean up chat subscription when user signs out
             cleanupChatSubscription();
+            // Clean up session refresh
+            cleanupSessionRefresh();
           }
-          
-          setLoading(false);
         }
       }
     );
 
     return () => {
+      console.log('🔄 AuthContext: Cleaning up auth state effect');
       mounted = false;
       subscription?.unsubscribe();
       // Clean up chat subscription on unmount
       cleanupChatSubscription();
+      // Clean up session refresh on unmount
+      cleanupSessionRefresh();
     };
-  }, []);
+  }, []); // Empty dependency array to ensure this only runs once
 
   // Sign in function
   const signIn = async (email: string, password: string) => {
@@ -268,12 +359,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     console.log('🔄 AuthContext: Starting signOut process...');
     setLoading(true);
     try {
+      // Clean up session refresh first
+      cleanupSessionRefresh();
+      
       const result = await authService.signOut();
       console.log('🔄 AuthContext: SignOut result from service:', result);
       
       // Clean up chat subscription immediately
       cleanupChatSubscription();
       console.log('🔄 AuthContext: Chat subscription cleaned up');
+      
+      // Clear session data from storage
+      console.log('🔄 AuthContext: Session cleared');
       
       return result;
     } catch (error) {
@@ -314,6 +411,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signOut,
     updateProfile,
     refreshProfile,
+    refreshSession,
   };
 
   return (

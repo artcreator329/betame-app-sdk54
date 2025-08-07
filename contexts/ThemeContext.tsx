@@ -23,18 +23,16 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const systemColorScheme = useColorScheme();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false); // Default to light mode
-  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load theme preference from storage only if user is authenticated
+  // Load theme preference from storage
   useEffect(() => {
     const loadThemePreference = async () => {
       try {
         // If user is not authenticated, force light mode
         if (!user) {
           setIsDarkMode(false);
-          setIsLoaded(true);
           return;
         }
 
@@ -49,16 +47,12 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       } catch (error) {
         console.error('Error loading theme preference:', error);
         setIsDarkMode(false); // Default to light mode on error
-      } finally {
-        setIsLoaded(true);
       }
     };
 
-    // Only load theme after auth state is determined
-    if (!authLoading) {
-      loadThemePreference();
-    }
-  }, [user, authLoading]);
+    // Load theme preference immediately, don't wait for auth loading
+    loadThemePreference();
+  }, [user]);
 
   // Save theme preference to storage
   const saveThemePreference = async (isDark: boolean) => {
@@ -94,11 +88,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   const theme = isDarkMode ? DarkTheme : LightTheme;
 
-  // Don't render children until both auth and theme are loaded
-  if (authLoading || !isLoaded) {
-    return null;
-  }
-
+  // Always render children, don't block on auth loading
+  // This prevents the white blank page issue
   const contextValue: ThemeContextType = {
     theme,
     isDarkMode,

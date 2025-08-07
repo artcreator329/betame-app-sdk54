@@ -17,6 +17,10 @@ export interface ServiceOfferData {
   currency: string;
   image_url?: string;
   category_name?: string;
+  seller_name?: string;
+  seller_rating?: string;
+  seller_reviews?: string;
+  service_area?: string;
   customPrice?: number;
   customDescription?: string;
   customDeliveryTime?: number;
@@ -47,7 +51,7 @@ export interface ServiceOffer {
   customPrice?: number;
   customDescription?: string;
   customDeliveryTime?: number;
-  status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
+  status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
   expiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -78,7 +82,7 @@ export interface ChatMessage {
   messageType?: 'text' | 'service' | 'offer';
   serviceData?: ServiceOfferData;
   offerId?: string;
-  offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
+  offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
   offerExpiresAt?: Date;
 }
 
@@ -94,7 +98,7 @@ export interface LiveChatMessage {
   messageType?: 'text' | 'service' | 'offer';
   serviceData?: ServiceOfferData;
   offerId?: string;
-  offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
+  offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
   offerExpiresAt?: Date;
 }
 

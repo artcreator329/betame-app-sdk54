@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -176,16 +176,27 @@ export default function HomeScreen() {
       setIsLoadingServices(false);
       setIsLoadingCategories(false);
     }
-  }, [selectedCategory]);
+  }, []); // Remove selectedCategory dependency to prevent infinite loop
 
+  // Initial data fetch
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
-  // Refetch data when screen comes into focus
+  // Track last fetch time to prevent excessive refetching
+  const lastFetchTimeRef = useRef<number>(0);
+
+  // Refetch data when screen comes into focus (but not on every render)
   useFocusEffect(
     useCallback(() => {
-      fetchData();
+      // Only refetch if data is stale (more than 5 minutes old)
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+      
+      if (now - lastFetchTimeRef.current > fiveMinutes) {
+        fetchData();
+        lastFetchTimeRef.current = now;
+      }
     }, [fetchData])
   );
 

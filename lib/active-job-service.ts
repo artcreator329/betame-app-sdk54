@@ -256,4 +256,42 @@ export class ActiveJobService {
       return false;
     }
   }
+
+  /**
+   * Update job delivery time (extend job)
+   */
+  static async updateJobDeliveryTime(jobId: string, additionalDays: number): Promise<ActiveJob | null> {
+    try {
+      // Get current job
+      const currentJob = await this.getActiveJob(jobId);
+      if (!currentJob) {
+        return null;
+      }
+
+      // Parse current delivery time and add additional days
+      const currentDeliveryTime = currentJob.delivery_time;
+      const currentDays = parseInt(currentDeliveryTime.replace(' days', ''));
+      const newDays = currentDays + additionalDays;
+
+      const { data, error } = await supabase
+        .from('active_jobs')
+        .update({
+          delivery_time: `${newDays} days`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating job delivery time:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in updateJobDeliveryTime:', error);
+      return null;
+    }
+  }
 }

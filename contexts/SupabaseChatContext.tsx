@@ -30,7 +30,7 @@ export function SupabaseChatProvider({ children }: SupabaseChatProviderProps) {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, []); // Empty dependency array to ensure this only runs once
 
   const contextValue: SupabaseChatContextType = {
     connectionStatus,

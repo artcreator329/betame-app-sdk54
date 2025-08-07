@@ -16,7 +16,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   useEffect(() => {
     const loadNotifications = async () => {
-      if (!user?.id) return;
+      if (!user?.id) {
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
       
       // Set the current user for the notification service
       notificationService.setCurrentUser(user.id);

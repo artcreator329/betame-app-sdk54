@@ -23,6 +23,7 @@ interface ServiceOfferMessageProps {
   onEditOffer?: (offerId: string) => void;
   onCancelOffer?: (offerId: string) => void;
   onViewService?: (serviceId: string) => void;
+  onViewOrderProgress?: () => void;
 }
 
 export function ServiceOfferMessage({
@@ -33,6 +34,7 @@ export function ServiceOfferMessage({
   onEditOffer,
   onCancelOffer,
   onViewService,
+  onViewOrderProgress,
 }: ServiceOfferMessageProps) {
   const { serviceData, offerId, offerStatus, offerExpiresAt } = message;
   const [showOfferDetailsModal, setShowOfferDetailsModal] = useState(false);
@@ -54,6 +56,7 @@ export function ServiceOfferMessage({
   const isExpired = offerExpiresAt && new Date() > offerExpiresAt;
   const isPending = offerStatus === 'pending' || !offerStatus;
   const isAccepted = offerStatus === 'accepted';
+  const isInProgress = offerStatus === 'in_progress';
   const isRejected = offerStatus === 'rejected';
   const isCancelled = offerStatus === 'cancelled';
 
@@ -62,6 +65,7 @@ export function ServiceOfferMessage({
     isExpired,
     isPending,
     isAccepted,
+    isInProgress,
     isRejected,
     isCancelled,
     rawStatus: offerStatus
@@ -139,6 +143,7 @@ export function ServiceOfferMessage({
 
   const getStatusConfig = () => {
     if (isExpired) return { color: Colors.text.secondary, bgColor: Colors.background.secondary, text: 'Expired' };
+    if (isInProgress) return { color: '#007AFF', bgColor: Colors.background.secondary, text: 'In Progress' };
     if (isAccepted) return { color: Colors.status.success, bgColor: Colors.background.secondary, text: 'Accepted' };
     if (isRejected) return { color: Colors.status.error, bgColor: Colors.background.secondary, text: 'Rejected' };
     if (isCancelled) return { color: '#FF9500', bgColor: Colors.background.secondary, text: 'Cancelled' };
@@ -404,6 +409,33 @@ export function ServiceOfferMessage({
                 <View style={styles.acceptedButton}>
                   <Text style={styles.acceptedButtonText}>Accepted</Text>
                 </View>
+                {onViewOrderProgress && (
+                  <TouchableOpacity 
+                    style={styles.orderProgressButton}
+                    onPress={onViewOrderProgress}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.orderProgressButtonText}>View Order</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {/* Show in progress state buttons */}
+            {isInProgress && (
+              <View style={styles.inProgressButtonContainer}>
+                <View style={styles.inProgressButton}>
+                  <Text style={styles.inProgressButtonText}>In Progress</Text>
+                </View>
+                {onViewOrderProgress && (
+                  <TouchableOpacity 
+                    style={styles.orderProgressButton}
+                    onPress={onViewOrderProgress}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.orderProgressButtonText}>View Order</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -1468,6 +1500,7 @@ const styles = StyleSheet.create({
   acceptedButtonContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   acceptedButton: {
     paddingHorizontal: 12,
@@ -1479,6 +1512,35 @@ const styles = StyleSheet.create({
   acceptedButtonText: {
     fontSize: 12,
     fontWeight: '700',
+    color: Colors.text.white,
+  },
+  inProgressButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inProgressButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+  },
+  inProgressButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text.white,
+  },
+  orderProgressButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#34C759',
+    alignItems: 'center',
+  },
+  orderProgressButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
     color: Colors.text.white,
   },
   cancelledButtonContainer: {
@@ -1513,6 +1575,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    fontFamily: 'Cutive Mono',
   },
   hustleDetailRow: {
     marginBottom: 6,
@@ -1706,21 +1769,10 @@ const styles = StyleSheet.create({
   jobMetaContainer: {
     marginTop: 12,
   },
-  jobMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
   jobMetaLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.text.secondary,
-  },
-  jobPaymentType: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary.main,
   },
   jobLocationText: {
     fontSize: 14,

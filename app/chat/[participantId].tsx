@@ -30,7 +30,7 @@ import { supabase } from '@/lib/supabase';
 import { ServiceService, Service } from '@/lib/service-service';
 import { ServiceOfferMessage } from '../../components/ServiceOfferMessage';
 import { ServiceOfferModal } from '../../components/ServiceOfferModal';
-import { PaymentModal } from '../../components/PaymentModal';
+import { MalaysianPaymentModal } from '../../components/MalaysianPaymentModal';
 import { JobProgressMonitor } from '../../components/JobProgressMonitor';
 import { notificationService } from '@/lib/notification-service';
 
@@ -83,7 +83,6 @@ export default function ChatScreen() {
     currentEstimatedHours?: number;
     currentRequirements?: string;
   } | null>(null);
-
 
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedOfferForPayment, setSelectedOfferForPayment] = useState<{
@@ -499,55 +498,13 @@ export default function ChatScreen() {
     }
   };
 
-  const acceptServiceOffer = async (offerId: string) => {
-    try {
-      console.log('Accepting service offer:', offerId);
-      
-      // Find the message with this offer ID to get offer and service data
-      const offerMessage = messages.find(msg => msg.offerId === offerId);
-      if (!offerMessage || !offerMessage.serviceData) {
-        Alert.alert('Error', 'Could not find offer details');
-        return;
-      }
 
-      // Get the offer details from Supabase
-      const { data: offerData, error } = await supabase
-        .from('service_offers')
-        .select('*')
-        .eq('id', offerId)
-        .single();
 
-      if (error || !offerData) {
-        Alert.alert('Error', 'Could not load offer details');
-        return;
-      }
 
-      // Set up payment modal data
-      setSelectedOfferForPayment({
-        offer: {
-          id: offerData.id,
-          chatId: offerData.chat_id,
-          serviceId: offerData.service_id,
-          sellerId: offerData.seller_id,
-          buyerId: offerData.buyer_id,
-          originalPrice: offerData.original_price,
-          customPrice: offerData.custom_price,
-          customDescription: offerData.custom_description,
-          customDeliveryTime: offerData.custom_delivery_time,
-          status: offerData.status,
-          createdAt: new Date(offerData.created_at),
-          updatedAt: new Date(offerData.updated_at)
-        },
-        serviceData: offerMessage.serviceData,
-        sellerId: offerData.seller_id
-      });
-      
-      setPaymentModalVisible(true);
-    } catch (error) {
-      console.error('Error preparing payment:', error);
-      Alert.alert('Error', 'Failed to prepare payment');
-    }
-  };
+
+
+
+
 
   const handlePaymentSuccess = async (activeJobId: string) => {
     try {
@@ -557,24 +514,23 @@ export default function ChatScreen() {
         
         // Add notification for offer acceptance (to the seller)
         await notificationService.addOfferAcceptedNotification({
-          participantId: selectedOfferForPayment.sellerId, // This is the seller who will receive the notification
-          participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User', // This is the buyer who accepted
+          participantId: selectedOfferForPayment.sellerId,
+          participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
           participantImage: userProfile?.avatar_url || '',
           chatId: chatId || '',
           offerId: selectedOfferForPayment.offer.id,
           serviceTitle: selectedOfferForPayment.serviceData.title,
           price: selectedOfferForPayment.serviceData.customPrice || selectedOfferForPayment.serviceData.price,
           currency: selectedOfferForPayment.serviceData.currency,
-          isAcceptedByMe: false, // From seller's perspective, they didn't accept it
+          isAcceptedByMe: false,
         });
       }
       
       setPaymentModalVisible(false);
       setSelectedOfferForPayment(null);
       
-      // Show job progress monitor
-      setCurrentJobId(activeJobId);
-      setShowJobProgress(true);
+      // Navigate to orders to track the job
+      router.push('/(tabs)/orders');
     } catch (error) {
       console.error('Error handling payment success:', error);
       Alert.alert('Error', 'Payment was successful but there was an issue updating the offer status.');
@@ -584,52 +540,6 @@ export default function ChatScreen() {
   const handlePaymentCancel = () => {
     setPaymentModalVisible(false);
     setSelectedOfferForPayment(null);
-  };
-
-  const rejectServiceOffer = async (offerId: string, reason?: string) => {
-    try {
-      console.log('Rejecting service offer:', offerId, 'with reason:', reason);
-      
-      // Find the message with this offer ID to get offer and service data
-      const offerMessage = messages.find(msg => msg.offerId === offerId);
-      if (!offerMessage || !offerMessage.serviceData) {
-        Alert.alert('Error', 'Could not find offer details');
-        return;
-      }
-
-      // Update the offer status to rejected in the database
-      console.log('🔄 Chat: About to reject offer:', offerId, 'with reason:', reason);
-      await supabaseChatService.rejectServiceOffer(offerId, reason);
-      console.log('✅ Chat: Offer rejection completed successfully');
-      
-      // Force a small delay to ensure the real-time update has time to propagate
-      setTimeout(() => {
-        console.log('🔄 Chat: Checking if offer status updated via real-time...');
-        const updatedMessage = messages.find(msg => msg.offerId === offerId);
-        if (updatedMessage && updatedMessage.offerStatus !== 'rejected') {
-          console.log('⚠️ Chat: Real-time update may have failed, status still:', updatedMessage.offerStatus);
-        }
-      }, 2000);
-      
-      // Add notification for offer rejection (to the seller)
-      await notificationService.addOfferRejectedNotification({
-        participantId: offerMessage.senderId, // This is the seller who will receive the notification
-        participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User', // This is the buyer who rejected
-        participantImage: userProfile?.avatar_url || '',
-        chatId: chatId || '',
-        offerId: offerId,
-        serviceTitle: offerMessage.serviceData.title,
-        price: offerMessage.serviceData.customPrice || offerMessage.serviceData.price,
-        currency: offerMessage.serviceData.currency,
-        rejectReason: reason,
-        isRejectedByMe: false, // From seller's perspective, they didn't reject it
-      });
-      
-      Alert.alert('Success', 'Service offer rejected.');
-    } catch (error) {
-      console.error('Error rejecting service offer:', error);
-      Alert.alert('Error', 'Failed to reject service offer');
-    }
   };
 
   const cancelServiceOffer = async (offerId: string) => {
@@ -657,19 +567,19 @@ export default function ChatScreen() {
         }
       }, 2000);
       
-      // Add notification for offer cancellation (to the buyer)
-      await notificationService.addOfferRejectedNotification({
-        participantId: offerMessage.recipientId || '', // This is the buyer who will receive the notification
-        participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User', // This is the seller who cancelled
-        participantImage: userProfile?.avatar_url || '',
-        chatId: chatId || '',
-        offerId: offerId,
-        serviceTitle: offerMessage.serviceData.title,
-        price: offerMessage.serviceData.customPrice || offerMessage.serviceData.price,
-        currency: offerMessage.serviceData.currency,
-        rejectReason: 'Cancelled by seller',
-        isRejectedByMe: true, // From buyer's perspective, the seller cancelled it
-      });
+              // Add notification for offer cancellation (to the buyer)
+        await notificationService.addOfferRejectedNotification({
+          participantId: participantId as string, // This is the buyer who will receive the notification
+          participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User', // This is the seller who cancelled
+          participantImage: userProfile?.avatar_url || '',
+          chatId: chatId || '',
+          offerId: offerId,
+          serviceTitle: offerMessage.serviceData.title,
+          price: offerMessage.serviceData.customPrice || offerMessage.serviceData.price,
+          currency: offerMessage.serviceData.currency,
+          rejectReason: 'Cancelled by seller',
+          isRejectedByMe: true, // From buyer's perspective, the seller cancelled it
+        });
       
       Alert.alert('Success', 'Service offer cancelled.');
     } catch (error) {
@@ -892,6 +802,193 @@ export default function ChatScreen() {
     }
   };
 
+  // Accept service offer - show payment options
+  const acceptServiceOffer = async (offerId: string) => {
+    try {
+      console.log('🔄 Accepting service offer:', offerId);
+      
+      // Find the offer message
+      const offerMessage = messages.find(m => m.offerId === offerId);
+      if (!offerMessage || !offerMessage.serviceData) {
+        Alert.alert('Error', 'Offer details not found');
+        return;
+      }
+
+      const serviceData = offerMessage.serviceData;
+      const amount = serviceData.customPrice || serviceData.price || 0;
+      const platformFee = Math.floor(amount * 0.05);
+      const totalAmount = amount + platformFee;
+      const sellerId = offerMessage.senderId;
+      
+      if (!user?.id || !sellerId) {
+        Alert.alert('Error', 'User information not available');
+        return;
+      }
+
+      // Show payment options to the buyer
+      Alert.alert(
+        'Choose Payment Method',
+        `Service: ${serviceData.title}\nAmount: ${amount} credits\nPlatform Fee: ${platformFee} credits\nTotal: ${totalAmount} credits\n\nHow would you like to pay?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
+          {
+            text: 'Pay with Credits',
+            onPress: () => processCreditsPayment(offerId, offerMessage, serviceData, amount, sellerId)
+          },
+          {
+            text: 'Pay with Card/Bank',
+            onPress: () => processExternalPayment(offerId, offerMessage, serviceData, amount, sellerId)
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error accepting service offer:', error);
+      Alert.alert('Error', 'Failed to accept offer. Please try again.');
+    }
+  };
+
+  // Process payment using credits (escrow system)
+  const processCreditsPayment = async (offerId: string, offerMessage: any, serviceData: any, amount: number, sellerId: string) => {
+    try {
+      // Import EscrowService dynamically
+      const { EscrowService } = await import('@/lib/escrow-service');
+      
+      // Process payment to escrow
+      const result = await EscrowService.processPaymentToEscrow(
+        offerId,
+        user!.id,
+        sellerId,
+        amount,
+        serviceData.title || 'Service',
+        serviceData.customDescription || serviceData.description,
+        serviceData.startDate,
+        serviceData.endDate
+      );
+
+      if (result.success) {
+        Alert.alert(
+          'Payment Successful!', 
+          `Your payment of ${amount} credits has been held in escrow. The seller will be notified and can start working. Payment will be released when you confirm completion.`,
+          [
+            {
+              text: 'View Orders',
+              onPress: () => router.push('/(tabs)/orders')
+            },
+            { text: 'OK' }
+          ]
+        );
+
+        // Update offer status to in_progress after successful payment
+        await supabase
+          .from('service_offers')
+          .update({ status: 'in_progress' })
+          .eq('id', offerId);
+
+        // Send notification to seller
+        await notificationService.addOfferAcceptedNotification({
+          participantId: sellerId,
+          participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
+          participantImage: userProfile?.avatar_url || '',
+          chatId: chatId || '',
+          offerId: offerId,
+          serviceTitle: serviceData.title,
+          price: amount,
+          currency: 'USD',
+          isAcceptedByMe: false
+        });
+
+      } else {
+        Alert.alert('Payment Failed', result.error || 'Unable to process payment');
+      }
+    } catch (error) {
+      console.error('Error processing credits payment:', error);
+      Alert.alert('Error', 'Failed to process payment. Please try again.');
+    }
+  };
+
+  // Process payment using external payment methods
+  const processExternalPayment = async (offerId: string, offerMessage: any, serviceData: any, amount: number, sellerId: string) => {
+    try {
+      // Set up the offer data for the payment modal
+      const offerData = {
+        id: offerId,
+        chatId: chatId || '',
+        serviceId: serviceData.id || '',
+        sellerId: sellerId,
+        buyerId: user!.id,
+        originalPrice: amount,
+        customPrice: serviceData.customPrice || amount,
+        customDescription: serviceData.customDescription || '',
+        customDeliveryTime: serviceData.customDeliveryTime || 3,
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Store the payment data for the modal
+      setSelectedOfferForPayment({
+        offer: offerData,
+        serviceData: serviceData,
+        sellerId: sellerId
+      });
+      
+      // Show the payment modal
+      setPaymentModalVisible(true);
+    } catch (error) {
+      console.error('Error preparing external payment:', error);
+      Alert.alert('Error', 'Failed to prepare payment. Please try again.');
+    }
+  };
+
+  // Reject service offer
+  const rejectServiceOffer = async (offerId: string, reason?: string) => {
+    try {
+      console.log('🔄 Rejecting service offer:', offerId, 'Reason:', reason);
+      
+      // Find the offer message
+      const offerMessage = messages.find(m => m.offerId === offerId);
+      if (!offerMessage || !offerMessage.serviceData) {
+        Alert.alert('Error', 'Offer details not found');
+        return;
+      }
+
+      const sellerId = offerMessage.senderId;
+      
+      // Update offer status
+      await supabase
+        .from('service_offers')
+        .update({ 
+          status: 'rejected',
+          rejection_reason: reason 
+        })
+        .eq('id', offerId);
+
+      // Send notification to seller
+      if (sellerId) {
+        await notificationService.addOfferRejectedNotification({
+          participantId: sellerId,
+          participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
+          participantImage: userProfile?.avatar_url || '',
+          chatId: chatId || '',
+          offerId: offerId,
+          serviceTitle: offerMessage.serviceData.title,
+          price: offerMessage.serviceData.customPrice || offerMessage.serviceData.price || 0,
+          currency: 'USD',
+          rejectReason: reason,
+          isRejectedByMe: false
+        });
+      }
+
+      Alert.alert('Offer Rejected', 'The seller has been notified.');
+    } catch (error) {
+      console.error('Error rejecting service offer:', error);
+      Alert.alert('Error', 'Failed to reject offer. Please try again.');
+    }
+  };
+
   const renderMessage = (msg: LiveChatMessage, index: number) => {
     const showTimestamp = index === 0 || 
       (index > 0 && 
@@ -918,6 +1015,7 @@ export default function ChatScreen() {
             isCurrentUser={msg.senderId === user?.id}
             onAcceptOffer={acceptServiceOffer}
             onRejectOffer={rejectServiceOffer}
+            onViewOrderProgress={() => router.push('/(tabs)/orders')}
             onEditOffer={(offerId) => {
               console.log('Edit offer:', offerId);
               // Find the message to get current offer details
@@ -1411,10 +1509,8 @@ export default function ChatScreen() {
           </View>
         </Modal>
 
-
-
         {/* Payment Modal */}
-        <PaymentModal
+        <MalaysianPaymentModal
           visible={paymentModalVisible}
           offer={selectedOfferForPayment?.offer}
           serviceData={selectedOfferForPayment?.serviceData}

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, supabaseAdmin } from './supabase';
 
 export interface WalletData {
   id?: string;
@@ -49,30 +49,217 @@ export interface ReferralData {
 
 export class WalletService {
   /**
-   * Get wallet data for a user
+   * Get wallet data for a user, create one if it doesn't exist
    */
   static async getWallet(userId: string): Promise<WalletData | null> {
     try {
+      console.log('🔍 Getting wallet for user:', userId);
+      
+      // First try to get existing wallet
       const { data, error } = await supabase
         .from('wallets')
         .select('*')
         .eq('user_id', userId)
+        .maybeSingle();
+
+      console.log('🔍 Wallet query result:', { data: !!data, error: error?.code, message: error?.message });
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No rows returned - wallet doesn't exist
+          console.log('📝 No wallet found, creating new wallet for user:', userId);
+          return await this.createWallet(userId);
+        } else if (error.code === 'PGRST301') {
+          // RLS policy violation - user not authenticated properly
+          console.error('🔐 RLS policy violation - user not authenticated properly:', error);
+          console.error('🔐 This suggests the user session may be invalid');
+          return null;
+        } else {
+          console.error('❌ Unknown error fetching wallet:', error);
+          return null;
+        }
+      }
+
+      // If wallet exists, return it
+      if (data) {
+        console.log('✅ Found existing wallet for user:', userId, 'with', data.betame_credits, 'credits');
+        
+        // Handle backward compatibility for column name changes
+        if (data.premium_stones !== undefined && data.betame_stones === undefined) {
+          data.betame_stones = data.premium_stones;
+        }
+        
+        // Ensure betame_stones has a value
+        if (data.betame_stones === null || data.betame_stones === undefined) {
+          data.betame_stones = data.premium_stones || 0;
+        }
+        
+        return data;
+      }
+
+      // If no wallet exists, create one with default values
+      console.log('📝 No wallet data returned, creating new wallet for user:', userId);
+      return await this.createWallet(userId);
+    } catch (error) {
+      console.error('❌ Exception in getWallet:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create a new wallet for a user with default values
+   */
+  static async createWallet(userId: string): Promise<WalletData | null> {
+    try {
+      const defaultWallet: WalletData = {
+        user_id: userId,
+        betame_stones: 10, // Default starting stones
+        betame_credits: 5, // Default starting credits
+      };
+
+      // Use admin client to bypass RLS when creating wallets for other users
+      // This is necessary when user A triggers wallet creation for user B (e.g., service payments)
+      const { data, error } = await supabaseAdmin
+        .from('wallets')
+        .insert(defaultWallet)
+        .select()
         .single();
 
       if (error) {
-        console.error('Error fetching wallet:', error);
+        console.error('Error creating wallet:', error);
         return null;
       }
 
-      // Handle backward compatibility for column name changes
-      if (data && data.premium_stones !== undefined && data.betame_stones === undefined) {
-        data.betame_stones = data.premium_stones;
-      }
-
+      console.log('✅ Created new wallet for user:', userId, 'with', data.betame_stones, 'stones and', data.betame_credits, 'credits');
       return data;
     } catch (error) {
-      console.error('Error in getWallet:', error);
+      console.error('Error in createWallet:', error);
       return null;
+    }
+  }
+
+  /**
+   * Ensure wallet exists for user, create if it doesn't
+   * This is useful to call during user authentication/signup
+   */
+  static async ensureWalletExists(userId: string): Promise<WalletData | null> {
+    try {
+      // Try to get existing wallet first
+      const existingWallet = await this.getWallet(userId);
+      if (existingWallet) {
+        return existingWallet;
+      }
+
+      // If no wallet exists, getWallet will create one automatically
+      // But let's be explicit about it for logging
+      console.log('🔄 Ensuring wallet exists for user:', userId);
+      return await this.getWallet(userId);
+    } catch (error) {
+      console.error('Error in ensureWalletExists:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Admin method to get wallet bypassing RLS (for debugging/admin operations)
+   */
+  static async getWalletAdmin(userId: string): Promise<WalletData | null> {
+    try {
+      console.log('🔍 Admin getting wallet for user:', userId);
+      
+      const { data, error } = await supabaseAdmin
+        .from('wallets')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('❌ Admin error fetching wallet:', error);
+        return null;
+      }
+
+      if (data) {
+        console.log('✅ Admin found wallet for user:', userId, 'with', data.betame_credits, 'credits');
+        
+        // Handle backward compatibility
+        if (data.premium_stones !== undefined && data.betame_stones === undefined) {
+          data.betame_stones = data.premium_stones;
+        }
+        
+        if (data.betame_stones === null || data.betame_stones === undefined) {
+          data.betame_stones = data.premium_stones || 0;
+        }
+        
+        return data;
+      }
+
+      console.log('📝 Admin: No wallet found for user:', userId);
+      return null;
+    } catch (error) {
+      console.error('❌ Admin exception in getWallet:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Admin method to update wallet bypassing RLS (for cross-user operations)
+   */
+  static async updateWalletAdmin(walletData: WalletData): Promise<WalletData | null> {
+    try {
+      console.log('🔧 Admin updating wallet for user:', walletData.user_id);
+      
+      const { data, error } = await supabaseAdmin
+        .from('wallets')
+        .update({
+          betame_stones: walletData.betame_stones,
+          betame_credits: walletData.betame_credits,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', walletData.user_id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Admin error updating wallet:', error);
+        return null;
+      }
+
+      console.log('✅ Admin updated wallet for user:', walletData.user_id);
+      return data;
+    } catch (error) {
+      console.error('❌ Admin exception in updateWallet:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Admin method to record transaction bypassing RLS (for cross-user operations)
+   */
+  static async recordTransactionAdmin(transaction: Transaction): Promise<Transaction | null> {
+    try {
+      console.log('📝 Admin recording transaction:', transaction);
+      
+      const { data, error } = await supabaseAdmin
+        .from('transactions')
+        .insert([{
+          user_id: transaction.user_id,
+          type: transaction.type,
+          amount: transaction.amount,
+          description: transaction.description,
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Admin error recording transaction:', error);
+        throw error;
+      }
+
+      console.log('✅ Admin transaction recorded successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Admin exception recording transaction:', error);
+      throw error;
     }
   }
 
@@ -192,6 +379,104 @@ export class WalletService {
     } catch (error) {
       console.error('Error in purchaseBoost:', error);
       return { success: false, error: 'Purchase failed' };
+    }
+  }
+
+  /**
+   * Process service payment
+   */
+  static async processServicePayment(
+    userId: string,
+    amount: number,
+    serviceTitle: string,
+    serviceId?: string
+  ): Promise<{ success: boolean; wallet?: WalletData; error?: string }> {
+    try {
+      // Get user's wallet (this will create one if it doesn't exist)
+      const wallet = await this.getWallet(userId);
+      if (!wallet) {
+        return { success: false, error: 'Failed to get or create wallet' };
+      }
+
+      // Check if user has enough credits
+      if (wallet.betame_credits < amount) {
+        return { 
+          success: false, 
+          error: `Insufficient credits. You have ${wallet.betame_credits} credits but need ${amount}` 
+        };
+      }
+
+      // Update wallet - deduct credits
+      const updatedWallet = await this.updateWallet({
+        ...wallet,
+        betame_credits: wallet.betame_credits - amount,
+      });
+
+      if (!updatedWallet) {
+        return { success: false, error: 'Failed to update wallet' };
+      }
+
+      // Record payment transaction
+      await this.recordTransaction({
+        user_id: userId,
+        type: 'service_payment',
+        amount: -amount, // Negative amount for payment
+        description: `Payment for service: ${serviceTitle}`,
+      });
+
+      console.log(`✅ Service payment processed: ${amount} credits deducted for ${serviceTitle}`);
+      return { success: true, wallet: updatedWallet };
+    } catch (error) {
+      console.error('Error in processServicePayment:', error);
+      return { success: false, error: 'Payment processing failed' };
+    }
+  }
+
+  /**
+   * Record service payment received (for service providers)
+   */
+  static async recordServicePaymentReceived(
+    providerId: string,
+    amount: number,
+    serviceTitle: string,
+    serviceId?: string
+  ): Promise<{ success: boolean; wallet?: WalletData; error?: string }> {
+    try {
+      console.log('💰 Processing service payment received for provider:', providerId, 'amount:', amount);
+
+      // Get provider's wallet using admin access (cross-user operation)
+      let wallet = await this.getWalletAdmin(providerId);
+      if (!wallet) {
+        console.log('📝 Creating wallet for provider:', providerId);
+        wallet = await this.createWallet(providerId);
+        if (!wallet) {
+          return { success: false, error: 'Failed to create provider wallet' };
+        }
+      }
+
+      // Update wallet - add credits using admin access (cross-user operation)
+      const updatedWallet = await this.updateWalletAdmin({
+        ...wallet,
+        betame_credits: wallet.betame_credits + amount,
+      });
+
+      if (!updatedWallet) {
+        return { success: false, error: 'Failed to update provider wallet' };
+      }
+
+      // Record payment received transaction using admin access (cross-user operation)
+      await this.recordTransactionAdmin({
+        user_id: providerId,
+        type: 'service_payment_received',
+        amount: amount, // Positive amount for received payment
+        description: `Payment received for service: ${serviceTitle}${serviceId ? ` (ID: ${serviceId})` : ''}`,
+      });
+
+      console.log(`✅ Service payment received: ${amount} credits added for ${serviceTitle}`);
+      return { success: true, wallet: updatedWallet };
+    } catch (error) {
+      console.error('Error in recordServicePaymentReceived:', error);
+      return { success: false, error: 'Payment recording failed' };
     }
   }
 
