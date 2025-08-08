@@ -334,8 +334,7 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
           />
         </View>
 
-        {/* Spacer for bottom buttons */}
-        <View style={{ height: 80 }} />
+
       </View>
     </View>
   );
@@ -395,8 +394,7 @@ const styles = StyleSheet.create({
   controlsContainer: {
     backgroundColor: Colors.background.tertiary,
     padding: 16,
-    paddingBottom: 32,
-    flex: 1,
+    paddingBottom: 16,
   },
   inputGroup: {
     marginBottom: 16,

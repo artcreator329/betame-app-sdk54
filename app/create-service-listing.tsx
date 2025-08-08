@@ -364,14 +364,21 @@ export default function CreateServiceListingScreen() {
 
    const renderServiceAreaStep = () => (
      <View style={styles.serviceAreaContainer}>
-       <ServiceAreaPicker
-          onLocationSelect={handleServiceAreaSelect}
-          initialLocation={serviceArea || undefined}
-        />
+       <ScrollView 
+         style={styles.serviceAreaScrollView}
+         contentContainerStyle={styles.serviceAreaScrollContent}
+         showsVerticalScrollIndicator={false}
+       >
+         <ServiceAreaPicker
+            onLocationSelect={handleServiceAreaSelect}
+            initialLocation={serviceArea || undefined}
+          />
+       </ScrollView>
        <View style={styles.serviceAreaButtons}>
          <TouchableOpacity 
            style={styles.backButton}
            onPress={handlePreviousStep}
+           activeOpacity={0.8}
          >
            <Text style={styles.backButtonText}>Back</Text>
          </TouchableOpacity>
@@ -382,10 +389,11 @@ export default function CreateServiceListingScreen() {
            ]}
            onPress={handleProceedToDetails}
            disabled={!serviceArea}
+           activeOpacity={0.8}
          >
            <Text style={[
              styles.continueButtonText,
-             serviceArea ? styles.continueButtonTextActive : {}
+             serviceArea ? styles.continueButtonTextActive : styles.continueButtonTextDisabled
            ]}>
              Continue to Details
            </Text>
@@ -634,10 +642,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   continueButton: {
-    paddingVertical: 12,
-    borderRadius: 8,
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   continueButtonActive: {
     backgroundColor: '#007AFF',
@@ -651,6 +664,9 @@ const styles = StyleSheet.create({
   },
   continueButtonTextActive: {
     color: '#FFFFFF',
+  },
+  continueButtonTextDisabled: {
+    color: '#8E8E93',
   },
   // Step indicator styles
   stepIndicator: {
@@ -707,6 +723,13 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
+  serviceAreaScrollView: {
+    flex: 1,
+  },
+  serviceAreaScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 100,
+  },
   serviceAreaButtons: {
     flexDirection: 'row',
     padding: 16,
@@ -722,16 +745,21 @@ const styles = StyleSheet.create({
   },
   backButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   backButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
+    color: '#007AFF',
   },
 });
