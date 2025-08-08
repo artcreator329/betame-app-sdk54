@@ -42,22 +42,31 @@ export function useSupabaseChat({ chatId, currentUserId, currentUserName }: UseS
 
   // Subscribe to new messages
   useEffect(() => {
+    console.log('🔄 useSupabaseChat: Subscription effect triggered with:', { chatId, currentUserId });
+    
     if (!chatId || !currentUserId) {
+      console.log('🔄 useSupabaseChat: Skipping subscription - missing chatId or currentUserId');
       return;
     }
 
+    console.log('🔄 useSupabaseChat: Setting up subscription for chat:', chatId);
+
     const handleNewMessage = (message: LiveChatMessage) => {
+      console.log('🔄 useSupabaseChat: Received new message:', message.id);
       setMessages(prev => {
         // Check if message already exists to prevent duplicates
         const exists = prev.some(msg => msg.id === message.id);
         if (exists) {
+          console.log('🔄 useSupabaseChat: Message already exists, skipping:', message.id);
           return prev;
         }
+        console.log('🔄 useSupabaseChat: Adding new message to state:', message.id);
         return [...prev, message];
       });
     };
 
     const handleDeleteMessage = (messageId: string) => {
+      console.log('🔄 useSupabaseChat: Deleting message:', messageId);
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
     };
 
@@ -87,7 +96,10 @@ export function useSupabaseChat({ chatId, currentUserId, currentUserName }: UseS
       handleUpdateMessage
     );
 
+    console.log('🔄 useSupabaseChat: Subscription established for chat:', chatId);
+
     return () => {
+      console.log('🔄 useSupabaseChat: Cleaning up subscription for chat:', chatId);
       if (unsubscribeMessagesRef.current) {
         unsubscribeMessagesRef.current();
       }

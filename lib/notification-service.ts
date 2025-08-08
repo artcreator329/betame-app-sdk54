@@ -1,5 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Notification } from '@/types/notification';
+import { supabase } from '@/lib/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { showLocalNotification } from '@/lib/local-notifications';
 
 const NOTIFICATIONS_STORAGE_KEY = '@betame_notifications';
 
@@ -9,6 +12,7 @@ export class NotificationService {
   private notifications: Notification[] = [];
   private isInitialized: boolean = false;
   private currentUserId: string | null = null;
+  private realtimeChannel: RealtimeChannel | null = null;
 
   static getInstance(): NotificationService {
     if (!NotificationService.instance) {
@@ -43,6 +47,15 @@ export class NotificationService {
     }
   }
 
+  // Connect for a logged-in user: set current user, hydrate from Supabase, and start realtime
+  async connect(userId: string): Promise<void> {
+    this.setCurrentUser(userId);
+    await this.initializeService(userId);
+    await this.hydrateFromSupabase();
+    await this.backfillLocalToSupabase();
+    this.startRealtimeSubscription(userId);
+  }
+
   private async loadNotifications(): Promise<void> {
     try {
       if (!this.currentUserId) return;
@@ -51,9 +64,39 @@ export class NotificationService {
       const stored = await AsyncStorage.getItem(userStorageKey);
       if (stored) {
         const allNotifications = JSON.parse(stored);
-        // Filter notifications for current user only
-        this.notifications = allNotifications.filter((n: Notification) => n.userId === this.currentUserId);
+        // Filter notifications for current user only (tolerate missing userId by assigning)
+        const normalized: Notification[] = (allNotifications as Notification[]).map((n: any) => ({
+          ...n,
+          userId: n.userId ?? this.currentUserId!,
+        }));
+        this.notifications = normalized.filter((n: Notification) => n.userId === this.currentUserId);
         this.notifyListeners();
+        return;
+      }
+
+      // Legacy migration: look for unsuffixed key and migrate
+      const legacyStored = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+      if (legacyStored) {
+        try {
+          const legacy = JSON.parse(legacyStored);
+          if (Array.isArray(legacy)) {
+            const migrated: Notification[] = legacy.map((n: any) => ({
+              id: n.id ?? `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              userId: n.userId ?? this.currentUserId!,
+              type: n.type ?? 'system',
+              title: n.title ?? 'Notification',
+              message: n.message ?? '',
+              timestamp: n.timestamp ?? new Date().toISOString(),
+              isRead: !!n.isRead,
+              data: n.data ?? undefined,
+            }));
+            this.notifications = migrated.filter(n => n.userId === this.currentUserId);
+            await this.saveNotifications(); // persist to per-user key
+            this.notifyListeners();
+          }
+        } catch (e) {
+          // ignore malformed legacy
+        }
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -102,6 +145,181 @@ export class NotificationService {
     };
   }
 
+  private startRealtimeSubscription(userId: string) {
+    try {
+      // Clean up any existing channel
+      if (this.realtimeChannel) {
+        supabase.removeChannel(this.realtimeChannel);
+        this.realtimeChannel = null;
+      }
+
+      // Subscribe to inserts/updates/deletes for this user's notifications
+      const channel = supabase
+        .channel(`notifications_${userId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload: any) => {
+            const row = payload.new as any;
+            const incoming: Notification = {
+              id: row.id,
+              userId: row.user_id,
+              type: row.type,
+              title: row.title,
+              message: row.message,
+              timestamp: row.created_at ?? new Date().toISOString(),
+              isRead: row.is_read,
+              data: row.data ?? undefined,
+            };
+
+            // Avoid duplicates
+            const exists = this.notifications.some(n => n.id === incoming.id);
+            if (!exists) {
+              this.notifications.unshift(incoming);
+              // Keep only the last 100
+              if (this.notifications.length > 100) {
+                this.notifications = this.notifications.slice(0, 100);
+              }
+              // Persist and notify
+              this.saveNotifications();
+              this.notifyListeners();
+
+              // Show system notification
+              showLocalNotification(incoming).catch(() => {});
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload: any) => {
+            const row = payload.new as any;
+            const index = this.notifications.findIndex(n => n.id === row.id);
+            if (index !== -1) {
+              this.notifications[index].isRead = !!row.is_read;
+              this.notifications[index].title = row.title ?? this.notifications[index].title;
+              this.notifications[index].message = row.message ?? this.notifications[index].message;
+              this.notifications[index].data = row.data ?? this.notifications[index].data;
+              this.saveNotifications();
+              this.notifyListeners();
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload: any) => {
+            const row = payload.old as any;
+            const index = this.notifications.findIndex(n => n.id === row.id);
+            if (index !== -1) {
+              this.notifications.splice(index, 1);
+              this.saveNotifications();
+              this.notifyListeners();
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            // no-op
+          }
+        });
+
+      this.realtimeChannel = channel;
+    } catch (error) {
+      console.error('Error starting notifications realtime subscription:', error);
+    }
+  }
+
+  private async hydrateFromSupabase(): Promise<void> {
+    if (!this.currentUserId) return;
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', this.currentUserId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.error('Error fetching notifications from Supabase:', error);
+        return;
+      }
+
+      if (!data) return;
+
+      const supabaseNotifications: Notification[] = data.map((row: any) => ({
+        id: row.id,
+        userId: row.user_id,
+        type: row.type,
+        title: row.title,
+        message: row.message,
+        timestamp: row.created_at ?? new Date().toISOString(),
+        isRead: row.is_read,
+        data: row.data ?? undefined,
+      }));
+
+      // Merge Supabase and local, preferring Supabase entries
+      const byId = new Map<string, Notification>();
+      for (const n of this.notifications) byId.set(n.id, n);
+      for (const n of supabaseNotifications) byId.set(n.id, n);
+      this.notifications = Array.from(byId.values()).sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
+
+      await this.saveNotifications();
+      this.notifyListeners();
+    } catch (error) {
+      console.error('Unexpected error hydrating notifications from Supabase:', error);
+    }
+  }
+
+  private async backfillLocalToSupabase(): Promise<void> {
+    if (!this.currentUserId) return;
+    try {
+      if (this.notifications.length === 0) return;
+      // Fetch existing Supabase IDs to avoid upserting everything
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', this.currentUserId)
+        .limit(1000);
+      const existingIds = new Set((existing ?? []).map((r: any) => r.id));
+
+      const toCreate = this.notifications.filter(n => !existingIds.has(n.id));
+      if (toCreate.length === 0) return;
+
+      // Call RPC per-notification to preserve ids and satisfy RLS (and avoid UUID cast issues)
+      for (const n of toCreate) {
+        try {
+          const { error } = await supabase.rpc('create_notification', {
+            p_user_id: this.currentUserId,
+            p_type: n.type,
+            p_title: n.title,
+            p_message: n.message,
+            p_data: n.data ?? null,
+            p_id: n.id,
+          });
+          if (error) {
+            console.error('❌ NotificationService: Backfill RPC error:', error, 'for id:', n.id);
+          }
+        } catch (e) {
+          console.error('❌ NotificationService: Backfill exception for id:', n.id, e);
+        }
+      }
+    } catch (error) {
+      console.error('❌ NotificationService: Exception during backfill:', error);
+    }
+  }
+
+  disconnect(): void {
+    try {
+      if (this.realtimeChannel) {
+        supabase.removeChannel(this.realtimeChannel);
+        this.realtimeChannel = null;
+      }
+    } catch (error) {
+      console.error('Error disconnecting notifications realtime channel:', error);
+    }
+  }
+
   async addNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'>, targetUserId: string): Promise<void> {
     console.log('📝 NotificationService: addNotification called with:', notification, 'for user:', targetUserId);
     
@@ -138,6 +356,23 @@ export class NotificationService {
     
     this.notifyListeners();
     console.log('📝 NotificationService: Notified listeners, listener count:', this.listeners.length);
+
+    // Write-through to Supabase via secure RPC (best-effort)
+    try {
+      const { error } = await supabase.rpc('create_notification', {
+        p_user_id: targetUserId,
+        p_type: newNotification.type,
+        p_title: newNotification.title,
+        p_message: newNotification.message,
+        p_data: newNotification.data ?? null,
+        p_id: newNotification.id,
+      });
+      if (error) {
+        console.error('❌ NotificationService: Failed to insert notification to Supabase:', error);
+      }
+    } catch (error) {
+      console.error('❌ NotificationService: Exception inserting notification to Supabase:', error);
+    }
     
     // Restore original user if it was different
     if (originalUserId && originalUserId !== targetUserId) {
@@ -152,6 +387,20 @@ export class NotificationService {
       notification.isRead = true;
       await this.saveNotifications();
       this.notifyListeners();
+
+      // Mirror to Supabase
+      try {
+        if (this.currentUserId) {
+          const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('id', notificationId)
+            .eq('user_id', this.currentUserId);
+          if (error) console.error('❌ NotificationService: Failed to mark as read in Supabase:', error);
+        }
+      } catch (error) {
+        console.error('❌ NotificationService: Exception marking as read in Supabase:', error);
+      }
     }
   }
 
@@ -176,6 +425,20 @@ export class NotificationService {
       this.notifications.splice(index, 1);
       await this.saveNotifications();
       this.notifyListeners();
+
+      // Mirror deletion to Supabase
+      try {
+        if (this.currentUserId) {
+          const { error } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('id', notificationId)
+            .eq('user_id', this.currentUserId);
+          if (error) console.error('❌ NotificationService: Failed to delete notification in Supabase:', error);
+        }
+      } catch (error) {
+        console.error('❌ NotificationService: Exception deleting notification in Supabase:', error);
+      }
     }
   }
 
@@ -183,6 +446,18 @@ export class NotificationService {
     this.notifications = [];
     await this.saveNotifications();
     this.notifyListeners();
+
+    try {
+      if (this.currentUserId) {
+        const { error } = await supabase
+          .from('notifications')
+          .delete()
+          .eq('user_id', this.currentUserId);
+        if (error) console.error('❌ NotificationService: Failed to clear all notifications in Supabase:', error);
+      }
+    } catch (error) {
+      console.error('❌ NotificationService: Exception clearing all notifications in Supabase:', error);
+    }
   }
 
   async getNotifications(): Promise<Notification[]> {
@@ -191,6 +466,55 @@ export class NotificationService {
       await this.initializeService();
     }
     return this.notifications;
+  }
+
+  async getNotificationsPage(pageSize: number, beforeCreatedAt?: string, beforeId?: string): Promise<{ items: Notification[]; nextCursor?: { createdAt: string; id: string } }> {
+    if (!this.currentUserId) return { items: [] };
+    try {
+      let query = supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', this.currentUserId)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
+
+      if (beforeCreatedAt) {
+        query = query.lt('created_at', beforeCreatedAt);
+      }
+      if (beforeId) {
+        // tie-breaker for same timestamp
+        query = query.lt('id', beforeId);
+      }
+
+      const { data, error } = await query.limit(pageSize);
+      if (error || !data) return { items: [] };
+
+      const items: Notification[] = data.map((row: any) => ({
+        id: row.id,
+        userId: row.user_id,
+        type: row.type,
+        title: row.title,
+        message: row.message,
+        timestamp: row.created_at ?? new Date().toISOString(),
+        isRead: row.is_read,
+        data: row.data ?? undefined,
+      }));
+
+      const last = items[items.length - 1];
+      const nextCursor = last ? { createdAt: last.timestamp, id: last.id } : undefined;
+
+      // Merge into local cache
+      const byId = new Map<string, Notification>(this.notifications.map(n => [n.id, n] as const));
+      for (const n of items) byId.set(n.id, n);
+      this.notifications = Array.from(byId.values()).sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
+      await this.saveNotifications();
+      this.notifyListeners();
+
+      return { items, nextCursor };
+    } catch (error) {
+      console.error('❌ NotificationService: getNotificationsPage error:', error);
+      return { items: [] };
+    }
   }
 
   getUnreadCount(): number {
@@ -251,7 +575,7 @@ export class NotificationService {
       await this.initializeService();
     }
     
-    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'> = {
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
        type: 'chat' as const,
        title: `New message from ${participantName}`,
        message: message.length > 50 ? message.substring(0, 50) + '...' : message,
@@ -265,7 +589,7 @@ export class NotificationService {
      
      console.log('🔔 NotificationService: Created notification object:', notification);
      console.log('🔔 NotificationService: Notification will be sent TO:', participantId, 'with navigation TO:', senderId);
-     await this.addNotification(notification, participantId);
+      await this.addNotification(notification, participantId);
      console.log('🔔 NotificationService: addChatNotification completed');
   }
 
@@ -301,7 +625,7 @@ export class NotificationService {
       senderId
     });
 
-    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'> = {
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'offer' as const,
       title: isIncoming ? `New offer from ${participantName}` : `Offer sent to ${participantName}`,
       message: `${serviceTitle} - ${currency} ${price}`,
@@ -345,7 +669,7 @@ export class NotificationService {
     currency: string;
     isAcceptedByMe?: boolean;
   }): Promise<void> {
-    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'> = {
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'offer' as const,
       title: isAcceptedByMe ? `You accepted ${participantName}'s offer` : `Your offer was accepted by ${participantName}`,
       message: `${serviceTitle} - ${currency} ${price}`,
@@ -389,7 +713,7 @@ export class NotificationService {
     rejectReason?: string;
     isRejectedByMe?: boolean;
   }): Promise<void> {
-    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'> = {
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'offer' as const,
       title: isRejectedByMe ? `You rejected ${participantName}'s offer` : `Your offer was rejected by ${participantName}`,
       message: rejectReason 

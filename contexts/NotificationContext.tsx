@@ -21,10 +21,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (!user?.id) {
         setNotifications([]);
         setUnreadCount(0);
+        // Ensure realtime channel is cleaned up when user logs out
+        try {
+          (notificationService as any).disconnect?.();
+        } catch {}
         return;
       }
 
-      notificationService.setCurrentUser(user.id);
+      await (notificationService as any).connect?.(user.id);
       await notificationService.getNotifications().then((savedNotifications) => {
         setNotifications(savedNotifications);
         setUnreadCount(savedNotifications.filter(n => !n.isRead).length);

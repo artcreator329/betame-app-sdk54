@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useEffect } from 'react';
+import { configureLocalNotifications } from '@/lib/local-notifications';
 
 function LoadingScreen() {
   return (
@@ -221,6 +222,10 @@ export default function RootLayout() {
   useFrameworkReady();
 
   console.log('🔄 App: Rendering RootLayout...');
+
+  useEffect(() => {
+    configureLocalNotifications();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

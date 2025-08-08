@@ -154,15 +154,24 @@ export default function NotificationsScreen() {
     const iconColor = getNotificationColor(notification.type, colors);
     const gradientColors = getNotificationGradient(notification.type);
     
+    // Enhanced styling for read notifications
+    const isRead = notification.isRead;
+    const readOpacity = isRead ? 0.6 : 1;
+    const readTextColor = isRead ? colors.text.secondary : colors.text.primary;
+    const readIconColor = isRead ? colors.text.secondary : iconColor;
+    const readBackgroundColor = isRead ? colors.background.secondary : gradientColors[0];
+    const readBorderColor = isRead ? colors.border.light : iconColor + '30';
+    
     return (
       <TouchableOpacity
         key={notification.id}
         style={[
           styles.notificationItem,
           { 
-            backgroundColor: notification.isRead ? colors.background.secondary : gradientColors[0],
-            borderColor: notification.isRead ? colors.border.light : iconColor + '30',
-            shadowColor: colors.shadow.medium
+            backgroundColor: readBackgroundColor,
+            borderColor: readBorderColor,
+            shadowColor: colors.shadow.medium,
+            opacity: readOpacity
           }
         ]}
         onPress={() => handleNotificationPress(notification)}
@@ -173,12 +182,12 @@ export default function NotificationsScreen() {
           <View style={[
             styles.iconContainer, 
             { 
-              backgroundColor: iconColor + '15',
+              backgroundColor: readIconColor + '15',
               borderWidth: 2,
-              borderColor: iconColor + '30'
+              borderColor: readIconColor + '30'
             }
           ]}>
-            <IconComponent size={22} color={iconColor} />
+            <IconComponent size={22} color={readIconColor} />
           </View>
           {!notification.isRead && (
             <View style={[styles.unreadIndicator, { backgroundColor: iconColor }]} />
@@ -191,7 +200,7 @@ export default function NotificationsScreen() {
           <View style={styles.contentHeader}>
             <Text style={[
               styles.notificationTitle,
-              { color: colors.text.primary },
+              { color: readTextColor },
               !notification.isRead && styles.unreadTitle
             ]} numberOfLines={1}>
               {notification.title}
@@ -207,7 +216,7 @@ export default function NotificationsScreen() {
           {/* Message content */}
           <Text style={[
             styles.notificationMessage, 
-            { color: colors.text.secondary },
+            { color: readTextColor },
             !notification.isRead && { color: colors.text.primary }
           ]} numberOfLines={2}>
             {notification.message}
@@ -217,12 +226,12 @@ export default function NotificationsScreen() {
           {notification.type === 'offer' && notification.data && (
             <View style={styles.offerInfo}>
               {notification.data.serviceTitle && (
-                <Text style={[styles.serviceTitle, { color: iconColor }]} numberOfLines={1}>
+                <Text style={[styles.serviceTitle, { color: readIconColor }]} numberOfLines={1}>
                   📋 {notification.data.serviceTitle}
                 </Text>
               )}
               {notification.data.price && (
-                <Text style={[styles.priceInfo, { color: colors.text.primary }]}>
+                <Text style={[styles.priceInfo, { color: readTextColor }]}>
                   💰 {notification.data.currency || 'RM'} {notification.data.price}
                 </Text>
               )}
@@ -234,7 +243,7 @@ export default function NotificationsScreen() {
             <View style={styles.participantSection}>
               <Image 
                 source={{ uri: notification.data.participantImage }} 
-                style={styles.participantImage} 
+                style={[styles.participantImage, { opacity: readOpacity }]} 
               />
               <Text style={[styles.participantName, { color: colors.text.secondary }]}>
                 {notification.data.participantName}
@@ -395,9 +404,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  clearButton: {
-    // Additional styles for clear button if needed
-  },
+
   content: {
     flexGrow: 1,
     paddingTop: 8,

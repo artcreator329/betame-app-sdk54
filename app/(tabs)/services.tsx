@@ -57,6 +57,11 @@ export default function ServicesScreen() {
   const [isGridLayout, setIsGridLayout] = useState(true);
   const colors = useColors();
 
+  // Debug refreshing state changes
+  useEffect(() => {
+    console.log('🔄 ServicesScreen: refreshing state changed to:', refreshing);
+  }, [refreshing]);
+
   const fetchServices = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -74,13 +79,16 @@ export default function ServicesScreen() {
   }, []);
 
   const onRefresh = useCallback(async () => {
+    console.log('🔄 ServicesScreen: Starting refresh');
     setRefreshing(true);
     try {
       const allServices = await ServiceService.getAllServices();
+      console.log('🔄 ServicesScreen: Fetched services:', allServices.length);
       setServices(allServices.map(convertToUIService));
     } catch (error) {
       console.error('Error refreshing services:', error);
     } finally {
+      console.log('🔄 ServicesScreen: Finishing refresh');
       setRefreshing(false);
     }
   }, []);
@@ -92,8 +100,11 @@ export default function ServicesScreen() {
   // Refetch services when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchServices();
-    }, [fetchServices])
+      console.log('🔄 ServicesScreen: useFocusEffect triggered');
+      if (!refreshing) {
+        fetchServices();
+      }
+    }, [fetchServices, refreshing])
   );
 
   const getCategoryDisplayText = () => {

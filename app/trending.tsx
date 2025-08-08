@@ -151,6 +151,11 @@ export default function TrendingScreen() {
   const router = useRouter();
   const colors = useColors();
 
+  // Debug refreshing state changes
+  useEffect(() => {
+    console.log('🔄 TrendingScreen: refreshing state changed to:', refreshing);
+  }, [refreshing]);
+
   const fetchServices = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -174,8 +179,10 @@ export default function TrendingScreen() {
   }, []);
 
   const onRefresh = useCallback(async () => {
+    console.log('🔄 TrendingScreen: Starting refresh');
     setRefreshing(true);
     await fetchServices();
+    console.log('🔄 TrendingScreen: Finishing refresh');
     setRefreshing(false);
   }, [fetchServices]);
 
@@ -185,8 +192,11 @@ export default function TrendingScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchServices();
-    }, [fetchServices])
+      console.log('🔄 TrendingScreen: useFocusEffect triggered');
+      if (!refreshing) {
+        fetchServices();
+      }
+    }, [fetchServices, refreshing])
   );
 
   const getCategoryDisplayText = () => {

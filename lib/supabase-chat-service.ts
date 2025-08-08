@@ -1217,7 +1217,7 @@ export class SupabaseChatService {
     onDelete: (messageId: string) => void,
     onUpdate?: (message: LiveChatMessage) => void
   ): () => void {
-    console.log('📡 Subscribing to messages for chat:', chatId);
+    console.log('📡 SupabaseChatService: Subscribing to messages for chat:', chatId);
     
     const channel = supabase
       .channel(`chat:${chatId}`)
@@ -1230,9 +1230,11 @@ export class SupabaseChatService {
           filter: `chat_id=eq.${chatId}`,
         },
         async (payload) => {
+          console.log('📡 SupabaseChatService: INSERT event received:', payload);
           const transformedMessage = await this.transformMessage(payload.new, currentUserId);
+          console.log('📡 SupabaseChatService: Transformed message:', transformedMessage);
           
-                    // Trigger notification if message is from another user
+          // Trigger notification if message is from another user
           if (payload.new.sender_id !== currentUserId) {
             const participant = await this.getParticipantById(payload.new.sender_id);
             if (participant) {

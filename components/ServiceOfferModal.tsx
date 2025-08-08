@@ -14,12 +14,34 @@ import {
 } from 'react-native';
 import CalendarPicker from './CalendarPicker';
 import TimePicker from './TimePicker';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { X, DollarSign, Clock, FileText, Calendar, MapPin, Briefcase, ChevronDown, Zap, Target, Star, AlertCircle, Search } from 'lucide-react-native';
 import { Service } from '../lib/service-service';
 import { GOOGLE_PLACES_API_KEY } from '../config/maps';
 import Colors from '../constants/Colors';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+
+// Conditional import for MapView to handle native module availability
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
+
+try {
+  const MapsModule = require('react-native-maps');
+  MapView = MapsModule.default || MapsModule.MapView;
+  Marker = MapsModule.Marker;
+  PROVIDER_GOOGLE = MapsModule.PROVIDER_GOOGLE;
+} catch (error) {
+  console.warn('react-native-maps not available:', error);
+  // Fallback components
+  MapView = ({ children, style, ...props }: any) => (
+    <View style={[style, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]} {...props}>
+      <Text>Map not available</Text>
+      {children}
+    </View>
+  );
+  Marker = ({ children }: any) => <View>{children}</View>;
+  PROVIDER_GOOGLE = 'google';
+}
 
 interface ServiceOfferModalProps {
   visible: boolean;
@@ -334,7 +356,7 @@ export function ServiceOfferModal({
               region={mapRegion}
               showsUserLocation={true}
               showsMyLocationButton={true}
-              onPress={(event) => {
+              onPress={(event: any) => {
                 try {
                   const coordinate = event.nativeEvent.coordinate;
                   
