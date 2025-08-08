@@ -17,7 +17,7 @@
     "android": {
       "config": {
         "googleMaps": {
-          "apiKey": "${EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}"
+          "apiKey": "<REDACTED_GOOGLE_API_KEY>"
         }
       },
       "package": "com.artcreator329.boltexponativewind"

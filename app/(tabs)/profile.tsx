@@ -134,9 +134,11 @@ export default function ProfileScreen() {
   }, [user, activeTab]);
 
   useEffect(() => {
-    fetchProfileData();
-    checkAdminStatus();
-  }, [fetchProfileData]);
+    if (user) {
+      fetchProfileData();
+      checkAdminStatus();
+    }
+  }, [user]);
 
   const checkAdminStatus = async () => {
     if (!user) return;
@@ -153,8 +155,10 @@ export default function ProfileScreen() {
   // Refetch profile data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchProfileData();
-    }, [fetchProfileData])
+      if (user) {
+        fetchProfileData();
+      }
+    }, [user])
   );
 
   const handleShareProfile = async () => {
@@ -556,7 +560,7 @@ export default function ProfileScreen() {
                 source={{ uri: userProfile.avatar_url }}
                 style={styles.profileBackgroundImage}
               />
-                          ) : (
+            ) : (
                 <View style={styles.profileBackgroundPlaceholder}>
                   <User size={80} color={isDarkMode ? "white" : "black"} />
                 </View>
@@ -611,7 +615,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
             
-                        {isAdjustingPhoto ? (
+            {isAdjustingPhoto ? (
               <View style={styles.adjustmentOverlay}>
                 <View style={styles.adjustmentContent}>
                   <Text style={[styles.adjustmentTitle, { color: isDarkMode ? 'white' : 'black' }]}>

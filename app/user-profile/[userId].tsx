@@ -9,6 +9,8 @@ import { LightTheme } from '@/constants/Colors';
 import { supabase } from '@/lib/supabase';
 import { ServiceService } from '@/lib/service-service';
 import { UserFavoritesService } from '@/lib/user-favorites-service';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 interface UserProfile {
   id: string;
@@ -32,6 +34,7 @@ interface Service {
   rating?: number;
   review_count?: number;
   created_at?: string;
+  service_variants?: Service[];
 }
 
 interface Review {
@@ -106,7 +109,9 @@ export default function UserProfileScreen() {
 
         // Fetch user's services
         try {
-          const userServices = await ServiceService.getUserServices(userId);
+          // Get all services and filter for current user to include variants
+          const allServices = await ServiceService.getAllServices();
+          const userServices = allServices.filter(service => service.user_id === userId);
           setServices(userServices);
         } catch (error) {
           console.error('Error fetching services:', error);
@@ -258,19 +263,54 @@ export default function UserProfileScreen() {
                 No services listed yet
               </Text>
             ) : (
-              services.map((service) => (
-                <View key={service.id} style={[styles.serviceCard, { backgroundColor: colors.background.secondary }]}>
-                  <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>
-                    {service.title}
-                  </Text>
-                  <Text style={[styles.serviceDescription, { color: colors.text.secondary }]} numberOfLines={2}>
-                    {service.description}
-                  </Text>
-                  <Text style={[styles.servicePrice, { color: colors.primary.main }]}>
-                    From {service.currency}{service.price}
-                  </Text>
-                </View>
-              ))
+              services.map((service) => {
+                // Check if this service has variants
+                const hasVariants = service.service_variants && service.service_variants.length > 0;
+                
+                return (
+                  <View key={service.id}>
+                    {/* Main Service Header */}
+                    <View style={[styles.mainServiceHeader, { backgroundColor: '#E3F2FD' }]}>
+                      <Text style={[styles.mainServiceTitle, { color: colors.text.primary }]}>
+                        {service.title}
+                      </Text>
+                      <Text style={[styles.mainServiceDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+                        {service.description}
+                      </Text>
+                    </View>
+                    
+                    {/* Service Variants */}
+                    {hasVariants && service.service_variants!.map((variant) => (
+                      <View key={variant.id} style={[styles.serviceCard, { backgroundColor: '#E3F2FD' }]}>
+                        <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>
+                          {variant.title}
+                        </Text>
+                        <Text style={[styles.serviceDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+                          {variant.description}
+                        </Text>
+                        <Text style={[styles.servicePrice, { color: colors.primary.main }]}>
+                          From {variant.currency}{variant.price}
+                        </Text>
+                      </View>
+                    ))}
+                    
+                    {/* If no variants, show the main service as a regular card */}
+                    {!hasVariants && (
+                      <View style={[styles.serviceCard, { backgroundColor: '#E3F2FD' }]}>
+                        <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>
+                          {service.title}
+                        </Text>
+                        <Text style={[styles.serviceDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+                          {service.description}
+                        </Text>
+                        <Text style={[styles.servicePrice, { color: colors.primary.main }]}>
+                          From {service.currency}{service.price}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })
             )}
           </View>
         );
@@ -372,44 +412,42 @@ export default function UserProfileScreen() {
         </View>
 
         {/* Profile Section */}
-        <View style={[styles.profileSection, { backgroundColor: colors.background.primary }]}>
-          <View style={styles.profileContent}>
-            <View style={styles.profileImageContainer}>
-              {userProfile.avatar_url ? (
-                <Image
-                  source={{ uri: userProfile.avatar_url }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={[styles.defaultProfileIcon, { backgroundColor: colors.background.secondary }]}>
-                  <User size={50} color={colors.text.secondary} />
-                </View>
-              )}
-            </View>
-            
-            <View style={styles.profileInfo}>
-              <Text style={[styles.userName, { color: colors.text.primary }]}>
-                {userProfile.full_name || 'User'}
-              </Text>
-              {userProfile.bio && (
-                <Text style={[styles.userBio, { color: colors.text.primary }]} numberOfLines={3}>
-                  {userProfile.bio}
-                </Text>
-              )}
-              <View style={styles.ratingContainer}>
-                <Text style={[styles.ratingText, { color: colors.text.primary }]}>
-                  {averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}
-                </Text>
-                {averageRating > 0 && renderStars(averageRating)}
-                <Text style={[styles.reviewText, { color: colors.text.secondary }]}>
-                  ({reviews.length} reviews)
-                </Text>
+        <View style={styles.profileHeader}>
+          <View style={styles.profileBackgroundContainer}>
+            {userProfile.avatar_url ? (
+              <Image
+                source={{ uri: userProfile.avatar_url }}
+                style={styles.profileBackgroundImage}
+              />
+            ) : (
+              <View style={styles.profileBackgroundPlaceholder}>
+                <User size={80} color={isDarkMode ? "white" : "black"} />
               </View>
-              {userProfile.tagline && (
-                <Text style={[styles.userTagline, { color: colors.text.secondary }]}>
-                  {userProfile.tagline}
-                </Text>
-              )}
+            )}
+            <LinearGradient
+              colors={isDarkMode 
+                ? ['transparent', 'transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,1.0)']
+                : ['transparent', 'transparent', 'rgba(241,248,255,0.4)', 'rgba(255,255,255,1.0)']
+              }
+              style={styles.profileBackgroundGradient}
+            />
+            
+            <View style={styles.profileContent}>
+              <BlurView intensity={20} style={styles.blurContainer}>
+                <View style={styles.profileInfo}>
+                  <Text style={[styles.userName, { color: 'white' }]}>
+                    {userProfile.full_name || 'User'}
+                  </Text>
+                  {userProfile.bio && (
+                    <Text style={[styles.userBio, { color: '#3B82F6' }]}>{userProfile.bio}</Text>
+                  )}
+                  <View style={styles.ratingContainer}>
+                    <Text style={[styles.ratingText, { color: 'black' }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
+                    {averageRating > 0 && renderStars(averageRating)}
+                    <Text style={[styles.reviewText, { color: 'black' }]}>({reviews.length} reviews)</Text>
+                  </View>
+                </View>
+              </BlurView>
             </View>
           </View>
         </View>
@@ -433,7 +471,7 @@ export default function UserProfileScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
+            style={[styles.actionButton, { backgroundColor: colors.background.secondary, borderWidth: 1, borderColor: colors.border.main }]}
             onPress={handleShareProfile}
           >
             <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Share Profile</Text>
@@ -484,59 +522,106 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 20,
   },
+  profileHeader: {
+    backgroundColor: 'transparent',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    marginTop: 0,
+  },
+  profileBackgroundContainer: {
+    position: 'relative',
+    width: '100%',
+    height: 280,
+    overflow: 'hidden',
+    marginTop: 0,
+    marginLeft: 0,
+  },
+  profileBackgroundImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  profileBackgroundPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileBackgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '100%',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+  },
+  headerLeft: {
+    width: 40,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    width: 80,
+    justifyContent: 'flex-end',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1D1D1F',
+  },
+  headerIcon: {
+    marginLeft: 15,
   },
   profileSection: {
-    alignItems: 'center',
-    paddingVertical: 30,
-    backgroundColor: 'white',
-    marginBottom: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
   },
-  sellerBadge: {
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginBottom: 16,
+  profileContent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  sellerBadgeText: {
-    color: '#4CAF50',
-    fontSize: 12,
-    fontWeight: '600',
+  profileInfo: {
+    alignItems: 'flex-end',
+    width: '100%',
   },
-  profileImageContainer: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  defaultProfileIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#F2F2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
+  blurContainer: {
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: -50,
+    overflow: 'hidden',
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1D1D1F',
+    fontSize: 28,
+    fontWeight: '700',
     marginBottom: 8,
+    textAlign: 'right',
+    color: 'white',
+  },
+  userBio: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 8,
+    textAlign: 'right',
+    color: 'white',
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -546,8 +631,9 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1D1D1F',
     marginRight: 8,
+    color: 'white',
+    textAlign: 'left',
   },
   starsContainer: {
     flexDirection: 'row',
@@ -555,13 +641,9 @@ const styles = StyleSheet.create({
   },
   reviewText: {
     fontSize: 14,
-    color: '#8E8E93',
-  },
-  userTagline: {
-    fontSize: 16,
-    color: '#8E8E93',
-    textAlign: 'center',
-    paddingHorizontal: 20,
+    marginLeft: 8,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'left',
   },
   actionButtons: {
     paddingHorizontal: 20,
@@ -569,155 +651,50 @@ const styles = StyleSheet.create({
   },
   chatButton: {
     flexDirection: 'row',
-    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  chatButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  actionButton: {
+    paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chatButtonText: {
-    color: 'white',
+  actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 8,
   },
   tabNavigation: {
     flexDirection: 'row',
-    backgroundColor: 'white',
     marginHorizontal: 20,
-    borderRadius: 12,
-    padding: 4,
     marginBottom: 20,
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 8,
-  },
-  activeTab: {
-    backgroundColor: '#007AFF',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
   tabText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8E8E93',
   },
   activeTabText: {
-    color: 'white',
+    fontWeight: '700',
   },
   tabContent: {
     paddingHorizontal: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#666',
-    marginBottom: 20,
-  },
-  backButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  servicesContent: {
-    flex: 1,
-  },
-  availableListings: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1D1D1F',
-    marginBottom: 16,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    textAlign: 'center',
-  },
-  serviceItem: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  serviceImage: {
-    width: 80,
-    height: 80,
-    margin: 12,
-    borderRadius: 8,
-  },
-  // New styles for the updated profile page
-  headerLeft: {
-    width: 40,
-  },
-  headerCenter: {
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    width: 80,
-  },
-  headerIcon: {
-    marginLeft: 15,
-  },
-  profileContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    width: '100%',
-  },
-  profileInfo: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  userBio: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
-    textAlign: 'left',
-    lineHeight: 22,
-  },
-  userTagline: {
-    fontSize: 16,
-    textAlign: 'left',
-    marginTop: 4,
   },
   tabContentContainer: {
     paddingVertical: 20,
@@ -726,10 +703,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
+  mainServiceHeader: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  mainServiceTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  mainServiceDescription: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
   serviceCard: {
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    marginLeft: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -787,16 +787,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  actionButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
-    marginTop: 10,
+    alignItems: 'center',
+    paddingVertical: 40,
   },
-  actionButtonText: {
+  loadingText: {
+    marginTop: 10,
     fontSize: 16,
-    fontWeight: '600',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    marginBottom: 20,
   },
 });

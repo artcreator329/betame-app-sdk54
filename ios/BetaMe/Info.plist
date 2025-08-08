@@ -77,6 +77,10 @@
     <false/>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>This app needs access to your location to show your position on the map and allow you to select a work location.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>This app needs access to your photo library to allow you to select profile pictures and service images.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>This app needs access to your camera to allow you to take profile pictures and service images.</string>
     <key>GMSApiKey</key>
     <string>$(EXPO_PUBLIC_GOOGLE_PLACES_API_KEY)</string>
   </dict>
