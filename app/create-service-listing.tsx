@@ -705,14 +705,20 @@ const styles = StyleSheet.create({
   // Service area styles
   serviceAreaContainer: {
     flex: 1,
+    position: 'relative',
   },
   serviceAreaButtons: {
     flexDirection: 'row',
     padding: 16,
+    paddingBottom: 32,
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
     gap: 12,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   backButton: {
     flex: 1,

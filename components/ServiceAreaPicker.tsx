@@ -140,6 +140,15 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         });
+        
+        // Automatically update parent component
+        onLocationSelect({
+          latitude: lat,
+          longitude: lng,
+          address: selectedAddress,
+          radius,
+          description,
+        });
       }
     } catch (error) {
       console.error('Error selecting location:', error);
@@ -150,22 +159,18 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
   const adjustRadius = (increment: number) => {
     const newRadius = Math.max(1, Math.min(100, radius + increment));
     setRadius(newRadius);
-  };
-
-  const handleConfirm = () => {
-    if (!address.trim()) {
-      Alert.alert('Error', 'Please select a location or enter an address');
-      return;
-    }
     
+    // Automatically update parent component
     onLocationSelect({
       latitude: selectedLocation.latitude,
       longitude: selectedLocation.longitude,
-      address: address.trim(),
-      radius,
-      description: description.trim(),
+      address,
+      radius: newRadius,
+      description,
     });
   };
+
+
 
   return (
     <View style={styles.container}>
@@ -311,7 +316,17 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
           <TextInput
             style={styles.descriptionInput}
             value={description}
-            onChangeText={setDescription}
+            onChangeText={(text) => {
+              setDescription(text);
+              // Automatically update parent component
+              onLocationSelect({
+                latitude: selectedLocation.latitude,
+                longitude: selectedLocation.longitude,
+                address,
+                radius,
+                description: text,
+              });
+            }}
             placeholder="e.g., Covers Kuala Lumpur and surrounding areas"
             placeholderTextColor={Colors.text.secondary}
             multiline
@@ -319,10 +334,8 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
           />
         </View>
 
-        {/* Confirm Button */}
-        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-          <Text style={styles.confirmButtonText}>Confirm Service Area</Text>
-        </TouchableOpacity>
+        {/* Spacer for bottom buttons */}
+        <View style={{ height: 80 }} />
       </View>
     </View>
   );
@@ -382,7 +395,8 @@ const styles = StyleSheet.create({
   controlsContainer: {
     backgroundColor: Colors.background.tertiary,
     padding: 16,
-    maxHeight: 300,
+    paddingBottom: 32,
+    flex: 1,
   },
   inputGroup: {
     marginBottom: 16,
@@ -417,6 +431,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.border.light,
+    overflow: 'hidden',
   },
   radiusText: {
     fontSize: 18,
@@ -435,21 +450,10 @@ const styles = StyleSheet.create({
     color: '#1D1D1F',
     borderWidth: 1,
     borderColor: '#E5E5EA',
-    height: 60,
+    minHeight: 60,
     textAlignVertical: 'top',
   },
-  confirmButton: {
-    backgroundColor: Colors.primary.main,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  confirmButtonText: {
-    color: Colors.text.white,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
   searchContainer: {
     position: 'relative',
     zIndex: 1,
