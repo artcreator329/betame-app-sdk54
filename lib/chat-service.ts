@@ -382,7 +382,7 @@ export class ChatService {
       const { data, error } = await supabase
         .from('service_offers')
         .update({
-          status: 'accepted',
+          status: 'in_progress',
           accepted_at: new Date().toISOString()
         })
         .eq('id', offerId)
@@ -392,6 +392,12 @@ export class ChatService {
       if (error) {
         throw error;
       }
+
+      // Also update the corresponding chat message
+      await supabase
+        .from('chat_messages')
+        .update({ offer_status: 'in_progress' })
+        .eq('offer_id', offerId);
 
       return data;
     } catch (error) {

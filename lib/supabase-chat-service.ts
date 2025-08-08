@@ -79,6 +79,8 @@ export class SupabaseChatService {
   private async transformMessage(dbMessage: any, currentUserId: string): Promise<LiveChatMessage> {
     // Build serviceData from individual columns if it's a service/offer message
     let serviceData = undefined;
+    // Track latest offer status from the canonical table
+    let latestOfferStatus: string | undefined = undefined;
     if (dbMessage.message_type === 'service' || dbMessage.message_type === 'offer') {
       // Try to get the actual service data from service_offers table
       if (dbMessage.offer_id) {
@@ -98,6 +100,8 @@ export class SupabaseChatService {
           console.log('🔍 SupabaseChatService: Offer lookup result:', { offerData, offerError });
           
             if (offerData) {
+              // Capture latest status from the canonical offers table
+              latestOfferStatus = offerData.status;
               console.log('🔍 SupabaseChatService: Found offer data with hustle fields:', {
                 start_date: offerData.start_date,
                 end_date: offerData.end_date,
@@ -230,7 +234,7 @@ export class SupabaseChatService {
       messageType: dbMessage.message_type || 'text',
       serviceData: serviceData,
       offerId: dbMessage.offer_id,
-      offerStatus: dbMessage.offer_status,
+      offerStatus: (latestOfferStatus as any) || dbMessage.offer_status,
       offerExpiresAt: dbMessage.offer_expires_at ? new Date(dbMessage.offer_expires_at) : undefined,
     };
   }
@@ -936,7 +940,7 @@ export class SupabaseChatService {
       const { data, error } = await supabase
         .from('service_offers')
         .update({
-          status: 'accepted',
+          status: 'in_progress',
           updated_at: new Date().toISOString(),
         })
         .eq('id', offerId)
@@ -952,7 +956,7 @@ export class SupabaseChatService {
       console.log('🔄 SupabaseChatService: Updating chat message status for accepted offer:', offerId);
       const { data: messageUpdateData, error: messageError } = await supabase
         .from('chat_messages')
-        .update({ offer_status: 'accepted' })
+        .update({ offer_status: 'in_progress' })
         .eq('offer_id', offerId)
         .select();
 

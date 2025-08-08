@@ -1,5 +1,6 @@
 import { supabase, supabaseAdmin } from './supabase';
 import { WalletService } from './wallet-service';
+import { notificationService } from './notification-service';
 
 export interface EscrowTransaction {
   id?: string;
@@ -28,11 +29,13 @@ export interface JobStatus {
   escrow_transaction_id?: string;
   buyer_id: string;
   seller_id: string;
-  current_status: 'payment_received' | 'work_in_progress' | 'work_completed' | 'buyer_reviewing' | 'completed' | 'disputed' | 'cancelled';
+  current_status: 'payment_received' | 'acknowledgment_pending' | 'work_in_progress' | 'work_completed' | 'buyer_reviewing' | 'completed' | 'disputed' | 'cancelled';
   work_started_at?: string;
   work_completed_at?: string;
   buyer_review_started_at?: string;
   completion_confirmed_at?: string;
+  acknowledgment_date?: string;
+  scheduled_start_date?: string;
   auto_release_date?: string;
   notes?: string;
   created_at?: string;
@@ -143,7 +146,7 @@ export class EscrowService {
           .from('job_status')
           .update({
             escrow_transaction_id: escrowData.id,
-            current_status: 'payment_received',
+            current_status: 'acknowledgment_pending',
             auto_release_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
             updated_at: new Date().toISOString()
           })
@@ -164,7 +167,7 @@ export class EscrowService {
           escrow_transaction_id: escrowData.id,
           buyer_id: buyerId,
           seller_id: sellerId,
-          current_status: 'payment_received',
+          current_status: 'acknowledgment_pending',
           auto_release_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
         };
 
@@ -188,7 +191,7 @@ export class EscrowService {
       await this.sendJobNotification(
         jobStatusData.id,
         'system_notification',
-        `New job received! Payment of ${amount} credits is held in escrow. Start working to begin earning.`,
+        `New job received! Payment of ${amount} credits is held in escrow. Please acknowledge the order to begin.`,
         buyerId
       );
 
@@ -202,6 +205,99 @@ export class EscrowService {
     } catch (error) {
       console.error('Error in processPaymentToEscrow:', error);
       return { success: false, error: 'Payment processing failed' };
+    }
+  }
+
+  /**
+   * Seller acknowledges the offer acceptance and chooses to start now or later
+   */
+  static async acknowledgeOfferAcceptance(
+    jobStatusId: string, 
+    sellerId: string, 
+    startNow: boolean,
+    scheduledStartDate?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('✅ Seller acknowledging offer acceptance:', { jobStatusId, sellerId, startNow, scheduledStartDate });
+
+      const updateData: any = {
+        current_status: startNow ? 'work_in_progress' : 'acknowledgment_pending',
+        acknowledgment_date: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (startNow) {
+        updateData.work_started_at = new Date().toISOString();
+      } else if (scheduledStartDate) {
+        updateData.scheduled_start_date = scheduledStartDate;
+      }
+
+      const { data, error } = await supabase
+        .from('job_status')
+        .update(updateData)
+        .eq('id', jobStatusId)
+        .eq('seller_id', sellerId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error acknowledging offer acceptance:', error);
+        return { success: false, error: 'Failed to acknowledge offer acceptance' };
+      }
+
+      // Notify buyer
+      const message = startNow 
+        ? 'Seller has acknowledged and started working on your service request!'
+        : `Seller has acknowledged your order and scheduled to start on ${new Date(scheduledStartDate!).toLocaleDateString()}`;
+
+      await this.sendJobNotification(
+        jobStatusId,
+        'system_notification',
+        message,
+        sellerId
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error in acknowledgeOfferAcceptance:', error);
+      return { success: false, error: 'Failed to acknowledge offer acceptance' };
+    }
+  }
+
+  /**
+   * Seller starts work on a scheduled job
+   */
+  static async startScheduledWork(jobStatusId: string, sellerId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('job_status')
+        .update({
+          current_status: 'work_in_progress',
+          work_started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobStatusId)
+        .eq('seller_id', sellerId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error starting scheduled work:', error);
+        return { success: false, error: 'Failed to start scheduled work' };
+      }
+
+      // Notify buyer
+      await this.sendJobNotification(
+        jobStatusId,
+        'work_update',
+        'Scheduled work has started on your service request!',
+        sellerId
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error in startScheduledWork:', error);
+      return { success: false, error: 'Failed to start scheduled work' };
     }
   }
 
@@ -442,6 +538,31 @@ export class EscrowService {
       if (error) {
         console.error('Error sending job notification:', error);
         return false;
+      }
+
+      // Create local in-app notification for the recipient
+      const { data: jobStatus } = await supabase
+        .from('job_status')
+        .select('buyer_id, seller_id')
+        .eq('id', jobStatusId)
+        .single();
+
+      if (jobStatus) {
+        const recipientId = jobStatus.buyer_id === senderId ? jobStatus.seller_id : jobStatus.buyer_id;
+        if (recipientId) {
+          await notificationService.addNotification(
+            {
+              type: 'order',
+              title: 'Job update',
+              message,
+              data: {
+                jobStatusId,
+                messageType,
+              },
+            },
+            recipientId
+          );
+        }
       }
 
       return true;

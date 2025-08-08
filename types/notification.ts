@@ -14,7 +14,7 @@ export interface Notification {
     orderId?: string;
     serviceId?: string;
     offerId?: string;
-    offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
+    offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
     rejectReason?: string;
     serviceTitle?: string;
     price?: number;

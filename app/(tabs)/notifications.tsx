@@ -127,9 +127,12 @@ export default function NotificationsScreen() {
       // If we have a chatId, we could potentially navigate directly to it
       // But for now, let's use the participant ID approach
       router.push(`/chat/${notification.data.participantId}`);
-    } else if (notification.type === 'offer' && notification.data?.participantId) {
-      console.log('🔔 Navigating to chat for offer with participant:', notification.data.participantId);
-      router.push(`/chat/${notification.data.participantId}`);
+    } else if (notification.type === 'offer' && notification.data?.chatId) {
+      console.log('🔔 Navigating to existing chat for offer:', notification.data.chatId);
+      console.log('🔔 Notification data:', JSON.stringify(notification.data, null, 2));
+      
+      // Use the existing chatId to navigate directly to the chat
+      router.push(`/chat/${notification.data.participantId}?chatId=${notification.data.chatId}`);
     } else if (notification.type === 'order' && notification.data?.orderId) {
       router.push(`/orders`);
     } else if (notification.type === 'service' && notification.data?.serviceId) {

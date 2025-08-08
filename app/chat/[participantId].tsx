@@ -45,6 +45,7 @@ export default function ChatScreen() {
   const router = useRouter();
   const { 
     participantId,
+    chatId: routeChatId,
     selectedServiceId,
     selectedServiceTitle,
     selectedServicePrice,
@@ -108,8 +109,48 @@ export default function ChatScreen() {
   // Initialize chat
   useEffect(() => {
     const initializeChat = async () => {
-      if (!user?.id || !participantId) {
-        console.log('Missing user ID or participant ID:', { userId: user?.id, participantId });
+      if (!user?.id) {
+        console.log('Missing user ID:', { userId: user?.id });
+        setChatLoading(false);
+        return;
+      }
+      
+      // If we have a chatId from the route, use it directly
+      if (routeChatId) {
+        const chatIdStr = Array.isArray(routeChatId) ? routeChatId[0] : routeChatId;
+        console.log('🔄 Using provided chatId:', chatIdStr);
+        setChatId(chatIdStr);
+        
+        // Fetch participant info for the chat
+        try {
+          const { data: chatData } = await supabase
+            .from('chats')
+            .select('participant1_id, participant2_id')
+            .eq('id', chatIdStr)
+            .single();
+          
+          if (chatData) {
+            const otherParticipantId = chatData.participant1_id === user.id 
+              ? chatData.participant2_id 
+              : chatData.participant1_id;
+            
+            const participant = await chatService.getChatParticipant(otherParticipantId);
+            if (participant) {
+              setParticipantInfo(participant);
+              console.log('Participant info loaded:', participant.name);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching chat data:', error);
+        }
+        
+        setChatLoading(false);
+        return;
+      }
+      
+      // Fall back to participantId logic for backward compatibility
+      if (!participantId) {
+        console.log('Missing participant ID');
         setChatLoading(false);
         return;
       }
@@ -155,7 +196,7 @@ export default function ChatScreen() {
 
     initializeChat();
     fetchUserServices();
-  }, [user?.id, participantId, supabaseChatService, router]);
+  }, [user?.id, participantId, supabaseChatService, router, routeChatId]);
   
   // Handle pre-selected service variant from service detail page
   useEffect(() => {

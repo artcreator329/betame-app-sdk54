@@ -15,32 +15,32 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const { user } = useAuth();
 
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
     const loadNotifications = async () => {
       if (!user?.id) {
         setNotifications([]);
         setUnreadCount(0);
         return;
       }
-      
-      // Set the current user for the notification service
+
       notificationService.setCurrentUser(user.id);
-      
-      const savedNotifications = await notificationService.getNotifications();
-      setNotifications(savedNotifications);
-      setUnreadCount(savedNotifications.filter(n => !n.isRead).length);
+      await notificationService.getNotifications().then((savedNotifications) => {
+        setNotifications(savedNotifications);
+        setUnreadCount(savedNotifications.filter(n => !n.isRead).length);
+      });
+
+      unsubscribe = notificationService.subscribe((updatedNotifications) => {
+        setNotifications(updatedNotifications);
+        setUnreadCount(updatedNotifications.filter(n => !n.isRead).length);
+      });
     };
 
     loadNotifications();
 
-    // Subscribe to notification updates
-    const unsubscribe = notificationService.subscribe((updatedNotifications) => {
-      console.log('🔄 NotificationContext: Received update with', updatedNotifications.length, 'notifications');
-      console.log('🔄 NotificationContext: Notifications:', updatedNotifications);
-      setNotifications(updatedNotifications);
-      setUnreadCount(updatedNotifications.filter(n => !n.isRead).length);
-    });
-
-    return unsubscribe;
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [user?.id]);
 
   const addNotification = async (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'>, targetUserId: string) => {

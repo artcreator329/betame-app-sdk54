@@ -26,9 +26,11 @@ export default function OrdersScreen() {
   const [selectedOrder, setSelectedOrder] = useState<JobStatus | null>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showAcknowledgmentModal, setShowAcknowledgmentModal] = useState(false);
   const [completionNotes, setCompletionNotes] = useState('');
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState(5);
+  const [scheduledStartDate, setScheduledStartDate] = useState('');
   const [filter, setFilter] = useState<'all' | 'buying' | 'selling'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
 
@@ -149,9 +151,56 @@ export default function OrdersScreen() {
     }
   };
 
+  const handleAcknowledgeOffer = async (startNow: boolean) => {
+    if (!selectedOrder?.id) return;
+
+    try {
+      const result = await EscrowService.acknowledgeOfferAcceptance(
+        selectedOrder.id,
+        user!.id,
+        startNow,
+        startNow ? undefined : scheduledStartDate
+      );
+      
+      if (result.success) {
+        Alert.alert(
+          'Order Acknowledged!', 
+          startNow 
+            ? 'You have started working on this order. The buyer has been notified.'
+            : `You have scheduled to start this order on ${new Date(scheduledStartDate).toLocaleDateString()}. The buyer has been notified.`
+        );
+        setShowAcknowledgmentModal(false);
+        setScheduledStartDate('');
+        setSelectedOrder(null);
+        fetchOrders();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to acknowledge order');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to acknowledge order');
+    }
+  };
+
+  const handleStartScheduledWork = async (order: JobStatus) => {
+    if (!order.id) return;
+
+    try {
+      const result = await EscrowService.startScheduledWork(order.id, user!.id);
+      if (result.success) {
+        Alert.alert('Success', 'Scheduled work started! The buyer has been notified.');
+        fetchOrders();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to start scheduled work');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to start scheduled work');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'payment_received': return '#FFA500';
+      case 'acknowledgment_pending': return '#FF6B35';
       case 'work_in_progress': return '#007AFF';
       case 'work_completed': return '#32CD32';
       case 'buyer_reviewing': return '#9932CC';
@@ -166,6 +215,8 @@ export default function OrdersScreen() {
     switch (status) {
       case 'payment_received': 
         return perspective === 'buyer' ? 'Payment Sent' : 'Payment Received';
+      case 'acknowledgment_pending':
+        return perspective === 'buyer' ? 'Waiting for seller' : 'Acceptance Acknowledged';
       case 'work_in_progress': 
         return perspective === 'buyer' ? 'Work in Progress' : 'Working';
       case 'work_completed': 
@@ -189,6 +240,19 @@ export default function OrdersScreen() {
     if (order.perspective === 'seller') {
       // Seller perspective actions
       switch (order.current_status) {
+        case 'acknowledgment_pending':
+          return (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#FF6B35' }]}
+              onPress={() => {
+                setSelectedOrder(order);
+                setShowAcknowledgmentModal(true);
+              }}
+            >
+              <Text style={styles.actionButtonText}>Acceptance Acknowledged</Text>
+            </TouchableOpacity>
+          );
+        
         case 'payment_received':
           return (
             <TouchableOpacity
@@ -235,6 +299,13 @@ export default function OrdersScreen() {
     } else {
       // Buyer perspective actions
       switch (order.current_status) {
+        case 'acknowledgment_pending':
+          return (
+            <View style={[styles.actionButton, { backgroundColor: '#FF6B35' }]}>
+              <Text style={styles.actionButtonText}>Waiting for seller acknowledgment</Text>
+            </View>
+          );
+        
         case 'payment_received':
           return (
             <View style={[styles.actionButton, { backgroundColor: '#FFA500' }]}>
@@ -285,7 +356,7 @@ export default function OrdersScreen() {
     
     // Filter by status
     if (statusFilter === 'active') {
-      return ['payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing'].includes(order.current_status);
+      return ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing'].includes(order.current_status);
     }
     if (statusFilter === 'completed') {
       return order.current_status === 'completed';
@@ -298,11 +369,145 @@ export default function OrdersScreen() {
     const buying = orders.filter(o => (o as any).perspective === 'buyer').length;
     const selling = orders.filter(o => (o as any).perspective === 'seller').length;
     const active = orders.filter(o => 
-      ['payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing'].includes(o.current_status)
+      ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing'].includes(o.current_status)
     ).length;
     const completed = orders.filter(o => o.current_status === 'completed').length;
     
     return { buying, selling, active, completed };
+  };
+
+  const getDaysRemaining = (autoReleaseDate: string): number => {
+    const now = new Date();
+    const releaseDate = new Date(autoReleaseDate);
+    const diffTime = releaseDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  };
+
+  const getJobDuration = (startDate: string, endDate?: string): string => {
+    const start = new Date(startDate);
+    const now = new Date();
+    // If start is in the future, no elapsed time yet
+    if (start.getTime() > now.getTime()) return '0m';
+    const end = endDate ? new Date(endDate) : now;
+    const diffTime = Math.max(0, end.getTime() - start.getTime());
+    const totalMinutes = Math.floor(diffTime / (1000 * 60));
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+
+    if (days > 0) return `${days}d${hours > 0 ? ` ${hours}h` : ''}`;
+    if (hours > 0) return `${hours}h${minutes > 0 ? ` ${minutes}m` : ''}`;
+    return `${minutes}m`;
+  };
+
+  const getDaysSinceCreation = (createdDate: string): number => {
+    const created = new Date(createdDate);
+    const now = new Date();
+    // Compare by calendar days to avoid timezone rounding issues
+    const createdDay = new Date(created.getFullYear(), created.getMonth(), created.getDate());
+    const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffMs = nowDay.getTime() - createdDay.getTime();
+    return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+  };
+
+  const getCountdownToJob = (jobDate: string): string => {
+    const now = new Date();
+    const job = new Date(jobDate);
+    const diffTime = job.getTime() - now.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (diffDays < 0) {
+      return 'Job completed';
+    } else if (diffDays === 0) {
+      if (diffHours <= 0) {
+        return 'Job is today!';
+      } else {
+        return `${diffHours}h until job`;
+      }
+    } else if (diffDays === 1) {
+      return 'Job tomorrow!';
+    } else {
+      return `${diffDays} days until job`;
+    }
+  };
+
+  const getCountdownColor = (jobDate: string): string => {
+    const now = new Date();
+    const job = new Date(jobDate);
+    const diffTime = job.getTime() - now.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return '#32CD32'; // Green for completed
+    } else if (diffDays === 0) {
+      return '#FF6B35'; // Orange for today
+    } else if (diffDays <= 3) {
+      return '#FFA500'; // Orange for soon
+    } else {
+      return '#007AFF'; // Blue for future
+    }
+  };
+
+  const getCountdownIcon = (jobDate: string): "checkmark-circle-outline" | "time-outline" | "calendar-outline" | "flash-outline" => {
+    const now = new Date();
+    const job = new Date(jobDate);
+    const diffTime = job.getTime() - now.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return "checkmark-circle-outline";
+    } else if (diffDays === 0) {
+      return "time-outline";
+    } else if (diffDays <= 3) {
+      return "flash-outline";
+    } else {
+      return "calendar-outline";
+    }
+  };
+
+  const getJobStatusColor = (jobDate: string): string => {
+    const now = new Date();
+    const job = new Date(jobDate);
+    const diffTime = job.getTime() - now.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return '#32CD32'; // Green for completed
+    } else if (diffDays === 0) {
+      return '#FF6B35'; // Orange for today
+    } else if (diffDays <= 3) {
+      return '#FFA500'; // Orange for soon
+    } else {
+      return '#007AFF'; // Blue for future
+    }
+  };
+
+  const getJobStatusIcon = (jobDate: string): "checkmark-circle-outline" | "time-outline" | "calendar-outline" | "flash-outline" => {
+    const now = new Date();
+    const job = new Date(jobDate);
+    const diffTime = job.getTime() - now.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return "checkmark-circle-outline";
+    } else if (diffDays === 0) {
+      return "time-outline";
+    } else if (diffDays <= 3) {
+      return "flash-outline";
+    } else {
+      return "calendar-outline";
+    }
+  };
+
+  const getProgressPercentage = (startDate: string): number => {
+    const start = new Date(startDate);
+    const now = new Date();
+    const diffTime = now.getTime() - start.getTime();
+    const totalDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    const elapsedTime = Math.min(diffTime, totalDuration); // Ensure elapsedTime doesn't exceed totalDuration
+    return Math.round((elapsedTime / totalDuration) * 100);
   };
 
   const counts = getOrderCounts();
@@ -321,133 +526,91 @@ export default function OrdersScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerContent}>
           <Text style={[styles.title, { color: colors.text.primary }]}>Orders</Text>
           <Text style={[styles.subtitle, { color: colors.text.secondary }]}>Track your service orders</Text>
         </View>
-        <TouchableOpacity onPress={onRefresh}>
-          <Ionicons name="refresh" size={24} color={colors.text.primary} />
+        <TouchableOpacity style={[styles.refreshButton, { backgroundColor: colors.background.secondary }]} onPress={onRefresh}>
+          <Ionicons name="refresh" size={20} color={colors.primary.main} />
         </TouchableOpacity>
       </View>
 
       {/* Stats */}
-      <View style={[styles.statsContainer, { backgroundColor: colors.background.secondary }]}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.accent }]}>{counts.buying}</Text>
+      <View style={[styles.statsContainer, { 
+        backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: colors.border.light,
+      }]}> 
+        <TouchableOpacity
+          style={styles.statItem}
+          onPress={() => {
+            setFilter('buying');
+            setStatusFilter('all');
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Filter Buying"
+        >
+          <Text style={[styles.statNumber, { color: colors.primary.main }]}>{counts.buying}</Text>
           <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Buying</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.accent }]}>{counts.selling}</Text>
+        </TouchableOpacity>
+        <View style={[styles.statDivider, { backgroundColor: colors.border.light }]} />
+        <TouchableOpacity
+          style={styles.statItem}
+          onPress={() => {
+            setFilter('selling');
+            setStatusFilter('all');
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Filter Selling"
+        >
+          <Text style={[styles.statNumber, { color: colors.primary.main }]}>{counts.selling}</Text>
           <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Selling</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.accent }]}>{counts.active}</Text>
+        </TouchableOpacity>
+        <View style={[styles.statDivider, { backgroundColor: colors.border.light }]} />
+        <TouchableOpacity
+          style={styles.statItem}
+          onPress={() => {
+            setStatusFilter('active');
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Filter Active Status"
+        >
+          <Text style={[styles.statNumber, { color: colors.primary.main }]}>{counts.active}</Text>
           <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Active</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.accent }]}>{counts.completed}</Text>
-          <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Completed</Text>
-        </View>
+        </TouchableOpacity>
+        <View style={[styles.statDivider, { backgroundColor: colors.border.light }]} />
+        <TouchableOpacity
+          style={styles.statItem}
+          onPress={() => {
+            setStatusFilter('completed');
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Filter Completed Status"
+        >
+          <Text style={[styles.statNumber, { color: colors.primary.main }]}>{counts.completed}</Text>
+          <Text style={[styles.statLabel, { color: colors.text.secondary, fontSize: 12 }]}>Completed</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Filter Tabs */}
+      {/* Filter Button */}
       <View style={styles.filterContainer}>
         <View style={styles.filterRow}>
           <TouchableOpacity
             style={[
               styles.filterTab, 
-              filter === 'all' && styles.activeFilterTab,
-              { backgroundColor: filter === 'all' ? colors.accent : colors.background.secondary }
+              styles.activeFilterTab,
+              { backgroundColor: colors.background.secondary }
             ]}
-            onPress={() => setFilter('all')}
+            onPress={() => {
+              setFilter('all');
+              setStatusFilter('all');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Show All Status"
           >
-            <Text style={[
+            <Text numberOfLines={1} ellipsizeMode="tail" style={[
               styles.filterText, 
-              filter === 'all' && styles.activeFilterText,
-              { color: filter === 'all' ? '#fff' : colors.text.secondary }
-            ]}>
-              All ({orders.length})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterTab, 
-              filter === 'buying' && styles.activeFilterTab,
-              { backgroundColor: filter === 'buying' ? colors.accent : colors.background.secondary }
-            ]}
-            onPress={() => setFilter('buying')}
-          >
-            <Text style={[
-              styles.filterText, 
-              filter === 'buying' && styles.activeFilterText,
-              { color: filter === 'buying' ? '#fff' : colors.text.secondary }
-            ]}>
-              Buying ({counts.buying})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterTab, 
-              filter === 'selling' && styles.activeFilterTab,
-              { backgroundColor: filter === 'selling' ? colors.accent : colors.background.secondary }
-            ]}
-            onPress={() => setFilter('selling')}
-          >
-            <Text style={[
-              styles.filterText, 
-              filter === 'selling' && styles.activeFilterText,
-              { color: filter === 'selling' ? '#fff' : colors.text.secondary }
-            ]}>
-              Selling ({counts.selling})
-            </Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.filterRow}>
-          <TouchableOpacity
-            style={[
-              styles.filterTab, 
-              statusFilter === 'active' && styles.activeFilterTab,
-              { backgroundColor: statusFilter === 'active' ? colors.accent : colors.background.secondary }
-            ]}
-            onPress={() => setStatusFilter('active')}
-          >
-            <Text style={[
-              styles.filterText, 
-              statusFilter === 'active' && styles.activeFilterText,
-              { color: statusFilter === 'active' ? '#fff' : colors.text.secondary }
-            ]}>
-              Active ({counts.active})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterTab, 
-              statusFilter === 'completed' && styles.activeFilterTab,
-              { backgroundColor: statusFilter === 'completed' ? colors.accent : colors.background.secondary }
-            ]}
-            onPress={() => setStatusFilter('completed')}
-          >
-            <Text style={[
-              styles.filterText, 
-              statusFilter === 'completed' && styles.activeFilterText,
-              { color: statusFilter === 'completed' ? '#fff' : colors.text.secondary }
-            ]}>
-              Completed ({counts.completed})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterTab, 
-              statusFilter === 'all' && styles.activeFilterTab,
-              { backgroundColor: statusFilter === 'all' ? colors.accent : colors.background.secondary }
-            ]}
-            onPress={() => setStatusFilter('all')}
-          >
-            <Text style={[
-              styles.filterText, 
-              statusFilter === 'all' && styles.activeFilterText,
-              { color: statusFilter === 'all' ? '#fff' : colors.text.secondary }
+              { color: colors.text.secondary }
             ]}>
               All Status
             </Text>
@@ -464,8 +627,10 @@ export default function OrdersScreen() {
       >
         {filteredOrders.length === 0 ? (
           <View style={[styles.emptyState, { backgroundColor: colors.background.secondary }]}>
-            <Ionicons name="receipt-outline" size={64} color={colors.text.secondary} />
-            <Text style={[styles.emptyText, { color: colors.text.primary }]}>
+            <View style={[styles.emptyIconContainer, { backgroundColor: colors.primary.light + '20' }]}>
+              <Ionicons name="receipt-outline" size={48} color={colors.primary.main} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>
               {filter === 'buying' ? 'No purchases yet' : 
                filter === 'selling' ? 'No sales yet' : 
                'No orders yet'}
@@ -484,23 +649,34 @@ export default function OrdersScreen() {
                 <View style={styles.orderHeader}>
                   <View style={styles.orderTitleContainer}>
                     <View style={styles.titleRow}>
-                      <Text style={[styles.orderTitle, { color: colors.text.primary }]}>
+                      <Text style={[styles.orderTitle, { color: colors.text.primary }]} numberOfLines={2}>
                         {escrowTransaction?.service_title}
                       </Text>
-                      <View style={styles.perspectiveBadge}>
-                        <Text style={styles.perspectiveText}>
+                      <View style={[styles.perspectiveBadge, { backgroundColor: colors.primary.light + '20' }]}>
+                        <Text style={[styles.perspectiveText, { color: colors.primary.main }]}>
                           {perspective === 'buyer' ? 'BUYING' : 'SELLING'}
                         </Text>
                       </View>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.current_status) }]}>
-                      <Text style={styles.statusText}>
-                        {getStatusText(order.current_status, perspective)}
-                      </Text>
+                    <View style={styles.statusRow}>
+                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.current_status) }]}>
+                        <Text style={styles.statusText}>
+                          {getStatusText(order.current_status, perspective)}
+                        </Text>
+                      </View>
+                      {escrowTransaction?.work_start_date && (
+                        <View style={[styles.jobStatusIndicator, { backgroundColor: getJobStatusColor(escrowTransaction.work_start_date) }]}>
+                          <Ionicons 
+                            name={getJobStatusIcon(escrowTransaction.work_start_date)} 
+                            size={12} 
+                            color="#fff" 
+                          />
+                        </View>
+                      )}
                     </View>
                   </View>
                   <View style={styles.orderAmountContainer}>
-                    <Text style={[styles.orderAmount, { color: colors.accent }]}>
+                    <Text style={[styles.orderAmount, { color: colors.primary.main }]}>
                       {escrowTransaction?.amount} credits
                     </Text>
                     {perspective === 'buyer' && escrowTransaction?.platform_fee > 0 && (
@@ -518,39 +694,107 @@ export default function OrdersScreen() {
                 )}
 
                 <View style={styles.orderDetails}>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
-                    <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                      Created: {new Date(order.created_at!).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  
-                  {order.work_started_at && (
+                  <View style={[styles.detailsSection, { borderBottomWidth: 1, borderBottomColor: colors.border.light }]}>
+                    <Text style={[styles.detailsSectionTitle, { color: colors.text.primary }]}>Timeline</Text>
+                    
                     <View style={styles.detailRow}>
-                      <Ionicons name="play-outline" size={16} color={colors.text.secondary} />
+                      <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
                       <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                        Started: {new Date(order.work_started_at).toLocaleDateString()}
+                        Created: {new Date(order.created_at!).toLocaleDateString()} at {new Date(order.created_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </Text>
                     </View>
-                  )}
-                  
-                  {order.work_completed_at && (
-                    <View style={styles.detailRow}>
-                      <Ionicons name="checkmark-outline" size={16} color="#32CD32" />
-                      <Text style={[styles.detailText, { color: '#32CD32' }]}>
-                        Completed: {new Date(order.work_completed_at).toLocaleDateString()}
-                      </Text>
-                    </View>
-                  )}
+                    
+                    {order.work_started_at && (
+                      <View style={styles.detailRow}>
+                        <Ionicons name="play-outline" size={16} color={colors.text.secondary} />
+                        <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                          Started: {new Date(order.work_started_at).toLocaleDateString()} at {new Date(order.work_started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {order.work_completed_at && (
+                      <View style={styles.detailRow}>
+                        <Ionicons name="checkmark-outline" size={16} color="#32CD32" />
+                        <Text style={[styles.detailText, { color: '#32CD32' }]}>
+                          Completed: {new Date(order.work_completed_at).toLocaleDateString()} at {new Date(order.work_completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+                    )}
 
-                  {order.auto_release_date && order.current_status === 'buyer_reviewing' && (
+                    {order.auto_release_date && order.current_status === 'buyer_reviewing' && (
+                      <View style={styles.detailRow}>
+                        <Ionicons name="time-outline" size={16} color="#FFA500" />
+                        <Text style={[styles.detailText, { color: '#FFA500' }]}>
+                          Auto-release: {new Date(order.auto_release_date).toLocaleDateString()} ({getDaysRemaining(order.auto_release_date)} days left)
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.detailsSection}>
+                    <Text style={[styles.detailsSectionTitle, { color: colors.text.primary }]}>Job Info</Text>
+                    
+                    {/* Job Date and Countdown */}
+                    {escrowTransaction?.work_start_date && (
+                      <View style={styles.detailRow}>
+                        <View style={[styles.jobDateIcon, { backgroundColor: colors.primary.light + '20' }]}>
+                          <Ionicons name="calendar" size={16} color={colors.primary.main} />
+                        </View>
+                        <View style={styles.jobDateContainer}>
+                          <Text style={[styles.detailText, { color: colors.text.primary, fontWeight: '600' }]}>
+                            Job Date: {new Date(escrowTransaction.work_start_date).toLocaleDateString()}
+                          </Text>
+                          <View style={styles.countdownContainer}>
+                            <View style={[styles.countdownBadge, { backgroundColor: getCountdownColor(escrowTransaction.work_start_date) + '20' }]}>
+                              <Ionicons 
+                                name={getCountdownIcon(escrowTransaction.work_start_date)} 
+                                size={12} 
+                                color={getCountdownColor(escrowTransaction.work_start_date)} 
+                              />
+                              <Text style={[styles.countdownText, { color: getCountdownColor(escrowTransaction.work_start_date) }]}>
+                                {getCountdownToJob(escrowTransaction.work_start_date)}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Job Duration */}
+                    {order.work_started_at && (
+                      <View style={styles.detailRow}>
+                        <View style={[styles.jobDateIcon, { backgroundColor: colors.primary.light + '20' }]}>
+                          <Ionicons name="timer-outline" size={16} color={colors.text.secondary} />
+                        </View>
+                        <View style={styles.jobProgressContainer}>
+                          <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                            Duration: {getJobDuration(order.work_started_at, order.work_completed_at)}
+                          </Text>
+                          {!order.work_completed_at && (
+                            <View style={styles.progressIndicator}>
+                              <View style={[styles.progressBar, { backgroundColor: colors.primary.light }]}>
+                                <View style={[styles.progressFill, { backgroundColor: colors.primary.main, width: getProgressPercentage(order.work_started_at) + '%' as any }]} />
+                              </View>
+                              <Text style={[styles.progressText, { color: colors.primary.main }]}>
+                                {getProgressPercentage(order.work_started_at)}% complete
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Days since creation */}
                     <View style={styles.detailRow}>
-                      <Ionicons name="time-outline" size={16} color="#FFA500" />
-                      <Text style={[styles.detailText, { color: '#FFA500' }]}>
-                        Auto-release: {new Date(order.auto_release_date).toLocaleDateString()}
+                      <View style={[styles.jobDateIcon, { backgroundColor: colors.primary.light + '20' }]}>
+                        <Ionicons name="calendar-clear-outline" size={16} color={colors.text.secondary} />
+                      </View>
+                      <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                        {getDaysSinceCreation(order.created_at!)} days since creation
                       </Text>
                     </View>
-                  )}
+                  </View>
                 </View>
 
                 {getActionButton(order as JobStatus & { perspective: 'buyer' | 'seller' })}
@@ -567,13 +811,13 @@ export default function OrdersScreen() {
         presentationStyle="pageSheet"
       >
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background.primary }]}>
-          <View style={[styles.modalHeader, { backgroundColor: colors.background.secondary, borderBottomColor: colors.border }]}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.background.secondary, borderBottomColor: colors.border.main }]}>
             <TouchableOpacity onPress={() => setShowCompletionModal(false)}>
               <Text style={[styles.modalCancel, { color: colors.text.secondary }]}>Cancel</Text>
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Mark Work Complete</Text>
             <TouchableOpacity onPress={handleCompleteWork}>
-              <Text style={[styles.modalDone, { color: colors.accent }]}>Done</Text>
+              <Text style={[styles.modalDone, { color: colors.primary.main }]}>Done</Text>
             </TouchableOpacity>
           </View>
 
@@ -582,7 +826,7 @@ export default function OrdersScreen() {
             <TextInput
               style={[styles.notesInput, { 
                 backgroundColor: colors.background.secondary, 
-                borderColor: colors.border,
+                borderColor: colors.border.main,
                 color: colors.text.primary 
               }]}
               placeholder="Describe what you've completed, any deliverables, or additional notes for the buyer..."
@@ -595,8 +839,8 @@ export default function OrdersScreen() {
             />
             
             <View style={[styles.modalInfo, { backgroundColor: colors.background.secondary }]}>
-              <Ionicons name="information-circle-outline" size={20} color={colors.accent} />
-              <Text style={[styles.modalInfoText, { color: colors.accent }]}>
+              <Ionicons name="information-circle-outline" size={20} color={colors.primary.main} />
+              <Text style={[styles.modalInfoText, { color: colors.primary.main }]}>
                 The buyer will be notified and can review your work. Payment will be released upon their confirmation.
               </Text>
             </View>
@@ -611,13 +855,13 @@ export default function OrdersScreen() {
         presentationStyle="pageSheet"
       >
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background.primary }]}>
-          <View style={[styles.modalHeader, { backgroundColor: colors.background.secondary, borderBottomColor: colors.border }]}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.background.secondary, borderBottomColor: colors.border.main }]}>
             <TouchableOpacity onPress={() => setShowReviewModal(false)}>
               <Text style={[styles.modalCancel, { color: colors.text.secondary }]}>Cancel</Text>
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Confirm & Release Payment</Text>
             <TouchableOpacity onPress={handleConfirmCompletion}>
-              <Text style={[styles.modalDone, { color: colors.accent }]}>Release</Text>
+              <Text style={[styles.modalDone, { color: colors.primary.main }]}>Release</Text>
             </TouchableOpacity>
           </View>
 
@@ -629,7 +873,7 @@ export default function OrdersScreen() {
                   <Text style={[styles.summaryService, { color: colors.text.primary }]}>
                     {((selectedOrder as any).escrow_transactions)?.service_title}
                   </Text>
-                  <Text style={[styles.summaryAmount, { color: colors.accent }]}>
+                  <Text style={[styles.summaryAmount, { color: colors.primary.main }]}>
                     {((selectedOrder as any).escrow_transactions)?.amount} credits will be released to the seller
                   </Text>
                 </View>
@@ -657,7 +901,7 @@ export default function OrdersScreen() {
                   <TextInput
                     style={[styles.feedbackInput, { 
                       backgroundColor: colors.background.secondary, 
-                      borderColor: colors.border,
+                      borderColor: colors.border.main,
                       color: colors.text.primary 
                     }]}
                     placeholder="Share your experience with this service..."
@@ -674,6 +918,86 @@ export default function OrdersScreen() {
                   <Ionicons name="warning-outline" size={20} color="#856404" />
                   <Text style={[styles.modalWarningText, { color: '#856404' }]}>
                     Once you confirm, the payment will be released to the seller and cannot be reversed.
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Acknowledgment Modal (Seller) */}
+      <Modal
+        visible={showAcknowledgmentModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background.primary }]}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.background.secondary, borderBottomColor: colors.border.main }]}>
+            <TouchableOpacity onPress={() => setShowAcknowledgmentModal(false)}>
+              <Text style={[styles.modalCancel, { color: colors.text.secondary }]}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Acknowledge Order</Text>
+            <View style={{ width: 50 }} />
+          </View>
+
+          <View style={styles.modalContent}>
+            {selectedOrder && (
+              <>
+                <View style={[styles.orderSummary, { backgroundColor: colors.background.secondary }]}>
+                  <Text style={[styles.summaryTitle, { color: colors.text.primary }]}>Order Details</Text>
+                  <Text style={[styles.summaryService, { color: colors.text.primary }]}>
+                    {((selectedOrder as any).escrow_transactions)?.service_title}
+                  </Text>
+                  <Text style={[styles.summaryAmount, { color: colors.primary.main }]}>
+                    {((selectedOrder as any).escrow_transactions)?.amount} credits
+                  </Text>
+                </View>
+
+                <View style={styles.acknowledgmentSection}>
+                  <Text style={[styles.modalLabel, { color: colors.text.primary }]}>When would you like to start?</Text>
+                  
+                  <TouchableOpacity
+                    style={[styles.acknowledgmentButton, { backgroundColor: colors.primary.main }]}
+                    onPress={() => handleAcknowledgeOffer(true)}
+                  >
+                    <Ionicons name="play" size={20} color="#fff" />
+                    <Text style={styles.acknowledgmentButtonText}>Start Now</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.acknowledgmentButton, { backgroundColor: colors.background.secondary, borderColor: colors.border.main }]}
+                    onPress={() => {
+                      // Show date picker or schedule modal
+                      Alert.prompt(
+                        'Schedule Start Date',
+                        'Enter the date you want to start (YYYY-MM-DD):',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { 
+                            text: 'Schedule', 
+                            onPress: (date) => {
+                              if (date) {
+                                setScheduledStartDate(date);
+                                handleAcknowledgeOffer(false);
+                              }
+                            }
+                          }
+                        ],
+                        'plain-text',
+                        new Date().toISOString().split('T')[0]
+                      );
+                    }}
+                  >
+                    <Ionicons name="calendar" size={20} color={colors.text.primary} />
+                    <Text style={[styles.acknowledgmentButtonText, { color: colors.text.primary }]}>Schedule Later</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={[styles.modalInfo, { backgroundColor: colors.background.secondary }]}>
+                  <Ionicons name="information-circle-outline" size={20} color={colors.primary.main} />
+                  <Text style={[styles.modalInfoText, { color: colors.primary.main }]}>
+                    Acknowledging this order will notify the buyer and begin the work process.
                   </Text>
                 </View>
               </>
@@ -705,58 +1029,95 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
+  headerContent: {
+    flex: 1,
+    marginRight: 10,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
     marginBottom: 4,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
+    fontWeight: '400',
+    opacity: 0.8,
+  },
+  refreshButton: {
+    padding: 8,
+    borderRadius: 8,
   },
   statsContainer: {
     flexDirection: 'row',
-    paddingVertical: 20,
+    paddingVertical: 24,
     marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 12,
+    marginBottom: 20,
+    borderRadius: 16,
+    alignItems: 'center',
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    marginHorizontal: 8,
   },
   filterContainer: {
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
+  },
+  filterSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    letterSpacing: -0.2,
   },
   filterRow: {
     flexDirection: 'row',
     marginBottom: 8,
+    gap: 8,
   },
   filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   activeFilterTab: {
-    // backgroundColor handled dynamically
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   filterText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    textAlign: 'center',
   },
   activeFilterText: {
-    // color handled dynamically
+    fontWeight: '700',
   },
   ordersList: {
     flex: 1,
@@ -765,112 +1126,160 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
-    borderRadius: 12,
+    paddingVertical: 80,
+    borderRadius: 16,
     marginTop: 40,
   },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '500',
-    marginTop: 16,
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
     textAlign: 'center',
-    marginTop: 8,
+    opacity: 0.7,
     paddingHorizontal: 32,
   },
   orderCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 2,
+    gap: 12,
   },
   orderTitleContainer: {
     flex: 1,
-    marginRight: 12,
   },
   titleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: 4,
+    gap: 8,
   },
   orderTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     flex: 1,
-    marginRight: 8,
+    letterSpacing: -0.3,
+    lineHeight: 22,
   },
   perspectiveBadge: {
-    backgroundColor: '#E8F4FD',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  perspectiveText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     alignSelf: 'flex-start',
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  perspectiveText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    alignSelf: 'flex-start',
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#fff',
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  jobStatusIndicator: {
+    padding: 3,
+    borderRadius: 6,
   },
   orderAmountContainer: {
     alignItems: 'flex-end',
+    minWidth: 80,
   },
   orderAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   platformFee: {
     fontSize: 12,
     marginTop: 2,
+    fontWeight: '500',
   },
   orderDescription: {
     fontSize: 14,
-    marginBottom: 12,
+    marginBottom: 10,
     lineHeight: 20,
+    opacity: 0.8,
   },
   orderDetails: {
-    marginBottom: 12,
+    marginBottom: 4,
+  },
+  detailsSection: {
+    paddingBottom: 8,
+    marginBottom: 8,
+  },
+  detailsSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+    letterSpacing: -0.2,
   },
   detailRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: 'flex-start',
+    marginBottom: 3,
+    gap: 8,
   },
   detailText: {
     fontSize: 13,
-    marginLeft: 6,
+    fontWeight: '500',
+    flex: 1,
+    lineHeight: 18,
   },
   actionButton: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingHorizontal: 18,
+    borderRadius: 10,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginTop: 2,
   },
   actionButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
   modalContainer: {
     flex: 1,
@@ -970,5 +1379,75 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     flex: 1,
     lineHeight: 18,
+  },
+  acknowledgmentSection: {
+    marginBottom: 20,
+  },
+  acknowledgmentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+  },
+  acknowledgmentButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+    color: '#fff',
+  },
+  jobDateIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  jobDateContainer: {
+    flex: 1,
+  },
+  countdownContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+  },
+  countdownBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginRight: 6,
+  },
+  countdownText: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  jobProgressContainer: {
+    flex: 1,
+  },
+  progressIndicator: {
+    marginTop: 6,
+    alignItems: 'center',
+  },
+  progressBar: {
+    width: '100%',
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 3,
   },
 });

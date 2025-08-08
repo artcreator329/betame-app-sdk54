@@ -18,12 +18,18 @@ export class NotificationService {
   }
 
   private constructor() {
-    this.initializeService();
+    // Defer initialization until a user is set to avoid noisy warnings
   }
 
   private async initializeService(userId?: string): Promise<void> {
-    if (!this.isInitialized || (userId && userId !== this.currentUserId)) {
-      this.currentUserId = userId || this.currentUserId;
+    const effectiveUserId = userId ?? this.currentUserId;
+    if (!effectiveUserId) {
+      // No user available yet; skip initialization quietly
+      return;
+    }
+
+    if (!this.isInitialized || effectiveUserId !== this.currentUserId) {
+      this.currentUserId = effectiveUserId;
       await this.loadNotifications();
       this.isInitialized = true;
     }
@@ -39,10 +45,7 @@ export class NotificationService {
 
   private async loadNotifications(): Promise<void> {
     try {
-      if (!this.currentUserId) {
-        console.warn('No current user ID set for notifications');
-        return;
-      }
+      if (!this.currentUserId) return;
       
       const userStorageKey = `${NOTIFICATIONS_STORAGE_KEY}_${this.currentUserId}`;
       const stored = await AsyncStorage.getItem(userStorageKey);
@@ -59,10 +62,7 @@ export class NotificationService {
 
   private async saveNotifications(): Promise<void> {
     try {
-      if (!this.currentUserId) {
-        console.warn('No current user ID set for saving notifications');
-        return;
-      }
+      if (!this.currentUserId) return;
       
       const userStorageKey = `${NOTIFICATIONS_STORAGE_KEY}_${this.currentUserId}`;
       await AsyncStorage.setItem(userStorageKey, JSON.stringify(this.notifications));
@@ -355,7 +355,7 @@ export class NotificationService {
         participantName,
         participantImage,
         offerId,
-        offerStatus: 'accepted',
+        offerStatus: 'in_progress',
         serviceTitle,
         price,
         currency,

@@ -143,7 +143,7 @@ export function ServiceOfferMessage({
 
   const getStatusConfig = () => {
     if (isExpired) return { color: Colors.text.secondary, bgColor: Colors.background.secondary, text: 'Expired' };
-    if (isInProgress) return { color: '#007AFF', bgColor: Colors.background.secondary, text: 'In Progress' };
+    if (isInProgress) return { color: '#f59e0b', bgColor: Colors.background.secondary, text: 'In Progress' }; // Yellow
     if (isAccepted) return { color: Colors.status.success, bgColor: Colors.background.secondary, text: 'Accepted' };
     if (isRejected) return { color: Colors.status.error, bgColor: Colors.background.secondary, text: 'Rejected' };
     if (isCancelled) return { color: '#FF9500', bgColor: Colors.background.secondary, text: 'Cancelled' };
@@ -155,7 +155,13 @@ export function ServiceOfferMessage({
   return (
     <View style={[styles.container, isCurrentUser ? styles.myOffer : styles.theirOffer]}>
       <LinearGradient
-        colors={isRejected ? ['#BDBDBD', '#9E9E9E', '#757575'] : ['#81C784', '#66BB6A', '#4CAF50']}
+        colors={
+          isRejected
+            ? ['#BDBDBD', '#9E9E9E', '#757575']
+            : isInProgress
+              ? ['#FFF7CC', '#FFE38F', '#FFCC00'] // Yellow gradient for in-progress
+              : ['#81C784', '#66BB6A', '#4CAF50']
+        }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.bubble, (isRejected || isCancelled) && styles.rejectedBubble]}
@@ -1523,7 +1529,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#f59e0b',
     alignItems: 'center',
   },
   inProgressButtonText: {

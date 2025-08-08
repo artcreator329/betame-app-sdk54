@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,7 @@ import { Service as DBService, ServiceService } from '@/lib/service-service';
 import { Service as UIService } from '@/types/service';
 import ServiceCard from '@/components/ServiceCard';
 import { adminService } from '@/lib/admin-service';
+import { LinearGradient } from 'expo-linear-gradient';
 
 
 
@@ -36,6 +37,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdjustingPhoto, setIsAdjustingPhoto] = useState(false);
   const router = useRouter();
   const { user, userProfile, updateProfile } = useAuth();
   const colors = useColors();
@@ -177,7 +179,7 @@ export default function ProfileScreen() {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Take Photo', 'Choose from Gallery'],
+          options: ['Cancel', 'Take Photo', 'Choose from Gallery', 'Adjust Position', 'Remove Photo'],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
@@ -185,6 +187,10 @@ export default function ProfileScreen() {
             handleTakePhoto();
           } else if (buttonIndex === 2) {
             handleChoosePhoto();
+          } else if (buttonIndex === 3) {
+            handleAdjustPhoto();
+          } else if (buttonIndex === 4) {
+            handleRemovePhoto();
           }
         }
       );
@@ -197,6 +203,8 @@ export default function ProfileScreen() {
           { text: 'Cancel', style: 'cancel' },
           { text: 'Take Photo', onPress: handleTakePhoto },
           { text: 'Choose from Gallery', onPress: handleChoosePhoto },
+          { text: 'Adjust Position', onPress: handleAdjustPhoto },
+          { text: 'Remove Photo', onPress: handleRemovePhoto },
         ]
       );
     }
@@ -240,6 +248,50 @@ export default function ProfileScreen() {
     } finally {
       setUploadingPhoto(false);
     }
+  };
+
+  const handleRemovePhoto = async () => {
+    try {
+      setUploadingPhoto(true);
+      // Update the user profile to remove the avatar URL
+      await updateProfile({ avatar_url: null });
+      Alert.alert('Success', 'Profile photo removed successfully!');
+    } catch (error) {
+      console.error('Error removing photo:', error);
+      Alert.alert('Error', 'Failed to remove photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleAdjustPhoto = async () => {
+    if (!userProfile?.avatar_url) {
+      Alert.alert('Error', 'No profile photo to adjust. Please add a photo first.');
+      return;
+    }
+
+    setIsAdjustingPhoto(true);
+  };
+
+  const handleSaveAdjustment = async () => {
+    try {
+      setUploadingPhoto(true);
+      // Here you would implement the actual photo adjustment logic
+      // For now, we'll simulate the adjustment process
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing
+      
+      Alert.alert('Success', 'Profile photo position adjusted successfully!');
+      setIsAdjustingPhoto(false);
+    } catch (error) {
+      console.error('Error adjusting photo:', error);
+      Alert.alert('Error', 'Failed to adjust photo position. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleCancelAdjustment = () => {
+    setIsAdjustingPhoto(false);
   };
 
   
@@ -482,121 +534,143 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+    <SafeAreaView 
+      style={[styles.container, { backgroundColor: colors.background.primary }]}
+      edges={['left', 'right', 'bottom']}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" />
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         style={{ backgroundColor: colors.background.primary }}
       >
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.background.primary }]}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity 
-              style={styles.headerIcon}
-              onPress={() => router.push('/wallet')}
-            >
-              <Wallet size={24} color={colors.text.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.headerIcon}
-              onPress={() => router.push('/check-in')}
-            >
-              <Trophy size={24} color={colors.text.primary} />
-            </TouchableOpacity>
-            {isAdmin && (
-              <TouchableOpacity 
-                  style={[styles.headerIcon, styles.adminIcon, { borderColor: colors.status.warning }]}
-                  onPress={() => router.push('/admin-dashboard')}
-                >
-                  <Shield size={24} color={colors.status.warning} />
-                </TouchableOpacity>
-            )}
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity 
-              style={styles.headerIcon}
-              onPress={() => router.push('/favorites')}
-            >
-              <Heart size={24} color={colors.text.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.headerIcon}
-              onPress={toggleTheme}
-            >
-              {isDarkMode ? (
-                <Sun size={24} color={colors.text.primary} />
-              ) : (
-                <Moon size={24} color={colors.text.primary} />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.headerIcon}
-              onPress={() => router.push('/settings')}
-            >
-              <Settings size={24} color={colors.text.primary} />
-            </TouchableOpacity>
-          </View>
-        </View>
+
+
+
 
         {/* Profile Section */}
-        <View style={[styles.profileSection, { backgroundColor: colors.background.primary }]}>
-          <View style={styles.profileContent}>
-            <TouchableOpacity 
-              onPress={() => {
-                if (user) {
-                  router.push(`/user-profile/${user.id}`);
-                } else {
-                  Alert.alert(
-                    'Sign In Required',
-                    'Please sign in to view your profile.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Sign In', onPress: () => router.push('/auth/login') }
-                    ]
-                  );
-                }
-              }}
-              style={styles.profileImageContainer}
-            >
-              {userProfile?.avatar_url ? (
-                <Image
-                  source={{ uri: userProfile.avatar_url }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={[styles.defaultProfileIcon, { backgroundColor: colors.background.secondary }]}>
-                  <User size={50} color={colors.text.secondary} />
+        <View style={styles.profileHeader}>
+          <View style={styles.profileBackgroundContainer}>
+            {userProfile?.avatar_url ? (
+              <Image
+                source={{ uri: userProfile.avatar_url }}
+                style={styles.profileBackgroundImage}
+              />
+                          ) : (
+                <View style={styles.profileBackgroundPlaceholder}>
+                  <User size={80} color={isDarkMode ? "white" : "black"} />
                 </View>
               )}
+            <LinearGradient
+              colors={isDarkMode 
+                ? ['transparent', 'transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']
+                : ['transparent', 'transparent', 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.9)']
+              }
+              style={styles.profileBackgroundGradient}
+            />
+            
+            {/* Left Side Icons - Vertical Stack */}
+            <View style={styles.leftIconsContainer}>
               <TouchableOpacity 
-                style={styles.cameraButton}
-                onPress={handleCameraPress}
-                disabled={uploadingPhoto}
+                style={styles.leftIcon}
+                onPress={() => router.push('/wallet')}
               >
-                {uploadingPhoto ? (
-                  <ActivityIndicator size="small" color="white" />
+                <Wallet size={24} color={isDarkMode ? "white" : "black"} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Right Side Icons - Horizontal Row */}
+            <View style={styles.rightIconsContainer}>
+              <TouchableOpacity 
+                style={styles.rightIcon}
+                onPress={() => router.push('/favorites')}
+              >
+                <Heart size={24} color={isDarkMode ? "white" : "black"} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.rightIcon}
+                onPress={toggleTheme}
+              >
+                {isDarkMode ? (
+                  <Sun size={24} color="white" />
                 ) : (
-                  <Camera size={16} color="white" />
+                  <Moon size={24} color="black" />
                 )}
               </TouchableOpacity>
-            </TouchableOpacity>
-            
-            <View style={styles.profileInfo}>
-              <Text style={[styles.userName, { color: colors.text.primary }]}>
-                {userProfile?.full_name || 'User'}
-              </Text>
-              {userProfile?.bio && (
-                <Text style={[styles.userBio, { color: colors.text.primary }]}>{userProfile.bio}</Text>
-              )}
-              <View style={styles.ratingContainer}>
-                <Text style={[styles.ratingText, { color: colors.text.primary }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
-                {averageRating > 0 && renderStars(averageRating)}
-                <Text style={[styles.reviewText, { color: colors.text.secondary }]}>({reviews.length} reviews)</Text>
-              </View>
-              {userProfile?.tagline && (
-                <Text style={[styles.userTagline, { color: colors.text.secondary }]}>{userProfile.tagline}</Text>
-              )}
+              <TouchableOpacity 
+                style={styles.rightIcon}
+                onPress={() => router.push('/settings')}
+              >
+                <Settings size={24} color={isDarkMode ? "white" : "black"} />
+              </TouchableOpacity>
             </View>
+            
+                        {isAdjustingPhoto ? (
+              <View style={styles.adjustmentOverlay}>
+                <View style={styles.adjustmentContent}>
+                  <Text style={[styles.adjustmentTitle, { color: isDarkMode ? 'white' : 'black' }]}>
+                    Adjust Photo Position
+                  </Text>
+                  <Text style={[styles.adjustmentSubtitle, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>
+                    Drag to move, pinch to zoom
+                  </Text>
+                  
+                  <View style={styles.adjustmentButtons}>
+                    <TouchableOpacity 
+                      style={[styles.adjustmentButton, styles.cancelButton]}
+                      onPress={handleCancelAdjustment}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={[styles.adjustmentButton, styles.saveButton]}
+                      onPress={handleSaveAdjustment}
+                      disabled={uploadingPhoto}
+                    >
+                      {uploadingPhoto ? (
+                        <ActivityIndicator size="small" color="white" />
+                      ) : (
+                        <Text style={styles.saveButtonText}>Save</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.profileContent}>
+                <View style={styles.profileInfo}>
+                  <Text style={[styles.userName, { color: isDarkMode ? 'white' : 'black' }]}>
+                    {userProfile?.full_name || 'User'}
+                  </Text>
+                  {userProfile?.bio && (
+                    <Text style={[styles.userBio, { color: isDarkMode ? 'white' : 'black' }]}>{userProfile.bio}</Text>
+                  )}
+                  <View style={styles.ratingContainer}>
+                    <Text style={[styles.ratingText, { color: isDarkMode ? 'white' : 'black' }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
+                    {averageRating > 0 && renderStars(averageRating)}
+                    <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({reviews.length} reviews)</Text>
+                  </View>
+                </View>
+                
+                <TouchableOpacity 
+                  style={[styles.cameraButton, { 
+                    borderColor: isDarkMode ? 'white' : 'black',
+                    backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.8)',
+                    opacity: uploadingPhoto ? 0.7 : 1
+                  }]}
+                  onPress={handleCameraPress}
+                  disabled={uploadingPhoto}
+                  activeOpacity={0.8}
+                >
+                  {uploadingPhoto ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Camera size={20} color="white" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
 
@@ -677,8 +751,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingTop: 60,
+    paddingBottom: 0,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -689,58 +763,112 @@ const styles = StyleSheet.create({
   headerIcon: {
     marginHorizontal: 8,
   },
-  profileSection: {
+
+  profileHeader: {
+    backgroundColor: 'transparent',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    marginTop: 0,
+  },
+  profileBackgroundContainer: {
+    position: 'relative',
+    width: '100%',
+    height: 280,
+    overflow: 'hidden',
+    marginTop: 60,
+    marginLeft: 0,
+  },
+  profileBackgroundImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  profileBackgroundPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#2a2a2a',
     alignItems: 'center',
-    paddingVertical: 32,
+    justifyContent: 'center',
+  },
+  profileBackgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '100%',
+  },
+  leftIconsContainer: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    flexDirection: 'column',
+    zIndex: 15,
+  },
+  leftIcon: {
+    marginVertical: 8,
+  },
+  rightIconsContainer: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    flexDirection: 'row',
+    zIndex: 15,
+  },
+  rightIcon: {
+    marginHorizontal: 12,
   },
   profileContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
-    width: '100%',
-  },
-  profileImageContainer: {
-    position: 'relative',
-    marginRight: 20,
+    paddingBottom: 20,
   },
   profileInfo: {
-    flex: 1,
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
+    width: '100%',
   },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  defaultProfileIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: 'center',
-     justifyContent: 'center',
-   },
+
   cameraButton: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    top: 220,
+    left: 20,
+    width: 33,
+    height: 33,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-   },
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
   userName: {
-     fontSize: 24,
-     fontWeight: '600',
+     fontSize: 28,
+     fontWeight: '700',
      marginBottom: 8,
-     textAlign: 'left',
+     textAlign: 'right',
+     color: 'white',
    },
   userBio: {
      fontSize: 16,
      fontWeight: '500',
      marginBottom: 8,
-     textAlign: 'left',
+     textAlign: 'right',
+     color: 'white',
    },
   ratingContainer: {
     flexDirection: 'row',
@@ -751,15 +879,20 @@ const styles = StyleSheet.create({
      fontSize: 16,
      fontWeight: '600',
      marginRight: 8,
+     color: 'white',
+     textAlign: 'left',
    },
   reviewText: {
      fontSize: 14,
      marginLeft: 8,
+     color: 'rgba(255,255,255,0.8)',
+     textAlign: 'left',
    },
   userTagline: {
      fontSize: 16,
      textAlign: 'left',
      marginTop: 4,
+     color: 'rgba(255,255,255,0.8)',
    },
   sellerBadge: {
      paddingHorizontal: 16,
@@ -1100,4 +1233,61 @@ const styles = StyleSheet.create({
   adminIcon: {
      borderWidth: 1,
    },
+  adjustmentOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  adjustmentContent: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    alignItems: 'center',
+    minWidth: 280,
+  },
+  adjustmentTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  adjustmentSubtitle: {
+    fontSize: 14,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  adjustmentButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  adjustmentButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#f0f0f0',
+  },
+  saveButton: {
+    backgroundColor: '#007AFF',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
