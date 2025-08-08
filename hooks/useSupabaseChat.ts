@@ -110,7 +110,11 @@ export function useSupabaseChat({ chatId, currentUserId, currentUserName }: UseS
   const sendMessage = useCallback(async (
     message: string,
     senderName: string,
-    senderImage: string
+    senderImage: string,
+    quotedMessageId?: string,
+    quotedMessageContent?: string,
+    quotedMessageSenderName?: string,
+    quotedMessageType?: 'text' | 'service' | 'offer'
   ): Promise<boolean> => {
     try {
       const sentMessage = await supabaseChatService.sendMessage(
@@ -118,7 +122,11 @@ export function useSupabaseChat({ chatId, currentUserId, currentUserName }: UseS
         currentUserId,
         senderName,
         senderImage,
-        message
+        message,
+        quotedMessageId,
+        quotedMessageContent,
+        quotedMessageSenderName,
+        quotedMessageType
       );
       return sentMessage !== null;
     } catch (error) {

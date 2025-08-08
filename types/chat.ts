@@ -84,6 +84,11 @@ export interface ChatMessage {
   offerId?: string;
   offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
   offerExpiresAt?: Date;
+  // Quote message fields
+  quotedMessageId?: string;
+  quotedMessageContent?: string;
+  quotedMessageSenderName?: string;
+  quotedMessageType?: 'text' | 'service' | 'offer';
 }
 
 export interface LiveChatMessage {
@@ -100,6 +105,11 @@ export interface LiveChatMessage {
   offerId?: string;
   offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
   offerExpiresAt?: Date;
+  // Quote message fields
+  quotedMessageId?: string;
+  quotedMessageContent?: string;
+  quotedMessageSenderName?: string;
+  quotedMessageType?: 'text' | 'service' | 'offer';
 }
 
 export interface ChatParticipant {

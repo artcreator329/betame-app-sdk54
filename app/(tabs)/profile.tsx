@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun } from 'lucide-react-native';
+import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun, Heart as HeartFilled, Settings as SettingsFilled, Sun as SunFilled, Moon as MoonFilled, Wallet as WalletFilled, Trophy as TrophyFilled } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -538,7 +538,7 @@ export default function ProfileScreen() {
       style={[styles.container, { backgroundColor: colors.background.primary }]}
       edges={['left', 'right', 'bottom']}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" />
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -563,8 +563,8 @@ export default function ProfileScreen() {
               )}
             <LinearGradient
               colors={isDarkMode 
-                ? ['transparent', 'transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']
-                : ['transparent', 'transparent', 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.9)']
+                ? ['transparent', 'transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,1.0)']
+                : ['transparent', 'transparent', 'rgba(241,248,255,0.4)', 'rgba(255,255,255,1.0)']
               }
               style={styles.profileBackgroundGradient}
             />
@@ -575,7 +575,13 @@ export default function ProfileScreen() {
                 style={styles.leftIcon}
                 onPress={() => router.push('/wallet')}
               >
-                <Wallet size={24} color={isDarkMode ? "white" : "black"} />
+                <WalletFilled size={24} color="#3B82F6" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.leftIcon}
+                onPress={() => console.log('Trophy pressed')}
+              >
+                <TrophyFilled size={24} color="#3B82F6" />
               </TouchableOpacity>
             </View>
 
@@ -585,23 +591,23 @@ export default function ProfileScreen() {
                 style={styles.rightIcon}
                 onPress={() => router.push('/favorites')}
               >
-                <Heart size={24} color={isDarkMode ? "white" : "black"} />
+                <HeartFilled size={24} color="#3B82F6" />
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.rightIcon}
                 onPress={toggleTheme}
               >
                 {isDarkMode ? (
-                  <Sun size={24} color="white" />
+                  <SunFilled size={24} color="#3B82F6" />
                 ) : (
-                  <Moon size={24} color="black" />
+                  <MoonFilled size={24} color="#3B82F6" />
                 )}
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.rightIcon}
                 onPress={() => router.push('/settings')}
               >
-                <Settings size={24} color={isDarkMode ? "white" : "black"} />
+                <SettingsFilled size={24} color="#3B82F6" />
               </TouchableOpacity>
             </View>
             
@@ -816,7 +822,7 @@ const styles = StyleSheet.create({
     zIndex: 15,
   },
   rightIcon: {
-    marginHorizontal: 12,
+    marginHorizontal: 6,
   },
   profileContent: {
     position: 'absolute',

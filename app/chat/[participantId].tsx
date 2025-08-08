@@ -32,6 +32,7 @@ import { ServiceOfferMessage } from '../../components/ServiceOfferMessage';
 import { ServiceOfferModal } from '../../components/ServiceOfferModal';
 import { MalaysianPaymentModal } from '../../components/MalaysianPaymentModal';
 import { JobProgressMonitor } from '../../components/JobProgressMonitor';
+import { QuotedMessage } from '../../components/QuotedMessage';
 import { notificationService } from '@/lib/notification-service';
 
 interface ModeratedMessage extends ChatMessage {
@@ -98,6 +99,16 @@ export default function ChatScreen() {
     image: string;
     isOnline: boolean;
   } | null>(null);
+  
+  // Quote message state
+  const [quotedMessage, setQuotedMessage] = useState<{
+    id: string;
+    content: string;
+    senderName: string;
+    messageType: 'text' | 'service' | 'offer';
+  } | null>(null);
+  
+
   const scrollViewRef = useRef<ScrollView>(null);
   const { chatService: supabaseChatService } = useSupabaseChatContext();
   
@@ -367,7 +378,11 @@ export default function ChatScreen() {
     const result = await sendChatMessage(
       messageText,
       userProfile.full_name || user.email?.split('@')[0] || 'User',
-      userProfile.avatar_url || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400'
+      userProfile.avatar_url || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
+      quotedMessage?.id,
+      quotedMessage?.content,
+      quotedMessage?.senderName,
+      quotedMessage?.messageType
     );
 
     if (!result) {
@@ -376,6 +391,9 @@ export default function ChatScreen() {
         'Your message contains personal contact information and has been hidden for safety. Please use the platform\'s built-in messaging system.',
         [{ text: 'OK' }]
       );
+    } else {
+      // Clear quoted message after successful send
+      setQuotedMessage(null);
     }
   };
 
@@ -685,6 +703,46 @@ export default function ChatScreen() {
     }
   };
 
+  const handleQuoteMessage = (messageId: string) => {
+    const messageToQuote = messages.find(msg => msg.id === messageId);
+    if (messageToQuote) {
+      setQuotedMessage({
+        id: messageToQuote.id,
+        content: messageToQuote.content,
+        senderName: messageToQuote.senderName,
+        messageType: messageToQuote.messageType || 'text',
+      });
+      // Focus the input field
+      setTimeout(() => {
+        // Focus logic will be added when we update the input section
+      }, 100);
+    }
+  };
+
+  const handleCancelQuote = () => {
+    setQuotedMessage(null);
+  };
+
+  const scrollToMessage = (messageId: string) => {
+    const messageIndex = messages.findIndex(msg => msg.id === messageId);
+    if (messageIndex !== -1 && scrollViewRef.current) {
+      // For ScrollView, we need to scroll to a specific position
+      // Since we can't easily calculate the exact position, we'll scroll to the bottom
+      // and then scroll up by a calculated amount based on the message index
+      const estimatedMessageHeight = 80; // Approximate height of each message
+      const scrollPosition = Math.max(0, (messages.length - messageIndex - 1) * estimatedMessageHeight);
+      
+      scrollViewRef.current.scrollTo({
+        y: scrollPosition,
+        animated: true,
+      });
+      
+      console.log(`📱 Scrolled to message ${messageId} at index ${messageIndex}, position ${scrollPosition}`);
+    } else {
+      console.log(`❌ Message ${messageId} not found or ScrollView ref not available`);
+    }
+  };
+
   const handleMessageLongPress = (messageId: string, isMyMessage: boolean) => {
     setSelectedMessageId(messageId);
     
@@ -693,12 +751,14 @@ export default function ChatScreen() {
       if (Platform.OS === 'ios') {
         ActionSheetIOS.showActionSheetWithOptions(
           {
-            options: ['Cancel', 'Delete Message'],
-            destructiveButtonIndex: 1,
+            options: ['Cancel', 'Quote Message', 'Delete Message'],
+            destructiveButtonIndex: 2,
             cancelButtonIndex: 0,
           },
           (buttonIndex) => {
             if (buttonIndex === 1) {
+              handleQuoteMessage(messageId);
+            } else if (buttonIndex === 2) {
               handleDeleteMessage(messageId);
             }
           }
@@ -709,6 +769,7 @@ export default function ChatScreen() {
           'What would you like to do?',
           [
             { text: 'Cancel', style: 'cancel' },
+            { text: 'Quote Message', onPress: () => handleQuoteMessage(messageId) },
             { text: 'Delete Message', style: 'destructive', onPress: () => handleDeleteMessage(messageId) },
           ]
         );
@@ -718,14 +779,16 @@ export default function ChatScreen() {
       if (Platform.OS === 'ios') {
         ActionSheetIOS.showActionSheetWithOptions(
           {
-            options: ['Cancel', 'Report Message', 'Block User'],
-            destructiveButtonIndex: 2,
+            options: ['Cancel', 'Quote Message', 'Report Message', 'Block User'],
+            destructiveButtonIndex: 3,
             cancelButtonIndex: 0,
           },
           (buttonIndex) => {
             if (buttonIndex === 1) {
-              handleReportMessage(messageId);
+              handleQuoteMessage(messageId);
             } else if (buttonIndex === 2) {
+              handleReportMessage(messageId);
+            } else if (buttonIndex === 3) {
               handleBlockUser();
             }
           }
@@ -736,6 +799,7 @@ export default function ChatScreen() {
           'What would you like to do?',
           [
             { text: 'Cancel', style: 'cancel' },
+            { text: 'Quote Message', onPress: () => handleQuoteMessage(messageId) },
             { text: 'Report Message', onPress: () => handleReportMessage(messageId) },
             { text: 'Block User', style: 'destructive', onPress: handleBlockUser },
           ]
@@ -1136,6 +1200,17 @@ export default function ChatScreen() {
                 styles.messageBubble,
                 (msg.senderId === user?.id) ? styles.myMessageBubble : styles.theirMessageBubble
               ]}>
+                {/* Show quoted message if exists */}
+                {msg.quotedMessageId && msg.quotedMessageContent && msg.quotedMessageSenderName && (
+                  <QuotedMessage
+                    content={msg.quotedMessageContent}
+                    senderName={msg.quotedMessageSenderName}
+                    messageType={msg.quotedMessageType || 'text'}
+                    isMyMessage={msg.senderId === user?.id}
+                    quotedMessageId={msg.quotedMessageId}
+                    onPress={() => scrollToMessage(msg.quotedMessageId!)}
+                  />
+                )}
                 {msg.messageType === 'service' && msg.serviceData ? (
                 <View style={styles.serviceMessageContent}>
                   <View style={styles.serviceHeader}>
@@ -1289,6 +1364,28 @@ export default function ChatScreen() {
           )}
         </ScrollView>
 
+        {/* Quoted Message Display */}
+        {quotedMessage && (
+          <View style={styles.quotedMessageInputContainer}>
+            <View style={styles.quotedMessageInputContent}>
+              <QuotedMessage
+                content={quotedMessage.content}
+                senderName={quotedMessage.senderName}
+                messageType={quotedMessage.messageType}
+                isMyMessage={false}
+                quotedMessageId={quotedMessage.id}
+                onPress={() => scrollToMessage(quotedMessage.id)}
+              />
+            </View>
+            <TouchableOpacity 
+              style={styles.cancelQuoteButton}
+              onPress={handleCancelQuote}
+            >
+              <X size={16} color="#8E8E93" />
+            </TouchableOpacity>
+          </View>
+        )}
+        
         {/* Input */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
@@ -2493,6 +2590,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     textAlign: 'center',
+  },
+
+  // Quoted message input styles
+  quotedMessageInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderTopWidth: 1,
+    borderTopColor: '#E8E8E8',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  quotedMessageInputContent: {
+    flex: 1,
+  },
+  cancelQuoteButton: {
+    padding: 8,
+    marginLeft: 8,
   },
 
 });

@@ -236,6 +236,11 @@ export class SupabaseChatService {
       offerId: dbMessage.offer_id,
       offerStatus: (latestOfferStatus as any) || dbMessage.offer_status,
       offerExpiresAt: dbMessage.offer_expires_at ? new Date(dbMessage.offer_expires_at) : undefined,
+      // Quote message fields
+      quotedMessageId: dbMessage.quoted_message_id,
+      quotedMessageContent: dbMessage.quoted_message_content,
+      quotedMessageSenderName: dbMessage.quoted_message_sender_name,
+      quotedMessageType: dbMessage.quoted_message_type,
     };
   }
 
@@ -376,7 +381,11 @@ export class SupabaseChatService {
     senderId: string,
     senderName: string,
     senderImage: string,
-    message: string
+    message: string,
+    quotedMessageId?: string,
+    quotedMessageContent?: string,
+    quotedMessageSenderName?: string,
+    quotedMessageType?: 'text' | 'service' | 'offer'
   ): Promise<LiveChatMessage | null> {
     try {
       const moderation = this.moderateMessage(message);
@@ -390,6 +399,11 @@ export class SupabaseChatService {
         is_hidden: moderation.isHidden,
         moderation_reason: moderation.moderationReason,
         is_reported: false,
+        // Quote message fields
+        quoted_message_id: quotedMessageId,
+        quoted_message_content: quotedMessageContent,
+        quoted_message_sender_name: quotedMessageSenderName,
+        quoted_message_type: quotedMessageType,
       };
 
       // Save to Supabase
