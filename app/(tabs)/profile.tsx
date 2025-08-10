@@ -583,7 +583,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.leftIcon}
-                onPress={() => console.log('Trophy pressed')}
+                onPress={() => router.push('/check-in')}
               >
                 <TrophyFilled size={24} color="#3B82F6" />
               </TouchableOpacity>

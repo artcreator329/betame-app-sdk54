@@ -1320,11 +1320,26 @@ export default function ChatScreen() {
             ) : (
             <>
               <View style={styles.headerInfo}>
-                <Image source={{ uri: chat.participantImage }} style={styles.headerAvatar} />
-                <View style={styles.headerText}>
+                <TouchableOpacity onPress={() => {
+                  const targetParticipantId = Array.isArray(participantId) ? participantId[0] : participantId;
+                  if (targetParticipantId) {
+                    router.push(`/profile/${targetParticipantId}`);
+                  }
+                }}>
+                  <Image source={{ uri: chat.participantImage }} style={styles.headerAvatar} />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.headerText}
+                  onPress={() => {
+                    const targetParticipantId = Array.isArray(participantId) ? participantId[0] : participantId;
+                    if (targetParticipantId) {
+                      router.push(`/profile/${targetParticipantId}`);
+                    }
+                  }}
+                >
                   <Text style={styles.headerName}>{chat.participantName}</Text>
                   <Text style={styles.headerStatus}>{chat.lastActive}</Text>
-                </View>
+                </TouchableOpacity>
               </View>
               <TouchableOpacity onPress={handleDeleteConversation}>
                 <Trash2 size={24} color="#FF3B30" />
