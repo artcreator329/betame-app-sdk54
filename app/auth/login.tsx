@@ -10,6 +10,8 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  ScrollView,
+  Keyboard,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -174,124 +176,134 @@ export default function LoginScreen() {
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* Skip Button */}
-        <View style={styles.skipContainer}>
-          <TouchableOpacity 
-            style={styles.skipButton}
-            onPress={() => router.replace('/(tabs)')}
-          >
-            <Text style={styles.skipText}>Skip</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.content}>
-          <View style={styles.topSection}>
-            {/* Logo */}
-            <View style={styles.logoContainer}>
-              <View style={styles.logo}>
-              <Image
-                source={require('../../assets/images/icon.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
-            </View>
-
-            {/* Title */}
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>
-                {isSignUp ? 'Create an account' : 'Welcome back'}
-              </Text>
-              <Text style={styles.subtitle}>
-                {isSignUp 
-                  ? 'Enter your details to sign up'
-                  : 'Enter your email or mobile to sign in'
-                }
-              </Text>
-            </View>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Skip Button */}
+          <View style={styles.skipContainer}>
+            <TouchableOpacity 
+              style={styles.skipButton}
+              onPress={() => router.replace('/(tabs)')}
+            >
+              <Text style={styles.skipText}>Skip</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.formSection}>
-            {/* Form */}
-            <View style={styles.form}>
-              {isSignUp && (
+          <View style={styles.content}>
+            <View style={styles.topSection}>
+              {/* Logo */}
+              <View style={styles.logoContainer}>
+                <View style={styles.logo}>
+                <Image
+                  source={require('../../assets/images/icon.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
+              </View>
+
+              {/* Title */}
+              <View style={styles.titleContainer}>
+                <Text style={styles.title}>
+                  {isSignUp ? 'Create an account' : 'Welcome back'}
+                </Text>
+                <Text style={styles.subtitle}>
+                  {isSignUp 
+                    ? 'Enter your details to sign up'
+                    : 'Enter your email or mobile to sign in'
+                  }
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.formSection}>
+              {/* Form */}
+              <View style={styles.form}>
+                {isSignUp && (
+                  <TextInput
+                   style={styles.input}
+                   placeholder="Full Name"
+                   placeholderTextColor="#9CA3AF"
+                   value={fullName}
+                   onChangeText={setFullName}
+                   autoCapitalize="words"
+                   textContentType="name"
+                   returnKeyType="next"
+                 />
+                )}
+                
                 <TextInput
-                 style={styles.input}
-                 placeholder="Full Name"
-                 placeholderTextColor="#9CA3AF"
-                 value={fullName}
-                 onChangeText={setFullName}
-                 autoCapitalize="words"
-                 textContentType="name"
-               />
-              )}
-              
-              <TextInput
-                 style={styles.input}
-                 placeholder="email@domain.com"
-                 placeholderTextColor="#9CA3AF"
-                 value={email}
-                 onChangeText={setEmail}
-                 keyboardType="email-address"
-                 autoCapitalize="none"
-                 autoCorrect={false}
-                 textContentType="emailAddress"
-               />
-              
-              <TextInput
-                 style={styles.input}
-                 placeholder="Password"
-                 placeholderTextColor="#9CA3AF"
-                 value={password}
-                 onChangeText={setPassword}
-                 secureTextEntry
-                 textContentType={isSignUp ? "newPassword" : "password"}
-               />
+                   style={styles.input}
+                   placeholder="email@domain.com"
+                   placeholderTextColor="#9CA3AF"
+                   value={email}
+                   onChangeText={setEmail}
+                   keyboardType="email-address"
+                   autoCapitalize="none"
+                   autoCorrect={false}
+                   textContentType="emailAddress"
+                   returnKeyType="next"
+                 />
+                
+                <TextInput
+                   style={styles.input}
+                   placeholder="Password"
+                   placeholderTextColor="#9CA3AF"
+                   value={password}
+                   onChangeText={setPassword}
+                   secureTextEntry
+                   textContentType={isSignUp ? "newPassword" : "password"}
+                   returnKeyType="done"
+                   onSubmitEditing={handleEmailAuth}
+                 />
 
-              {/* Toggle Sign Up/Sign In */}
-               <View style={styles.toggleContainer}>
-                 <Text style={styles.toggleText}>
-                   {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-                 </Text>
-                 <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
-                   <Text style={styles.toggleLink}>
-                     {isSignUp ? ' Sign In' : ' Sign Up'}
+                {/* Toggle Sign Up/Sign In */}
+                 <View style={styles.toggleContainer}>
+                   <Text style={styles.toggleText}>
+                     {isSignUp ? 'Already have an account?' : "Don't have an account?"}
                    </Text>
+                   <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
+                     <Text style={styles.toggleLink}>
+                       {isSignUp ? ' Sign In' : ' Sign Up'}
+                     </Text>
+                   </TouchableOpacity>
+                 </View>
+
+                 <TouchableOpacity 
+                   style={[styles.continueButton, loading && styles.disabledButton]} 
+                   onPress={handleEmailAuth}
+                   disabled={loading}
+                 >
+                   {loading ? (
+                     <ActivityIndicator color="white" />
+                   ) : (
+                     <Text style={styles.continueButtonText}>
+                       {isSignUp ? 'Sign Up' : 'Continue'}
+                     </Text>
+                   )}
                  </TouchableOpacity>
-               </View>
+              </View>
 
-               <TouchableOpacity 
-                 style={[styles.continueButton, loading && styles.disabledButton]} 
-                 onPress={handleEmailAuth}
-                 disabled={loading}
-               >
-                 {loading ? (
-                   <ActivityIndicator color="white" />
-                 ) : (
-                   <Text style={styles.continueButtonText}>
-                     {isSignUp ? 'Sign Up' : 'Continue'}
-                   </Text>
-                 )}
-               </TouchableOpacity>
+              {/* Terms */}
+              <View style={styles.termsContainer}>
+                <Text style={styles.termsText}>
+                  By clicking continue, you agree to our{' '}
+                  <Text style={styles.termsLink}>Terms of Service</Text>
+                  {' '}and{' '}
+                  <Text style={styles.termsLink}>Privacy Policy</Text>
+                </Text>
+              </View>
             </View>
 
-
-
-            {/* Terms */}
-            <View style={styles.termsContainer}>
-              <Text style={styles.termsText}>
-                By clicking continue, you agree to our{' '}
-                <Text style={styles.termsLink}>Terms of Service</Text>
-                {' '}and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>
-              </Text>
-            </View>
+            <View style={styles.bottomSection}>
+             </View>
           </View>
-
-          <View style={styles.bottomSection}>
-           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -330,12 +342,18 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     justifyContent: 'flex-start',
     paddingTop: 20,
-    paddingBottom: 40,
   },
   topSection: {
     alignItems: 'center',

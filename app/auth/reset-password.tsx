@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -147,48 +150,64 @@ export default function ResetPasswordScreen() {
         <View style={styles.videoOverlay} />
       </View>
       
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Reset Password</Text>
-          <Text style={styles.subtitle}>Enter your new password below</Text>
-        </View>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Reset Password</Text>
+              <Text style={styles.subtitle}>Enter your new password below</Text>
+            </View>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="New Password"
-            placeholderTextColor="#9CA3AF"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            secureTextEntry
-            textContentType="newPassword"
-            autoCapitalize="none"
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm New Password"
-            placeholderTextColor="#9CA3AF"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            textContentType="newPassword"
-            autoCapitalize="none"
-          />
+            <View style={styles.form}>
+              <TextInput
+                style={styles.input}
+                placeholder="New Password"
+                placeholderTextColor="#9CA3AF"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                textContentType="newPassword"
+                autoCapitalize="none"
+                returnKeyType="next"
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm New Password"
+                placeholderTextColor="#9CA3AF"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                textContentType="newPassword"
+                autoCapitalize="none"
+                returnKeyType="done"
+                onSubmitEditing={handleResetPassword}
+              />
 
-          <TouchableOpacity 
-            style={[styles.resetButton, loading && styles.disabledButton]} 
-            onPress={handleResetPassword}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.resetButtonText}>Update Password</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
+              <TouchableOpacity 
+                style={[styles.resetButton, loading && styles.disabledButton]} 
+                onPress={handleResetPassword}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.resetButtonText}>Update Password</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -197,6 +216,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
   },
   videoContainer: {
     position: 'absolute',
@@ -223,6 +252,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingTop: 40,
   },
   header: {
     alignItems: 'center',
