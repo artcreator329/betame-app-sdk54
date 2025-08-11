@@ -20,7 +20,7 @@ import NearbyCategoryIcon from '@/components/NearbyCategoryIcon';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { JobService, JobListing } from '@/lib/job-service';
-import { CategoryService, Category } from '@/lib/category-service';
+
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
@@ -107,15 +107,12 @@ const bannerSlides: BannerSlide[] = [
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [jobListings, setJobListings] = useState<JobListing[]>([]);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
   const [nearbyServices, setNearbyServices] = useState<Service[]>([]);
   const [trendingServices, setTrendingServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
   const { totalUnreadCount } = useUnreadMessageCount();
@@ -149,34 +146,25 @@ export default function HomeScreen() {
   const fetchData = useCallback(async () => {
     setIsLoadingJobs(true);
     setIsLoadingServices(true);
-    setIsLoadingCategories(true);
     
     try {
       // Fetch all data concurrently
-      const [jobs, nearby, trending, categoriesData] = await Promise.all([
+      const [jobs, nearby, trending] = await Promise.all([
         JobService.getAllActiveJobs(),
         ServiceService.getNearbyServices(),
-        ServiceService.getTrendingServices(),
-        CategoryService.getAllCategories()
+        ServiceService.getTrendingServices()
       ]);
       
       setJobListings(jobs.slice(0, 4)); // Show only first 4 jobs on homepage
       setNearbyServices(nearby.map(convertToUIService));
       setTrendingServices(trending.map(convertToUIService));
-      setCategories(categoriesData);
-      
-      // Set first category as selected if available
-      if (categoriesData.length > 0 && !selectedCategory) {
-        setSelectedCategory(categoriesData[0].name);
-      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setIsLoadingJobs(false);
       setIsLoadingServices(false);
-      setIsLoadingCategories(false);
     }
-  }, []); // Remove selectedCategory dependency to prevent infinite loop
+  }, []);
 
   // Initial data fetch
   useEffect(() => {
@@ -223,22 +211,12 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
-          <View style={styles.logoSearchContainer}>
+          <View style={styles.logoContainer}>
             <Image 
               source={require('../../assets/images/icon.png')} 
               style={styles.logoIcon}
               resizeMode="contain"
             />
-            <View style={[styles.searchContainer, { backgroundColor: colors.background.secondary }]}>
-              <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
-              <TextInput
-                style={[styles.searchInput, { color: colors.text.primary }]}
-                placeholder="Search for Talents/Services..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholderTextColor={colors.text.secondary}
-              />
-            </View>
           </View>
           {user ? (
             <View style={styles.headerIcons}>
@@ -283,47 +261,21 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Categories */}
-        <View style={[styles.categoriesContainer, { backgroundColor: colors.background.tertiary }]}>
-          {isLoadingCategories ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={colors.primary.main} />
-              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading categories...</Text>
-            </View>
-          ) : categories.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoriesContent}
-            >
-              {categories.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                      styles.categoryTab,
-                      { backgroundColor: colors.primary.main, shadowColor: colors.shadow.light },
-                      selectedCategory === category.name && { backgroundColor: colors.text.white, borderWidth: 2, borderColor: colors.primary.main },
-                    ]}
-                  onPress={() => setSelectedCategory(category.name)}
-                >
-                  <Text
-                    style={[
-                      styles.categoryText,
-                      { color: colors.text.white },
-                      selectedCategory === category.name && { color: colors.primary.main },
-                    ]}
-                  >
-                    {category.icon} {category.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No trending services available</Text>
-            </View>
-          )}
+        {/* Search Bar */}
+        <View style={[styles.searchSection, { backgroundColor: colors.background.tertiary }]}>
+          <View style={[styles.searchContainer, { backgroundColor: colors.background.secondary }]}>
+            <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text.primary }]}
+              placeholder="Search for Talents/Services..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={colors.text.secondary}
+            />
+          </View>
         </View>
+
+
 
         {/* Banner Ad Space */}
         <View style={[styles.bannerContainer, { shadowColor: colors.shadow.medium }]}>
@@ -350,7 +302,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Nearby Categories */}
+        {/* Nearby Services */}
         <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
           <TouchableOpacity 
             style={styles.sectionHeader}
@@ -359,24 +311,26 @@ export default function HomeScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Nearby</Text>
             <ChevronRight size={20} color={colors.primary.main} />
           </TouchableOpacity>
-          {isLoadingCategories ? (
+          {isLoadingServices ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={colors.primary.main} />
-              <Text style={styles.loadingText}>Loading categories...</Text>
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading nearby services...</Text>
             </View>
-          ) : categories.length > 0 ? (
+          ) : nearbyServices.length > 0 ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.nearbyContent}
             >
-              {categories.slice(0, 8).map((category) => (
-                <NearbyCategoryIcon key={category.id} category={category} />
+              {nearbyServices.slice(0, 8).map((service) => (
+                <View key={service.id} style={styles.nearbyServiceCard}>
+                  <ServiceCard service={service} />
+                </View>
               ))}
             </ScrollView>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No categories available</Text>
+              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No nearby services available</Text>
             </View>
           )}
         </View>
@@ -508,7 +462,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  logoSearchContainer: {
+  logoContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -534,6 +488,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
   },
+  searchSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   headerIcons: {
     flexDirection: 'row',
   },
@@ -554,34 +512,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  categoriesContainer: {
-    paddingBottom: 16,
-  },
-  categoriesContent: {
-    paddingHorizontal: 20,
-  },
-  categoryTab: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    marginRight: 12,
-    borderRadius: 20,
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  selectedCategoryTab: {
-    borderWidth: 2,
-  },
-  categoryText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  selectedCategoryText: {
-  },
+
   bannerContainer: {
     margin: 20,
     borderRadius: 12,
@@ -669,6 +600,10 @@ const styles = StyleSheet.create({
   },
   nearbyContent: {
     paddingRight: 16,
+  },
+  nearbyServiceCard: {
+    width: 200,
+    marginRight: 12,
   },
   servicesGrid: {
     flexDirection: 'row',
