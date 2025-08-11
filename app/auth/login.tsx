@@ -27,8 +27,15 @@ export default function LoginScreen() {
   const { signIn, signUp } = useAuth();
   const videoRef = useRef<Video>(null);
 
-  // Add video error handling
+  // Add video error handling and rotation
   const [videoError, setVideoError] = useState(false);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+
+  const videos = [
+    require('../../assets/images/sign_up_page_video.mp4'),
+    require('../../assets/images/sign_up_page_video_2.mp4'),
+    require('../../assets/images/sign_up_page_video_3.mp4'),
+  ];
 
   const handleVideoError = (error: any) => {
     console.log('Video error:', error);
@@ -38,6 +45,11 @@ export default function LoginScreen() {
   const handleVideoLoad = () => {
     console.log('Video loaded successfully');
     setVideoError(false);
+  };
+
+  const handleVideoEnd = () => {
+    // Cycle to next video when current one ends
+    setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
   };
 
   const handleSignIn = async () => {
@@ -136,14 +148,19 @@ export default function LoginScreen() {
         {!videoError ? (
           <Video
             ref={videoRef}
-            source={require('../../assets/images/sign_up_page_video.mp4')}
+            source={videos[currentVideoIndex]}
             style={styles.video}
             resizeMode={ResizeMode.COVER}
             shouldPlay
-            isLooping
+            isLooping={false}
             isMuted
             onError={handleVideoError}
             onLoad={handleVideoLoad}
+            onPlaybackStatusUpdate={(status) => {
+              if (status.isLoaded && status.didJustFinish) {
+                handleVideoEnd();
+              }
+            }}
             useNativeControls={false}
             posterStyle={{ resizeMode: 'cover' }}
           />

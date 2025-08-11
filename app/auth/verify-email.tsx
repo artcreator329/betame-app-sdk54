@@ -16,9 +16,21 @@ import { adminService } from '@/lib/admin-service';
 export default function VerifyEmailScreen() {
   const [loading, setLoading] = useState(true);
   const [verificationStatus, setVerificationStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const router = useRouter();
   const { user } = useAuth();
   const params = useLocalSearchParams();
+
+  const videos = [
+    require('../../assets/images/sign_up_page_video.mp4'),
+    require('../../assets/images/sign_up_page_video_2.mp4'),
+    require('../../assets/images/sign_up_page_video_3.mp4'),
+  ];
+
+  const handleVideoEnd = () => {
+    // Cycle to next video when current one ends
+    setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
+  };
 
   useEffect(() => {
     handleEmailVerification();
@@ -135,12 +147,17 @@ export default function VerifyEmailScreen() {
       {/* Video Background */}
       <View style={styles.videoContainer}>
         <Video
-          source={require('../../assets/images/sign_up_page_video.mp4')}
+          source={videos[currentVideoIndex]}
           style={styles.video}
           resizeMode={ResizeMode.COVER}
           shouldPlay
-          isLooping
+          isLooping={false}
           isMuted
+          onPlaybackStatusUpdate={(status) => {
+            if (status.isLoaded && status.didJustFinish) {
+              handleVideoEnd();
+            }
+          }}
         />
         {/* Overlay for better text readability */}
         <View style={styles.videoOverlay} />
