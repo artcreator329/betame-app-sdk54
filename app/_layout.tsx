@@ -1,5 +1,33 @@
 // Import crypto polyfill first to ensure it's available before other modules
 import '../metro-shims/crypto-polyfill';
+import { LogBox } from 'react-native';
+import logger from '@/lib/logger';
+
+// Disable debugger warnings in development
+if (__DEV__) {
+  // Disable React Native's yellow box warnings
+  LogBox.ignoreLogs([
+    'AsyncStorage has been extracted from react-native core',
+    'ViewPropTypes will be removed from React Native',
+    'ColorPropType will be removed from React Native',
+    'requireNativeComponent',
+    'Sending',
+    'Warning:',
+    'Deprecated',
+    'Non-serializable values were found in the navigation state',
+    'VirtualizedLists should never be nested',
+    'Animated: `useNativeDriver` was not specified',
+    'componentWillReceiveProps has been renamed',
+    'componentWillMount has been renamed',
+    'componentWillUpdate has been renamed',
+  ]);
+  
+  // Optionally disable all warnings (uncomment if you want to suppress all)
+  // LogBox.ignoreAllLogs();
+  
+  // Disable the debugger banner completely
+  LogBox.ignoreAllLogs();
+}
 
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
