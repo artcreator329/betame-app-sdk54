@@ -369,15 +369,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
   },
   logoImage: {
     width: 160,
