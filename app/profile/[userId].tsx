@@ -131,6 +131,18 @@ export default function UserProfileScreen() {
   };
 
   const handleStartChat = () => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to chat with this user.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+      return;
+    }
+    
     if (!targetUserId) return;
     router.push(`/chat/${targetUserId}`);
   };

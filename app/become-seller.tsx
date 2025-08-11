@@ -1,16 +1,50 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function BecomeSellerScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'You need to sign in to become a seller. Would you like to sign in now?',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => router.back() },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+    }
+  }, [user, router]);
+
+  // Don't render the main content if user is not authenticated
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <ArrowLeft size={24} color="#1D1D1F" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.content}>
+          <Text style={styles.title}>Sign In Required</Text>
+          <Text style={styles.subtitle}>Please sign in to become a seller</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>

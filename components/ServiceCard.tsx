@@ -108,17 +108,6 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
   };
 
   const handlePress = (serviceId: string = service.id) => {
-    if (!user) {
-      Alert.alert(
-        'Sign In Required',
-        'Please sign in to view service details.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign In', onPress: () => router.push('/auth/login') }
-        ]
-      );
-      return;
-    }
     console.log('🔗 ServiceCard: Navigating to service with ID:', serviceId);
     router.push(`/service/${serviceId}`);
   };

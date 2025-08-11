@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Star, MessageCircle, X, Package } from 'lucide-react-native';
@@ -164,6 +165,19 @@ export default function ServiceDetailsScreen() {
   const isOwnService = user?.id === service?.user_id;
 
   const handleChatWithSeller = () => {
+    // Check if user is authenticated
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'You need to sign in to contact sellers. Would you like to sign in now?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+      return;
+    }
+
     // If service has variants, show selection modal
     if (serviceVariants.length > 1) {
       setServiceVariantModalVisible(true);

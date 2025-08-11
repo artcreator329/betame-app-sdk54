@@ -125,7 +125,7 @@ function RootLayoutNav() {
     }
     
     // Allow access to specific pages without authentication
-    const publicPages = ['trending', 'nearby'];
+    const publicPages = ['trending', 'nearby', 'user-profile', 'profile', 'service'];
     const currentPage = segments[0];
     
     if (publicPages.includes(currentPage)) {

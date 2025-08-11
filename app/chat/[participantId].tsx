@@ -123,6 +123,15 @@ export default function ChatScreen() {
       if (!user?.id) {
         console.log('Missing user ID:', { userId: user?.id });
         setChatLoading(false);
+        // Redirect non-authenticated users to login
+        Alert.alert(
+          'Sign In Required',
+          'You need to sign in to access chat. Would you like to sign in now?',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => router.replace('/') },
+            { text: 'Sign In', onPress: () => router.push('/auth/login') }
+          ]
+        );
         return;
       }
       
@@ -1297,6 +1306,23 @@ export default function ChatScreen() {
       </View>
     );
   };
+
+  // Don't render chat if user is not authenticated
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Please sign in to access chat</Text>
+          <TouchableOpacity 
+            style={styles.signInButton}
+            onPress={() => router.push('/auth/login')}
+          >
+            <Text style={styles.signInButtonText}>Sign In</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -2623,6 +2649,18 @@ const styles = StyleSheet.create({
   cancelQuoteButton: {
     padding: 8,
     marginLeft: 8,
+  },
+  signInButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  signInButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 
 });
