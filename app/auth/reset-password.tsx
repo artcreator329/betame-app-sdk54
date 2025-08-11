@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -88,17 +88,19 @@ export default function ResetPasswordScreen() {
   if (!isValidToken) {
     return (
       <SafeAreaView style={styles.container}>
-        <LinearGradient
-          colors={[
-            '#1E3A8A',
-            '#3B82F6',
-            '#60A5FA',
-            '#93C5FD',
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-        />
+        {/* Video Background */}
+        <View style={styles.videoContainer}>
+          <Video
+            source={require('../../assets/images/sign_up_page_video.mov')}
+            style={styles.video}
+            resizeMode={ResizeMode.COVER}
+            shouldPlay
+            isLooping
+            isMuted
+          />
+          {/* Overlay for better text readability */}
+          <View style={styles.videoOverlay} />
+        </View>
         <View style={styles.content}>
           <ActivityIndicator size="large" color="#FFFFFF" />
           <Text style={styles.title}>Validating reset link...</Text>
@@ -109,17 +111,19 @@ export default function ResetPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={[
-          '#1E3A8A',
-          '#3B82F6',
-          '#60A5FA',
-          '#93C5FD',
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradient}
-      />
+      {/* Video Background */}
+      <View style={styles.videoContainer}>
+        <Video
+          source={require('../../assets/images/sign_up_page_video.mov')}
+          style={styles.video}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay
+          isLooping
+          isMuted
+        />
+        {/* Overlay for better text readability */}
+        <View style={styles.videoOverlay} />
+      </View>
       
       <View style={styles.content}>
         <View style={styles.header}>
@@ -172,12 +176,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  gradient: {
+  videoContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: -1,
+  },
+  video: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   content: {
     flex: 1,

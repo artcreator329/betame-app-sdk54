@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -132,18 +132,19 @@ export default function VerifyEmailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Gradient Background */}
-      <LinearGradient
-        colors={[
-          '#1E3A8A', // Deep blue
-          '#3B82F6', // Blue
-          '#60A5FA', // Light blue
-          '#93C5FD', // Very light blue
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradient}
-      />
+      {/* Video Background */}
+      <View style={styles.videoContainer}>
+        <Video
+          source={require('../../assets/images/sign_up_page_video.mov')}
+          style={styles.video}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay
+          isLooping
+          isMuted
+        />
+        {/* Overlay for better text readability */}
+        <View style={styles.videoOverlay} />
+      </View>
       
       <View style={styles.content}>
         {renderContent()}
@@ -157,12 +158,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  gradient: {
+  videoContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: -1,
+  },
+  video: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   content: {
     flex: 1,

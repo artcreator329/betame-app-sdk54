@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,14 +11,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  interpolate,
-} from 'react-native-reanimated';
+import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,29 +25,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { signIn, signUp } = useAuth();
-
-  // Animation for gradient background
-  const animationProgress = useSharedValue(0);
-
-  useEffect(() => {
-    animationProgress.value = withRepeat(
-      withTiming(1, { duration: 8000 }),
-      -1,
-      true
-    );
-  }, []);
-
-  const animatedGradientStyle = useAnimatedStyle(() => {
-    const rotateZ = interpolate(animationProgress.value, [0, 1], [0, 360]);
-    const scale = interpolate(animationProgress.value, [0, 0.5, 1], [1, 1.1, 1]);
-    
-    return {
-      transform: [
-        { rotateZ: `${rotateZ}deg` },
-        { scale },
-      ],
-    };
-  });
+  const videoRef = useRef<Video>(null);
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -147,23 +118,20 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Animated Gradient Background */}
-      <Animated.View style={[styles.gradientContainer, animatedGradientStyle]}>
-        <LinearGradient
-          colors={[
-            '#1E3A8A', // Deep blue
-            '#3B82F6', // Blue
-            '#60A5FA', // Light blue
-            '#93C5FD', // Very light blue
-            '#DBEAFE', // Pale blue
-            '#3B82F6', // Blue
-            '#1E3A8A', // Deep blue
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
+      {/* Video Background */}
+      <View style={styles.videoContainer}>
+        <Video
+          ref={videoRef}
+          source={require('../../assets/images/sign_up_page_video.mov')}
+          style={styles.video}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay
+          isLooping
+          isMuted
         />
-      </Animated.View>
+        {/* Overlay for better text readability */}
+        <View style={styles.videoOverlay} />
+      </View>
       
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -296,17 +264,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  gradientContainer: {
+  videoContainer: {
     position: 'absolute',
-    top: -300,
-    left: -300,
-    right: -300,
-    bottom: -300,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     zIndex: -1,
   },
-  gradient: {
+  video: {
     flex: 1,
-    opacity: 0.9,
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   keyboardView: {
     flex: 1,
@@ -456,14 +433,20 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 12,
-    color: '#000000',
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
     lineHeight: 16,
     paddingHorizontal: 32,
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   termsLink: {
-    color: '#000000',
+    color: '#FFFFFF',
     fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   skipContainer: {
     alignItems: 'flex-end',
