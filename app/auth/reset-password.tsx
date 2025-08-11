@@ -91,7 +91,7 @@ export default function ResetPasswordScreen() {
         {/* Video Background */}
         <View style={styles.videoContainer}>
           <Video
-            source={require('../../assets/images/sign_up_page_video.mov')}
+            source={require('../../assets/images/sign_up_page_video.mp4')}
             style={styles.video}
             resizeMode={ResizeMode.COVER}
             shouldPlay
@@ -114,7 +114,7 @@ export default function ResetPasswordScreen() {
       {/* Video Background */}
       <View style={styles.videoContainer}>
         <Video
-          source={require('../../assets/images/sign_up_page_video.mov')}
+          source={require('../../assets/images/sign_up_page_video.mp4')}
           style={styles.video}
           resizeMode={ResizeMode.COVER}
           shouldPlay

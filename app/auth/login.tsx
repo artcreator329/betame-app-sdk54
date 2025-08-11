@@ -27,6 +27,19 @@ export default function LoginScreen() {
   const { signIn, signUp } = useAuth();
   const videoRef = useRef<Video>(null);
 
+  // Add video error handling
+  const [videoError, setVideoError] = useState(false);
+
+  const handleVideoError = (error: any) => {
+    console.log('Video error:', error);
+    setVideoError(true);
+  };
+
+  const handleVideoLoad = () => {
+    console.log('Video loaded successfully');
+    setVideoError(false);
+  };
+
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
@@ -120,15 +133,23 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       {/* Video Background */}
       <View style={styles.videoContainer}>
-        <Video
-          ref={videoRef}
-          source={require('../../assets/images/sign_up_page_video.mov')}
-          style={styles.video}
-          resizeMode={ResizeMode.COVER}
-          shouldPlay
-          isLooping
-          isMuted
-        />
+        {!videoError ? (
+          <Video
+            ref={videoRef}
+            source={require('../../assets/images/sign_up_page_video.mp4')}
+            style={styles.video}
+            resizeMode={ResizeMode.COVER}
+            shouldPlay
+            isLooping
+            isMuted
+            onError={handleVideoError}
+            onLoad={handleVideoLoad}
+            useNativeControls={false}
+            posterStyle={{ resizeMode: 'cover' }}
+          />
+        ) : (
+          <View style={styles.fallbackBackground} />
+        )}
         {/* Overlay for better text readability */}
         <View style={styles.videoOverlay} />
       </View>
@@ -284,6 +305,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  fallbackBackground: {
+    flex: 1,
+    backgroundColor: '#1E3A8A',
   },
   keyboardView: {
     flex: 1,
