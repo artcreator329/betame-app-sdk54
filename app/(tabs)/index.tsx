@@ -210,13 +210,9 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
+        <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image 
-              source={require('../../assets/images/icon.png')} 
-              style={styles.logoIcon}
-              resizeMode="contain"
-            />
+            <Text style={[styles.logoText, { color: colors.text.white }]}>BETAME</Text>
           </View>
           {user ? (
             <View style={styles.headerIcons}>
@@ -262,7 +258,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Search Bar */}
-        <View style={[styles.searchSection, { backgroundColor: colors.background.tertiary }]}>
+        <View style={styles.searchSection}>
           <View style={[styles.searchContainer, { backgroundColor: colors.background.secondary }]}>
             <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
             <TextInput
@@ -468,10 +464,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  logoIcon: {
-    width: 40,
-    height: 40,
-    marginRight: 12,
+  logoText: {
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   searchContainer: {
     flex: 1,
