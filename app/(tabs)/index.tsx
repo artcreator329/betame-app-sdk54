@@ -212,7 +212,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={[styles.logoText, { color: colors.text.white }]}>BETAME</Text>
+            <Text style={[styles.logoText, { color: colors.text.primary }]}>BETAME</Text>
           </View>
           {user ? (
             <View style={styles.headerIcons}>
