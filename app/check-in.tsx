@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Gift, Clock } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Colors } from '../constants/Colors';
 import { WalletService } from '../lib/wallet-service';
 import { useAuth } from '../contexts/AuthContext';
@@ -326,20 +327,37 @@ export default function CheckInScreen() {
         ]}
       >
         <View style={styles.diamondContainer}>
+          {/* Glow Effect for Claimed Diamonds */}
+          {claimed && <View style={styles.glowEffect} />}
+          
           <Image 
             source={require('../assets/images/diamond-checkin.png')}
             style={[
               styles.diamondImage,
-              claimed && styles.claimedDiamond,
+              claimed ? styles.claimedDiamond : styles.unclaimedDiamond,
               isToday && styles.todayDiamond,
             ]}
           />
           
+          {/* Color overlay for unclaimed diamonds */}
+          {!claimed && <View style={styles.unclaimedOverlay} />}
+          
           {/* Day Number */}
-          <Text style={styles.dayLabel}>Day {day}</Text>
+          <Text style={[
+            styles.dayLabel,
+            claimed ? styles.claimedDayLabel : styles.unclaimedDayLabel
+          ]}>
+            Day {day}
+          </Text>
           
           {/* Stone Count */}
-          <Text style={styles.stoneCount}>+{stones}</Text>
+          <Text style={[
+            styles.stoneCount,
+            claimed ? styles.claimedStoneCount : styles.unclaimedStoneCount,
+            day === 7 && !claimed && styles.mysteryStoneCount
+          ]}>
+            {day === 7 && !claimed ? '+?' : `+${stones}`}
+          </Text>
           
           {/* Check Mark for Claimed */}
           {claimed && (
@@ -348,15 +366,12 @@ export default function CheckInScreen() {
             </View>
           )}
           
-          {/* Bonus Label for Day 7 */}
+          {/* Mystery Label for Day 7 */}
           {bonus && (
             <View style={styles.bonusLabel}>
-              <Text style={styles.bonusText}>Bonus!</Text>
+              <Text style={styles.bonusText}>Mystery</Text>
             </View>
           )}
-          
-          {/* Glow Effect for Claimed */}
-          {claimed && <View style={styles.glowEffect} />}
         </View>
       </Animated.View>
     );
@@ -364,10 +379,39 @@ export default function CheckInScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Blur Gradient Background */}
+      <View style={styles.backgroundContainer}>
+        {/* Radial gradient background */}
+        <LinearGradient
+          colors={['#E3F2FD', '#BBDEFB', '#90CAF9', '#64B5F6', '#42A5F5', '#2196F3', '#1976D2', '#1565C0']}
+          style={styles.radialGradient}
+          start={{ x: 0.5, y: 0.25 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+        
+        {/* Blur overlay for depth */}
+        <BlurView intensity={20} style={styles.blurOverlay} />
+        
+        {/* Additional gradient layers for depth */}
+        <LinearGradient
+          colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)', 'transparent']}
+          style={styles.topGradient}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 0.5 }}
+        />
+        
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.2)']}
+          style={styles.bottomGradient}
+          start={{ x: 0.5, y: 0.5 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color={Colors.text.primary} />
+          <ArrowLeft size={24} color="#1a1a1a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Daily Check-in</Text>
         <View style={styles.headerRight} />
@@ -432,7 +476,43 @@ export default function CheckInScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary,
+    backgroundColor: 'transparent',
+  },
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: -1,
+  },
+  radialGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  blurOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+  },
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
   },
   header: {
     flexDirection: 'row',
@@ -440,9 +520,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: Colors.background.tertiary,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border.light,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   backButton: {
     padding: 4,
@@ -450,7 +530,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: '#1a1a1a',
   },
   headerRight: {
     width: 32,
@@ -488,10 +568,22 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   claimedDiamond: {
-    opacity: 0.9,
+    opacity: 1,
+  },
+  unclaimedDiamond: {
+    opacity: 0.4,
   },
   todayDiamond: {
     opacity: 1,
+  },
+  unclaimedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(158, 158, 158, 0.3)',
+    borderRadius: 50,
   },
   cardGradient: {
     flex: 1,
@@ -502,22 +594,22 @@ const styles = StyleSheet.create({
   },
   glowEffect: {
     position: 'absolute',
-    top: -4,
-    left: -4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 54,
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 58,
     backgroundColor: 'transparent',
-    borderWidth: 3,
-    borderColor: '#FFD700',
-    shadowColor: '#FFD700',
+    borderWidth: 2,
+    borderColor: '#4A90E2',
+    shadowColor: '#4A90E2',
     shadowOffset: {
       width: 0,
       height: 0,
     },
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.9,
+    shadowRadius: 12,
+    elevation: 12,
   },
   todayGradient: {
     borderWidth: 3,
@@ -534,11 +626,16 @@ const styles = StyleSheet.create({
     top: 15,
     fontSize: 12,
     fontWeight: '800',
-    color: '#1a1a1a',
     textAlign: 'center',
     textShadowColor: 'rgba(255, 255, 255, 0.8)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  claimedDayLabel: {
+    color: '#1a1a1a',
+  },
+  unclaimedDayLabel: {
+    color: '#9E9E9E',
   },
   rewardContainer: {
     alignItems: 'center',
@@ -572,11 +669,25 @@ const styles = StyleSheet.create({
     bottom: 15,
     fontSize: 14,
     fontWeight: '800',
-    color: '#1a1a1a',
     textAlign: 'center',
     textShadowColor: 'rgba(255, 255, 255, 0.8)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  claimedStoneCount: {
+    color: '#1a1a1a',
+  },
+  unclaimedStoneCount: {
+    color: '#9E9E9E',
+  },
+  mysteryStoneCount: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -10 }, { translateY: -10 }],
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#FF6B6B',
   },
   checkMark: {
     position: 'absolute',
