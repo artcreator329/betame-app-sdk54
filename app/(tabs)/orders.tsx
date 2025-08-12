@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +34,77 @@ export default function OrdersScreen() {
   const [scheduledStartDate, setScheduledStartDate] = useState('');
   const [filter, setFilter] = useState<'all' | 'buying' | 'selling'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [animationValues] = useState<{ [key: string]: Animated.Value }>({});
+  const [expandAll, setExpandAll] = useState(false);
+
+  // Initialize animation values for each order
+  const initializeAnimation = (orderId: string) => {
+    if (!animationValues[orderId]) {
+      animationValues[orderId] = new Animated.Value(0);
+    }
+  };
+
+  const toggleExpandAll = () => {
+    const newExpandAll = !expandAll;
+    setExpandAll(newExpandAll);
+    
+    if (newExpandAll) {
+      // Expand all orders
+      const allOrderIds = new Set(filteredOrders.map(order => order.id || ''));
+      setExpandedOrders(allOrderIds);
+      
+      // Animate all expansions
+      filteredOrders.forEach(order => {
+        const orderId = order.id || '';
+        initializeAnimation(orderId);
+        Animated.timing(animationValues[orderId], {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }).start();
+      });
+    } else {
+      // Collapse all orders
+      setExpandedOrders(new Set());
+      
+      // Animate all collapses
+      filteredOrders.forEach(order => {
+        const orderId = order.id || '';
+        initializeAnimation(orderId);
+        Animated.timing(animationValues[orderId], {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }).start();
+      });
+    }
+  };
+
+  const toggleOrderExpansion = (orderId: string) => {
+    const newExpandedOrders = new Set(expandedOrders);
+    const isExpanded = newExpandedOrders.has(orderId);
+    
+    if (isExpanded) {
+      newExpandedOrders.delete(orderId);
+      // Animate collapse
+      Animated.timing(animationValues[orderId], {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      newExpandedOrders.add(orderId);
+      // Animate expand
+      Animated.timing(animationValues[orderId], {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+    
+    setExpandedOrders(newExpandedOrders);
+  };
 
   const fetchOrders = async () => {
     if (!user?.id) return;
@@ -231,6 +303,78 @@ export default function OrdersScreen() {
         return 'Cancelled';
       default: 
         return status;
+    }
+  };
+
+  const getQuickActionButton = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
+    const escrowTransaction = (order as any).escrow_transactions;
+    
+    if (order.perspective === 'seller') {
+      // Seller perspective quick actions
+      switch (order.current_status) {
+        case 'acknowledgment_pending':
+          return (
+            <TouchableOpacity
+              style={[styles.quickActionButton, { backgroundColor: '#FF6B35' }]}
+              onPress={() => {
+                setSelectedOrder(order);
+                setShowAcknowledgmentModal(true);
+              }}
+            >
+              <Ionicons name="checkmark" size={14} color="#fff" />
+              <Text style={styles.quickActionText}>Acknowledge</Text>
+            </TouchableOpacity>
+          );
+        
+        case 'payment_received':
+          return (
+            <TouchableOpacity
+              style={[styles.quickActionButton, { backgroundColor: '#007AFF' }]}
+              onPress={() => handleStartWork(order)}
+            >
+              <Ionicons name="play" size={14} color="#fff" />
+              <Text style={styles.quickActionText}>Start</Text>
+            </TouchableOpacity>
+          );
+        
+        case 'work_in_progress':
+          return (
+            <TouchableOpacity
+              style={[styles.quickActionButton, { backgroundColor: '#32CD32' }]}
+              onPress={() => {
+                setSelectedOrder(order);
+                setShowCompletionModal(true);
+              }}
+            >
+              <Ionicons name="checkmark-circle" size={14} color="#fff" />
+              <Text style={styles.quickActionText}>Complete</Text>
+            </TouchableOpacity>
+          );
+        
+        default:
+          return null;
+      }
+    } else {
+      // Buyer perspective quick actions
+      switch (order.current_status) {
+        case 'work_completed':
+        case 'buyer_reviewing':
+          return (
+            <TouchableOpacity
+              style={[styles.quickActionButton, { backgroundColor: '#32CD32' }]}
+              onPress={() => {
+                setSelectedOrder(order);
+                setShowReviewModal(true);
+              }}
+            >
+              <Ionicons name="card" size={14} color="#fff" />
+              <Text style={styles.quickActionText}>Review</Text>
+            </TouchableOpacity>
+          );
+        
+        default:
+          return null;
+      }
     }
   };
 
@@ -592,7 +736,7 @@ export default function OrdersScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Filter Button */}
+      {/* Filter and Expand Controls */}
       <View style={styles.filterContainer}>
         <View style={styles.filterRow}>
           <TouchableOpacity
@@ -615,6 +759,27 @@ export default function OrdersScreen() {
               All Status
             </Text>
           </TouchableOpacity>
+          
+          {filteredOrders.length > 0 && (
+            <TouchableOpacity
+              style={[
+                styles.expandAllButton,
+                { backgroundColor: colors.primary.main }
+              ]}
+              onPress={toggleExpandAll}
+              accessibilityRole="button"
+              accessibilityLabel={expandAll ? "Collapse All Orders" : "Expand All Orders"}
+            >
+              <Ionicons 
+                name={expandAll ? "contract" : "expand"} 
+                size={16} 
+                color="#fff" 
+              />
+              <Text style={styles.expandAllText}>
+                {expandAll ? 'Collapse All' : 'Expand All'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -643,13 +808,39 @@ export default function OrdersScreen() {
           filteredOrders.map((order) => {
             const escrowTransaction = (order as any).escrow_transactions;
             const perspective = (order as any).perspective;
+            const orderId = order.id || '';
+            initializeAnimation(orderId);
             
             return (
-              <View key={order.id} style={[styles.orderCard, { backgroundColor: colors.background.secondary }]}>
-                <View style={styles.orderHeader}>
+              <Animated.View
+                key={order.id}
+                style={[
+                  styles.orderCard, 
+                  { 
+                    backgroundColor: colors.background.secondary, 
+                    opacity: animationValues[orderId]?.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.7, 1],
+                    }),
+                    transform: [
+                      {
+                        scale: animationValues[orderId]?.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.95, 1],
+                        }),
+                      },
+                    ],
+                  }
+                ]}
+              >
+                <TouchableOpacity
+                  onPress={() => toggleOrderExpansion(orderId)}
+                  style={styles.orderHeader}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.orderTitleContainer}>
                     <View style={styles.titleRow}>
-                      <Text style={[styles.orderTitle, { color: colors.text.primary }]} numberOfLines={2}>
+                      <Text style={[styles.orderTitle, { color: colors.text.primary }]} numberOfLines={expandedOrders.has(orderId) ? 2 : 1}>
                         {escrowTransaction?.service_title}
                       </Text>
                       <View style={[styles.perspectiveBadge, { backgroundColor: colors.primary.light + '20' }]}>
@@ -674,6 +865,25 @@ export default function OrdersScreen() {
                         </View>
                       )}
                     </View>
+                    {!expandedOrders.has(orderId) && (
+                      <View style={styles.collapsedInfo}>
+                        {escrowTransaction?.service_description && (
+                          <Text style={[styles.collapsedDescription, { color: colors.text.secondary }]} numberOfLines={1}>
+                            {escrowTransaction.service_description}
+                          </Text>
+                        )}
+                        <View style={styles.collapsedMeta}>
+                          <Text style={[styles.collapsedMetaText, { color: colors.text.secondary }]}>
+                            {new Date(order.created_at!).toLocaleDateString()}
+                          </Text>
+                          {escrowTransaction?.work_start_date && (
+                            <Text style={[styles.collapsedMetaText, { color: getCountdownColor(escrowTransaction.work_start_date) }]}>
+                              {getCountdownToJob(escrowTransaction.work_start_date)}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    )}
                   </View>
                   <View style={styles.orderAmountContainer}>
                     <Text style={[styles.orderAmount, { color: colors.primary.main }]}>
@@ -684,121 +894,139 @@ export default function OrdersScreen() {
                         +{escrowTransaction.platform_fee} fee
                       </Text>
                     )}
-                  </View>
-                </View>
-
-                {escrowTransaction?.service_description && (
-                  <Text style={[styles.orderDescription, { color: colors.text.secondary }]} numberOfLines={2}>
-                    {escrowTransaction.service_description}
-                  </Text>
-                )}
-
-                <View style={styles.orderDetails}>
-                  <View style={[styles.detailsSection, { borderBottomWidth: 1, borderBottomColor: colors.border.light }]}>
-                    <Text style={[styles.detailsSectionTitle, { color: colors.text.primary }]}>Timeline</Text>
-                    
-                    <View style={styles.detailRow}>
-                      <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
-                      <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                        Created: {new Date(order.created_at!).toLocaleDateString()} at {new Date(order.created_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
+                    <View style={styles.expandIndicator}>
+                      <Ionicons 
+                        name={expandedOrders.has(orderId) ? "chevron-up" : "chevron-down"} 
+                        size={16} 
+                        color={colors.text.secondary} 
+                      />
                     </View>
-                    
-                    {order.work_started_at && (
-                      <View style={styles.detailRow}>
-                        <Ionicons name="play-outline" size={16} color={colors.text.secondary} />
-                        <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                          Started: {new Date(order.work_started_at).toLocaleDateString()} at {new Date(order.work_started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                      </View>
-                    )}
-                    
-                    {order.work_completed_at && (
-                      <View style={styles.detailRow}>
-                        <Ionicons name="checkmark-outline" size={16} color="#32CD32" />
-                        <Text style={[styles.detailText, { color: '#32CD32' }]}>
-                          Completed: {new Date(order.work_completed_at).toLocaleDateString()} at {new Date(order.work_completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                      </View>
-                    )}
-
-                    {order.auto_release_date && order.current_status === 'buyer_reviewing' && (
-                      <View style={styles.detailRow}>
-                        <Ionicons name="time-outline" size={16} color="#FFA500" />
-                        <Text style={[styles.detailText, { color: '#FFA500' }]}>
-                          Auto-release: {new Date(order.auto_release_date).toLocaleDateString()} ({getDaysRemaining(order.auto_release_date)} days left)
-                        </Text>
-                      </View>
-                    )}
                   </View>
+                </TouchableOpacity>
 
-                  <View style={styles.detailsSection}>
-                    <Text style={[styles.detailsSectionTitle, { color: colors.text.primary }]}>Job Info</Text>
-                    
-                    {/* Job Date and Countdown */}
-                    {escrowTransaction?.work_start_date && (
-                      <View style={styles.detailRow}>
-                        <View style={[styles.jobDateIcon, { backgroundColor: colors.primary.light + '20' }]}>
-                          <Ionicons name="calendar" size={16} color={colors.primary.main} />
-                        </View>
-                        <View style={styles.jobDateContainer}>
-                          <Text style={[styles.detailText, { color: colors.text.primary, fontWeight: '600' }]}>
-                            Job Date: {new Date(escrowTransaction.work_start_date).toLocaleDateString()}
+                {expandedOrders.has(orderId) && (
+                  <>
+                    {escrowTransaction?.service_description && (
+                      <Text style={[styles.orderDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+                        {escrowTransaction.service_description}
+                      </Text>
+                    )}
+
+                    <View style={styles.orderDetails}>
+                      <View style={[styles.detailsSection, { borderBottomWidth: 1, borderBottomColor: colors.border.light }]}>
+                        <Text style={[styles.detailsSectionTitle, { color: colors.text.primary }]}>Timeline</Text>
+                        
+                        <View style={styles.detailRow}>
+                          <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
+                          <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                            Created: {new Date(order.created_at!).toLocaleDateString()} at {new Date(order.created_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </Text>
-                          <View style={styles.countdownContainer}>
-                            <View style={[styles.countdownBadge, { backgroundColor: getCountdownColor(escrowTransaction.work_start_date) + '20' }]}>
-                              <Ionicons 
-                                name={getCountdownIcon(escrowTransaction.work_start_date)} 
-                                size={12} 
-                                color={getCountdownColor(escrowTransaction.work_start_date)} 
-                              />
-                              <Text style={[styles.countdownText, { color: getCountdownColor(escrowTransaction.work_start_date) }]}>
-                                {getCountdownToJob(escrowTransaction.work_start_date)}
+                        </View>
+                        
+                        {order.work_started_at && (
+                          <View style={styles.detailRow}>
+                            <Ionicons name="play-outline" size={16} color={colors.text.secondary} />
+                            <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                              Started: {new Date(order.work_started_at).toLocaleDateString()} at {new Date(order.work_started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {order.work_completed_at && (
+                          <View style={styles.detailRow}>
+                            <Ionicons name="checkmark-outline" size={16} color="#32CD32" />
+                            <Text style={[styles.detailText, { color: '#32CD32' }]}>
+                              Completed: {new Date(order.work_completed_at).toLocaleDateString()} at {new Date(order.work_completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                          </View>
+                        )}
+
+                        {order.auto_release_date && order.current_status === 'buyer_reviewing' && (
+                          <View style={styles.detailRow}>
+                            <Ionicons name="time-outline" size={16} color="#FFA500" />
+                            <Text style={[styles.detailText, { color: '#FFA500' }]}>
+                              Auto-release: {new Date(order.auto_release_date).toLocaleDateString()} ({getDaysRemaining(order.auto_release_date)} days left)
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={styles.detailsSection}>
+                        <Text style={[styles.detailsSectionTitle, { color: colors.text.primary }]}>Job Info</Text>
+                        
+                        {/* Job Date and Countdown */}
+                        {escrowTransaction?.work_start_date && (
+                          <View style={styles.detailRow}>
+                            <View style={[styles.jobDateIcon, { backgroundColor: colors.primary.light + '20' }]}>
+                              <Ionicons name="calendar" size={16} color={colors.primary.main} />
+                            </View>
+                            <View style={styles.jobDateContainer}>
+                              <Text style={[styles.detailText, { color: colors.text.primary, fontWeight: '600' }]}>
+                                Job Date: {new Date(escrowTransaction.work_start_date).toLocaleDateString()}
                               </Text>
+                              <View style={styles.countdownContainer}>
+                                <View style={[styles.countdownBadge, { backgroundColor: getCountdownColor(escrowTransaction.work_start_date) + '20' }]}>
+                                  <Ionicons 
+                                    name={getCountdownIcon(escrowTransaction.work_start_date)} 
+                                    size={12} 
+                                    color={getCountdownColor(escrowTransaction.work_start_date)} 
+                                  />
+                                  <Text style={[styles.countdownText, { color: getCountdownColor(escrowTransaction.work_start_date) }]}>
+                                    {getCountdownToJob(escrowTransaction.work_start_date)}
+                                  </Text>
+                                </View>
+                              </View>
                             </View>
                           </View>
-                        </View>
-                      </View>
-                    )}
+                        )}
 
-                    {/* Job Duration */}
-                    {order.work_started_at && (
-                      <View style={styles.detailRow}>
-                        <View style={[styles.jobDateIcon, { backgroundColor: colors.primary.light + '20' }]}>
-                          <Ionicons name="timer-outline" size={16} color={colors.text.secondary} />
-                        </View>
-                        <View style={styles.jobProgressContainer}>
-                          <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                            Duration: {getJobDuration(order.work_started_at, order.work_completed_at)}
-                          </Text>
-                          {!order.work_completed_at && (
-                            <View style={styles.progressIndicator}>
-                              <View style={[styles.progressBar, { backgroundColor: colors.primary.light }]}>
-                                <View style={[styles.progressFill, { backgroundColor: colors.primary.main, width: getProgressPercentage(order.work_started_at) + '%' as any }]} />
-                              </View>
-                              <Text style={[styles.progressText, { color: colors.primary.main }]}>
-                                {getProgressPercentage(order.work_started_at)}% complete
-                              </Text>
+                        {/* Job Duration */}
+                        {order.work_started_at && (
+                          <View style={styles.detailRow}>
+                            <View style={[styles.jobDateIcon, { backgroundColor: colors.primary.light + '20' }]}>
+                              <Ionicons name="timer-outline" size={16} color={colors.text.secondary} />
                             </View>
-                          )}
+                            <View style={styles.jobProgressContainer}>
+                              <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                                Duration: {getJobDuration(order.work_started_at, order.work_completed_at)}
+                              </Text>
+                              {!order.work_completed_at && (
+                                <View style={styles.progressIndicator}>
+                                  <View style={[styles.progressBar, { backgroundColor: colors.primary.light }]}>
+                                    <View style={[styles.progressFill, { backgroundColor: colors.primary.main, width: getProgressPercentage(order.work_started_at) + '%' as any }]} />
+                                  </View>
+                                  <Text style={[styles.progressText, { color: colors.primary.main }]}>
+                                    {getProgressPercentage(order.work_started_at)}% complete
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        )}
+
+                        {/* Days since creation */}
+                        <View style={styles.detailRow}>
+                          <View style={[styles.jobDateIcon, { backgroundColor: colors.primary.light + '20' }]}>
+                            <Ionicons name="calendar-clear-outline" size={16} color={colors.text.secondary} />
+                          </View>
+                          <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                            {getDaysSinceCreation(order.created_at!)} days since creation
+                          </Text>
                         </View>
                       </View>
-                    )}
-
-                    {/* Days since creation */}
-                    <View style={styles.detailRow}>
-                      <View style={[styles.jobDateIcon, { backgroundColor: colors.primary.light + '20' }]}>
-                        <Ionicons name="calendar-clear-outline" size={16} color={colors.text.secondary} />
-                      </View>
-                      <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                        {getDaysSinceCreation(order.created_at!)} days since creation
-                      </Text>
                     </View>
-                  </View>
-                </View>
 
-                {getActionButton(order as JobStatus & { perspective: 'buyer' | 'seller' })}
-              </View>
+                                         {getActionButton(order as JobStatus & { perspective: 'buyer' | 'seller' })}
+                   </>
+                 )}
+                 
+                 {/* Quick Action Button for Collapsed State */}
+                 {!expandedOrders.has(orderId) && (
+                   <View style={styles.quickActionContainer}>
+                     {getQuickActionButton(order as JobStatus & { perspective: 'buyer' | 'seller' })}
+                   </View>
+                 )}
+               </Animated.View>
             );
           })
         )}
@@ -1449,5 +1677,74 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     marginTop: 3,
+  },
+  collapsedDescription: {
+    fontSize: 13,
+    marginTop: 4,
+    opacity: 0.7,
+    lineHeight: 16,
+  },
+  expandIndicator: {
+    marginTop: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 24,
+    height: 24,
+  },
+  collapsedInfo: {
+    marginTop: 6,
+  },
+  collapsedMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  collapsedMetaText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  expandAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginLeft: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  expandAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: 6,
+    letterSpacing: 0.2,
+  },
+  quickActionContainer: {
+    marginTop: 8,
+    alignItems: 'flex-end',
+  },
+  quickActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  quickActionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+    letterSpacing: 0.2,
   },
 });

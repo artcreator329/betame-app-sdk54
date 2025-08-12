@@ -38,6 +38,7 @@ export default function ProfileScreen() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdjustingPhoto, setIsAdjustingPhoto] = useState(false);
+  const [photoType, setPhotoType] = useState<'cover' | 'profile'>('profile');
   const router = useRouter();
   const { user, userProfile, updateProfile } = useAuth();
   const colors = useColors();
@@ -176,45 +177,81 @@ export default function ProfileScreen() {
 
   const handleCameraPress = () => {
     if (!user) {
-      Alert.alert('Error', 'Please log in to upload a profile photo.');
+      Alert.alert('Error', 'Please log in to upload a photo.');
       return;
     }
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Take Photo', 'Choose from Gallery', 'Adjust Position', 'Remove Photo'],
+          options: ['Cancel', 'Change Cover Photo', 'Change Profile Photo'],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            handleTakePhoto();
+            setPhotoType('cover');
+            handlePhotoOptions('cover');
           } else if (buttonIndex === 2) {
-            handleChoosePhoto();
-          } else if (buttonIndex === 3) {
-            handleAdjustPhoto();
-          } else if (buttonIndex === 4) {
-            handleRemovePhoto();
+            setPhotoType('profile');
+            handlePhotoOptions('profile');
           }
         }
       );
     } else {
       // For Android, show a simple alert with options
       Alert.alert(
-        'Update Profile Photo',
-        'Choose an option',
+        'Update Photo',
+        'Choose which photo to update',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Take Photo', onPress: handleTakePhoto },
-          { text: 'Choose from Gallery', onPress: handleChoosePhoto },
-          { text: 'Adjust Position', onPress: handleAdjustPhoto },
-          { text: 'Remove Photo', onPress: handleRemovePhoto },
+          { text: 'Change Cover Photo', onPress: () => {
+            setPhotoType('cover');
+            handlePhotoOptions('cover');
+          }},
+          { text: 'Change Profile Photo', onPress: () => {
+            setPhotoType('profile');
+            handlePhotoOptions('profile');
+          }},
         ]
       );
     }
   };
 
-  const handleTakePhoto = async () => {
+  const handlePhotoOptions = (type: 'cover' | 'profile') => {
+    const photoTypeText = type === 'cover' ? 'Cover Photo' : 'Profile Photo';
+    
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Gallery', 'Remove Photo'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleTakePhoto(type);
+          } else if (buttonIndex === 2) {
+            handleChoosePhoto(type);
+          } else if (buttonIndex === 3) {
+            handleRemovePhoto(type);
+          }
+        }
+      );
+    } else {
+      // For Android, show a simple alert with options
+      Alert.alert(
+        `Update ${photoTypeText}`,
+        'Choose an option',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Take Photo', onPress: () => handleTakePhoto(type) },
+          { text: 'Choose from Gallery', onPress: () => handleChoosePhoto(type) },
+          { text: 'Remove Photo', onPress: () => handleRemovePhoto(type) },
+        ]
+      );
+    }
+  };
+
+  const handleTakePhoto = async (type: 'cover' | 'profile' = 'profile') => {
     try {
       setUploadingPhoto(true);
       const result = await ImageService.takeProfilePhoto(user!.id);
@@ -222,7 +259,8 @@ export default function ProfileScreen() {
       if (result.success && result.url) {
         // Update the user profile with the new avatar URL
         await updateProfile({ avatar_url: result.url });
-        Alert.alert('Success', 'Profile photo updated successfully!');
+        const photoTypeText = type === 'cover' ? 'Cover photo' : 'Profile photo';
+        Alert.alert('Success', `${photoTypeText} updated successfully!`);
       } else {
         Alert.alert('Error', result.error || 'Failed to upload photo. Please try again.');
       }
@@ -234,7 +272,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleChoosePhoto = async () => {
+  const handleChoosePhoto = async (type: 'cover' | 'profile' = 'profile') => {
     try {
       setUploadingPhoto(true);
       const result = await ImageService.uploadProfilePhoto(user!.id);
@@ -242,7 +280,8 @@ export default function ProfileScreen() {
       if (result.success && result.url) {
         // Update the user profile with the new avatar URL
         await updateProfile({ avatar_url: result.url });
-        Alert.alert('Success', 'Profile photo updated successfully!');
+        const photoTypeText = type === 'cover' ? 'Cover photo' : 'Profile photo';
+        Alert.alert('Success', `${photoTypeText} updated successfully!`);
       } else {
         Alert.alert('Error', result.error || 'Failed to upload photo. Please try again.');
       }
@@ -254,12 +293,13 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleRemovePhoto = async () => {
+  const handleRemovePhoto = async (type: 'cover' | 'profile' = 'profile') => {
     try {
       setUploadingPhoto(true);
       // Update the user profile to remove the avatar URL
       await updateProfile({ avatar_url: null });
-      Alert.alert('Success', 'Profile photo removed successfully!');
+      const photoTypeText = type === 'cover' ? 'Cover photo' : 'Profile photo';
+      Alert.alert('Success', `${photoTypeText} removed successfully!`);
     } catch (error) {
       console.error('Error removing photo:', error);
       Alert.alert('Error', 'Failed to remove photo. Please try again.');
@@ -555,6 +595,7 @@ export default function ProfileScreen() {
         {/* Profile Section */}
         <View style={styles.profileHeader}>
           <View style={styles.profileBackgroundContainer}>
+            {/* Cover Photo */}
             {userProfile?.avatar_url ? (
               <Image
                 source={{ uri: userProfile.avatar_url }}
@@ -572,6 +613,35 @@ export default function ProfileScreen() {
               }
               style={styles.profileBackgroundGradient}
             />
+            
+            {/* Circular Profile Photo */}
+            <View style={styles.profilePhotoContainer}>
+              {userProfile?.avatar_url ? (
+                <Image
+                  source={{ uri: userProfile.avatar_url }}
+                  style={styles.profilePhoto}
+                />
+              ) : (
+                <View style={[styles.profilePhotoPlaceholder, { backgroundColor: colors.background.secondary }]}>
+                  <User size={40} color={colors.text.secondary} />
+                </View>
+              )}
+              {/* Only show camera button when viewing own profile */}
+              {user && userProfile && user.id === userProfile.id && (
+                <TouchableOpacity 
+                  style={[styles.profilePhotoEditButton, { backgroundColor: colors.primary.main }]}
+                  onPress={handleCameraPress}
+                  disabled={uploadingPhoto}
+                  activeOpacity={0.8}
+                >
+                  {uploadingPhoto ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Camera size={16} color="white" />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
             
             {/* Left Side Icons - Vertical Stack */}
             <View style={styles.leftIconsContainer}>
@@ -614,6 +684,25 @@ export default function ProfileScreen() {
                 <SettingsFilled size={24} color="#3B82F6" />
               </TouchableOpacity>
             </View>
+
+            {/* Cover Photo Edit Button - Only show when viewing own profile */}
+            {user && userProfile && user.id === userProfile.id && (
+              <TouchableOpacity 
+                style={[styles.coverPhotoEditButton, { backgroundColor: colors.primary.main }]}
+                onPress={() => {
+                  setPhotoType('cover');
+                  handlePhotoOptions('cover');
+                }}
+                disabled={uploadingPhoto}
+                activeOpacity={0.8}
+              >
+                {uploadingPhoto ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Camera size={18} color="white" />
+                )}
+              </TouchableOpacity>
+            )}
             
             {isAdjustingPhoto ? (
               <View style={styles.adjustmentOverlay}>
@@ -662,23 +751,6 @@ export default function ProfileScreen() {
                     <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({reviews.length} reviews)</Text>
                   </View>
                 </View>
-                
-                <TouchableOpacity 
-                  style={[styles.cameraButton, { 
-                    borderColor: isDarkMode ? 'white' : 'black',
-                    backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.8)',
-                    opacity: uploadingPhoto ? 0.7 : 1
-                  }]}
-                  onPress={handleCameraPress}
-                  disabled={uploadingPhoto}
-                  activeOpacity={0.8}
-                >
-                  {uploadingPhoto ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Camera size={20} color="white" />
-                  )}
-                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -808,6 +880,71 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: '100%',
   },
+  profilePhotoContainer: {
+    position: 'absolute',
+    top: 180, // Adjust based on cover photo height
+    left: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: 'white',
+    overflow: 'visible', // Changed from 'hidden' to 'visible' to show the edit button
+    zIndex: 10,
+  },
+  profilePhoto: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+  },
+  profilePhotoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profilePhotoEditButton: {
+    position: 'absolute',
+    bottom: -5,
+    right: -5,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  coverPhotoEditButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 15,
+  },
   leftIconsContainer: {
     position: 'absolute',
     top: 20,
@@ -845,27 +982,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  cameraButton: {
-    position: 'absolute',
-    top: 220,
-    left: 20,
-    width: 33,
-    height: 33,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
+
   userName: {
      fontSize: 28,
      fontWeight: '700',
