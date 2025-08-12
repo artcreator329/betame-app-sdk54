@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BetaMe - Profile Link</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        
+        .profile-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .profile-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .profile-bio {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 16px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e9ecef;
+        }
+        
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+        
+        .store-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .store-btn {
+            flex: 1;
+            padding: 12px;
+            background: #000;
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .store-btn:hover {
+            background: #333;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .loading {
+            display: none;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            .store-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">B</div>
+        <h1>BetaMe Profile</h1>
+        <p class="subtitle">Connect with amazing service providers</p>
+        
+        <div class="profile-info" id="profileInfo" style="display: none;">
+            <div class="profile-name" id="profileName"></div>
+            <div class="profile-bio" id="profileBio"></div>
+        </div>
+        
+        <div class="buttons">
+            <button class="btn btn-primary" onclick="openInApp()">
+                Open in BetaMe App
+            </button>
+            <div class="loading" id="loading">Checking if app is installed...</div>
+            <button class="btn btn-secondary" onclick="downloadApp()">
+                Download BetaMe App
+            </button>
+        </div>
+        
+        <div class="store-buttons" id="storeButtons" style="display: none;">
+            <a href="#" class="store-btn" id="iosLink">App Store</a>
+            <a href="#" class="store-btn" id="androidLink">Google Play</a>
+        </div>
+        
+        <div class="footer">
+            <p>BetaMe - Your trusted service marketplace</p>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('userId');
+        const userName = urlParams.get('name');
+        const userBio = urlParams.get('bio');
+        const deepLink = urlParams.get('deepLink');
+        
+        // App store links
+        const appStoreLinks = {
+            ios: 'https://apps.apple.com/app/betame/id123456789', // Replace with actual App Store ID
+            android: 'https://play.google.com/store/apps/details?id=com.artcreator329.boltexponativewind',
+            web: 'https://betame.com.my'
+        };
+        
+        // Display profile info if available
+        if (userName || userBio) {
+            document.getElementById('profileInfo').style.display = 'block';
+            if (userName) {
+                document.getElementById('profileName').textContent = userName;
+            }
+            if (userBio) {
+                document.getElementById('profileBio').textContent = userBio;
+            }
+        }
+        
+        // Set up store links
+        document.getElementById('iosLink').href = appStoreLinks.ios;
+        document.getElementById('androidLink').href = appStoreLinks.android;
+        
+        // Detect platform
+        function getPlatform() {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            
+            if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+                return 'ios';
+            }
+            
+            if (/android/i.test(userAgent)) {
+                return 'android';
+            }
+            
+            return 'web';
+        }
+        
+        // Try to open in app
+        function openInApp() {
+            if (!deepLink) {
+                downloadApp();
+                return;
+            }
+            
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+            
+            // Create a hidden iframe to attempt opening the deep link
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = deepLink;
+            document.body.appendChild(iframe);
+            
+            // Set a timeout to show download options if app doesn't open
+            setTimeout(() => {
+                loading.style.display = 'none';
+                document.body.removeChild(iframe);
+                
+                // If we're still here, the app probably isn't installed
+                const confirmed = confirm(
+                    'BetaMe app not found. Would you like to download it?'
+                );
+                
+                if (confirmed) {
+                    downloadApp();
+                }
+            }, 2000);
+            
+            // Also try using window.location as a fallback
+            setTimeout(() => {
+                try {
+                    window.location.href = deepLink;
+                } catch (e) {
+                    console.log('Deep link failed:', e);
+                }
+            }, 100);
+        }
+        
+        // Show download options
+        function downloadApp() {
+            const platform = getPlatform();
+            const storeButtons = document.getElementById('storeButtons');
+            
+            if (platform === 'ios') {
+                window.location.href = appStoreLinks.ios;
+            } else if (platform === 'android') {
+                window.location.href = appStoreLinks.android;
+            } else {
+                // Show both options for desktop/unknown platforms
+                storeButtons.style.display = 'flex';
+            }
+        }
+        
+        // Auto-attempt to open app on page load
+        window.addEventListener('load', () => {
+            // Small delay to ensure page is fully loaded
+            setTimeout(() => {
+                if (deepLink) {
+                    openInApp();
+                }
+            }, 500);
+        });
+        
+        // Handle page visibility change (user might have switched to app)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // User might have switched to the app
+                const loading = document.getElementById('loading');
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

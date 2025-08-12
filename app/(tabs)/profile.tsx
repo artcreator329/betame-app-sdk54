@@ -14,6 +14,7 @@ import { Service as UIService } from '@/types/service';
 import ServiceCard from '@/components/ServiceCard';
 import { adminService } from '@/lib/admin-service';
 import { LinearGradient } from 'expo-linear-gradient';
+import ProfileShareModal from '@/components/ProfileShareModal';
 
 
 
@@ -39,6 +40,7 @@ export default function ProfileScreen() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdjustingPhoto, setIsAdjustingPhoto] = useState(false);
   const [photoType, setPhotoType] = useState<'cover' | 'profile'>('profile');
+  const [shareModalVisible, setShareModalVisible] = useState(false);
   const router = useRouter();
   const { user, userProfile, updateProfile } = useAuth();
   const colors = useColors();
@@ -162,17 +164,8 @@ export default function ProfileScreen() {
     }, [user])
   );
 
-  const handleShareProfile = async () => {
-    try {
-      const userName = userProfile?.full_name || 'User';
-      const userBio = userProfile?.bio || 'Amazing service provider';
-      const result = await Share.share({
-        message: `Check out ${userName}'s profile on BetaMe!\n\n${userBio}\n\nDownload the app to connect with amazing service providers!`,
-        title: `${userName}'s Profile`,
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Unable to share profile. Please try again.');
-    }
+  const handleShareProfile = () => {
+    setShareModalVisible(true);
   };
 
   const handleCameraPress = () => {
@@ -816,6 +809,16 @@ export default function ProfileScreen() {
           {renderTabContent()}
         </View>
       </ScrollView>
+
+      {/* Profile Share Modal */}
+      <ProfileShareModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        userId={user?.id || ''}
+        userName={userProfile?.full_name}
+        userBio={userProfile?.bio}
+        userAvatar={userProfile?.avatar_url}
+      />
     </SafeAreaView>
   );
 }

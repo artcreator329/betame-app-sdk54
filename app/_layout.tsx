@@ -41,6 +41,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useEffect } from 'react';
 import { configureLocalNotifications } from '@/lib/local-notifications';
+import { useDeepLinking } from '@/hooks/useDeepLinking';
 
 function LoadingScreen() {
   return (
@@ -62,6 +63,9 @@ function RootLayoutNav() {
   const { user, isAdmin, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  
+  // Initialize deep linking
+  useDeepLinking();
 
   console.log('🔄 RootLayoutNav: Rendering with user:', !!user, 'isAdmin:', isAdmin, 'loading:', loading, 'segments:', segments);
 
@@ -194,6 +198,8 @@ function RootLayoutNav() {
       <Stack.Screen name="admin" />
       <Stack.Screen name="service/[id]" />
       <Stack.Screen name="user-profile/[userId]" />
+      <Stack.Screen name="profile/[userId]" />
+      <Stack.Screen name="search" />
       <Stack.Screen name="messages" />
       <Stack.Screen name="chat/[participantId]" />
       <Stack.Screen 

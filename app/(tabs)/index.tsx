@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MessageCircle, Heart, ChevronRight, Wallet, MapPin, Calendar } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import ServiceCard from '@/components/ServiceCard';
+import SearchBarWithAutoComplete from '@/components/SearchBarWithAutoComplete';
 import NearbyCategoryIcon from '@/components/NearbyCategoryIcon';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
@@ -259,16 +260,10 @@ export default function HomeScreen() {
 
         {/* Search Bar */}
         <View style={styles.searchSection}>
-          <View style={[styles.searchContainer, { backgroundColor: colors.background.secondary }]}>
-            <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.text.primary }]}
-              placeholder="Search for Talents/Services..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor={colors.text.secondary}
-            />
-          </View>
+          <SearchBarWithAutoComplete
+            placeholder="Search for Talents/Services..."
+            onSearch={(query) => router.push(`/search?q=${encodeURIComponent(query)}`)}
+          />
         </View>
 
 

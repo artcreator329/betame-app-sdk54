@@ -5,9 +5,17 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "betame",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "linking": {
+      "prefixes": ["betame://", "https://betame.com.my"],
+      "config": {
+        "screens": {
+          "profile/[userId]": "profile/:userId"
+        }
+      }
+    },
     "ios": {
       "supportsTablet": true,
       "config": {

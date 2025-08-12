@@ -1,15 +1,34 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Alert,
+  StatusBar
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, User, MessageCircle, Settings } from 'lucide-react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, Star, MapPin, Calendar, User, Share2, MessageCircle } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors, useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
-import { ServiceService, Service } from '@/lib/service-service';
-import { Service as UIService } from '@/types/service';
+import { ServiceService } from '@/lib/service-service';
 import ServiceCard from '@/components/ServiceCard';
+import ProfileShareModal from '@/components/ProfileShareModal';
 import { LinearGradient } from 'expo-linear-gradient';
+
+interface UserProfile {
+  id: string;
+  full_name: string;
+  bio?: string;
+  avatar_url?: string;
+  cover_photo_url?: string;
+  created_at: string;
+}
 
 interface Review {
   id: string;
@@ -23,70 +42,72 @@ interface Review {
   };
 }
 
-interface UserProfile {
-  id: string;
-  full_name: string;
-  bio: string;
-  avatar_url: string;
-  created_at: string;
-}
-
 export default function UserProfileScreen() {
-  const [activeTab, setActiveTab] = useState('Services');
-  const [services, setServices] = useState<Service[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const { userId } = useLocalSearchParams<{ userId: string }>();
   const router = useRouter();
-  const { userId } = useLocalSearchParams();
   const { user } = useAuth();
   const colors = useColors();
   const { isDarkMode } = useTheme();
 
-  const targetUserId = Array.isArray(userId) ? userId[0] : userId;
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [services, setServices] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
 
   // Calculate average rating from reviews
-  const averageRating = reviews.length > 0 
-    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+  const averageRating = reviews.length > 0
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : 0;
 
-  const fetchUserProfile = useCallback(async () => {
-    if (!targetUserId) return;
+  useEffect(() => {
+    if (userId) {
+      fetchUserProfile();
+    }
+  }, [userId]);
+
+  const fetchUserProfile = async () => {
+    if (!userId) return;
 
     try {
       setLoading(true);
-      
+
       // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', targetUserId)
+        .eq('id', userId)
         .single();
 
       if (profileError) {
-        console.error('Error fetching user profile:', profileError);
-        Alert.alert('Error', 'User profile not found');
+        console.error('Error fetching profile:', profileError);
+        Alert.alert('Error', 'Unable to load profile. Please try again.');
         router.back();
         return;
       }
 
-      setUserProfile(profileData);
+      setProfile(profileData);
 
       // Fetch user's services (only visible ones)
-      const allServices = await ServiceService.getAllServices();
-      const userServices = allServices.filter(service => 
-        service.user_id === targetUserId && service.show_on_profile !== false
-      );
-      setServices(userServices);
+      try {
+        const allServices = await ServiceService.getAllServices();
+        const userServices = allServices.filter(
+          service => service.user_id === userId && service.show_on_profile !== false
+        );
+        setServices(userServices);
+      } catch (error) {
+        console.error('Error fetching services:', error);
+        setServices([]);
+      }
 
-      // Fetch reviews for this user (as reviewee)
+      // Fetch reviews for this user
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('reviews')
         .select('*')
-        .eq('reviewee_id', targetUserId)
-        .order('created_at', { ascending: false });
+        .eq('reviewee_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-      // Fetch reviewer profiles separately
       if (reviewsData && reviewsData.length > 0) {
         const reviewerIds = reviewsData.map(review => review.reviewer_id);
         const { data: profilesData } = await supabase
@@ -98,35 +119,30 @@ export default function UserProfileScreen() {
           ...review,
           reviewer_profile: profilesData?.find(profile => profile.id === review.reviewer_id)
         }));
-        setReviews(reviewsWithProfiles || []);
+
+        setReviews(reviewsWithProfiles);
+      } else {
+        setReviews([]);
       }
 
       if (reviewsError) {
         console.error('Error fetching reviews:', reviewsError);
       }
-      
+
     } catch (error) {
-      console.error('Error fetching user data:', error);
-      Alert.alert('Error', 'Failed to load user profile');
+      console.error('Error fetching user profile:', error);
+      Alert.alert('Error', 'Unable to load profile. Please try again.');
+      router.back();
     } finally {
       setLoading(false);
     }
-  }, [targetUserId, router]);
-
-  useEffect(() => {
-    fetchUserProfile();
-  }, [fetchUserProfile]);
-
-  const handleSettings = () => {
-    // Navigate to settings or show settings modal
-    router.push('/settings');
   };
 
   const handleStartChat = () => {
     if (!user) {
       Alert.alert(
         'Sign In Required',
-        'Please sign in to chat with this user.',
+        'Please sign in to start a conversation.',
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Sign In', onPress: () => router.push('/auth/login') }
@@ -134,9 +150,13 @@ export default function UserProfileScreen() {
       );
       return;
     }
-    
-    if (!targetUserId) return;
-    router.push(`/chat/${targetUserId}`);
+
+    if (user.id === userId) {
+      Alert.alert('Info', 'You cannot start a chat with yourself.');
+      return;
+    }
+
+    router.push(`/chat/${userId}`);
   };
 
   const renderStars = (rating: number) => {
@@ -154,131 +174,35 @@ export default function UserProfileScreen() {
     );
   };
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'Services':
-        if (loading) {
-          return (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary.main} />
-              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading services...</Text>
-            </View>
-          );
-        }
-        return (
-          <View style={styles.servicesContent}>
-            <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Available Services ({services.length})</Text>
-            {services.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No services available</Text>
-              </View>
-            ) : (
-              services
-                .filter(service => service.id)
-                .map((service) => {
-                  const uiService: UIService = {
-                    id: service.id!,
-                    title: service.title,
-                    description: service.description,
-                    price: service.price,
-                    currency: service.currency,
-                    image_url: service.image_url || undefined,
-                    category_name: service.category_name || 'General',
-                    location: service.location || '',
-                    is_nearby: service.is_nearby || false,
-                    is_trending: service.is_trending || false,
-                    rating: service.rating || 0,
-                    review_count: service.review_count || 0,
-                    created_at: service.created_at || '',
-                    updated_at: service.updated_at || '',
-                    user_id: service.user_id,
-                    service_variants: service.service_variants || [],
-                    provider_name: userProfile?.full_name || 'User',
-                    provider_avatar: userProfile?.avatar_url,
-                    latitude: service.latitude,
-                    longitude: service.longitude,
-                    parent_service_id: service.parent_service_id,
-                    show_on_profile: service.show_on_profile ?? true
-                  };
-                  
-                  return (
-                    <ServiceCard
-                      key={service.id}
-                      service={uiService}
-                      showEditButton={false}
-                      showProfileToggle={false}
-                      userProfileAvatar={userProfile?.avatar_url}
-                    />
-                  );
-                })
-            )}
-          </View>
-        );
-      case 'Reviews':
-        if (loading) {
-          return (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary.main} />
-              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading reviews...</Text>
-            </View>
-          );
-        }
-        return (
-          <View style={styles.reviewsContainer}>
-            {reviews.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No reviews yet</Text>
-              </View>
-            ) : (
-              reviews.map((review) => (
-                <TouchableOpacity key={review.id} style={[styles.reviewCard, { backgroundColor: colors.background.secondary }]}>
-                  <View style={styles.reviewHeader}>
-                    <Image
-                      source={{ uri: review.reviewer_profile?.avatar_url || undefined }}
-                      style={styles.reviewerImage}
-                    />
-                    <View style={styles.reviewerInfo}>
-                      <Text style={[styles.reviewerName, { color: colors.text.primary }]}>
-                        {review.reviewer_profile?.full_name || 'Anonymous User'}
-                      </Text>
-                      <View style={styles.ratingContainer}>
-                        <Text style={[styles.ratingText, { color: colors.text.primary }]}>{review.rating.toFixed(1)}</Text>
-                        {renderStars(review.rating)}
-                      </View>
-                    </View>
-                  </View>
-                  <Text style={[styles.reviewText, { color: colors.text.secondary }]}>{review.comment || 'No comment provided'}</Text>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-        );
-      default:
-        return null;
-    }
-  };
-
-  if (loading && !userProfile) {
+  if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary.main} />
-          <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading profile...</Text>
+          <Text style={[styles.loadingText, { color: colors.text.secondary }]}>
+            Loading profile...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (!userProfile) {
+  if (!profile) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: colors.text.primary }]}>Profile not found</Text>
-          <TouchableOpacity 
+          <Text style={[styles.errorText, { color: colors.text.primary }]}>
+            Profile not found
+          </Text>
+          <TouchableOpacity
             style={[styles.backButton, { backgroundColor: colors.primary.main }]}
             onPress={() => router.back()}
           >
-            <Text style={[styles.backButtonText, { color: colors.text.white }]}>Go Back</Text>
+            <Text style={[styles.backButtonText, { color: colors.text.white }]}>
+              Go Back
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -286,34 +210,33 @@ export default function UserProfileScreen() {
   }
 
   return (
-    <SafeAreaView 
-      style={[styles.container, { backgroundColor: colors.background.primary }]}
-      edges={['top', 'left', 'right', 'bottom']}
-    >
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background.primary }]}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
           <ArrowLeft size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Profile</Text>
-        <TouchableOpacity onPress={handleShareProfile}>
-          <Text style={[styles.shareText, { color: colors.primary.main }]}>Share</Text>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
+          Profile
+        </Text>
+        <TouchableOpacity 
+          onPress={() => setShareModalVisible(true)} 
+          style={styles.headerButton}
+        >
+          <Share2 size={24} color={colors.text.primary} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        style={{ backgroundColor: colors.background.primary }}
-      >
-        {/* Profile Section */}
+      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+        {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.profileBackgroundContainer}>
-            {userProfile.avatar_url ? (
+            {/* Cover Photo */}
+            {profile.cover_photo_url ? (
               <Image
-                source={{ uri: userProfile.avatar_url }}
+                source={{ uri: profile.cover_photo_url }}
                 style={styles.profileBackgroundImage}
               />
             ) : (
@@ -322,20 +245,36 @@ export default function UserProfileScreen() {
               </View>
             )}
             <LinearGradient
-              colors={isDarkMode 
+              colors={isDarkMode
                 ? ['transparent', 'transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,1.0)']
                 : ['transparent', 'transparent', 'rgba(241,248,255,0.4)', 'rgba(255,255,255,1.0)']
               }
               style={styles.profileBackgroundGradient}
             />
-            
+
+            {/* Profile Photo */}
+            <View style={styles.profilePhotoContainer}>
+              {profile.avatar_url ? (
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={styles.profilePhoto}
+                />
+              ) : (
+                <View style={[styles.profilePhotoPlaceholder, { backgroundColor: colors.background.secondary }]}>
+                  <User size={40} color={colors.text.secondary} />
+                </View>
+              )}
+            </View>
+
             <View style={styles.profileContent}>
               <View style={styles.profileInfo}>
                 <Text style={[styles.userName, { color: isDarkMode ? 'white' : 'black' }]}>
-                  {userProfile.full_name || 'User'}
+                  {profile.full_name}
                 </Text>
-                {userProfile.bio && (
-                  <Text style={[styles.userBio, { color: isDarkMode ? 'white' : 'black' }]}>{userProfile.bio}</Text>
+                {profile.bio && (
+                  <Text style={[styles.userBio, { color: isDarkMode ? 'white' : 'black' }]}>
+                    {profile.bio}
+                  </Text>
                 )}
                 <View style={styles.ratingContainer}>
                   <Text style={[styles.ratingText, { color: isDarkMode ? 'white' : 'black' }]}>
@@ -352,45 +291,103 @@ export default function UserProfileScreen() {
         </View>
 
         {/* Action Buttons */}
-        <View style={[styles.actionButtons, { backgroundColor: colors.background.primary }]}>
-          <TouchableOpacity 
-            style={[styles.chatButton, { backgroundColor: colors.primary.main }]}
-            onPress={handleStartChat}
-          >
-            <MessageCircle size={20} color={colors.text.white} />
-            <Text style={[styles.chatButtonText, { color: colors.text.white }]}>Message</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab Navigation */}
-        <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }]}>
-          {['Services', 'Reviews'].map((tab) => (
+        {user?.id !== userId && (
+          <View style={[styles.actionButtons, { backgroundColor: colors.background.primary }]}>
             <TouchableOpacity
-              key={tab}
-              style={[
-                styles.tab,
-                activeTab === tab && { borderBottomColor: colors.primary.main },
-              ]}
-              onPress={() => setActiveTab(tab)}
+              style={[styles.chatButton, { backgroundColor: colors.primary.main }]}
+              onPress={handleStartChat}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: activeTab === tab ? colors.primary.main : colors.text.secondary },
-                  activeTab === tab && styles.activeTabText,
-                ]}
-              >
-                {tab}
+              <MessageCircle size={20} color="white" />
+              <Text style={[styles.chatButtonText, { color: colors.text.white }]}>
+                Start Chat
               </Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
+        )}
 
-        {/* Tab Content */}
-        <View style={[styles.tabContent, { backgroundColor: colors.background.primary }]}>
-          {renderTabContent()}
-        </View>
+        {/* Services Section */}
+        {services.length > 0 && (
+          <View style={styles.servicesSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+              Services ({services.length})
+            </Text>
+            {services.map((service) => (
+              <ServiceCard
+                key={service.id}
+                service={{
+                  id: service.id,
+                  title: service.title,
+                  description: service.description,
+                  price: service.price,
+                  currency: service.currency,
+                  image_url: service.image_url,
+                  category_name: service.category_name || 'General',
+                  location: service.location || '',
+                  is_nearby: service.is_nearby || false,
+                  is_trending: service.is_trending || false,
+                  rating: service.rating || 0,
+                  review_count: service.review_count || 0,
+                  created_at: service.created_at || '',
+                  updated_at: service.updated_at || '',
+                  user_id: service.user_id,
+                  service_variants: service.service_variants || [],
+                  provider_name: profile.full_name,
+                  provider_avatar: profile.avatar_url,
+                  latitude: service.latitude,
+                  longitude: service.longitude,
+                  parent_service_id: service.parent_service_id,
+                  show_on_profile: service.show_on_profile ?? true
+                }}
+                showEditButton={false}
+                showProfileToggle={false}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Reviews Section */}
+        {reviews.length > 0 && (
+          <View style={styles.reviewsSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+              Reviews ({reviews.length})
+            </Text>
+            {reviews.map((review) => (
+              <View key={review.id} style={[styles.reviewCard, { backgroundColor: colors.background.secondary }]}>
+                <View style={styles.reviewHeader}>
+                  <Image
+                    source={{ uri: review.reviewer_profile?.avatar_url || undefined }}
+                    style={styles.reviewerImage}
+                  />
+                  <View style={styles.reviewerInfo}>
+                    <Text style={[styles.reviewerName, { color: colors.text.primary }]}>
+                      {review.reviewer_profile?.full_name || 'Anonymous User'}
+                    </Text>
+                    <View style={styles.reviewRatingContainer}>
+                      <Text style={[styles.reviewRatingText, { color: colors.text.primary }]}>
+                        {review.rating.toFixed(1)}
+                      </Text>
+                      {renderStars(review.rating)}
+                    </View>
+                  </View>
+                </View>
+                <Text style={[styles.reviewComment, { color: colors.text.secondary }]}>
+                  {review.comment || 'No comment provided'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
+
+      {/* Share Modal */}
+      <ProfileShareModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        userId={profile.id}
+        userName={profile.full_name}
+        userBio={profile.bio}
+        userAvatar={profile.avatar_url}
+      />
     </SafeAreaView>
   );
 }
@@ -399,6 +396,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  backButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -406,25 +432,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  headerButton: {
+    padding: 8,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
   },
-  shareText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
   profileHeader: {
-    height: 300,
-    position: 'relative',
+    marginBottom: 20,
   },
   profileBackgroundContainer: {
-    flex: 1,
+    height: 300,
     position: 'relative',
   },
   profileBackgroundImage: {
@@ -437,32 +458,55 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#f0f0f0',
   },
   profileBackgroundGradient: {
     position: 'absolute',
+    bottom: 0,
     left: 0,
     right: 0,
-    bottom: 0,
+    height: '60%',
+  },
+  profilePhotoContainer: {
+    position: 'absolute',
+    bottom: 80,
+    left: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 4,
+    borderColor: 'white',
+  },
+  profilePhoto: {
+    width: '100%',
     height: '100%',
+    borderRadius: 36,
+  },
+  profilePhotoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileContent: {
     position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
   },
   profileInfo: {
-    flex: 1,
+    marginLeft: 100,
   },
   userName: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
   },
   userBio: {
     fontSize: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     lineHeight: 22,
   },
   ratingContainer: {
@@ -474,21 +518,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  reviewText: {
+    fontSize: 14,
+  },
   starsContainer: {
     flexDirection: 'row',
     gap: 2,
   },
-  reviewText: {
-    fontSize: 14,
-  },
   actionButtons: {
-    flexDirection: 'row',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    gap: 12,
   },
   chatButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -500,48 +541,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  tabNavigation: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+  servicesSection: {
+    padding: 20,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+  reviewsSection: {
+    padding: 20,
   },
-  tabText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  activeTabText: {
-    fontWeight: '600',
-  },
-  tabContent: {
-    flex: 1,
-    paddingTop: 20,
-  },
-  servicesContent: {
-    paddingHorizontal: 20,
-  },
-  availableListings: {
-    fontSize: 16,
+  sectionTitle: {
+    fontSize: 20,
     fontWeight: '600',
     marginBottom: 16,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  reviewsContainer: {
-    paddingHorizontal: 20,
   },
   reviewCard: {
     padding: 16,
@@ -551,7 +560,7 @@ const styles = StyleSheet.create({
   reviewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   reviewerImage: {
     width: 40,
@@ -567,34 +576,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  reviewRatingContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 40,
+    gap: 8,
   },
-  loadingText: {
-    fontSize: 16,
-    marginTop: 12,
+  reviewRatingText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 20,
-  },
-  backButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  reviewComment: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
