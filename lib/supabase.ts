@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://rkcfgebgpixgfvggbwmc.supabase.co';
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '<REDACTED_JWT>';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     // Enable persistent sessions using AsyncStorage
     storage: AsyncStorage,
@@ -22,4 +22,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '<REDACTED_JWT>';
 
 // Create admin client for server-side operations
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+module.exports = {
+  supabase,
+  supabaseAdmin
+};

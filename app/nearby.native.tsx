@@ -18,7 +18,6 @@ import { ServiceLocation } from '@/types/service-location';
 import { ServiceService, Service } from '@/lib/service-service';
 import { useAuth } from '@/contexts/AuthContext';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
-import IndustrySelectionModal from '@/components/IndustrySelectionModal';
 import { Colors } from '@/constants/Colors';
 
 const { width, height } = Dimensions.get('window');
@@ -52,9 +51,7 @@ export default function NearbyScreen() {
   const [nearbyServices, setNearbyServices] = useState<ServiceLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
-  const [selectedIndustries, setSelectedIndustries] = useState<string[]>(['all']);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showIndustryModal, setShowIndustryModal] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
 
@@ -80,16 +77,7 @@ export default function NearbyScreen() {
     return `${selectedCategories.length} Categories`;
   };
 
-  const getIndustryDisplayText = () => {
-    if (selectedIndustries.includes('all') || selectedIndustries.length === 0) {
-      return 'All Industries';
-    }
-    if (selectedIndustries.length === 1) {
-      const industryName = selectedIndustries[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      return industryName;
-    }
-    return `${selectedIndustries.length} Industries`;
-  };
+
 
   const loadNearbyServices = async () => {
     try {
@@ -128,13 +116,7 @@ export default function NearbyScreen() {
                            selectedCategories.some((cat: string) => 
                              service.category?.toLowerCase().includes(cat.toLowerCase())
                            );
-    const matchesIndustry = selectedIndustries.includes('all') ||
-                           selectedIndustries.some((ind: string) => {
-                             const industryName = ind.replace(/-/g, ' ');
-                             // Since ServiceLocation doesn't have industry field, we'll match against category for now
-                             return service.category?.toLowerCase().includes(industryName.toLowerCase());
-                           });
-    return matchesCategory && matchesIndustry;
+    return matchesCategory;
   });
 
   const renderMapView = () => (
@@ -254,13 +236,7 @@ export default function NearbyScreen() {
           <Text style={styles.filterText}>{getCategoryDisplayText()}</Text>
           <ChevronDown size={16} color={Colors.primary.main} />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.filterDropdown}
-          onPress={() => setShowIndustryModal(true)}
-        >
-          <Text style={styles.filterText}>{getIndustryDisplayText()}</Text>
-          <ChevronDown size={16} color={Colors.primary.main} />
-        </TouchableOpacity>
+
       </View>
 
       {/* Content */}
@@ -273,12 +249,7 @@ export default function NearbyScreen() {
         selectedCategories={selectedCategories}
         onCategoriesChange={setSelectedCategories}
       />
-      <IndustrySelectionModal
-        visible={showIndustryModal}
-        onClose={() => setShowIndustryModal(false)}
-        selectedIndustries={selectedIndustries}
-        onIndustriesChange={setSelectedIndustries}
-      />
+
     </SafeAreaView>
   );
 }

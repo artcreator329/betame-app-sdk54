@@ -15,7 +15,6 @@ import LayoutToggle from '@/components/LayoutToggle';
 import { useFocusEffect } from '@react-navigation/native';
 import ServiceCard from '@/components/ServiceCard';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
-import IndustrySelectionModal from '@/components/IndustrySelectionModal';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { useColors } from '@/contexts/ThemeContext';
@@ -47,9 +46,7 @@ const convertToUIService = (dbService: DBService): Service => ({
 
 export default function ServicesScreen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
-  const [selectedIndustries, setSelectedIndustries] = useState<string[]>(['all']);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showIndustryModal, setShowIndustryModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,33 +106,14 @@ export default function ServicesScreen() {
 
   const getCategoryDisplayText = () => {
     if (selectedCategories.includes('all') || selectedCategories.length === 0) {
-      return 'All Categories';
+      return 'All Service Types';
     }
     if (selectedCategories.length === 1) {
-      // Map category IDs to display names
-      const categoryMap: { [key: string]: string } = {
-        'fitness': 'Fitness',
-        'digital': 'Digital Marketing',
-        'education': 'Education',
-        'sports': 'Sports',
-        'beauty': 'Beauty',
-        'healthcare': 'Healthcare',
-        // Add more mappings as needed
-      };
-      return categoryMap[selectedCategories[0]] || selectedCategories[0];
+      // Import the helper function to get proper service type names
+      const { getServiceTypeName } = require('@/lib/service-type-migration');
+      return getServiceTypeName(selectedCategories[0]);
     }
-    return `${selectedCategories.length} Categories`;
-  };
-
-  const getIndustryDisplayText = () => {
-    if (selectedIndustries.includes('all') || selectedIndustries.length === 0) {
-      return 'All Industries';
-    }
-    if (selectedIndustries.length === 1) {
-      const industryName = selectedIndustries[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      return industryName;
-    }
-    return `${selectedIndustries.length} Industries`;
+    return `${selectedCategories.length} Service Types`;
   };
 
   const filteredServices = services.filter((service: Service) => {
@@ -144,14 +122,9 @@ export default function ServicesScreen() {
                            selectedCategories.some(cat => 
                              service.category_name?.toLowerCase().includes(cat.toLowerCase())
                            );
-    const matchesIndustry = selectedIndustries.includes('all') ||
-                           selectedIndustries.some(ind => {
-                             const industryName = ind.replace(/-/g, ' ');
-                             return service.industry?.toLowerCase().includes(industryName.toLowerCase());
-                           });
     const matchesSearch = service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (service.provider_name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesIndustry && matchesSearch;
+    return matchesCategory && matchesSearch;
   });
 
   return (
@@ -191,13 +164,7 @@ export default function ServicesScreen() {
           <Text style={[styles.filterText, { color: colors.text.primary }]}>{getCategoryDisplayText()}</Text>
           <ChevronDown size={16} color={colors.text.primary} />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterDropdown, { backgroundColor: colors.background.secondary }]}
-          onPress={() => setShowIndustryModal(true)}
-        >
-          <Text style={[styles.filterText, { color: colors.text.primary }]}>{getIndustryDisplayText()}</Text>
-          <ChevronDown size={16} color={colors.text.primary} />
-        </TouchableOpacity>
+
         <TouchableOpacity style={[styles.filterButton, { backgroundColor: colors.background.secondary }]}>
           <SlidersHorizontal size={20} color={colors.primary.main} />
         </TouchableOpacity>
@@ -246,13 +213,7 @@ export default function ServicesScreen() {
         onCategoriesChange={setSelectedCategories}
       />
 
-      {/* Industry Selection Modal */}
-      <IndustrySelectionModal
-        visible={showIndustryModal}
-        onClose={() => setShowIndustryModal(false)}
-        selectedIndustries={selectedIndustries}
-        onIndustriesChange={setSelectedIndustries}
-      />
+      
     </SafeAreaView>
   );
 }
@@ -315,7 +276,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    marginRight: 8,
+    marginRight: 12,
   },
   filterText: {
     fontSize: 14,

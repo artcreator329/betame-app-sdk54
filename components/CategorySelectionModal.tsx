@@ -9,12 +9,18 @@ import {
   ScrollView,
   SafeAreaView,
 } from 'react-native';
-import { Search, X, Check } from 'lucide-react-native';
+import { Search, X, Check, ChevronLeft } from 'lucide-react-native';
 import { Colors } from '../constants/Colors';
 
 export interface Category {
   id: string;
   name: string;
+}
+
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  services: Category[];
 }
 
 interface CategorySelectionModalProps {
@@ -24,67 +30,143 @@ interface CategorySelectionModalProps {
   onCategoriesChange: (categories: string[]) => void;
 }
 
+const serviceCategories: ServiceCategory[] = [
+  {
+    id: 'personal-care',
+    name: 'Personal Care & Wellness',
+    services: [
+      { id: 'beauty-cosmetics', name: 'Beauty & Cosmetics' },
+      { id: 'fitness-training', name: 'Fitness & Personal Training' },
+      { id: 'massage-wellness', name: 'Massage & Wellness' },
+      { id: 'healthcare-medical', name: 'Healthcare & Medical Services' },
+      { id: 'wellness-mental-health', name: 'Wellness & Mental Health' },
+    ]
+  },
+  {
+    id: 'home-living',
+    name: 'Home & Living',
+    services: [
+      { id: 'cleaning-maintenance', name: 'Cleaning & Maintenance' },
+      { id: 'repair-maintenance', name: 'Repair & Maintenance' },
+      { id: 'gardening-landscaping', name: 'Gardening & Landscaping' },
+      { id: 'interior-design', name: 'Interior Design' },
+      { id: 'plumbing-electrical', name: 'Plumbing & Electrical' },
+      { id: 'home-living', name: 'Home & Living' },
+    ]
+  },
+  {
+    id: 'professional',
+    name: 'Professional Services',
+    services: [
+      { id: 'consulting-strategy', name: 'Consulting & Strategy' },
+      { id: 'legal-services', name: 'Legal Services' },
+      { id: 'accounting-finance', name: 'Accounting & Finance Services' },
+      { id: 'marketing-advertising', name: 'Marketing & Advertising' },
+      { id: 'hr', name: 'Human Resources' },
+      { id: 'research-analysis', name: 'Research & Analysis' },
+      { id: 'insurance-services', name: 'Insurance Services' },
+    ]
+  },
+  {
+    id: 'creative-media',
+    name: 'Creative & Media',
+    services: [
+      { id: 'photography-videography', name: 'Photography & Videography' },
+      { id: 'graphic-design', name: 'Graphic Design & Creative' },
+      { id: 'music-audio', name: 'Music & Audio Production' },
+      { id: 'social-media', name: 'Social Media Management' },
+      { id: 'writing-content', name: 'Writing & Content Creation' },
+      { id: 'arts-entertainment', name: 'Arts & Entertainment' },
+    ]
+  },
+  {
+    id: 'technology',
+    name: 'Technology',
+    services: [
+      { id: 'digital-it', name: 'Digital & IT' },
+      { id: 'programming-development', name: 'Programming & Development' },
+      { id: 'technology-support', name: 'Technology Support' },
+    ]
+  },
+  {
+    id: 'events-entertainment',
+    name: 'Events & Entertainment',
+    services: [
+      { id: 'event-planning', name: 'Event Planning & Management' },
+      { id: 'cooking-catering', name: 'Cooking & Catering' },
+      { id: 'gaming-streaming', name: 'Gaming & Streaming' },
+      { id: 'wedding-services', name: 'Wedding Services' },
+      { id: 'fnb', name: 'F&B' },
+    ]
+  },
+  {
+    id: 'education-training',
+    name: 'Education & Training',
+    services: [
+      { id: 'education-training', name: 'Education & Training' },
+      { id: 'tutoring-academic', name: 'Tutoring & Academic Support' },
+      { id: 'language-translation', name: 'Language & Translation' },
+    ]
+  },
+  {
+    id: 'transportation-delivery',
+    name: 'Transportation & Delivery',
+    services: [
+      { id: 'delivery-logistics', name: 'Delivery & Logistics' },
+      { id: 'logistics-supply-chain', name: 'Logistics & Supply Chain' },
+      { id: 'transportation-services', name: 'Transportation Services' },
+    ]
+  },
+  {
+    id: 'care-services',
+    name: 'Care Services',
+    services: [
+      { id: 'childcare-babysitting', name: 'Childcare & Babysitting' },
+      { id: 'elderly-care', name: 'Elderly Care Services' },
+      { id: 'veterinary-pet-care', name: 'Veterinary & Pet Care' },
+    ]
+  },
+  {
+    id: 'lifestyle',
+    name: 'Lifestyle',
+    services: [
+      { id: 'fashion-styling', name: 'Fashion & Styling' },
+      { id: 'sports-recreation', name: 'Sports & Recreation' },
+      { id: 'jewelry-accessories', name: 'Jewelry & Accessories' },
+      { id: 'travel-tour', name: 'Travel & Tour Services' },
+    ]
+  },
+  {
+    id: 'business-services',
+    name: 'Business Services',
+    services: [
+      { id: 'administration-business', name: 'Administration & Business' },
+      { id: 'customer-service', name: 'Customer Service' },
+      { id: 'realestate-services', name: 'Real Estate Services' },
+      { id: 'banking-financial', name: 'Banking & Financial Services' },
+      { id: 'printing-publishing', name: 'Printing & Publishing' },
+      { id: 'hospitality-tourism', name: 'Hospitality & Tourism' },
+    ]
+  },
+  {
+    id: 'specialized',
+    name: 'Specialized Services',
+    services: [
+      { id: 'architecture-design', name: 'Architecture & Design' },
+      { id: 'engineering', name: 'Engineering' },
+      { id: 'construction-renovation', name: 'Construction & Renovation' },
+      { id: 'automotive', name: 'Automotive' },
+      { id: 'security-services', name: 'Security Services' },
+      { id: 'agriculture-farming', name: 'Agriculture & Farming' },
+      { id: 'advertising-media', name: 'Advertising & Media' },
+    ]
+  }
+];
+
+// Legacy support - keep the old flat structure for backward compatibility
 const allCategories: Category[] = [
   { id: 'all', name: 'All' },
-  { id: 'accounting', name: 'Accounting & Finance Services' },
-  { id: 'administration', name: 'Administration & Business' },
-  { id: 'advertising', name: 'Advertising & Media' },
-  { id: 'agriculture', name: 'Agriculture & Farming' },
-  { id: 'architecture', name: 'Architecture & Design' },
-  { id: 'arts', name: 'Arts & Entertainment' },
-  { id: 'automotive', name: 'Automotive' },
-  { id: 'banking', name: 'Banking & Financial Services' },
-  { id: 'beauty', name: 'Beauty & Cosmetics' },
-  { id: 'childcare', name: 'Childcare & Babysitting' },
-  { id: 'cleaning', name: 'Cleaning & Maintenance' },
-  { id: 'consulting', name: 'Consulting & Strategy' },
-  { id: 'construction', name: 'Construction & Renovation' },
-  { id: 'cooking', name: 'Cooking & Catering' },
-  { id: 'customer', name: 'Customer Service' },
-  { id: 'delivery', name: 'Delivery & Logistics' },
-  { id: 'digital', name: 'Digital & IT' },
-  { id: 'education', name: 'Education & Training' },
-  { id: 'elderly', name: 'Elderly Care Services' },
-  { id: 'engineering', name: 'Engineering' },
-  { id: 'event', name: 'Event Planning & Management' },
-  { id: 'fashion', name: 'Fashion & Styling' },
-  { id: 'fitness', name: 'Fitness & Personal Training' },
-  { id: 'fnb', name: 'F&B' },
-  { id: 'gaming', name: 'Gaming & Streaming' },
-  { id: 'gardening', name: 'Gardening & Landscaping' },
-  { id: 'graphic', name: 'Graphic Design & Creative' },
-  { id: 'healthcare', name: 'Healthcare & Medical Services' },
-  { id: 'home', name: 'Home & Living' },
-  { id: 'hospitality', name: 'Hospitality & Tourism' },
-  { id: 'hr', name: 'Human Resources' },
-  { id: 'insurance', name: 'Insurance Services' },
-  { id: 'interior', name: 'Interior Design' },
-  { id: 'jewelry', name: 'Jewelry & Accessories' },
-  { id: 'language', name: 'Language & Translation' },
-  { id: 'legal', name: 'Legal Services' },
-  { id: 'logistics', name: 'Logistics & Supply Chain' },
-  { id: 'marketing', name: 'Marketing & Advertising' },
-  { id: 'massage', name: 'Massage & Wellness' },
-  { id: 'music', name: 'Music & Audio Production' },
-  { id: 'photography', name: 'Photography & Videography' },
-  { id: 'plumbing', name: 'Plumbing & Electrical' },
-  { id: 'printing', name: 'Printing & Publishing' },
-  { id: 'programming', name: 'Programming & Development' },
-  { id: 'realestate', name: 'Real Estate Services' },
-  { id: 'repair', name: 'Repair & Maintenance' },
-  { id: 'research', name: 'Research & Analysis' },
-  { id: 'retail', name: 'Retail & Sales' },
-  { id: 'security', name: 'Security Services' },
-  { id: 'social', name: 'Social Media Management' },
-  { id: 'sports', name: 'Sports & Recreation' },
-  { id: 'technology', name: 'Technology Support' },
-  { id: 'transportation', name: 'Transportation Services' },
-  { id: 'travel', name: 'Travel & Tour Services' },
-  { id: 'tutoring', name: 'Tutoring & Academic Support' },
-  { id: 'veterinary', name: 'Veterinary & Pet Care' },
-  { id: 'wedding', name: 'Wedding Services' },
-  { id: 'wellness', name: 'Wellness & Mental Health' },
-  { id: 'writing', name: 'Writing & Content Creation' },
+  ...serviceCategories.flatMap(category => category.services)
 ];
 
 export default function CategorySelectionModal({
@@ -94,14 +176,28 @@ export default function CategorySelectionModal({
   onCategoriesChange,
 }: CategorySelectionModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
   const [tempSelectedCategories, setTempSelectedCategories] = useState<string[]>(selectedCategories);
 
-  const filteredCategories = allCategories.filter((category) =>
-    category.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Flatten all services for search
+  const allServices = serviceCategories.flatMap(category => category.services);
+
+  const filteredCategories = serviceCategories.filter((category) =>
+    category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    category.services.some(service => service.name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleCategoryToggle = (categoryId: string) => {
-    if (categoryId === 'all') {
+  const filteredServices = selectedCategory?.services.filter((service) =>
+    service.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
+
+  const handleCategorySelect = (category: ServiceCategory) => {
+    setSelectedCategory(category);
+    setSearchQuery('');
+  };
+
+  const handleServiceToggle = (serviceId: string) => {
+    if (serviceId === 'all') {
       if (tempSelectedCategories.includes('all')) {
         setTempSelectedCategories([]);
       } else {
@@ -110,11 +206,11 @@ export default function CategorySelectionModal({
       return;
     }
 
-    const newSelected = tempSelectedCategories.includes(categoryId)
-      ? tempSelectedCategories.filter((id) => id !== categoryId && id !== 'all')
-      : tempSelectedCategories.filter((id) => id !== 'all').concat(categoryId);
+    const newSelected = tempSelectedCategories.includes(serviceId)
+      ? tempSelectedCategories.filter((id) => id !== serviceId && id !== 'all')
+      : tempSelectedCategories.filter((id) => id !== 'all').concat(serviceId);
 
-    // Limit to 5 categories (excluding 'all')
+    // Limit to 5 services (excluding 'all')
     if (newSelected.length <= 5) {
       setTempSelectedCategories(newSelected);
     }
@@ -128,22 +224,75 @@ export default function CategorySelectionModal({
   const handleClose = () => {
     setTempSelectedCategories(selectedCategories);
     setSearchQuery('');
+    setSelectedCategory(null);
     onClose();
   };
 
-  const isSelected = (categoryId: string) => tempSelectedCategories.includes(categoryId);
+  const handleBack = () => {
+    setSelectedCategory(null);
+    setSearchQuery('');
+  };
+
+  const isSelected = (serviceId: string) => tempSelectedCategories.includes(serviceId);
   const nonAllSelected = tempSelectedCategories.filter((id) => id !== 'all');
+
+  const renderCategories = () => (
+    <ScrollView style={styles.categoriesContainer} showsVerticalScrollIndicator={false}>
+      {filteredCategories.map((category) => (
+        <TouchableOpacity
+          key={category.id}
+          style={styles.categoryItem}
+          onPress={() => handleCategorySelect(category)}
+        >
+          <View style={styles.categoryContent}>
+            <Text style={styles.categoryText}>{category.name}</Text>
+            <Text style={styles.serviceCount}>{category.services.length} services</Text>
+          </View>
+          <ChevronLeft size={20} color={Colors.text.secondary} style={styles.chevron} />
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
+
+  const renderServices = () => (
+    <ScrollView style={styles.categoriesContainer} showsVerticalScrollIndicator={false}>
+      {filteredServices.map((service) => (
+        <TouchableOpacity
+          key={service.id}
+          style={styles.categoryItem}
+          onPress={() => handleServiceToggle(service.id)}
+        >
+          <View style={styles.checkbox}>
+            {isSelected(service.id) && (
+              <Check size={16} color="#007AFF" strokeWidth={3} />
+            )}
+          </View>
+          <Text style={styles.categoryText}>{service.name}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose}>
-            <X size={24} color="#1D1D1F" />
-          </TouchableOpacity>
+          {selectedCategory ? (
+            <TouchableOpacity onPress={handleBack}>
+              <ChevronLeft size={24} color="#1D1D1F" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={handleClose}>
+              <X size={24} color="#1D1D1F" />
+            </TouchableOpacity>
+          )}
           <View style={styles.headerContent}>
-            <Text style={styles.title}>Select Categories</Text>
-            <Text style={styles.subtitle}>Up to 5 categories</Text>
+            <Text style={styles.title}>
+              {selectedCategory ? selectedCategory.name : 'Select Service Type'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {selectedCategory ? 'Choose specific services' : 'Choose a service category'}
+            </Text>
           </View>
           <View style={styles.placeholder} />
         </View>
@@ -152,29 +301,14 @@ export default function CategorySelectionModal({
           <Search size={20} color="#8E8E93" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search for category"
+            placeholder={selectedCategory ? "Search services..." : "Search categories..."}
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#8E8E93"
           />
         </View>
 
-        <ScrollView style={styles.categoriesContainer} showsVerticalScrollIndicator={false}>
-          {filteredCategories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              style={styles.categoryItem}
-              onPress={() => handleCategoryToggle(category.id)}
-            >
-              <View style={styles.checkbox}>
-                {isSelected(category.id) && (
-                  <Check size={16} color="#007AFF" strokeWidth={3} />
-                )}
-              </View>
-              <Text style={styles.categoryText}>{category.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {selectedCategory ? renderServices() : renderCategories()}
 
         <View style={styles.footer}>
           <TouchableOpacity style={styles.doneButton} onPress={handleDone}>
@@ -255,6 +389,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.background.secondary,
   },
+  categoryContent: {
+    flex: 1,
+  },
+  categoryText: {
+    fontSize: 16,
+    color: Colors.text.primary,
+    flex: 1,
+  },
+  serviceCount: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    marginTop: 2,
+  },
+  chevron: {
+    transform: [{ rotate: '180deg' }],
+  },
   checkbox: {
     width: 24,
     height: 24,
@@ -264,11 +414,6 @@ const styles = StyleSheet.create({
     marginRight: 16,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  categoryText: {
-    fontSize: 16,
-    color: Colors.text.primary,
-    flex: 1,
   },
   footer: {
     padding: 20,
