@@ -129,11 +129,10 @@ export default function CreateServiceListingScreen() {
       if (result && !result.canceled && result.assets && result.assets[0]) {
         const asset = result.assets[0];
         if (asset.base64) {
-          const uploadResult = await ImageService.uploadImage(
+          const uploadResult = await ImageService.uploadServiceImage(
             asset.uri,
             asset.base64,
-            user.id,
-            'service-images'
+            user.id
           );
           
           if (uploadResult.success && uploadResult.url) {
@@ -159,11 +158,10 @@ export default function CreateServiceListingScreen() {
       if (result && !result.canceled && result.assets && result.assets[0]) {
         const asset = result.assets[0];
         if (asset.base64) {
-          const uploadResult = await ImageService.uploadImage(
+          const uploadResult = await ImageService.uploadServiceImage(
             asset.uri,
             asset.base64,
-            user.id,
-            'service-images'
+            user.id
           );
           
           if (uploadResult.success && uploadResult.url) {

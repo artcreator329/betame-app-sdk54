@@ -1,11 +1,19 @@
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from './supabase';
+import { supabase, supabaseWithRetry } from './supabase';
 import { decode } from 'base64-arraybuffer';
+import NetInfo from '@react-native-community/netinfo';
 
 export interface ImageUploadResult {
   success: boolean;
   url?: string;
   error?: string;
+  retryCount?: number;
+}
+
+interface UploadOptions {
+  maxRetries?: number;
+  retryDelay?: number;
+  timeout?: number;
 }
 
 export class ImageService {
@@ -22,6 +30,62 @@ export class ImageService {
       console.error('Error requesting permissions:', error);
       return false;
     }
+  }
+
+  /**
+   * Check network connectivity
+   */
+  static async checkNetworkConnectivity(): Promise<boolean> {
+    try {
+      const netInfo = await NetInfo.fetch();
+      return netInfo.isConnected === true && netInfo.isInternetReachable === true;
+    } catch (error) {
+      console.error('Error checking network connectivity:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Wait for a specified amount of time
+   */
+  static async delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Retry function with exponential backoff
+   */
+  static async retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelay: number = 1000
+  ): Promise<T> {
+    let lastError: Error;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error as Error;
+        
+        if (attempt === maxRetries) {
+          throw lastError;
+        }
+        
+        // Check network connectivity before retrying
+        const isConnected = await this.checkNetworkConnectivity();
+        if (!isConnected) {
+          console.log(`Network not available, waiting before retry ${attempt + 1}/${maxRetries}`);
+          await this.delay(baseDelay * Math.pow(2, attempt));
+          continue;
+        }
+        
+        console.log(`Upload attempt ${attempt + 1} failed, retrying in ${baseDelay * Math.pow(2, attempt)}ms...`);
+        await this.delay(baseDelay * Math.pow(2, attempt));
+      }
+    }
+    
+    throw lastError!;
   }
 
   /**
@@ -75,88 +139,151 @@ export class ImageService {
   }
 
   /**
-   * Upload image to Supabase storage
+   * Upload image to Supabase storage with retry logic
    */
   static async uploadImage(
     imageUri: string,
     base64: string,
     userId: string,
-    bucket: string = 'profile-images'
+    bucket: string = 'profile-images',
+    options: UploadOptions = {}
   ): Promise<ImageUploadResult> {
-    try {
-      // Debug: Check current session
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Current session during upload:', session ? 'Authenticated' : 'Not authenticated');
-      console.log('Session user ID:', session?.user?.id);
-      console.log('Provided user ID:', userId);
-      
-      // If no session, try to refresh it
-      if (!session) {
-        console.log('No session found, attempting to refresh...');
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError) {
-          console.error('Failed to refresh session:', refreshError);
-          return {
-            success: false,
-            error: 'Authentication required. Please sign in again.',
-          };
+    const {
+      maxRetries = 3,
+      retryDelay = 1000,
+      timeout = 30000
+    } = options;
+
+    let retryCount = 0;
+
+    const uploadWithRetry = async (): Promise<ImageUploadResult> => {
+      try {
+        // Check network connectivity first
+        const isConnected = await this.checkNetworkConnectivity();
+        if (!isConnected) {
+          throw new Error('No internet connection available');
         }
-        console.log('Refreshed session:', refreshedSession ? 'Success' : 'Failed');
-      }
-      
-      // Generate unique filename
-      const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `${userId}/${Date.now()}.${fileExt}`;
-      console.log('Upload filename:', fileName);
 
-      // Map file extensions to proper MIME types
-      const getMimeType = (extension: string): string => {
-        const mimeTypes: { [key: string]: string } = {
-          'jpg': 'image/jpeg',
-          'jpeg': 'image/jpeg',
-          'png': 'image/png',
-          'gif': 'image/gif',
-          'webp': 'image/webp',
-          'bmp': 'image/bmp',
-          'tiff': 'image/tiff',
-          'tif': 'image/tiff'
+        // Debug: Check current session
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Current session during upload:', session ? 'Authenticated' : 'Not authenticated');
+        console.log('Session user ID:', session?.user?.id);
+        console.log('Provided user ID:', userId);
+        
+        // If no session, try to refresh it
+        if (!session) {
+          console.log('No session found, attempting to refresh...');
+          const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error('Failed to refresh session:', refreshError);
+            throw new Error('Authentication required. Please sign in again.');
+          }
+          console.log('Refreshed session:', refreshedSession ? 'Success' : 'Failed');
+        }
+        
+        // Generate unique filename
+        const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
+        const fileName = `${userId}/${Date.now()}.${fileExt}`;
+        console.log('Upload filename:', fileName);
+
+        // Map file extensions to proper MIME types
+        const getMimeType = (extension: string): string => {
+          const mimeTypes: { [key: string]: string } = {
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/gif',
+            'webp': 'image/webp',
+            'bmp': 'image/bmp',
+            'tiff': 'image/tiff',
+            'tif': 'image/tiff'
+          };
+          return mimeTypes[extension] || 'image/jpeg';
         };
-        return mimeTypes[extension] || 'image/jpeg';
-      };
 
-      // Convert base64 to array buffer
-      const arrayBuffer = decode(base64);
+        // Convert base64 to array buffer
+        const arrayBuffer = decode(base64);
 
-      // Upload to Supabase storage
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, arrayBuffer, {
-          contentType: getMimeType(fileExt),
-          upsert: true,
+        // Create a timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Upload timeout')), timeout);
         });
 
-      if (error) {
-        console.error('Upload error:', error);
+        // Upload to Supabase storage with enhanced retry logic
+        const uploadPromise = supabaseWithRetry.storage
+          .from(bucket)
+          .upload(fileName, arrayBuffer, {
+            contentType: getMimeType(fileExt),
+            upsert: true,
+          });
+
+        const { data, error } = await Promise.race([uploadPromise, timeoutPromise]);
+
+        if (error) {
+          console.error('Upload error:', error);
+          
+          // Handle specific error types
+          if (error.message.includes('Network request failed') || 
+              error.message.includes('timeout') ||
+              error.message.includes('network')) {
+            throw new Error(`Network error: ${error.message}`);
+          }
+          
+          throw new Error(error.message);
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(fileName);
+
         return {
-          success: false,
-          error: error.message,
+          success: true,
+          url: urlData.publicUrl,
+          retryCount,
         };
+      } catch (error) {
+        retryCount++;
+        console.error(`Upload attempt ${retryCount} failed:`, error);
+        
+        // Don't retry for certain errors
+        if (error instanceof Error) {
+          if (error.message.includes('Authentication required') ||
+              error.message.includes('permission') ||
+              error.message.includes('invalid')) {
+            throw error;
+          }
+        }
+        
+        throw error;
       }
+    };
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(fileName);
-
-      return {
-        success: true,
-        url: urlData.publicUrl,
-      };
+    try {
+      return await this.retryWithBackoff(uploadWithRetry, maxRetries, retryDelay);
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('All upload attempts failed:', error);
+      
+      // Provide user-friendly error messages
+      let errorMessage = 'Upload failed';
+      if (error instanceof Error) {
+        if (error.message.includes('Network request failed') || 
+            error.message.includes('timeout') ||
+            error.message.includes('network')) {
+          errorMessage = 'Network connection issue. Please check your internet connection and try again.';
+        } else if (error.message.includes('Authentication required')) {
+          errorMessage = 'Please sign in again to upload images.';
+        } else if (error.message.includes('permission')) {
+          errorMessage = 'Permission denied. Please check your account permissions.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: errorMessage,
+        retryCount,
       };
     }
   }
@@ -184,11 +311,13 @@ export class ImageService {
         };
       }
 
-      // Upload image
+      // Upload image with retry logic
       const uploadResult = await this.uploadImage(
         asset.uri,
         asset.base64,
-        userId
+        userId,
+        'profile-images',
+        { maxRetries: 3, retryDelay: 1000, timeout: 30000 }
       );
 
       return uploadResult;
@@ -224,11 +353,13 @@ export class ImageService {
         };
       }
 
-      // Upload image
+      // Upload image with retry logic
       const uploadResult = await this.uploadImage(
         asset.uri,
         asset.base64,
-        userId
+        userId,
+        'profile-images',
+        { maxRetries: 3, retryDelay: 1000, timeout: 30000 }
       );
 
       return uploadResult;
@@ -239,6 +370,23 @@ export class ImageService {
         error: error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
+  }
+
+  /**
+   * Upload service image with enhanced error handling
+   */
+  static async uploadServiceImage(
+    imageUri: string,
+    base64: string,
+    userId: string
+  ): Promise<ImageUploadResult> {
+    return this.uploadImage(
+      imageUri,
+      base64,
+      userId,
+      'service-images',
+      { maxRetries: 3, retryDelay: 1500, timeout: 45000 }
+    );
   }
 }
 
