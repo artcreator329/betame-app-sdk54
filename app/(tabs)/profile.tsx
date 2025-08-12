@@ -45,16 +45,16 @@ export default function ProfileScreen() {
   const { isDarkMode, toggleTheme } = useTheme();
 
   // Calculate average rating from reviews
-  const averageRating = reviews.length > 0 
-    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+  const averageRating = reviews.length > 0
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : 0;
 
   // Fetch user's services and reviews from Supabase
   const handleProfileVisibilityChange = useCallback(async (serviceId: string, isVisible: boolean) => {
     // Update the local state immediately for better UX
-    setServices(prevServices => 
-      prevServices.map(service => 
-        service.id === serviceId 
+    setServices(prevServices =>
+      prevServices.map(service =>
+        service.id === serviceId
           ? { ...service, show_on_profile: isVisible }
           : service
       )
@@ -73,7 +73,7 @@ export default function ProfileScreen() {
 
     try {
       setLoading(true);
-      
+
       // Fetch user's services
       try {
         // Get all services and filter for current user to include variants
@@ -115,12 +115,12 @@ export default function ProfileScreen() {
       // Fetch user's job listings
       userJobs = await JobService.getUserJobs(user.id);
       setJobListings(userJobs);
-      
+
     } catch (error) {
       console.error('Error fetching profile data:', error);
     } finally {
       setLoading(false);
-      
+
       // Set default active tab based on available content
       if (!activeTab) {
         if (userJobs.length > 0) {
@@ -143,7 +143,7 @@ export default function ProfileScreen() {
 
   const checkAdminStatus = async () => {
     if (!user) return;
-    
+
     try {
       const adminStatus = await adminService.isAdmin(user.id);
       setIsAdmin(adminStatus);
@@ -184,16 +184,16 @@ export default function ProfileScreen() {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Change Cover Photo', 'Change Profile Photo'],
+          options: ['Cancel', 'Change Profile Photo', 'Change Cover Photo'],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            setPhotoType('cover');
-            handlePhotoOptions('cover');
-          } else if (buttonIndex === 2) {
             setPhotoType('profile');
             handlePhotoOptions('profile');
+          } else if (buttonIndex === 2) {
+            setPhotoType('cover');
+            handlePhotoOptions('cover');
           }
         }
       );
@@ -204,14 +204,18 @@ export default function ProfileScreen() {
         'Choose which photo to update',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Change Cover Photo', onPress: () => {
-            setPhotoType('cover');
-            handlePhotoOptions('cover');
-          }},
-          { text: 'Change Profile Photo', onPress: () => {
-            setPhotoType('profile');
-            handlePhotoOptions('profile');
-          }},
+          {
+            text: 'Change Profile Photo', onPress: () => {
+              setPhotoType('profile');
+              handlePhotoOptions('profile');
+            }
+          },
+          {
+            text: 'Change Cover Photo', onPress: () => {
+              setPhotoType('cover');
+              handlePhotoOptions('cover');
+            }
+          },
         ]
       );
     }
@@ -219,7 +223,7 @@ export default function ProfileScreen() {
 
   const handlePhotoOptions = (type: 'cover' | 'profile') => {
     const photoTypeText = type === 'cover' ? 'Cover Photo' : 'Profile Photo';
-    
+
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
@@ -255,10 +259,14 @@ export default function ProfileScreen() {
     try {
       setUploadingPhoto(true);
       const result = await ImageService.takeProfilePhoto(user!.id);
-      
+
       if (result.success && result.url) {
-        // Update the user profile with the new avatar URL
-        await updateProfile({ avatar_url: result.url });
+        // Update the correct field based on photo type
+        const updateData = type === 'cover' 
+          ? { cover_photo_url: result.url }
+          : { avatar_url: result.url };
+        
+        await updateProfile(updateData);
         const photoTypeText = type === 'cover' ? 'Cover photo' : 'Profile photo';
         Alert.alert('Success', `${photoTypeText} updated successfully!`);
       } else {
@@ -276,10 +284,14 @@ export default function ProfileScreen() {
     try {
       setUploadingPhoto(true);
       const result = await ImageService.uploadProfilePhoto(user!.id);
-      
+
       if (result.success && result.url) {
-        // Update the user profile with the new avatar URL
-        await updateProfile({ avatar_url: result.url });
+        // Update the correct field based on photo type
+        const updateData = type === 'cover' 
+          ? { cover_photo_url: result.url }
+          : { avatar_url: result.url };
+        
+        await updateProfile(updateData);
         const photoTypeText = type === 'cover' ? 'Cover photo' : 'Profile photo';
         Alert.alert('Success', `${photoTypeText} updated successfully!`);
       } else {
@@ -296,8 +308,12 @@ export default function ProfileScreen() {
   const handleRemovePhoto = async (type: 'cover' | 'profile' = 'profile') => {
     try {
       setUploadingPhoto(true);
-      // Update the user profile to remove the avatar URL
-      await updateProfile({ avatar_url: null });
+      // Update the correct field based on photo type
+      const updateData = type === 'cover' 
+        ? { cover_photo_url: null }
+        : { avatar_url: null };
+      
+      await updateProfile(updateData);
       const photoTypeText = type === 'cover' ? 'Cover photo' : 'Profile photo';
       Alert.alert('Success', `${photoTypeText} removed successfully!`);
     } catch (error) {
@@ -323,7 +339,7 @@ export default function ProfileScreen() {
       // Here you would implement the actual photo adjustment logic
       // For now, we'll simulate the adjustment process
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing
-      
+
       Alert.alert('Success', 'Profile photo position adjusted successfully!');
       setIsAdjustingPhoto(false);
     } catch (error) {
@@ -338,7 +354,7 @@ export default function ProfileScreen() {
     setIsAdjustingPhoto(false);
   };
 
-  
+
 
   const renderStars = (rating: number) => {
     return (
@@ -357,96 +373,96 @@ export default function ProfileScreen() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-        case 'I\'m Hiring':
-          if (loading) {
-            return (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary.main} />
-                <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading job listings...</Text>
-              </View>
-            );
-          }
+      case 'I\'m Hiring':
+        if (loading) {
           return (
-            <View style={styles.tabSectionContainer}>
-              <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Job Postings ({jobListings.length})</Text>
-              {jobListings.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>You do not have any job postings</Text>
-                  <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>Why don't you post your first job?</Text>
-                </View>
-              ) : (
-                jobListings.map((job) => (
-                  <TouchableOpacity 
-                    key={job.id} 
-                    style={styles.jobItem}
-                    onPress={() => {
-                      if (!user) {
-                        Alert.alert(
-                          'Sign In Required',
-                          'Please sign in to view job details.',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Sign In', onPress: () => router.push('/auth/login') }
-                          ]
-                        );
-                        return;
-                      }
-                      router.push(`/job/${job.id}`);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    {job.cover_photo && (
-                      <Image source={{ uri: job.cover_photo }} style={styles.jobImage} />
-                    )}
-                    <View style={[styles.jobInfo, { backgroundColor: colors.background.secondary }]}>
-                      <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{job.title}</Text>
-                      <Text style={[styles.jobDescription, { color: colors.text.secondary }]} numberOfLines={2}>
-                        {job.description}
-                      </Text>
-                      {job.location_address && (
-                        <View style={styles.jobLocation}>
-                          <MapPin size={14} color={colors.text.secondary} />
-                          <Text style={[styles.jobLocationText, { color: colors.text.secondary }]}>{job.location_address}</Text>
-                        </View>
-                      )}
-                      <View style={styles.jobDetails}>
-                        <View style={styles.jobBudget}>
-                          <Text style={[styles.jobBudgetText, { color: colors.text.primary }]}>
-                            {job.payment_type === 'negotiable' ? 'Negotiable' : `${job.currency}${job.budget_amount} (${job.payment_type})`}
-                          </Text>
-                        </View>
-                        <View style={styles.jobStatus}>
-                          <Text style={[styles.jobStatusText, { color: job.status === 'active' ? '#4CAF50' : '#FF9800' }]}>
-                            {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                          </Text>
-                        </View>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary.main} />
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading job listings...</Text>
+            </View>
+          );
+        }
+        return (
+          <View style={styles.tabSectionContainer}>
+            <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Job Postings ({jobListings.length})</Text>
+            {jobListings.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>You do not have any job postings</Text>
+                <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>Why don't you post your first job?</Text>
+              </View>
+            ) : (
+              jobListings.map((job) => (
+                <TouchableOpacity
+                  key={job.id}
+                  style={styles.jobItem}
+                  onPress={() => {
+                    if (!user) {
+                      Alert.alert(
+                        'Sign In Required',
+                        'Please sign in to view job details.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+                        ]
+                      );
+                      return;
+                    }
+                    router.push(`/job/${job.id}`);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {job.cover_photo && (
+                    <Image source={{ uri: job.cover_photo }} style={styles.jobImage} />
+                  )}
+                  <View style={[styles.jobInfo, { backgroundColor: colors.background.secondary }]}>
+                    <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{job.title}</Text>
+                    <Text style={[styles.jobDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+                      {job.description}
+                    </Text>
+                    {job.location_address && (
+                      <View style={styles.jobLocation}>
+                        <MapPin size={14} color={colors.text.secondary} />
+                        <Text style={[styles.jobLocationText, { color: colors.text.secondary }]}>{job.location_address}</Text>
                       </View>
-                      <View style={styles.jobMeta}>
-                        <Calendar size={12} color={colors.text.secondary} />
-                        <Text style={[styles.jobDate, { color: colors.text.secondary }]}>
-                          {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Date not available'}
+                    )}
+                    <View style={styles.jobDetails}>
+                      <View style={styles.jobBudget}>
+                        <Text style={[styles.jobBudgetText, { color: colors.text.primary }]}>
+                          {job.payment_type === 'negotiable' ? 'Negotiable' : `${job.currency}${job.budget_amount} (${job.payment_type})`}
+                        </Text>
+                      </View>
+                      <View style={styles.jobStatus}>
+                        <Text style={[styles.jobStatusText, { color: job.status === 'active' ? '#4CAF50' : '#FF9800' }]}>
+                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                         </Text>
                       </View>
                     </View>
-                  </TouchableOpacity>
-                ))
-              )}
-              <TouchableOpacity 
-                style={[styles.addButton, { backgroundColor: colors.primary.main }]}
-                onPress={() => router.push('/create-job-listing')}
-              >
-                <Text style={[styles.addButtonText, { color: colors.text.white }]}>Hire Someone Now</Text>
-              </TouchableOpacity>
-            </View>
-          );
-        case 'My Services':
+                    <View style={styles.jobMeta}>
+                      <Calendar size={12} color={colors.text.secondary} />
+                      <Text style={[styles.jobDate, { color: colors.text.secondary }]}>
+                        {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Date not available'}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: colors.primary.main }]}
+              onPress={() => router.push('/create-job-listing')}
+            >
+              <Text style={[styles.addButtonText, { color: colors.text.white }]}>Hire Someone Now</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      case 'My Services':
         if (loading) {
           return (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary.main} />
-                <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading services...</Text>
-              </View>
-            );
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary.main} />
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading services...</Text>
+            </View>
+          );
         }
         return (
           <View style={styles.servicesContent}>
@@ -460,44 +476,44 @@ export default function ProfileScreen() {
               services
                 .filter(service => service.id) // Only include services with valid IDs
                 .map((service, index) => {
-                 const uiService: UIService = {
-                     id: service.id!, // Non-null assertion since we filtered above
-                     title: service.title,
-                     description: service.description,
-                     price: service.price,
-                     currency: service.currency,
-                     image_url: service.image_url || undefined,
-                     category_name: service.category_name || 'General',
-                     location: service.location || '',
-                     is_nearby: service.is_nearby || false,
-                     is_trending: service.is_trending || false,
-                     rating: service.rating || 0,
-                     review_count: service.review_count || 0,
-                     created_at: service.created_at || '',
-                     updated_at: service.updated_at || '',
-                     user_id: service.user_id,
-                     service_variants: service.service_variants || [],
-                     provider_name: 'You',
-                     provider_avatar: undefined,
-                     latitude: service.latitude,
-                     longitude: service.longitude,
-                     parent_service_id: service.parent_service_id,
-                     show_on_profile: service.show_on_profile ?? true
-                   };
-                 
-                 return (
-                   <ServiceCard
-                     key={service.id}
-                     service={uiService}
-                     showEditButton={true}
-                     showProfileToggle={true}
-                     userProfileAvatar={userProfile?.avatar_url}
-                     onProfileVisibilityChange={handleProfileVisibilityChange}
-                   />
-                 );
-               })
+                  const uiService: UIService = {
+                    id: service.id!, // Non-null assertion since we filtered above
+                    title: service.title,
+                    description: service.description,
+                    price: service.price,
+                    currency: service.currency,
+                    image_url: service.image_url || undefined,
+                    category_name: service.category_name || 'General',
+                    location: service.location || '',
+                    is_nearby: service.is_nearby || false,
+                    is_trending: service.is_trending || false,
+                    rating: service.rating || 0,
+                    review_count: service.review_count || 0,
+                    created_at: service.created_at || '',
+                    updated_at: service.updated_at || '',
+                    user_id: service.user_id,
+                    service_variants: service.service_variants || [],
+                    provider_name: 'You',
+                    provider_avatar: undefined,
+                    latitude: service.latitude,
+                    longitude: service.longitude,
+                    parent_service_id: service.parent_service_id,
+                    show_on_profile: service.show_on_profile ?? true
+                  };
+
+                  return (
+                    <ServiceCard
+                      key={service.id}
+                      service={uiService}
+                      showEditButton={true}
+                      showProfileToggle={true}
+                      userProfileAvatar={userProfile?.avatar_url}
+                      onProfileVisibilityChange={handleProfileVisibilityChange}
+                    />
+                  );
+                })
             )}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.addServiceButton, { backgroundColor: colors.primary.main }]}
               onPress={() => router.push('/create-service-listing')}
             >
@@ -519,9 +535,9 @@ export default function ProfileScreen() {
           <View style={styles.reviewsContainer}>
             {reviews.length === 0 ? (
               <View style={styles.emptyState}>
-              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No reviews yet</Text>
-              <Text style={[styles.emptyStateSuggestion, { color: colors.text.secondary }]}>Complete some services to get your first review!</Text>
-            </View>
+                <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No reviews yet</Text>
+                <Text style={[styles.emptyStateSuggestion, { color: colors.text.secondary }]}>Complete some services to get your first review!</Text>
+              </View>
             ) : (
               reviews.map((review) => (
                 <TouchableOpacity key={review.id} style={[styles.reviewCard, { backgroundColor: colors.background.secondary }]}>
@@ -561,12 +577,12 @@ export default function ProfileScreen() {
             Sign in to view your profile, manage your services, and track your job listings.
           </Text>
           <TouchableOpacity
-          style={[styles.loginButton, { backgroundColor: colors.primary.main }]}
-          onPress={() => router.push('/auth/login')}
-        >
-          <Text style={[styles.loginButtonText, { color: colors.text.white }]}>Log In</Text>
-        </TouchableOpacity>
-          <TouchableOpacity 
+            style={[styles.loginButton, { backgroundColor: colors.primary.main }]}
+            onPress={() => router.push('/auth/login')}
+          >
+            <Text style={[styles.loginButtonText, { color: colors.text.white }]}>Log In</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.skipButton}
             onPress={() => router.push('/(tabs)')}
           >
@@ -578,12 +594,12 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView 
+    <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background.primary }]}
       edges={['left', 'right', 'bottom']}
     >
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" />
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         style={{ backgroundColor: colors.background.primary }}
@@ -596,24 +612,24 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <View style={styles.profileBackgroundContainer}>
             {/* Cover Photo */}
-            {userProfile?.avatar_url ? (
+            {userProfile?.cover_photo_url ? (
               <Image
-                source={{ uri: userProfile.avatar_url }}
+                source={{ uri: userProfile.cover_photo_url }}
                 style={styles.profileBackgroundImage}
               />
             ) : (
-                <View style={styles.profileBackgroundPlaceholder}>
-                  <User size={80} color={isDarkMode ? "white" : "black"} />
-                </View>
-              )}
+              <View style={styles.profileBackgroundPlaceholder}>
+                <User size={80} color={isDarkMode ? "white" : "black"} />
+              </View>
+            )}
             <LinearGradient
-              colors={isDarkMode 
+              colors={isDarkMode
                 ? ['transparent', 'transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,1.0)']
                 : ['transparent', 'transparent', 'rgba(241,248,255,0.4)', 'rgba(255,255,255,1.0)']
               }
               style={styles.profileBackgroundGradient}
             />
-            
+
             {/* Circular Profile Photo */}
             <View style={styles.profilePhotoContainer}>
               {userProfile?.avatar_url ? (
@@ -628,7 +644,7 @@ export default function ProfileScreen() {
               )}
               {/* Only show camera button when viewing own profile */}
               {user && userProfile && user.id === userProfile.id && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.profilePhotoEditButton, { backgroundColor: colors.primary.main }]}
                   onPress={handleCameraPress}
                   disabled={uploadingPhoto}
@@ -642,16 +658,16 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               )}
             </View>
-            
+
             {/* Left Side Icons - Vertical Stack */}
             <View style={styles.leftIconsContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.leftIcon}
                 onPress={() => router.push('/wallet')}
               >
                 <WalletFilled size={24} color="#3B82F6" />
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.leftIcon}
                 onPress={() => router.push('/check-in')}
               >
@@ -661,13 +677,13 @@ export default function ProfileScreen() {
 
             {/* Right Side Icons - Horizontal Row */}
             <View style={styles.rightIconsContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.rightIcon}
                 onPress={() => router.push('/favorites')}
               >
                 <HeartFilled size={24} color="#3B82F6" />
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.rightIcon}
                 onPress={toggleTheme}
               >
@@ -677,7 +693,7 @@ export default function ProfileScreen() {
                   <MoonFilled size={24} color="#3B82F6" />
                 )}
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.rightIcon}
                 onPress={() => router.push('/settings')}
               >
@@ -685,25 +701,8 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Cover Photo Edit Button - Only show when viewing own profile */}
-            {user && userProfile && user.id === userProfile.id && (
-              <TouchableOpacity 
-                style={[styles.coverPhotoEditButton, { backgroundColor: colors.primary.main }]}
-                onPress={() => {
-                  setPhotoType('cover');
-                  handlePhotoOptions('cover');
-                }}
-                disabled={uploadingPhoto}
-                activeOpacity={0.8}
-              >
-                {uploadingPhoto ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Camera size={18} color="white" />
-                )}
-              </TouchableOpacity>
-            )}
-            
+
+
             {isAdjustingPhoto ? (
               <View style={styles.adjustmentOverlay}>
                 <View style={styles.adjustmentContent}>
@@ -713,16 +712,16 @@ export default function ProfileScreen() {
                   <Text style={[styles.adjustmentSubtitle, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>
                     Drag to move, pinch to zoom
                   </Text>
-                  
+
                   <View style={styles.adjustmentButtons}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={[styles.adjustmentButton, styles.cancelButton]}
                       onPress={handleCancelAdjustment}
                     >
                       <Text style={styles.cancelButtonText}>Cancel</Text>
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                       style={[styles.adjustmentButton, styles.saveButton]}
                       onPress={handleSaveAdjustment}
                       disabled={uploadingPhoto}
@@ -758,7 +757,7 @@ export default function ProfileScreen() {
 
         {/* Action Buttons */}
         <View style={[styles.actionButtons, { backgroundColor: colors.background.primary }]}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.chatButton, { backgroundColor: colors.primary.main }]}
             onPress={() => {
               // If viewing own profile, go to messages dashboard
@@ -774,13 +773,13 @@ export default function ProfileScreen() {
               {userProfile?.id === user?.id ? 'View Chat' : 'Chat to enquire'}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
             onPress={() => router.push('/edit-profile')}
           >
             <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Edit Profile</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
             onPress={handleShareProfile}
           >
@@ -823,8 +822,8 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: {
-     flex: 1,
-   },
+    flex: 1,
+  },
   scrollContent: {
     paddingBottom: 100,
   },
@@ -984,55 +983,55 @@ const styles = StyleSheet.create({
 
 
   userName: {
-     fontSize: 28,
-     fontWeight: '700',
-     marginBottom: 8,
-     textAlign: 'right',
-     color: 'white',
-   },
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'right',
+    color: 'white',
+  },
   userBio: {
-     fontSize: 16,
-     fontWeight: '500',
-     marginBottom: 8,
-     textAlign: 'right',
-     color: 'white',
-   },
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 8,
+    textAlign: 'right',
+    color: 'white',
+  },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
   ratingText: {
-     fontSize: 16,
-     fontWeight: '600',
-     marginRight: 8,
-     color: 'white',
-     textAlign: 'left',
-   },
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 8,
+    color: 'white',
+    textAlign: 'left',
+  },
   reviewText: {
-     fontSize: 14,
-     marginLeft: 8,
-     color: 'rgba(255,255,255,0.8)',
-     textAlign: 'left',
-   },
+    fontSize: 14,
+    marginLeft: 8,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'left',
+  },
   userTagline: {
-     fontSize: 16,
-     textAlign: 'left',
-     marginTop: 4,
-     color: 'rgba(255,255,255,0.8)',
-   },
+    fontSize: 16,
+    textAlign: 'left',
+    marginTop: 4,
+    color: 'rgba(255,255,255,0.8)',
+  },
   sellerBadge: {
-     paddingHorizontal: 16,
-     paddingVertical: 8,
-     borderRadius: 20,
-     marginBottom: 16,
-     alignItems: 'center',
-   },
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
   sellerBadgeText: {
-     fontSize: 16,
-     fontWeight: '600',
-     marginBottom: 2,
-   },
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
   sellerBadgeSubtext: {
     fontSize: 12,
   },
@@ -1078,14 +1077,14 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-   },
+  },
   tabText: {
-     fontSize: 16,
-     fontWeight: '500',
-   },
+    fontSize: 16,
+    fontWeight: '500',
+  },
   activeTabText: {
-     fontWeight: '600',
-   },
+    fontWeight: '600',
+  },
   tabContent: {
     minHeight: 400,
     paddingBottom: 40,
@@ -1324,17 +1323,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   loginPromptTitle: {
-     fontSize: 24,
-     fontWeight: '700',
-     marginBottom: 16,
-     textAlign: 'center',
-   },
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
   loginPromptText: {
-     fontSize: 16,
-     textAlign: 'center',
-     lineHeight: 24,
-     marginBottom: 32,
-   },
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
   loginButton: {
     paddingVertical: 16,
     paddingHorizontal: 32,
@@ -1354,12 +1353,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   skipButtonText: {
-     fontSize: 16,
-     fontWeight: '500',
-   },
+    fontSize: 16,
+    fontWeight: '500',
+  },
   adminIcon: {
-     borderWidth: 1,
-   },
+    borderWidth: 1,
+  },
   adjustmentOverlay: {
     position: 'absolute',
     top: 0,

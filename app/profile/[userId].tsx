@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, MapPin, Calendar, User, Heart, MessageCircle } from 'lucide-react-native';
+import { ArrowLeft, Star, User, MessageCircle, Settings } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors, useTheme } from '@/contexts/ThemeContext';
@@ -117,17 +117,9 @@ export default function UserProfileScreen() {
     fetchUserProfile();
   }, [fetchUserProfile]);
 
-  const handleShareProfile = async () => {
-    if (!userProfile) return;
-    
-    try {
-      const result = await Share.share({
-        message: `Check out ${userProfile.full_name}'s profile on BetaMe!\n\n${userProfile.bio || 'Amazing service provider'}\n\nDownload the app to connect with amazing service providers!`,
-        title: `${userProfile.full_name}'s Profile`,
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Unable to share profile. Please try again.');
-    }
+  const handleSettings = () => {
+    // Navigate to settings or show settings modal
+    router.push('/settings');
   };
 
   const handleStartChat = () => {

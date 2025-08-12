@@ -8,22 +8,22 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, MessageCircle, Flag } from 'lucide-react-native';
+import { ArrowLeft, Star, MessageCircle, Flag, AlertTriangle, CheckCircle, RotateCcw } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { ActiveJobService, ActiveJob } from '../../lib/active-job-service';
 import { useAuth } from '../../contexts/AuthContext';
 import { notificationService } from '../../lib/notification-service';
-
-interface JobReviewProps {
-  jobId: string;
-}
+import JobCompletionPhotosViewer from '../../components/JobCompletionPhotosViewer';
+import { JobCompletionService } from '../../lib/job-completion-service';
+import { supabase } from '../../lib/supabase';
 
 export default function JobReviewScreen() {
   const router = useRouter();
-  const { jobId } = useLocalSearchParams<JobReviewProps>();
+  const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const { user, userProfile } = useAuth();
   const [job, setJob] = useState<ActiveJob | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,6 +32,10 @@ export default function JobReviewScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
+  const [completionPhotos, setCompletionPhotos] = useState<any[]>([]);
+  const [showRevisionModal, setShowRevisionModal] = useState(false);
+  const [revisionReason, setRevisionReason] = useState('');
+  const [actionType, setActionType] = useState<'release' | 'revision' | null>(null);
 
   useEffect(() => {
     if (jobId) {
@@ -42,8 +46,12 @@ export default function JobReviewScreen() {
   const loadJobData = async () => {
     try {
       setIsLoading(true);
-      const jobData = await ActiveJobService.getActiveJob(jobId);
+      const [jobData, photosData] = await Promise.all([
+        ActiveJobService.getActiveJob(jobId),
+        JobCompletionService.getCompletionPhotos(jobId)
+      ]);
       setJob(jobData);
+      setCompletionPhotos(photosData);
     } catch (error) {
       console.error('Error loading job data:', error);
       Alert.alert('Error', 'Failed to load job details');
@@ -98,7 +106,12 @@ export default function JobReviewScreen() {
         isReviewedByBuyer: isBuyer,
       };
 
-      await notificationService.addJobReviewedNotification(notificationData);
+      await notificationService.addNotification({
+        type: 'service',
+        title: 'Job Review Received',
+        message: `You received a ${rating}-star review for "${job?.title}"`,
+        data: notificationData,
+      }, isBuyer ? job?.seller_id! : job?.buyer_id!);
 
       Alert.alert(
         'Review Submitted',
@@ -126,14 +139,19 @@ export default function JobReviewScreen() {
     if (!reportReason.trim() || !job) return;
 
     try {
-      await notificationService.addJobReportedNotification({
-        jobId: job.id!,
-        jobTitle: job.title,
-        reportedBy: user?.id || '',
-        reportedByName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
-        reason: reportReason,
-        reportedUserId: isBuyer ? job.seller_id : job.buyer_id,
-      });
+      await notificationService.addNotification({
+        type: 'system',
+        title: 'Job Report Submitted',
+        message: `A report has been submitted for job "${job.title}"`,
+        data: {
+          jobId: job.id!,
+          jobTitle: job.title,
+          reportedBy: user?.id || '',
+          reportedByName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
+          reason: reportReason,
+          reportedUserId: isBuyer ? job.seller_id : job.buyer_id,
+        },
+      }, 'admin'); // Send to admin for review
 
       setShowReportModal(false);
       setReportReason('');
@@ -153,6 +171,88 @@ export default function JobReviewScreen() {
     const otherPartyId = isBuyer ? job?.seller_id : job?.buyer_id;
     if (otherPartyId) {
       router.push(`/chat/${otherPartyId}`);
+    }
+  };
+
+  const handleReleasePayment = () => {
+    setActionType('release');
+    setShowRevisionModal(true);
+  };
+
+  const handleRequestRevision = () => {
+    console.log('🔴 REVISION BUTTON CLICKED!');
+    setActionType('revision');
+    setShowRevisionModal(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!job || !actionType) return;
+
+    setIsSubmitting(true);
+    try {
+      if (actionType === 'release') {
+        // Release payment to seller
+        await ActiveJobService.completeJob(job.id!);
+        
+        // Send notification to seller
+        await notificationService.addNotification({
+          type: 'service',
+          title: 'Payment Released',
+          message: `Payment for "${job.title}" has been released to your account`,
+          data: { jobId: job.id, jobTitle: job.title },
+        }, job.seller_id);
+
+        Alert.alert(
+          'Payment Released',
+          'Payment has been successfully released to the seller.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } else if (actionType === 'revision') {
+        // Request revision
+        if (!revisionReason.trim()) {
+          Alert.alert('Revision Reason Required', 'Please provide a reason for the revision request.');
+          return;
+        }
+
+        // Update job status to revision requested
+        const { error } = await supabase
+          .from('active_jobs')
+          .update({
+            status: 'in_progress',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', job.id!);
+
+        if (error) {
+          throw new Error('Failed to update job status');
+        }
+
+        // Send notification to seller
+        await notificationService.addNotification({
+          type: 'service',
+          title: 'Revision Requested',
+          message: `A revision has been requested for "${job.title}"`,
+          data: { 
+            jobId: job.id, 
+            jobTitle: job.title, 
+            revisionReason: revisionReason.trim() 
+          },
+        }, job.seller_id);
+
+        Alert.alert(
+          'Revision Requested',
+          'Your revision request has been sent to the seller.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      }
+    } catch (error) {
+      console.error('Error processing action:', error);
+      Alert.alert('Error', 'Failed to process your request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+      setShowRevisionModal(false);
+      setRevisionReason('');
+      setActionType(null);
     }
   };
 
@@ -191,13 +291,14 @@ export default function JobReviewScreen() {
     );
   }
 
-  if (job.status !== 'completed') {
+  // Allow review for completed jobs and in_progress jobs (for revision requests)
+  if (job.status !== 'completed' && job.status !== 'in_progress') {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorTitle}>Job Not Completed</Text>
+          <Text style={styles.errorTitle}>Job Not Available for Review</Text>
           <Text style={styles.errorDescription}>
-            You can only review a job after it has been completed.
+            You can only review a job when it's in progress or completed.
           </Text>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>Go Back</Text>
@@ -207,51 +308,43 @@ export default function JobReviewScreen() {
     );
   }
 
+  console.log('🔍 Job status:', job.status, 'Job ID:', job.id);
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <ArrowLeft size={24} color={Colors.text.primary} />
+          <Text style={styles.headerCancelText}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Rate & Review</Text>
-        <TouchableOpacity onPress={handleReportUser}>
-          <Flag size={24} color={Colors.status.error} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Confirm & Release Payment</Text>
+        <View style={{ width: 60 }} />
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Job Details */}
+        {/* Order Summary */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Job Details</Text>
-          <View style={styles.jobCard}>
-            <Text style={styles.jobTitle}>{job.title}</Text>
-            <Text style={styles.jobDescription}>{job.description}</Text>
-            
-            <View style={styles.jobDetails}>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Price:</Text>
-                <Text style={styles.detailValue}>{job.currency} {job.price}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Completed:</Text>
-                <Text style={styles.detailValue}>
-                  {job.completed_at ? formatDate(job.completed_at) : 'N/A'}
-                </Text>
-              </View>
-            </View>
+          <Text style={styles.sectionTitle}>Order Summary</Text>
+          <View style={styles.orderCard}>
+            <Text style={styles.orderTitle}>{job.title}</Text>
+            <Text style={styles.orderDescription}>{job.description}</Text>
+            <Text style={styles.paymentText}>
+              {job.currency} {job.price} will be released to the seller
+            </Text>
           </View>
         </View>
 
-        {/* Review Section */}
+        {/* Completion Photos */}
+        {completionPhotos.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Completion Photos</Text>
+            <JobCompletionPhotosViewer photos={completionPhotos} />
+          </View>
+        )}
+
+        {/* Rating Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Rate {isBuyer ? 'Seller' : 'Buyer'}
-          </Text>
-          
-          {/* Rating Stars */}
+          <Text style={styles.sectionTitle}>Rate this service</Text>
           <View style={styles.ratingContainer}>
-            <Text style={styles.ratingLabel}>How would you rate your experience?</Text>
             <View style={styles.starsContainer}>
               {[1, 2, 3, 4, 5].map((star) => (
                 <TouchableOpacity
@@ -276,61 +369,131 @@ export default function JobReviewScreen() {
               {rating === 5 && 'Excellent'}
             </Text>
           </View>
-
-          {/* Review Text */}
-          <View style={styles.reviewContainer}>
-            <Text style={styles.reviewLabel}>Write your review (optional)</Text>
-            <TextInput
-              style={styles.reviewInput}
-              value={review}
-              onChangeText={setReview}
-              placeholder="Share your experience with this job..."
-              placeholderTextColor={Colors.text.tertiary}
-              multiline
-              numberOfLines={6}
-              maxLength={500}
-              textAlignVertical="top"
-            />
-            <Text style={styles.characterCount}>{review.length}/500</Text>
-          </View>
         </View>
 
-        {/* Actions */}
+        {/* Feedback Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions</Text>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={handleMessage}>
-            <MessageCircle size={20} color={Colors.primary.main} />
-            <Text style={styles.actionButtonText}>Message {isBuyer ? 'Seller' : 'Buyer'}</Text>
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Feedback (Optional)</Text>
+          <TextInput
+            style={styles.feedbackInput}
+            value={review}
+            onChangeText={setReview}
+            placeholder="Share your experience with this service..."
+            placeholderTextColor={Colors.text.tertiary}
+            multiline
+            numberOfLines={4}
+            maxLength={500}
+            textAlignVertical="top"
+          />
+          <Text style={styles.characterCount}>{review.length}/500</Text>
+        </View>
 
+        {/* Release Button - Centered */}
+        <View style={styles.releaseButtonContainer}>
           <TouchableOpacity 
-            style={[styles.submitButton, (rating === 0 || isSubmitting) && styles.submitButtonDisabled]}
-            onPress={handleSubmitReview}
+            style={[styles.releaseButton, (rating === 0 || isSubmitting) && styles.releaseButtonDisabled]}
+            onPress={handleReleasePayment}
             disabled={rating === 0 || isSubmitting}
           >
             {isSubmitting ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
               <>
-                <Star size={20} color="white" />
-                <Text style={styles.submitButtonText}>Submit Review</Text>
+                <CheckCircle size={20} color="white" />
+                <Text style={styles.releaseButtonText}>Release Payment</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Guidelines */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Review Guidelines</Text>
-          <View style={styles.guidelinesCard}>
-            <Text style={styles.guidelineText}>• Be honest and constructive in your review</Text>
-            <Text style={styles.guidelineText}>• Focus on the work quality and communication</Text>
-            <Text style={styles.guidelineText}>• Avoid personal attacks or inappropriate language</Text>
-            <Text style={styles.guidelineText}>• Your review will be visible to the community</Text>
-          </View>
+        {/* Revision Option */}
+        <View style={styles.revisionSection}>
+          <TouchableOpacity 
+            style={styles.revisionButton}
+            onPress={handleRequestRevision}
+          >
+            <RotateCcw size={20} color={Colors.status.warning} />
+            <Text style={styles.revisionButtonText}>Request Revision Instead</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Warning Message */}
+        <View style={styles.warningContainer}>
+          <AlertTriangle size={20} color={Colors.status.warning} />
+          <Text style={styles.warningText}>
+            Once you confirm, the payment will be released to the seller and cannot be reversed.
+          </Text>
         </View>
       </ScrollView>
+
+      {/* Revision Modal */}
+      <Modal
+        visible={showRevisionModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowRevisionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {actionType === 'release' ? 'Confirm Payment Release' : 'Request Revision'}
+            </Text>
+            
+            {actionType === 'revision' && (
+              <>
+                <Text style={styles.modalSubtitle}>
+                  Please provide a reason for the revision request:
+                </Text>
+                <TextInput
+                  style={styles.revisionInput}
+                  value={revisionReason}
+                  onChangeText={setRevisionReason}
+                  placeholder="Describe what needs to be revised..."
+                  placeholderTextColor={Colors.text.tertiary}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </>
+            )}
+
+            {actionType === 'release' && (
+              <Text style={styles.modalSubtitle}>
+                Are you sure you want to release the payment to the seller? This action cannot be undone.
+              </Text>
+            )}
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowRevisionModal(false);
+                  setRevisionReason('');
+                  setActionType(null);
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalConfirmButton,
+                  actionType === 'revision' && !revisionReason.trim() && styles.modalConfirmButtonDisabled
+                ]}
+                onPress={handleConfirmAction}
+                disabled={actionType === 'revision' && !revisionReason.trim()}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>
+                    {actionType === 'release' ? 'Release' : 'Request Revision'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Report Modal */}
       {showReportModal && (
@@ -418,11 +581,17 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border.light,
     backgroundColor: 'white',
   },
+  headerCancelText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.primary.main,
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.text.primary,
   },
+
   content: {
     flex: 1,
     padding: 16,
@@ -475,41 +644,29 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     marginBottom: 12,
   },
-  jobCard: {
+  orderCard: {
     backgroundColor: 'white',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border.light,
   },
-  jobTitle: {
+  orderTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.text.primary,
     marginBottom: 8,
   },
-  jobDescription: {
+  orderDescription: {
     fontSize: 14,
     color: Colors.text.secondary,
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  jobDetails: {
-    gap: 8,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.text.primary,
+  paymentText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.primary.main,
   },
   ratingContainer: {
     backgroundColor: 'white',
@@ -518,13 +675,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border.light,
     alignItems: 'center',
-  },
-  ratingLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text.primary,
-    marginBottom: 16,
-    textAlign: 'center',
   },
   starsContainer: {
     flexDirection: 'row',
@@ -539,21 +689,7 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     fontStyle: 'italic',
   },
-  reviewContainer: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border.light,
-    marginTop: 12,
-  },
-  reviewLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text.primary,
-    marginBottom: 12,
-  },
-  reviewInput: {
+  feedbackInput: {
     borderWidth: 1,
     borderColor: Colors.border.light,
     borderRadius: 8,
@@ -569,51 +705,87 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: 8,
   },
-  actionButton: {
-    flexDirection: 'row',
+  releaseButtonContainer: {
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.border.light,
-    gap: 12,
+    marginBottom: 20,
   },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.text.primary,
+  revisionSection: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  submitButton: {
+  revisionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.status.success,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 12,
     gap: 8,
   },
-  submitButtonDisabled: {
+  revisionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.status.warning,
+  },
+  releaseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary.main,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    gap: 8,
+    minWidth: 200,
+  },
+  releaseButtonDisabled: {
     backgroundColor: Colors.interactive.disabled,
   },
-  submitButtonText: {
+  releaseButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
   },
-  guidelinesCard: {
+  warningContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF3CD',
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.status.warning,
+    padding: 16,
+    borderRadius: 8,
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#856404',
+    lineHeight: 20,
+  },
+  revisionCard: {
     backgroundColor: 'white',
     padding: 16,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border.light,
+    borderWidth: 2,
+    borderColor: Colors.status.warning,
+    borderStyle: 'dashed',
   },
-  guidelineText: {
+  revisionCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  revisionTextContainer: {
+    flex: 1,
+  },
+  revisionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.status.warning,
+    marginBottom: 4,
+  },
+  revisionDescription: {
     fontSize: 14,
     color: Colors.text.secondary,
     lineHeight: 20,
-    marginBottom: 8,
   },
   modalOverlay: {
     position: 'absolute',
@@ -644,6 +816,17 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     marginBottom: 20,
   },
+  revisionInput: {
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: Colors.text.primary,
+    backgroundColor: Colors.background.secondary,
+    minHeight: 100,
+    marginBottom: 20,
+  },
   reportOptions: {
     marginBottom: 20,
   },
@@ -672,6 +855,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: Colors.text.secondary,
+  },
+  modalConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.primary.main,
+    alignItems: 'center',
+  },
+  modalConfirmButtonDisabled: {
+    backgroundColor: Colors.interactive.disabled,
+  },
+  modalConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
   modalSubmitButton: {
     flex: 1,

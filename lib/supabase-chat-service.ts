@@ -671,6 +671,84 @@ export class SupabaseChatService {
     }
   }
 
+  async sendLocationMessage(
+    chatId: string,
+    senderId: string,
+    senderName: string,
+    senderImage: string,
+    locationData: {
+      address: string;
+      latitude: number;
+      longitude: number;
+    },
+    serviceTitle: string
+  ): Promise<LiveChatMessage | null> {
+    try {
+      const messageText = `📍 Shared job location for "${serviceTitle}": ${locationData.address}`;
+      
+      const messageData = {
+        chat_id: chatId,
+        sender_id: senderId,
+        sender_name: senderName,
+        sender_image: senderImage,
+        message: messageText,
+        message_type: 'location',
+        is_hidden: false,
+        moderation_reason: null,
+        is_reported: false,
+      };
+
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert(messageData)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      // Update chat's last message timestamp
+      await supabase
+        .from('chats')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', chatId);
+
+      const transformedMessage = await this.transformMessage(data, senderId);
+
+      // Add notification for the other participant
+      try {
+        const { data: participants } = await supabase
+          .from('chat_participants')
+          .select('user_id')
+          .eq('chat_id', chatId)
+          .neq('user_id', senderId);
+
+        if (participants && participants.length > 0) {
+          const otherParticipantId = participants[0].user_id;
+          
+          await notificationService.addChatNotification({
+            participantId: otherParticipantId,
+            participantName: senderName,
+            participantImage: senderImage,
+            message: `📍 Shared job location for "${serviceTitle}"`,
+            chatId: chatId,
+            senderId: senderId,
+          });
+        }
+      } catch (notificationError) {
+        console.error('Error adding location notification:', notificationError);
+      }
+
+      console.log('✅ Location message sent successfully:', transformedMessage.id);
+      return transformedMessage;
+    } catch (error) {
+      console.error('Error sending location message:', error);
+      return null;
+    }
+  }
+
   async createServiceOffer(
     chatId: string,
     serviceId: string,

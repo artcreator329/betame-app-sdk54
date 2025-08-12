@@ -33,6 +33,7 @@ import { ServiceOfferModal } from '../../components/ServiceOfferModal';
 import { MalaysianPaymentModal } from '../../components/MalaysianPaymentModal';
 import { JobProgressMonitor } from '../../components/JobProgressMonitor';
 import { QuotedMessage } from '../../components/QuotedMessage';
+import { LocationShareModal } from '../../components/LocationShareModal';
 import { notificationService } from '@/lib/notification-service';
 
 interface ModeratedMessage extends ChatMessage {
@@ -91,6 +92,12 @@ export default function ChatScreen() {
     offer: any;
     serviceData: any;
     sellerId: string;
+  } | null>(null);
+  const [locationShareModalVisible, setLocationShareModalVisible] = useState(false);
+  const [locationShareData, setLocationShareData] = useState<{
+    offerId: string;
+    serviceTitle: string;
+    buyerName: string;
   } | null>(null);
   const [showJobProgress, setShowJobProgress] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -656,6 +663,58 @@ export default function ChatScreen() {
     }
   };
 
+  const handleShareLocation = (offerId: string, serviceTitle: string) => {
+    // Get buyer name from participant info
+    const buyerName = participantInfo?.name || 'the buyer';
+    
+    setLocationShareData({
+      offerId,
+      serviceTitle,
+      buyerName,
+    });
+    setLocationShareModalVisible(true);
+  };
+
+  const handleLocationShare = async (location: {
+    address: string;
+    latitude: number;
+    longitude: number;
+  }) => {
+    if (!user?.id || !userProfile || !chatId || !locationShareData) return;
+
+    try {
+      const success = await supabaseChatService.sendLocationMessage(
+        chatId,
+        user.id,
+        userProfile.full_name || user.email?.split('@')[0] || 'User',
+        userProfile.avatar_url || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
+        location,
+        locationShareData.serviceTitle
+      );
+
+      if (success) {
+        Alert.alert('Success', 'Job location shared successfully!');
+        setLocationShareModalVisible(false);
+        setLocationShareData(null);
+        
+        // Scroll to bottom after sending
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } else {
+        Alert.alert('Error', 'Failed to share location. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sharing location:', error);
+      Alert.alert('Error', 'Failed to share location. Please try again.');
+    }
+  };
+
+  const handleLocationShareCancel = () => {
+    setLocationShareModalVisible(false);
+    setLocationShareData(null);
+  };
+
   // Effect to populate edit form when editing offer is set
 
 
@@ -1130,6 +1189,7 @@ export default function ChatScreen() {
             onAcceptOffer={acceptServiceOffer}
             onRejectOffer={rejectServiceOffer}
             onViewOrderProgress={() => router.push('/(tabs)/orders')}
+            onShareLocation={handleShareLocation}
             onEditOffer={(offerId) => {
               console.log('Edit offer:', offerId);
               // Find the message to get current offer details
@@ -1291,6 +1351,22 @@ export default function ChatScreen() {
                     ]}>View Service</Text>
                   </TouchableOpacity>
                 </View>
+                ) : msg.messageType === 'location' ? (
+                  <View style={styles.locationMessageContent}>
+                    <View style={styles.locationHeader}>
+                      <MapPin size={16} color={(msg.senderId === user?.id) ? '#FFFFFF' : '#007AFF'} />
+                      <Text style={[
+                        styles.locationLabel,
+                        (msg.senderId === user?.id) ? styles.myLocationLabel : styles.theirLocationLabel
+                      ]}>Job Location Shared</Text>
+                    </View>
+                    <Text style={[
+                      styles.messageText,
+                      (msg.senderId === user?.id) ? styles.myMessageText : styles.theirMessageText
+                    ]}>
+                      {msg.content}
+                    </Text>
+                  </View>
                 ) : (
                   <Text style={[
                     styles.messageText,
@@ -1713,6 +1789,43 @@ export default function ChatScreen() {
           }}
         />
 
+        {/* Service Offer Modal */}
+        <ServiceOfferModal
+          visible={serviceOfferModalVisible}
+          onClose={() => {
+            setServiceOfferModalVisible(false);
+            setSelectedService(null);
+            setEditingOffer(null);
+          }}
+          service={selectedService}
+          onSendOffer={handleSendServiceOffer}
+          isLoading={false}
+          isEditing={!!editingOffer}
+          editingOfferId={editingOffer?.offerId}
+          existingOfferData={editingOffer ? {
+            customPrice: editingOffer.currentPrice,
+            customDescription: editingOffer.currentDescription,
+            customDeliveryTime: editingOffer.currentDeliveryTime,
+            startDate: editingOffer.currentStartDate,
+            endDate: editingOffer.currentEndDate,
+            preferredStartTime: editingOffer.currentPreferredStartTime,
+            preferredEndTime: editingOffer.currentPreferredEndTime,
+            locationAddress: editingOffer.currentLocationAddress,
+            urgencyLevel: editingOffer.currentUrgencyLevel,
+            workType: editingOffer.currentWorkType,
+            estimatedHours: editingOffer.currentEstimatedHours,
+            requirements: editingOffer.currentRequirements,
+          } : undefined}
+        />
+
+        {/* Location Share Modal */}
+        <LocationShareModal
+          visible={locationShareModalVisible}
+          onClose={handleLocationShareCancel}
+          onLocationShare={handleLocationShare}
+          serviceTitle={locationShareData?.serviceTitle || ''}
+          buyerName={locationShareData?.buyerName || ''}
+        />
 
       </SafeAreaView>
     );
@@ -2661,6 +2774,43 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+
+  // Location message styles
+  locationMessageContent: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 12,
+    padding: 12,
+    maxWidth: 280,
+  },
+  locationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  locationLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1976D2',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  myLocationLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  theirLocationLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1976D2',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginLeft: 4,
   },
 
 });

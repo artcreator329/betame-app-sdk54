@@ -17,6 +17,8 @@ import { Colors } from '../../constants/Colors';
 import { ActiveJobService, ActiveJob, JobProgress } from '../../lib/active-job-service';
 import { useAuth } from '../../contexts/AuthContext';
 import { notificationService } from '../../lib/notification-service';
+import { JobCompletionPhotosViewer } from '../../components/JobCompletionPhotosViewer';
+import { JobCompletionService } from '../../lib/job-completion-service';
 
 interface JobProgressProps {
   jobId: string;
@@ -35,6 +37,7 @@ export default function JobProgressScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
+  const [completionPhotos, setCompletionPhotos] = useState<any[]>([]);
 
   useEffect(() => {
     if (jobId) {
@@ -45,13 +48,15 @@ export default function JobProgressScreen() {
   const loadJobData = async () => {
     try {
       setIsLoading(true);
-      const [jobData, progressData] = await Promise.all([
+      const [jobData, progressData, photosData] = await Promise.all([
         ActiveJobService.getActiveJob(jobId),
-        ActiveJobService.getJobProgress(jobId)
+        ActiveJobService.getJobProgress(jobId),
+        JobCompletionService.getCompletionPhotos(jobId)
       ]);
       
       setJob(jobData);
       setProgressHistory(progressData);
+      setCompletionPhotos(photosData);
     } catch (error) {
       console.error('Error loading job data:', error);
       Alert.alert('Error', 'Failed to load job details');
@@ -160,50 +165,14 @@ export default function JobProgressScreen() {
   const handleCompleteJob = async () => {
     if (!job) return;
 
-    Alert.alert(
-      'Complete Job',
-      'Are you sure you want to mark this job as completed? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete',
-          onPress: async () => {
-            try {
-              const success = await ActiveJobService.completeJob(job.id!);
-              
-              if (success) {
-                // Send notification to the other party
-                const notificationData = {
-                  participantId: isBuyer ? job.seller_id : job.buyer_id,
-                  participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
-                  participantImage: userProfile?.avatar_url || '',
-                  jobId: job.id!,
-                  jobTitle: job.title,
-                  isCompletedByBuyer: isBuyer,
-                };
+    // Check if user is the seller (only sellers can complete jobs)
+    if (isBuyer) {
+      Alert.alert('Access Denied', 'Only the seller can complete this job.');
+      return;
+    }
 
-                await notificationService.addJobCompletedNotification(notificationData);
-
-                Alert.alert(
-                  'Job Completed',
-                  'Job has been marked as completed. You can now rate and review the other party.',
-                  [
-                    {
-                      text: 'Rate & Review',
-                      onPress: () => router.push(`/job-review/${job.id}`)
-                    },
-                    { text: 'OK' }
-                  ]
-                );
-              }
-            } catch (error) {
-              console.error('Error completing job:', error);
-              Alert.alert('Error', 'Failed to complete job');
-            }
-          }
-        }
-      ]
-    );
+    // Navigate to the job completion screen
+    router.push(`/job-completion/${job.id}`);
   };
 
   const handleReportJob = () => {
@@ -396,6 +365,13 @@ export default function JobProgressScreen() {
           )}
         </View>
 
+        {/* Completion Photos */}
+        {completionPhotos.length > 0 && (
+          <View style={styles.section}>
+            <JobCompletionPhotosViewer photos={completionPhotos} />
+          </View>
+        )}
+
         {/* Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Actions</Text>
@@ -415,13 +391,15 @@ export default function JobProgressScreen() {
                 <Text style={styles.extendButtonText}>Extend Job</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.completeButton]} 
-                onPress={handleCompleteJob}
-              >
-                <CheckCircle size={20} color={Colors.status.success} />
-                <Text style={styles.completeButtonText}>Complete Job</Text>
-              </TouchableOpacity>
+              {!isBuyer && (
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.completeButton]} 
+                  onPress={handleCompleteJob}
+                >
+                  <CheckCircle size={20} color={Colors.status.success} />
+                  <Text style={styles.completeButtonText}>Complete Job</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
 

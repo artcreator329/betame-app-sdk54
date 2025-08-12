@@ -198,7 +198,7 @@ export function ServiceOfferModal({
       endDate: endDate ? endDate.toISOString().split('T')[0] : undefined,
       preferredStartTime: preferredStartTime ? preferredStartTime.toTimeString().slice(0, 5) : undefined,
       preferredEndTime: preferredEndTime ? preferredEndTime.toTimeString().slice(0, 5) : undefined,
-      locationAddress: locationAddress.trim() || undefined,
+      locationAddress: undefined, // Location will be shared after offer acceptance
       urgencyLevel,
       workType,
       estimatedHours: hours,
@@ -659,7 +659,16 @@ export function ServiceOfferModal({
               </View>
             </View>
             
-            {/* Work Location Section */}
+            {/* Location Information Note */}
+            {workType === 'on_site' && (
+              <View style={styles.locationInfoNote}>
+                <Text style={styles.locationInfoText}>
+                  📍 For on-site work, the job location will be shared with you after the offer is accepted.
+                </Text>
+              </View>
+            )}
+            
+            {/* Work Location Section - Hidden: Location will be shared after offer acceptance
             <View style={styles.workLocationSection}>
               <Text style={styles.workDetailLabel}>Work Location</Text>
               <TouchableOpacity
@@ -692,13 +701,13 @@ export function ServiceOfferModal({
                 )}
               </TouchableOpacity>
               
-              {/* Debug: Test button to force open map */}
               {workType === 'remote' && (
                 <View style={styles.remoteWorkOverlay}>
                   <Text style={styles.remoteWorkText}>Location not required for remote work</Text>
                 </View>
               )}
             </View>
+            */}
           </View>
 
           {/* Project Specifications Card */}
@@ -1366,5 +1375,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  locationInfoNote: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  locationInfoText: {
+    fontSize: 14,
+    color: '#1976D2',
+    lineHeight: 20,
   },
 });

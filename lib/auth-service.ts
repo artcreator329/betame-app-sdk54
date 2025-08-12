@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   full_name?: string;
   avatar_url?: string;
+  cover_photo_url?: string;
 }
 
 export interface SignUpData {
@@ -314,6 +315,7 @@ class AuthService {
   async updateUserProfile(updates: {
     full_name?: string;
     avatar_url?: string;
+    cover_photo_url?: string;
     bio?: string;
     phone?: string;
     location?: string;

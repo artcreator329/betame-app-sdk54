@@ -24,6 +24,7 @@ interface ServiceOfferMessageProps {
   onCancelOffer?: (offerId: string) => void;
   onViewService?: (serviceId: string) => void;
   onViewOrderProgress?: () => void;
+  onShareLocation?: (offerId: string, serviceTitle: string) => void;
 }
 
 export function ServiceOfferMessage({
@@ -35,6 +36,7 @@ export function ServiceOfferMessage({
   onCancelOffer,
   onViewService,
   onViewOrderProgress,
+  onShareLocation,
 }: ServiceOfferMessageProps) {
   const { serviceData, offerId, offerStatus, offerExpiresAt } = message;
   const [showOfferDetailsModal, setShowOfferDetailsModal] = useState(false);
@@ -260,7 +262,7 @@ export function ServiceOfferMessage({
             )}
 
             {/* Hustle Job Attributes */}
-            {(serviceData.startDate || serviceData.endDate || serviceData.locationAddress || serviceData.workType || serviceData.urgencyLevel) && (
+            {(serviceData.startDate || serviceData.endDate || serviceData.workType || serviceData.urgencyLevel) && (
               <View style={styles.hustleDetailsContainer}>
                 <Text style={styles.hustleDetailsLabel}>Job Details:</Text>
                 
@@ -282,7 +284,8 @@ export function ServiceOfferMessage({
                   </View>
                 )}
                 
-                {/* Location */}
+                {/* Location - Hidden: Will be shared after offer acceptance */}
+                {/* 
                 {serviceData.locationAddress && (
                   <View style={styles.hustleDetailRow}>
                     <Text style={styles.hustleDetailText} numberOfLines={1}>
@@ -290,6 +293,7 @@ export function ServiceOfferMessage({
                     </Text>
                   </View>
                 )}
+                */}
                 
                 {/* Work Type & Urgency */}
                 <View style={styles.hustleTagsRow}>
@@ -415,6 +419,20 @@ export function ServiceOfferMessage({
                 <View style={styles.acceptedButton}>
                   <Text style={styles.acceptedButtonText}>Accepted</Text>
                 </View>
+                
+                {/* Show location sharing button for seller if work is on-site */}
+                {isCurrentUser && 
+                 serviceData.workType === 'on_site' && 
+                 onShareLocation && (
+                  <TouchableOpacity 
+                    style={styles.shareLocationButton}
+                    onPress={() => onShareLocation(offerId!, serviceData.title)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.shareLocationButtonText}>Share Location</Text>
+                  </TouchableOpacity>
+                )}
+                
                 {onViewOrderProgress && (
                   <TouchableOpacity 
                     style={styles.orderProgressButton}
@@ -565,7 +583,7 @@ export function ServiceOfferMessage({
                   )}
 
                   {/* Job Details Summary - Show key hustle info prominently */}
-                  {(serviceData.startDate || serviceData.endDate || serviceData.preferredStartTime || serviceData.preferredEndTime || serviceData.locationAddress || serviceData.urgencyLevel) && (
+                  {(serviceData.startDate || serviceData.endDate || serviceData.preferredStartTime || serviceData.preferredEndTime || serviceData.urgencyLevel) && (
                     <View style={styles.modalSection}>
                       <Text style={styles.modalSectionTitle}>📋 Job Details</Text>
                       <View style={styles.jobSummaryContainer}>
@@ -579,11 +597,14 @@ export function ServiceOfferMessage({
                             ⏰ {serviceData.preferredStartTime || 'Flexible'} - {serviceData.preferredEndTime || 'Flexible'}
                           </Text>
                         )}
+                        {/* Location hidden - will be shared after acceptance */}
+                        {/* 
                         {serviceData.locationAddress && (
                           <Text style={styles.jobSummaryText}>
                             📍 {serviceData.locationAddress}
                           </Text>
                         )}
+                        */}
                         {serviceData.urgencyLevel && (
                           <Text style={[styles.jobSummaryText, 
                             serviceData.urgencyLevel === 'urgent' ? { color: '#FF5722' } :
@@ -668,9 +689,9 @@ export function ServiceOfferMessage({
                   )}
 
                   {/* Enhanced Location & Work Arrangement */}
-                  {(serviceData.locationAddress || serviceData.workType) && (
+                  {serviceData.workType && (
                     <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>📍 Work Location & Arrangement</Text>
+                      <Text style={styles.modalSectionTitle}>🏢 Work Arrangement</Text>
                       <View style={styles.locationContainer}>
                         {serviceData.workType && (
                           <View style={styles.workTypeContainer}>
@@ -688,11 +709,13 @@ export function ServiceOfferMessage({
                             </View>
                             <Text style={styles.workTypeDescription}>
                               {serviceData.workType === 'remote' ? 'Work can be completed remotely from any location' :
-                               serviceData.workType === 'on_site' ? 'Physical presence required at specified location' :
+                               serviceData.workType === 'on_site' ? 'Physical presence required. Location will be shared after offer acceptance.' :
                                'Combination of remote and on-site work as needed'}
                             </Text>
                           </View>
                         )}
+                        {/* Location hidden - will be shared after acceptance */}
+                        {/* 
                         {serviceData.locationAddress && (
                           <View style={styles.addressContainer}>
                             <Text style={styles.addressLabel}>
@@ -703,6 +726,7 @@ export function ServiceOfferMessage({
                             </Text>
                           </View>
                         )}
+                        */}
                       </View>
                     </View>
                   )}
@@ -1545,6 +1569,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   orderProgressButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text.white,
+  },
+  shareLocationButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  shareLocationButtonText: {
     fontSize: 12,
     fontWeight: '600',
     color: Colors.text.white,
