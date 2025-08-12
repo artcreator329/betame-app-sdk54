@@ -571,9 +571,15 @@ export class WalletService {
         }
       }
 
-      // Bonus stones for streak milestones
-      if (newStreak === 7) {
-        stonesToAward = 5; // Bonus for 7-day streak
+      // Specific stone amounts for first 7 days
+      if (newStreak <= 7) {
+        if (newStreak <= 3) {
+          stonesToAward = 1; // Days 1-3: 1 stone each
+        } else if (newStreak <= 6) {
+          stonesToAward = 2; // Days 4-6: 2 stones each
+        } else {
+          stonesToAward = Math.floor(Math.random() * 6) + 5; // Day 7: Random 5-10 stones
+        }
       } else if (newStreak % 30 === 0) {
         stonesToAward = 10; // Monthly bonus
       }
@@ -626,7 +632,7 @@ export class WalletService {
           user_id: userId,
           type: 'daily_checkin',
           amount: stonesToAward,
-          description: `Daily check-in reward (Day ${newStreak})`,
+          description: `Daily check-in reward (Day ${newStreak}) - ${stonesToAward} stones`,
         });
         console.log('Daily check-in transaction recorded successfully');
       } catch (transactionError) {

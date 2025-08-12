@@ -18,7 +18,7 @@ import { WalletService } from '../lib/wallet-service';
 import { useAuth } from '../contexts/AuthContext';
 import { Image } from 'react-native';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface CheckInDay {
   day: number;
@@ -41,6 +41,7 @@ export default function CheckInScreen() {
   // Animation refs
   const flashAnimation = useRef(new Animated.Value(1)).current;
   const scaleAnimation = useRef(new Animated.Value(1)).current;
+  const rotationAnimation = useRef(new Animated.Value(0)).current;
   
   useEffect(() => {
     if (user?.id) {
@@ -145,10 +146,10 @@ export default function CheckInScreen() {
     { day: 1, stones: 1, claimed: currentStreak >= 1, isToday: currentStreak === 0 && canCheckIn },
     { day: 2, stones: 1, claimed: currentStreak >= 2, isToday: currentStreak === 1 && canCheckIn },
     { day: 3, stones: 1, claimed: currentStreak >= 3, isToday: currentStreak === 2 && canCheckIn },
-    { day: 4, stones: 1, claimed: currentStreak >= 4, isToday: currentStreak === 3 && canCheckIn },
-    { day: 5, stones: 1, claimed: currentStreak >= 5, isToday: currentStreak === 4 && canCheckIn },
-    { day: 6, stones: 1, claimed: currentStreak >= 6, isToday: currentStreak === 5 && canCheckIn },
-    { day: 7, stones: 2, claimed: currentStreak >= 7, isToday: currentStreak === 6 && canCheckIn, bonus: true },
+    { day: 4, stones: 2, claimed: currentStreak >= 4, isToday: currentStreak === 3 && canCheckIn },
+    { day: 5, stones: 2, claimed: currentStreak >= 5, isToday: currentStreak === 4 && canCheckIn },
+    { day: 6, stones: 2, claimed: currentStreak >= 6, isToday: currentStreak === 5 && canCheckIn },
+    { day: 7, stones: 0, claimed: currentStreak >= 7, isToday: currentStreak === 6 && canCheckIn, bonus: true },
   ];
 
   const handleCheckIn = async () => {
@@ -183,13 +184,9 @@ export default function CheckInScreen() {
               [{ text: 'Continue', onPress: () => loadCheckInData() }]
             );
           }, 800);
-        } else if (reward > 1) {
-          setTimeout(() => {
-            Alert.alert('🎁 Streak Bonus!', `Congratulations! You've earned ${reward} stones including a streak bonus!`);
-          }, 800);
         } else {
           setTimeout(() => {
-            Alert.alert('✅ Check-in Successful!', `You've earned ${reward} stone! Keep your streak going!`);
+            Alert.alert('✅ Check-in Successful!', `You've earned ${reward} stones! Keep your streak going!`);
           }, 800);
         }
       } else {
@@ -214,7 +211,8 @@ export default function CheckInScreen() {
       }
       
       const historyText = checkInTransactions
-        .slice(0, 10) // Show last 10 check-ins
+        .slice(-10) // Show last 10 transactions
+        .reverse()
         .map(t => `${new Date(t.created_at!).toLocaleDateString()}: +${t.amount} stones`)
         .join('\n');
         
@@ -225,53 +223,138 @@ export default function CheckInScreen() {
     }
   };
 
-  const renderCheckInDay = (dayData: CheckInDay) => {
+  const getGradientColors = (day: number): [string, string, ...string[]] => {
+    const baseBlue = '#4A90E2';
+    const darkBlue = '#2E5BBA';
+    
+    if (day === 7) {
+      return ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
+    }
+    
+    // Gradient from light to dark blue
+    const intensity = day / 7;
+    const r = Math.floor(74 + (46 - 74) * intensity);
+    const g = Math.floor(144 + (91 - 144) * intensity);
+    const b = Math.floor(226 + (186 - 226) * intensity);
+    
+    return [`rgb(${r}, ${g}, ${b})`, darkBlue];
+  };
+
+  const getCardPosition = (index: number) => {
+    const centerX = width / 2;
+    const centerY = height * 0.25; // Position ferris wheel much higher
+    const radius = Math.min(width, height) * 0.32; // Even larger radius to prevent blocking
+    
+    if (index === 6) {
+      // Day 7 in center
+      return {
+        left: centerX - 60,
+        top: centerY - 60,
+        scale: 1.3,
+        zIndex: 10,
+      };
+    }
+    
+    // Calculate angle for each card (6 cards around the circle)
+    // Start from top (12 o'clock position) and go clockwise
+    const angle = (index * 60 - 90) * (Math.PI / 180); // 60 degrees apart, starting from top
+    
+    const x = centerX + radius * Math.cos(angle);
+    const y = centerY + radius * Math.sin(angle);
+    
+    // Scale based on position (much more dramatic scaling from small to big)
+    const scale = 0.5 + (index * 0.15);
+    
+    return {
+      left: x - 60,
+      top: y - 60,
+      scale: Math.min(scale, 1.1),
+      zIndex: index,
+    };
+  };
+
+  const renderFerrisWheelCard = (dayData: CheckInDay, index: number) => {
     const { day, stones, claimed, isToday, bonus } = dayData;
+    const position = getCardPosition(index);
+    
+    // Floating animation for Day 7
+    const floatingAnimation = useRef(new Animated.Value(0)).current;
+    
+    useEffect(() => {
+      if (day === 7) {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(floatingAnimation, {
+              toValue: 1,
+              duration: 2000,
+              useNativeDriver: true,
+            }),
+            Animated.timing(floatingAnimation, {
+              toValue: 0,
+              duration: 2000,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      }
+    }, [day]);
     
     return (
-      <View key={day} style={styles.dayContainer}>
-        <View style={[
-          styles.dayCard,
-          claimed && styles.claimedCard,
-          isToday && styles.todayCard,
-          bonus && styles.bonusCard
-        ]}>
-          <Text style={[
-            styles.dayNumber,
-            claimed && styles.claimedText,
-            isToday && styles.todayText
-          ]}>+{day}</Text>
+      <Animated.View
+        key={day}
+        style={[
+          styles.ferrisCard,
+          {
+            position: 'absolute',
+            left: position.left,
+            top: position.top,
+            transform: [
+              { scale: position.scale },
+              ...(day === 7 ? [{
+                translateY: floatingAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -10],
+                }),
+              }] : []),
+            ],
+            zIndex: position.zIndex,
+          },
+        ]}
+      >
+        <View style={styles.diamondContainer}>
+          <Image 
+            source={require('../assets/images/diamond-checkin.png')}
+            style={[
+              styles.diamondImage,
+              claimed && styles.claimedDiamond,
+              isToday && styles.todayDiamond,
+            ]}
+          />
           
-          <View style={styles.diamondContainer}>
-            <Image 
-              source={require('../assets/images/diamond.webp')}
-              style={[styles.diamondImage, {
-                opacity: claimed ? 1 : isToday ? 1 : 0.5
-              }]}
-            />
-            {stones > 1 && (
-              <Image 
-                source={require('../assets/images/diamond.webp')}
-                style={[styles.diamondImage, styles.bonusDiamond, {
-                  opacity: claimed ? 1 : isToday ? 1 : 0.8
-                }]}
-              />
-            )}
-          </View>
+          {/* Day Number */}
+          <Text style={styles.dayLabel}>Day {day}</Text>
           
+          {/* Stone Count */}
+          <Text style={styles.stoneCount}>+{stones}</Text>
+          
+          {/* Check Mark for Claimed */}
           {claimed && (
             <View style={styles.checkMark}>
               <Text style={styles.checkMarkText}>✓</Text>
             </View>
           )}
           
+          {/* Bonus Label for Day 7 */}
           {bonus && (
             <View style={styles.bonusLabel}>
-              <Text style={styles.bonusText}>Bonus Day</Text>
+              <Text style={styles.bonusText}>Bonus!</Text>
             </View>
           )}
+          
+          {/* Glow Effect for Claimed */}
+          {claimed && <View style={styles.glowEffect} />}
         </View>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -282,43 +365,33 @@ export default function CheckInScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color={Colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Check-in Bonus</Text>
+        <Text style={styles.headerTitle}>Daily Check-in</Text>
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.content}>
-        {/* Stones Counter */}
-        <View style={styles.diamondsHeader}>
-          <View style={styles.diamondsCounter}>
-            <Image 
-              source={require('../assets/images/diamond.webp')}
-              style={styles.headerDiamondImage}
-            />
-            <Text style={styles.diamondsCount}>{totalStones} Stones</Text>
-          </View>
-          <View style={styles.streakInfo}>
-            <Text style={styles.streakText}>check in to earn extra stones everyday!</Text>
+      <View style={styles.content}>
+        {/* Ferris Wheel - Big and at the top */}
+        <View style={styles.ferrisWheelContainer}>
+          <View style={styles.ferrisWheel}>
+            {checkInDays.map((dayData, index) => renderFerrisWheelCard(dayData, index))}
           </View>
         </View>
 
-        {/* Current Status */}
-        <Animated.View style={[
-          styles.statusCard,
-          {
-            opacity: flashAnimation,
-            transform: [{ scale: scaleAnimation }],
-            backgroundColor: isCheckedInToday ? '#4CAF50' : '#f8f9fa'
-          }
-        ]}>
-          <Text style={[styles.statusTitle, { color: isCheckedInToday ? '#fff' : '#333' }]}>Today's Reward</Text>
-          <Text style={[styles.statusSubtitle, { color: isCheckedInToday ? '#fff' : '#007AFF' }]}>+1 Premium Stone</Text>
-        </Animated.View>
-
-        {/* Check-in Calendar */}
-        <View style={styles.calendarContainer}>
-          <View style={styles.daysGrid}>
-            {checkInDays.map(renderCheckInDay)}
-          </View>
+        {/* Stones Counter */}
+        <View style={styles.stonesHeader}>
+          <LinearGradient
+            colors={['#007AFF', '#0056CC']}
+            style={styles.stonesGradient}
+          >
+            <View style={styles.stonesContent}>
+              <Image 
+                source={require('../assets/images/diamond.webp')}
+                style={styles.headerStoneImage}
+              />
+              <Text style={styles.stonesCount}>{totalStones}</Text>
+              <Text style={styles.stonesLabel}>Total Stones</Text>
+            </View>
+          </LinearGradient>
         </View>
 
         {/* Action Buttons */}
@@ -332,24 +405,22 @@ export default function CheckInScreen() {
             disabled={!canCheckIn || loading}
           >
             <LinearGradient
-              colors={canCheckIn ? [Colors.primary.main, Colors.primary.dark] : [Colors.text.secondary, '#6D6D70']}
+              colors={canCheckIn ? ['#667eea', '#764ba2'] : ['#6c757d', '#495057']}
               style={styles.buttonGradient}
             >
-              <Gift size={20} color="white" />
+              <Gift size={24} color="white" />
               <Text style={styles.checkInButtonText}>
-                {canCheckIn ? 'Check-in' : 'Checked-in'}
+                {canCheckIn ? 'Check-in Now!' : 'Already Checked-in'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.historyButton} onPress={handleHistory}>
             <Clock size={20} color={Colors.primary.main} />
-            <Text style={styles.historyButtonText}>History</Text>
+            <Text style={styles.historyButtonText}>View History</Text>
           </TouchableOpacity>
         </View>
-
-
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -373,8 +444,8 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: Colors.text.primary,
   },
   headerRight: {
@@ -383,142 +454,131 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  diamondsHeader: {
-    backgroundColor: Colors.background.tertiary,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+  ferrisWheelContainer: {
+    height: height * 0.5,
     alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginTop: 0,
+    paddingTop: 10,
   },
-  diamondsCounter: {
-    flexDirection: 'row',
+  ferrisWheel: {
+    width: width,
+    height: height * 0.4,
+    position: 'relative',
+  },
+  ferrisCard: {
+    width: 120,
+    height: 120,
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  diamondsCount: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text.primary,
-  },
-  streakInfo: {
-    alignItems: 'center',
-  },
-  streakText: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-  },
-  statusCard: {
-    backgroundColor: Colors.background.tertiary,
-    marginHorizontal: 20,
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: Colors.shadow.medium,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statusTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text.primary,
-    marginBottom: 4,
-  },
-  statusSubtitle: {
-    fontSize: 14,
-    color: Colors.primary.main,
-    fontWeight: '500',
-  },
-  calendarContainer: {
-    backgroundColor: Colors.background.tertiary,
-    marginHorizontal: 20,
-    marginTop: 16,
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: Colors.shadow.medium,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  daysGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
-  dayContainer: {
-    width: (width - 80) / 7,
-    marginBottom: 12,
-  },
-  dayCard: {
-    backgroundColor: Colors.background.secondary,
-    borderRadius: 8,
-    padding: 8,
-    alignItems: 'center',
-    minHeight: 60,
     justifyContent: 'center',
     position: 'relative',
   },
-  claimedCard: {
-    backgroundColor: Colors.background.secondary,
-    borderWidth: 1,
-    borderColor: Colors.status.success,
-  },
-  todayCard: {
-    backgroundColor: Colors.background.secondary,
-    borderWidth: 2,
-    borderColor: Colors.primary.main,
-  },
-  bonusCard: {
-    backgroundColor: Colors.background.secondary,
-    borderWidth: 1,
-    borderColor: Colors.status.warning,
-  },
-  dayNumber: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.text.secondary,
-    marginBottom: 4,
-  },
-  claimedText: {
-    color: Colors.status.success,
-  },
-  todayText: {
-    color: Colors.primary.main,
-  },
   diamondContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-  },
-  bonusDiamond: {
-    marginLeft: -4,
+    position: 'relative',
   },
   diamondImage: {
-    width: 16,
-    height: 16,
+    width: 100,
+    height: 100,
     resizeMode: 'contain',
   },
-  headerDiamondImage: {
+  claimedDiamond: {
+    opacity: 0.9,
+  },
+  todayDiamond: {
+    opacity: 1,
+  },
+  cardGradient: {
+    flex: 1,
+    padding: 8,
+  },
+  claimedGradient: {
+    opacity: 0.8,
+  },
+  glowEffect: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
+    borderRadius: 54,
+    backgroundColor: 'transparent',
+    borderWidth: 3,
+    borderColor: '#FFD700',
+    shadowColor: '#FFD700',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  todayGradient: {
+    borderWidth: 3,
+    borderColor: '#FFD700',
+  },
+  cardContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  dayLabel: {
+    position: 'absolute',
+    top: 15,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  rewardContainer: {
+    alignItems: 'center',
+  },
+  questionContainer: {
+    alignItems: 'center',
+  },
+  questionMark: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: 'white',
+  },
+  questionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
+    opacity: 0.9,
+  },
+  stoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  stoneImage: {
     width: 20,
     height: 20,
     resizeMode: 'contain',
   },
+  stoneCount: {
+    position: 'absolute',
+    bottom: 15,
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
   checkMark: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: Colors.status.success,
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 8,
     width: 16,
     height: 16,
@@ -526,33 +586,99 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkMarkText: {
-    color: Colors.text.white,
+    color: '#4CAF50',
     fontSize: 10,
     fontWeight: 'bold',
   },
   bonusLabel: {
     position: 'absolute',
-    bottom: -8,
-    backgroundColor: Colors.status.warning,
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
+    bottom: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   bonusText: {
-    color: Colors.text.white,
+    color: '#FF6B6B',
     fontSize: 8,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginTop: 20,
-    gap: 12,
-  },
-  checkInButton: {
-    flex: 1,
+  centerHub: {
+    position: 'absolute',
+    top: '25%',
+    left: '50%',
+    marginLeft: -25,
+    marginTop: -25,
+    width: 50,
+    height: 50,
     borderRadius: 25,
     overflow: 'hidden',
+    shadowColor: Colors.shadow.medium,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 15,
+  },
+  hubGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hubText: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: 'white',
+  },
+  stonesHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  stonesGradient: {
+    borderRadius: 20,
+    padding: 20,
+  },
+  stonesContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  headerStoneImage: {
+    width: 32,
+    height: 32,
+    resizeMode: 'contain',
+  },
+  stonesCount: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: 'white',
+  },
+  stonesLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+    opacity: 0.9,
+  },
+  actionButtons: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  checkInButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+    shadowColor: Colors.shadow.medium,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
   disabledButton: {
     opacity: 0.6,
@@ -561,30 +687,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 12,
   },
   checkInButtonText: {
-    color: Colors.text.white,
-    fontSize: 16,
-    fontWeight: '600',
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
   },
   historyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.background.tertiary,
-    borderRadius: 25,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
     gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.primary.main,
   },
   historyButtonText: {
     color: Colors.primary.main,
     fontSize: 16,
     fontWeight: '600',
   },
-
 });
