@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Notification, NotificationContextType } from '@/types/notification';
 import { notificationService } from '@/lib/notification-service';
+import { notificationScheduler } from '@/lib/notification-scheduler';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -24,11 +25,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         // Ensure realtime channel is cleaned up when user logs out
         try {
           (notificationService as any).disconnect?.();
+          notificationScheduler.disconnect();
         } catch {}
         return;
       }
 
       await (notificationService as any).connect?.(user.id);
+      await notificationScheduler.initialize(user.id);
+      
       await notificationService.getNotifications().then((savedNotifications) => {
         setNotifications(savedNotifications);
         setUnreadCount(savedNotifications.filter(n => !n.isRead).length);
@@ -44,6 +48,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
     return () => {
       if (unsubscribe) unsubscribe();
+      notificationScheduler.disconnect();
     };
   }, [user?.id]);
 

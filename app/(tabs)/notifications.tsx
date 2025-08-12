@@ -5,81 +5,18 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
-  Alert,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, MessageCircle, Package, Settings, Trash2, CheckCheck, X, Clock, Gift } from 'lucide-react-native';
+import { Bell, Trash2, CheckCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/contexts/ThemeContext';
-
+import SwipeableNotification from '@/components/SwipeableNotification';
 import { Notification } from '@/types/notification';
 
-function getNotificationIcon(type: string) {
-  switch (type) {
-    case 'chat':
-      return MessageCircle;
-    case 'order':
-      return Package;
-    case 'service':
-      return Settings;
-    case 'offer':
-      return Gift;
-    default:
-      return Bell;
-  }
-}
 
-function getNotificationColor(type: string, colors: any) {
-  switch (type) {
-    case 'chat':
-      return colors.status.success; // Green for chat messages
-    case 'order':
-      return colors.primary.main; // Blue for orders
-    case 'service':
-      return colors.status.warning; // Orange for services
-    case 'offer':
-      return colors.primary.main; // Blue for offers
-    default:
-      return colors.text.secondary; // Gray for system
-  }
-}
-
-function getNotificationGradient(type: string) {
-  switch (type) {
-    case 'chat':
-      return ['#E8F5E8', '#F0F9F0']; // Light green gradient
-    case 'order':
-      return ['#E3F2FD', '#F0F8FF']; // Light blue gradient
-    case 'service':
-      return ['#FFF3E0', '#FFF8F0']; // Light orange gradient
-    case 'offer':
-      return ['#F3E5F5', '#FAF0FB']; // Light purple gradient
-    default:
-      return ['#F5F5F5', '#FAFAFA']; // Light gray gradient
-  }
-}
-
-function formatNotificationTime(timestamp: string): string {
-  const now = new Date();
-  const notificationTime = new Date(timestamp);
-  const diffInMinutes = Math.floor((now.getTime() - notificationTime.getTime()) / (1000 * 60));
-  
-  if (diffInMinutes < 1) {
-    return 'Just now';
-  } else if (diffInMinutes < 60) {
-    return `${diffInMinutes}m ago`;
-  } else if (diffInMinutes < 1440) {
-    const hours = Math.floor(diffInMinutes / 60);
-    return `${hours}h ago`;
-  } else {
-    const days = Math.floor(diffInMinutes / 1440);
-    return `${days}d ago`;
-  }
-}
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -103,12 +40,6 @@ export default function NotificationsScreen() {
   }, []);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
-
-
-
-
-
-
 
   const handleNotificationPress = async (notification: Notification) => {
     console.log('🔔 Notification pressed:', notification);
@@ -137,146 +68,23 @@ export default function NotificationsScreen() {
       router.push(`/orders`);
     } else if (notification.type === 'service' && notification.data?.serviceId) {
       router.push(`/service/${notification.data.serviceId}`);
+    } else if (notification.type === 'check_in') {
+      console.log('🔔 Navigating to check-in page');
+      router.push('/check-in');
+    } else if (notification.type === 'marketing') {
+      console.log('🔔 Marketing notification tapped, navigating to home');
+      router.push('/(tabs)');
     } else {
       console.log('🔔 Unknown notification type or missing data:', notification);
     }
   };
 
-  const handleClearNotification = async (notificationId: string, event: any) => {
-    event.stopPropagation();
+  const handleClearNotification = async (notificationId: string) => {
     await clearNotification(notificationId);
   };
 
-
-
-  const renderNotification = (notification: Notification) => {
-    const IconComponent = getNotificationIcon(notification.type);
-    const iconColor = getNotificationColor(notification.type, colors);
-    const gradientColors = getNotificationGradient(notification.type);
-    
-    // Enhanced styling for read notifications
-    const isRead = notification.isRead;
-    const readOpacity = isRead ? 0.6 : 1;
-    const readTextColor = isRead ? colors.text.secondary : colors.text.primary;
-    const readIconColor = isRead ? colors.text.secondary : iconColor;
-    const readBackgroundColor = isRead ? colors.background.secondary : gradientColors[0];
-    const readBorderColor = isRead ? colors.border.light : iconColor + '30';
-    
-    return (
-      <TouchableOpacity
-        key={notification.id}
-        style={[
-          styles.notificationItem,
-          { 
-            backgroundColor: readBackgroundColor,
-            borderColor: readBorderColor,
-            shadowColor: colors.shadow.medium,
-            opacity: readOpacity
-          }
-        ]}
-        onPress={() => handleNotificationPress(notification)}
-        activeOpacity={0.7}
-      >
-        {/* Left side: Icon and indicator */}
-        <View style={styles.leftSection}>
-          <View style={[
-            styles.iconContainer, 
-            { 
-              backgroundColor: readIconColor + '15',
-              borderWidth: 2,
-              borderColor: readIconColor + '30'
-            }
-          ]}>
-            <IconComponent size={22} color={readIconColor} />
-          </View>
-          {!notification.isRead && (
-            <View style={[styles.unreadIndicator, { backgroundColor: iconColor }]} />
-          )}
-        </View>
-        
-        {/* Main content */}
-        <View style={styles.mainContent}>
-          {/* Header with title and time */}
-          <View style={styles.contentHeader}>
-            <Text style={[
-              styles.notificationTitle,
-              { color: readTextColor },
-              !notification.isRead && styles.unreadTitle
-            ]} numberOfLines={1}>
-              {notification.title}
-            </Text>
-            <View style={styles.timeContainer}>
-              <Clock size={12} color={colors.text.secondary} />
-              <Text style={[styles.notificationTime, { color: colors.text.secondary }]}>
-                {formatNotificationTime(notification.timestamp)}
-              </Text>
-            </View>
-          </View>
-          
-          {/* Message content */}
-          <Text style={[
-            styles.notificationMessage, 
-            { color: readTextColor },
-            !notification.isRead && { color: colors.text.primary }
-          ]} numberOfLines={2}>
-            {notification.message}
-          </Text>
-          
-          {/* Additional info for offers */}
-          {notification.type === 'offer' && notification.data && (
-            <View style={styles.offerInfo}>
-              {notification.data.serviceTitle && (
-                <Text style={[styles.serviceTitle, { color: readIconColor }]} numberOfLines={1}>
-                  📋 {notification.data.serviceTitle}
-                </Text>
-              )}
-              {notification.data.price && (
-                <Text style={[styles.priceInfo, { color: readTextColor }]}>
-                  💰 {notification.data.currency || 'RM'} {notification.data.price}
-                </Text>
-              )}
-            </View>
-          )}
-          
-          {/* Participant image for chat notifications */}
-          {notification.data?.participantImage && notification.type === 'chat' && (
-            <View style={styles.participantSection}>
-              <Image 
-                source={{ uri: notification.data.participantImage }} 
-                style={[styles.participantImage, { opacity: readOpacity }]} 
-              />
-              <Text style={[styles.participantName, { color: colors.text.secondary }]}>
-                {notification.data.participantName}
-              </Text>
-            </View>
-          )}
-        </View>
-        
-        {/* Right side: Actions */}
-        <View style={styles.rightSection}>
-          <TouchableOpacity
-            style={[styles.clearButton, { backgroundColor: colors.background.tertiary }]}
-            onPress={(event) => handleClearNotification(notification.id, event)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <X size={16} color={colors.text.secondary} />
-          </TouchableOpacity>
-          
-          {!notification.isRead && (
-            <TouchableOpacity
-              style={[styles.markReadButton, { backgroundColor: iconColor }]}
-              onPress={(event) => {
-                event.stopPropagation();
-                markAsRead(notification.id);
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <CheckCheck size={14} color="white" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </TouchableOpacity>
-    );
+  const handleMarkAsRead = async (notificationId: string) => {
+    await markAsRead(notificationId);
   };
 
   return (
@@ -345,7 +153,15 @@ export default function NotificationsScreen() {
           </View>
         ) : (
           <View style={styles.notificationsList}>
-            {notifications.map(renderNotification)}
+            {notifications.map((notification) => (
+              <SwipeableNotification
+                key={notification.id}
+                notification={notification}
+                onPress={handleNotificationPress}
+                onDelete={handleClearNotification}
+                onMarkAsRead={handleMarkAsRead}
+              />
+            ))}
             
             {/* Bottom spacing */}
             <View style={styles.bottomSpacing} />
@@ -414,119 +230,6 @@ const styles = StyleSheet.create({
   },
   notificationsList: {
     paddingHorizontal: 16,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    maxWidth: '100%',
-  },
-  leftSection: {
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  unreadIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  mainContent: {
-    flex: 1,
-    marginRight: 8,
-    minWidth: 0, // Allows text to wrap properly
-  },
-  contentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  notificationTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
-    marginRight: 8,
-    lineHeight: 22,
-  },
-  unreadTitle: {
-    fontWeight: '700',
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  notificationTime: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  notificationMessage: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  offerInfo: {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: 8,
-    padding: 8,
-    marginTop: 4,
-  },
-  serviceTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  priceInfo: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  participantSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 8,
-  },
-  participantImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-  },
-  participantName: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  rightSection: {
-    alignItems: 'center',
-    gap: 6,
-    minWidth: 32, // Ensures minimum space for buttons
-  },
-  clearButton: {
-    padding: 6,
-    borderRadius: 14,
-  },
-  markReadButton: {
-    padding: 5,
-    borderRadius: 10,
   },
   emptyState: {
     flex: 1,

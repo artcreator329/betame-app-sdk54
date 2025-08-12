@@ -321,7 +321,12 @@ export class NotificationService {
   }
 
   async addNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'>, targetUserId: string): Promise<void> {
-    console.log('📝 NotificationService: addNotification called with:', notification, 'for user:', targetUserId);
+    console.log('📝 NotificationService: addNotification called with:', {
+      type: notification.type,
+      title: notification.title,
+      message: notification.message.substring(0, 50) + '...',
+      targetUserId
+    });
     
     // Temporarily set the target user to save the notification
     const originalUserId = this.currentUserId;
@@ -736,6 +741,47 @@ export class NotificationService {
     await this.addNotification(notification, participantId);
   }
 
+  // Helper method to add marketing notification
+  async addMarketingNotification({
+    userId,
+    title,
+    message,
+  }: {
+    userId: string;
+    title: string;
+    message: string;
+  }): Promise<void> {
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'marketing' as const,
+      title,
+      message,
+      data: {
+        category: 'marketing',
+        canDisable: true,
+      },
+    };
+    
+    await this.addNotification(notification, userId);
+  }
+
+  // Helper method to add check-in reminder notification
+  async addCheckInReminderNotification({
+    userId,
+  }: {
+    userId: string;
+  }): Promise<void> {
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'check_in' as const,
+      title: '👋 Time to Check In!',
+      message: 'Share your location and discover new opportunities around you!',
+      data: {
+        action: 'check_in',
+        category: 'reminder',
+      },
+    };
+    
+    await this.addNotification(notification, userId);
+  }
 
 }
 

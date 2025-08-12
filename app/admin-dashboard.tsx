@@ -21,6 +21,7 @@ import {
   Shield,
   Settings,
   BarChart3,
+  Bell,
   UserCheck,
   Trash2,
   Eye,
@@ -264,6 +265,12 @@ export default function AdminDashboard() {
               icon={<BarChart3 size={20} color="#F59E0B" />}
               onPress={() => router.push('/admin/analytics')}
               color="#F59E0B"
+            />
+            <QuickAction
+              title="Notifications"
+              icon={<Bell size={20} color="#8B5CF6" />}
+              onPress={() => router.push('/admin/notifications')}
+              color="#8B5CF6"
             />
             <QuickAction
               title="System Settings"

@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../constants/Colors';
 import { WalletService } from '../lib/wallet-service';
 import { useAuth } from '../contexts/AuthContext';
+import { notificationScheduler } from '../lib/notification-scheduler';
 import { Image } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -168,6 +169,9 @@ export default function CheckInScreen() {
         // Update local state immediately
         setCanCheckIn(false);
         setIsCheckedInToday(true);
+        
+        // Record check-in with notification scheduler
+        await notificationScheduler.recordCheckIn();
         
         // Reload data to get updated state from server
         await loadCheckInData();

@@ -130,8 +130,8 @@ export default function SettingsScreen() {
         <View style={[styles.profileSection, { backgroundColor: colors.background.tertiary }]}>
           <TouchableOpacity 
             onPress={() => {
-              if (user) {
-                router.push(`/user-profile/${user.id}`);
+              if (userProfile) {
+                router.push(`/user-profile/${userProfile.id}`);
               } else {
                 Alert.alert(
                   'Sign In Required',
@@ -204,7 +204,7 @@ export default function SettingsScreen() {
           <SettingItem
             icon={<Bell size={20} color={colors.text.primary} />}
             title="Notifications"
-            onPress={() => console.log('Notifications')}
+            onPress={() => router.push('/notification-settings')}
           />
 
           <SettingItem

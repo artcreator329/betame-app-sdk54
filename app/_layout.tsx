@@ -196,6 +196,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="admin" />
+      <Stack.Screen name="admin/notifications" />
       <Stack.Screen name="service/[id]" />
       <Stack.Screen name="user-profile/[userId]" />
       <Stack.Screen name="profile/[userId]" />
@@ -242,6 +243,13 @@ function RootLayoutNav() {
       <Stack.Screen name="favorites" />
       <Stack.Screen name="trending" />
       <Stack.Screen name="check-in" />
+      <Stack.Screen 
+        name="notification-settings" 
+        options={{ 
+          animation: 'slide_from_bottom',
+          animationDuration: 500,
+        }}
+      />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
@@ -258,7 +266,20 @@ export default function RootLayout() {
   console.log('🔄 App: Rendering RootLayout...');
 
   useEffect(() => {
-    configureLocalNotifications();
+    const setupNotifications = async () => {
+      try {
+        const success = await configureLocalNotifications();
+        if (success) {
+          console.log('✅ Notifications configured successfully');
+        } else {
+          console.log('⚠️ Notifications configuration failed');
+        }
+      } catch (error) {
+        console.error('❌ Error setting up notifications:', error);
+      }
+    };
+    
+    setupNotifications();
   }, []);
 
   return (

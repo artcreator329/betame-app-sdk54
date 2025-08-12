@@ -18,6 +18,7 @@ import ProfileShareModal from '@/components/ProfileShareModal';
 
 
 
+
 interface Review {
   id: string;
   reviewer_id: string;
@@ -808,6 +809,8 @@ export default function ProfileScreen() {
         <View style={[styles.tabContent, { backgroundColor: colors.background.primary }]}>
           {renderTabContent()}
         </View>
+
+
       </ScrollView>
 
       {/* Profile Share Modal */}

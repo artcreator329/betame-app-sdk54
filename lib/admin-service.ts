@@ -747,6 +747,153 @@ class AdminService {
       return { success: false, error: 'Unexpected error occurred' };
     }
   }
+
+  /**
+   * Get notification statistics
+   */
+  async getNotificationStats() {
+    try {
+      // In a real app, these would come from a notifications table
+      // For now, return mock data
+      return {
+        totalSent: 1247,
+        marketingSent: 892,
+        checkInsSent: 355,
+        systemNotificationsSent: 156,
+        usersWithPermissions: 1834,
+        totalUsers: 2156,
+        dailyAverage: 45,
+        openRate: 68.5,
+        clickRate: 12.3,
+      };
+    } catch (error) {
+      console.error('Error fetching notification stats:', error);
+      return {
+        totalSent: 0,
+        marketingSent: 0,
+        checkInsSent: 0,
+        systemNotificationsSent: 0,
+        usersWithPermissions: 0,
+        totalUsers: 0,
+        dailyAverage: 0,
+        openRate: 0,
+        clickRate: 0,
+      };
+    }
+  }
+
+  /**
+   * Send broadcast notification to all users
+   */
+  async sendBroadcastNotification(
+    title: string,
+    message: string,
+    type: 'marketing' | 'system' | 'announcement',
+    targetUserIds?: string[]
+  ): Promise<{ success: boolean; error?: string; sentCount?: number }> {
+    try {
+      let userIds = targetUserIds;
+      
+      // If no specific users provided, get all users
+      if (!userIds) {
+        const { data: users, error } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .limit(1000); // Limit for safety
+
+        if (error) {
+          return { success: false, error: 'Failed to fetch users' };
+        }
+
+        userIds = users?.map(u => u.id) || [];
+      }
+
+      if (userIds.length === 0) {
+        return { success: false, error: 'No users found' };
+      }
+
+      // In a real app, you would:
+      // 1. Insert notification records into a notifications table
+      // 2. Queue them for delivery via a background job system
+      // 3. Send push notifications via FCM/APNS
+      
+      // For demo purposes, we'll just log the broadcast
+      console.log(`📢 Broadcasting ${type} notification to ${userIds.length} users:`);
+      console.log(`Title: ${title}`);
+      console.log(`Message: ${message}`);
+
+      // Simulate some processing time
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      return { 
+        success: true, 
+        sentCount: userIds.length 
+      };
+    } catch (error) {
+      console.error('Error sending broadcast notification:', error);
+      return { success: false, error: 'Unexpected error occurred' };
+    }
+  }
+
+  /**
+   * Get notification delivery logs
+   */
+  async getNotificationLogs(page: number = 1, limit: number = 50) {
+    try {
+      // In a real app, this would fetch from a notification_logs table
+      // For demo, return mock data
+      const mockLogs = Array.from({ length: limit }, (_, i) => ({
+        id: `log_${page}_${i}`,
+        type: ['marketing', 'system', 'check_in'][Math.floor(Math.random() * 3)],
+        title: `Sample Notification ${i + 1}`,
+        message: `This is a sample notification message ${i + 1}`,
+        sent_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+        recipient_count: Math.floor(Math.random() * 1000) + 100,
+        delivered_count: Math.floor(Math.random() * 900) + 80,
+        opened_count: Math.floor(Math.random() * 600) + 50,
+        clicked_count: Math.floor(Math.random() * 200) + 10,
+        status: ['sent', 'delivered', 'failed'][Math.floor(Math.random() * 3)],
+      }));
+
+      return {
+        logs: mockLogs,
+        total: 500, // Mock total
+        page,
+        limit,
+      };
+    } catch (error) {
+      console.error('Error fetching notification logs:', error);
+      return {
+        logs: [],
+        total: 0,
+        page,
+        limit,
+      };
+    }
+  }
+
+  /**
+   * Update global notification settings
+   */
+  async updateNotificationSettings(settings: {
+    marketingEnabled: boolean;
+    checkInEnabled: boolean;
+    marketingTime?: string; // "10:00"
+    checkInInterval?: number; // days
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      // In a real app, this would update a settings table
+      console.log('📝 Updating global notification settings:', settings);
+      
+      // Simulate database update
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+      return { success: false, error: 'Unexpected error occurred' };
+    }
+  }
 }
 
 export const adminService = new AdminService();
