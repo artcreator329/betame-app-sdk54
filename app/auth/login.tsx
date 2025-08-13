@@ -18,6 +18,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminService } from '@/lib/admin-service';
+import { referralService } from '@/lib/referral-service';
+import { ReferralInputModal } from '@/components/ReferralInputModal';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -25,6 +27,8 @@ export default function LoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const [newUserId, setNewUserId] = useState<string | null>(null);
   const router = useRouter();
   const { signIn, signUp } = useAuth();
   const videoRef = useRef<Video>(null);
@@ -85,6 +89,32 @@ export default function LoginScreen() {
     }
   };
 
+  const handleReferralSuccess = () => {
+    // Show success message and inform user to check email
+    Alert.alert(
+      'Account Created!',
+      'Please check your email and click the verification link to complete your registration. The link will automatically redirect you back to the app.',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Reset form
+            setEmail('');
+            setPassword('');
+            setFullName('');
+            setIsSignUp(false);
+            setNewUserId(null);
+          }
+        }
+      ]
+    );
+  };
+
+  const handleReferralSkip = () => {
+    setShowReferralModal(false);
+    handleReferralSuccess();
+  };
+
   const handleEmailAuth = async () => {
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email');
@@ -112,23 +142,9 @@ export default function LoginScreen() {
         } else if (result.user) {
           console.log('🔍 Login: User signed up:', result.user.id);
           
-          // Show success message and inform user to check email
-          Alert.alert(
-            'Account Created!',
-            'Please check your email and click the verification link to complete your registration. The link will automatically redirect you back to the app.',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  // Reset form
-                  setEmail('');
-                  setPassword('');
-                  setFullName('');
-                  setIsSignUp(false);
-                }
-              }
-            ]
-          );
+          // Store the new user ID and show referral modal
+          setNewUserId(result.user.id);
+          setShowReferralModal(true);
         }
       } catch (error: any) {
         Alert.alert('Error', error.message || 'An unexpected error occurred');
@@ -305,6 +321,16 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Referral Input Modal */}
+      {newUserId && (
+        <ReferralInputModal
+          visible={showReferralModal}
+          onClose={handleReferralSkip}
+          onSuccess={handleReferralSuccess}
+          userId={newUserId}
+        />
+      )}
     </SafeAreaView>
   );
 }

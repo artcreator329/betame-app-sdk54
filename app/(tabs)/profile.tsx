@@ -15,6 +15,8 @@ import ServiceCard from '@/components/ServiceCard';
 import { adminService } from '@/lib/admin-service';
 import { LinearGradient } from 'expo-linear-gradient';
 import ProfileShareModal from '@/components/ProfileShareModal';
+import { ReferralCard } from '@/components/ReferralCard';
+import { ReferralHistoryModal } from '@/components/ReferralHistoryModal';
 
 
 
@@ -42,6 +44,7 @@ export default function ProfileScreen() {
   const [isAdjustingPhoto, setIsAdjustingPhoto] = useState(false);
   const [photoType, setPhotoType] = useState<'cover' | 'profile'>('profile');
   const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [referralHistoryVisible, setReferralHistoryVisible] = useState(false);
   const router = useRouter();
   const { user, userProfile, updateProfile } = useAuth();
   const colors = useColors();
@@ -781,6 +784,9 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Referral Card */}
+        <ReferralCard userId={user?.id} />
+
         {/* Tab Navigation */}
         <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }]}>
           {['I\'m Hiring', 'My Services', 'Reviews'].map((tab) => (
@@ -821,6 +827,13 @@ export default function ProfileScreen() {
         userName={userProfile?.full_name}
         userBio={userProfile?.bio}
         userAvatar={userProfile?.avatar_url}
+      />
+
+      {/* Referral History Modal */}
+      <ReferralHistoryModal
+        visible={referralHistoryVisible}
+        onClose={() => setReferralHistoryVisible(false)}
+        userId={user?.id}
       />
     </SafeAreaView>
   );

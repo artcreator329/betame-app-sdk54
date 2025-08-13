@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { ImageService } from './image-service';
+import { referralService } from './referral-service';
 
 export interface JobCompletionPhoto {
   id?: string;
@@ -131,6 +132,14 @@ export class JobCompletionService {
           console.error('Error adding completion communication:', commError);
           // Don't fail the entire operation if communication fails
         }
+      }
+
+      // Track job completion for referral system
+      try {
+        await referralService.trackJobCompletion(sellerId);
+      } catch (error) {
+        console.error('Error tracking job completion for referrals:', error);
+        // Don't fail the entire operation if referral tracking fails
       }
 
       return true;
