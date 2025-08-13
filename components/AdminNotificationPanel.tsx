@@ -30,6 +30,7 @@ import { notificationScheduler } from '@/lib/notification-scheduler';
 import { checkNotificationPermissions, requestNotificationPermissions, showLocalNotification } from '@/lib/local-notifications';
 import { createSampleNotifications } from '@/scripts/test-notifications';
 import { demonstrateNotifications } from '@/scripts/demo-notifications';
+import { testMarketingNotification } from '@/scripts/test-marketing-notification';
 import { adminService } from '@/lib/admin-service';
 
 interface NotificationStats {
@@ -238,6 +239,28 @@ export default function AdminNotificationPanel() {
     } catch (error) {
       console.error('Error running demo:', error);
       Alert.alert('Error', 'Failed to run demo');
+    }
+  };
+
+  const testMarketingSystemNotification = async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'Please log in to test marketing notification');
+      return;
+    }
+
+    try {
+      const success = await testMarketingNotification(user.id);
+      if (success) {
+        Alert.alert(
+          'Marketing Notification Sent!', 
+          'Check both:\n• Your device notification center (system notification)\n• Your in-app notifications tab'
+        );
+      } else {
+        Alert.alert('Error', 'Failed to send marketing notification');
+      }
+    } catch (error) {
+      console.error('Error testing marketing notification:', error);
+      Alert.alert('Error', 'Failed to test marketing notification');
     }
   };
 
@@ -461,6 +484,14 @@ export default function AdminNotificationPanel() {
 
           <TouchableOpacity
             style={[styles.testButton, { backgroundColor: '#FF6B35' }]}
+            onPress={testMarketingSystemNotification}
+          >
+            <Megaphone size={18} color="white" />
+            <Text style={styles.testButtonText}>Test Marketing + System</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: '#8B5CF6' }]}
             onPress={createSampleNotifs}
           >
             <Sparkles size={18} color="white" />

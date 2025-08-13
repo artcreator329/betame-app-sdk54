@@ -34,7 +34,7 @@ interface BasicServiceData {
   priceUnit?: 'per_hour' | 'per_day' | 'per_week' | 'per_month' | 'per_year' | 'per_item' | 'per_project' | 'per_session' | 'one_time';
   currency?: string;
   imageUri?: string;
-  industry?: string;
+  serviceType?: string;
   serviceArea?: {
     latitude: number;
     longitude: number;
@@ -200,7 +200,7 @@ export default function DetailedServiceListingScreen() {
         // No pricing data for main service - pricing comes from variants
         currency: mainService.currency || 'RM',
         image_url: mainService.imageUri || undefined,
-        category_name: mainService.industry || 'General',
+        category_name: mainService.serviceType || 'general',
         location: mainService.serviceArea?.address,
         latitude: mainService.serviceArea?.latitude,
         longitude: mainService.serviceArea?.longitude,
@@ -242,7 +242,7 @@ export default function DetailedServiceListingScreen() {
           price_unit: variant.priceUnit,
           currency: mainService.currency || 'RM',
           image_url: mainService.imageUri || undefined,
-          category_name: mainService.industry || 'General',
+          category_name: mainService.serviceType || 'general',
           location: mainService.serviceArea?.address,
           latitude: mainService.serviceArea?.latitude,
           longitude: mainService.serviceArea?.longitude,
@@ -493,7 +493,7 @@ export default function DetailedServiceListingScreen() {
                         serviceTitle={variant.title}
                         serviceDescription={variant.description}
                         priceUnit={variant.priceUnit}
-                        industry={mainService?.industry}
+                        industry={mainService?.serviceType}
                         currentPrice={variant.price}
                         onPriceSelect={(price) => updateServiceVariant(variant.id, 'price', price)}
                       />

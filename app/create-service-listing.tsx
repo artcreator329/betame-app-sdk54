@@ -19,6 +19,7 @@ import { ServiceService } from '@/lib/service-service';
 import { ImageService } from '@/lib/image-service';
 import ServiceAreaPicker from '@/components/ServiceAreaPicker';
 import AIDescriptionModal from '@/components/AIDescriptionModal';
+import SingleCategorySelectionModal from '@/components/SingleCategorySelectionModal';
 
 function getPriceUnitLabel(priceUnit: string): string {
   const unitLabels: { [key: string]: string } = {
@@ -35,37 +36,155 @@ function getPriceUnitLabel(priceUnit: string): string {
   return unitLabels[priceUnit] || '';
 }
 
-// TODO: Replace with dynamic industry list from database
-const INDUSTRIES: string[] = [
-  'Professional Services',
-  'Construction & Maintenance',
-  'Technology & IT',
-  'Healthcare & Medical',
-  'Education & Training',
-  'Finance & Banking',
-  'Retail & E-commerce',
-  'Hospitality & Tourism',
-  'Manufacturing',
-  'Transportation & Logistics',
-  'Real Estate',
-  'Media & Entertainment',
-  'Agriculture & Farming',
-  'Automotive',
-  'Beauty & Wellness',
-  'Food & Beverage',
-  'Sports & Recreation',
-  'Non-Profit & Social Services',
-  'Government & Public Sector',
+// Service categories for hierarchical selection
+const serviceCategories = [
+  {
+    id: 'personal-care',
+    name: 'Personal Care & Wellness',
+    services: [
+      { id: 'beauty-cosmetics', name: 'Beauty & Cosmetics' },
+      { id: 'fitness-training', name: 'Fitness & Personal Training' },
+      { id: 'massage-wellness', name: 'Massage & Wellness' },
+      { id: 'healthcare-medical', name: 'Healthcare & Medical Services' },
+      { id: 'wellness-mental-health', name: 'Wellness & Mental Health' },
+    ]
+  },
+  {
+    id: 'home-living',
+    name: 'Home & Living',
+    services: [
+      { id: 'cleaning-maintenance', name: 'Cleaning & Maintenance' },
+      { id: 'repair-maintenance', name: 'Repair & Maintenance' },
+      { id: 'gardening-landscaping', name: 'Gardening & Landscaping' },
+      { id: 'interior-design', name: 'Interior Design' },
+      { id: 'plumbing-electrical', name: 'Plumbing & Electrical' },
+      { id: 'home-living', name: 'Home & Living' },
+    ]
+  },
+  {
+    id: 'professional',
+    name: 'Professional Services',
+    services: [
+      { id: 'consulting-strategy', name: 'Consulting & Strategy' },
+      { id: 'legal-services', name: 'Legal Services' },
+      { id: 'accounting-finance', name: 'Accounting & Finance Services' },
+      { id: 'marketing-advertising', name: 'Marketing & Advertising' },
+      { id: 'hr', name: 'Human Resources' },
+      { id: 'research-analysis', name: 'Research & Analysis' },
+      { id: 'insurance-services', name: 'Insurance Services' },
+    ]
+  },
+  {
+    id: 'creative-media',
+    name: 'Creative & Media',
+    services: [
+      { id: 'photography-videography', name: 'Photography & Videography' },
+      { id: 'graphic-design', name: 'Graphic Design & Creative' },
+      { id: 'music-audio', name: 'Music & Audio Production' },
+      { id: 'social-media', name: 'Social Media Management' },
+      { id: 'writing-content', name: 'Writing & Content Creation' },
+      { id: 'arts-entertainment', name: 'Arts & Entertainment' },
+    ]
+  },
+  {
+    id: 'technology',
+    name: 'Technology',
+    services: [
+      { id: 'digital-it', name: 'Digital & IT' },
+      { id: 'programming-development', name: 'Programming & Development' },
+      { id: 'technology-support', name: 'Technology Support' },
+    ]
+  },
+  {
+    id: 'events-entertainment',
+    name: 'Events & Entertainment',
+    services: [
+      { id: 'event-planning', name: 'Event Planning & Management' },
+      { id: 'cooking-catering', name: 'Cooking & Catering' },
+      { id: 'gaming-streaming', name: 'Gaming & Streaming' },
+      { id: 'wedding-services', name: 'Wedding Services' },
+      { id: 'fnb', name: 'F&B' },
+    ]
+  },
+  {
+    id: 'education-training',
+    name: 'Education & Training',
+    services: [
+      { id: 'education-training', name: 'Education & Training' },
+      { id: 'tutoring-academic', name: 'Tutoring & Academic Support' },
+      { id: 'language-translation', name: 'Language & Translation' },
+    ]
+  },
+  {
+    id: 'transportation-delivery',
+    name: 'Transportation & Delivery',
+    services: [
+      { id: 'delivery-logistics', name: 'Delivery & Logistics' },
+      { id: 'logistics-supply-chain', name: 'Logistics & Supply Chain' },
+      { id: 'transportation-services', name: 'Transportation Services' },
+    ]
+  },
+  {
+    id: 'care-services',
+    name: 'Care Services',
+    services: [
+      { id: 'childcare-babysitting', name: 'Childcare & Babysitting' },
+      { id: 'elderly-care', name: 'Elderly Care Services' },
+      { id: 'veterinary-pet-care', name: 'Veterinary & Pet Care' },
+    ]
+  },
+  {
+    id: 'lifestyle',
+    name: 'Lifestyle',
+    services: [
+      { id: 'fashion-styling', name: 'Fashion & Styling' },
+      { id: 'sports-recreation', name: 'Sports & Recreation' },
+      { id: 'jewelry-accessories', name: 'Jewelry & Accessories' },
+      { id: 'travel-tour', name: 'Travel & Tour Services' },
+    ]
+  },
+  {
+    id: 'business-services',
+    name: 'Business Services',
+    services: [
+      { id: 'administration-business', name: 'Administration & Business' },
+      { id: 'customer-service', name: 'Customer Service' },
+      { id: 'realestate-services', name: 'Real Estate Services' },
+      { id: 'banking-financial', name: 'Banking & Financial Services' },
+      { id: 'printing-publishing', name: 'Printing & Publishing' },
+      { id: 'hospitality-tourism', name: 'Hospitality & Tourism' },
+    ]
+  },
+  {
+    id: 'specialized',
+    name: 'Specialized Services',
+    services: [
+      { id: 'architecture-design', name: 'Architecture & Design' },
+      { id: 'engineering', name: 'Engineering' },
+      { id: 'construction-renovation', name: 'Construction & Renovation' },
+      { id: 'automotive', name: 'Automotive' },
+      { id: 'security-services', name: 'Security Services' },
+      { id: 'agriculture-farming', name: 'Agriculture & Farming' },
+      { id: 'advertising-media', name: 'Advertising & Media' },
+    ]
+  }
 ];
+
+// Helper function to get service type name by ID
+function getServiceTypeName(serviceTypeId: string): string {
+  const allServices = serviceCategories.flatMap(category => category.services);
+  const service = allServices.find(s => s.id === serviceTypeId);
+  return service?.name || serviceTypeId;
+}
 
 export default function CreateServiceListingScreen() {
   const [currentStep, setCurrentStep] = useState(1);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [industry, setIndustry] = useState('');
+  const [selectedServiceType, setSelectedServiceType] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [serviceArea, setServiceArea] = useState<{
     latitude: number;
     longitude: number;
@@ -78,9 +197,8 @@ export default function CreateServiceListingScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const handleIndustrySelect = (selectedIndustry: string) => {
-    setIndustry(selectedIndustry);
-    setShowIndustryDropdown(false);
+  const handleServiceTypeSelect = (serviceTypeId: string) => {
+    setSelectedServiceType(serviceTypeId);
   };
 
   const handleTitleChange = (text: string) => {
@@ -200,8 +318,8 @@ export default function CreateServiceListingScreen() {
         Alert.alert('Error', 'Please enter a service description');
         return;
       }
-      if (!industry.trim()) {
-        Alert.alert('Error', 'Please select an industry');
+      if (!selectedServiceType.trim()) {
+        Alert.alert('Error', 'Please select a service type');
         return;
       }
 
@@ -235,7 +353,7 @@ export default function CreateServiceListingScreen() {
     const serviceData = {
       title: title.trim(),
       description: description.trim(),
-      industry: industry.trim(),
+      serviceType: selectedServiceType.trim(),
       imageUri: imageUri || undefined,
       serviceArea: serviceArea,
     };
@@ -322,63 +440,37 @@ export default function CreateServiceListingScreen() {
            />
          </View>
 
-         {/* Industry Selection */}
+         {/* Service Type Selection */}
          <View style={styles.compactFieldContainer}>
-           <Text style={styles.compactFieldLabel}>Industry *</Text>
+           <Text style={styles.compactFieldLabel}>Service Type *</Text>
            <TouchableOpacity 
              style={styles.compactDropdownButton} 
-             onPress={() => setShowIndustryDropdown(!showIndustryDropdown)}
+             onPress={() => setShowCategoryModal(true)}
            >
              <Text style={[
                styles.compactDropdownText,
-               !industry && styles.compactDropdownPlaceholder
+               !selectedServiceType && styles.compactDropdownPlaceholder
              ]}>
-               {industry || 'Select Industry'}
+               {selectedServiceType ? getServiceTypeName(selectedServiceType) : 'Select Service Type'}
              </Text>
-             <Text style={styles.compactDropdownArrow}>
-               {showIndustryDropdown ? '▲' : '▼'}
-             </Text>
+             <Text style={styles.compactDropdownArrow}>▼</Text>
            </TouchableOpacity>
-           
-           {showIndustryDropdown && (
-             <View style={styles.compactDropdownList}>
-               <ScrollView style={styles.compactDropdownScrollView} nestedScrollEnabled>
-                 {INDUSTRIES.map((industryOption, index) => (
-                   <TouchableOpacity
-                     key={index}
-                     style={[
-                       styles.compactDropdownItem,
-                       industry === industryOption && styles.compactDropdownItemSelected
-                     ]}
-                     onPress={() => handleIndustrySelect(industryOption)}
-                   >
-                     <Text style={[
-                       styles.compactDropdownItemText,
-                       industry === industryOption && styles.compactDropdownItemTextSelected
-                     ]}>
-                       {industryOption}
-                     </Text>
-                   </TouchableOpacity>
-                 ))}
-               </ScrollView>
-             </View>
-           )}
          </View>
 
          {/* Continue Button */}
          <TouchableOpacity 
            style={[
              styles.continueButton, 
-             (title.trim() && description.trim() && industry.trim()) 
+             (title.trim() && description.trim() && selectedServiceType.trim()) 
                ? styles.continueButtonActive 
                : styles.continueButtonDisabled
            ]} 
            onPress={handleNextStep}
-           disabled={!title.trim() || !description.trim() || !industry.trim()}
+           disabled={!title.trim() || !description.trim() || !selectedServiceType.trim()}
          >
            <Text style={[
              styles.continueButtonText,
-             (title.trim() && description.trim() && industry.trim()) 
+             (title.trim() && description.trim() && selectedServiceType.trim()) 
                ? styles.continueButtonTextActive 
                : {}
            ]}>
@@ -452,6 +544,14 @@ export default function CreateServiceListingScreen() {
          onClose={() => setShowAIModal(false)}
          serviceTitle={title}
          onSelectDescription={handleAIDescriptionSelect}
+       />
+
+       {/* Category Selection Modal */}
+       <SingleCategorySelectionModal
+         visible={showCategoryModal}
+         onClose={() => setShowCategoryModal(false)}
+         selectedCategory={selectedServiceType}
+         onCategoryChange={handleServiceTypeSelect}
        />
      </SafeAreaView>
    );

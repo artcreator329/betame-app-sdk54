@@ -362,6 +362,15 @@ export class NotificationService {
     this.notifyListeners();
     console.log('📝 NotificationService: Notified listeners, listener count:', this.listeners.length);
 
+    // Show system notification immediately (don't wait for realtime)
+    try {
+      console.log('📱 NotificationService: Triggering system notification for:', newNotification.title);
+      await showLocalNotification(newNotification);
+      console.log('✅ NotificationService: System notification sent successfully');
+    } catch (error) {
+      console.error('❌ NotificationService: Failed to show system notification:', error);
+    }
+
     // Write-through to Supabase via secure RPC (best-effort)
     try {
       const { error } = await supabase.rpc('create_notification', {
