@@ -12,12 +12,13 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Upload, Camera, ImageIcon, MapPin } from 'lucide-react-native';
+import { ArrowLeft, Upload, Camera, ImageIcon, MapPin, Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceService } from '@/lib/service-service';
 import { ImageService } from '@/lib/image-service';
 import ServiceAreaPicker from '@/components/ServiceAreaPicker';
+import AIDescriptionModal from '@/components/AIDescriptionModal';
 
 function getPriceUnitLabel(priceUnit: string): string {
   const unitLabels: { [key: string]: string } = {
@@ -71,6 +72,7 @@ export default function CreateServiceListingScreen() {
     radius: number;
     description: string;
   } | null>(null);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   const router = useRouter();
   const { user } = useAuth();
@@ -90,6 +92,10 @@ export default function CreateServiceListingScreen() {
     if (text.length <= 1000) {
       setDescription(text);
     }
+  };
+
+  const handleAIDescriptionSelect = (aiDescription: string) => {
+    setDescription(aiDescription);
   };
 
   const handlePhotoUpload = () => {
@@ -279,7 +285,29 @@ export default function CreateServiceListingScreen() {
 
          {/* Description */}
          <View style={styles.compactFieldContainer}>
-           <Text style={styles.compactFieldLabel}>Description *</Text>
+           <View style={styles.descriptionHeader}>
+             <Text style={styles.compactFieldLabel}>Description *</Text>
+             <TouchableOpacity
+               style={[
+                 styles.aiButton,
+                 !title.trim() && styles.aiButtonDisabled
+               ]}
+               onPress={() => {
+                 if (!title.trim()) {
+                   Alert.alert('AI Tool', 'Please enter a service title first to generate descriptions');
+                   return;
+                 }
+                 setShowAIModal(true);
+               }}
+             >
+               <Text style={[
+                 styles.aiButtonText,
+                 !title.trim() && styles.aiButtonTextDisabled
+               ]}>
+                 ✨ AI Tool
+               </Text>
+             </TouchableOpacity>
+           </View>
            <TextInput
              style={[styles.compactTextInput, styles.compactTextArea]}
              value={description}
@@ -416,6 +444,14 @@ export default function CreateServiceListingScreen() {
 
        {/* Content */}
        {currentStep === 1 ? renderBasicInfoStep() : renderServiceAreaStep()}
+
+       {/* AI Description Modal */}
+       <AIDescriptionModal
+         visible={showAIModal}
+         onClose={() => setShowAIModal(false)}
+         serviceTitle={title}
+         onSelectDescription={handleAIDescriptionSelect}
+       />
      </SafeAreaView>
    );
 }
@@ -759,5 +795,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#007AFF',
+  },
+  // AI Tool styles
+  descriptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  aiButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  aiButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
+  },
+  aiButtonTextDisabled: {
+    color: '#8E8E93',
+  },
+  aiButtonDisabled: {
+    backgroundColor: '#E5E5EA',
   },
 });
