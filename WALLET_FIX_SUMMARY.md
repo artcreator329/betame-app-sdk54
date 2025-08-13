@@ -115,4 +115,4 @@ The fixes handle these scenarios:
 1. **Test the fixes**: Verify wallet creation and payment processing
 2. **Monitor logs**: Check for successful wallet creation messages
 3. **User feedback**: Confirm payment issues are resolved
-4. **Add more payment methods**: Consider adding stone/credit purchase options
+4. **Add more payment methods**: Consider adding credit purchase options

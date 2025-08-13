@@ -139,7 +139,7 @@ export function PaymentModal({
         `You need ${totalAmount} credits but only have ${walletData.betame_credits} credits. Please purchase more credits to continue.`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Buy Credits', onPress: () => {
+          { text: 'Purchase Credits', onPress: () => {
             onClose();
             // Navigate to wallet/credits purchase screen
           }}

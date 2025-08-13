@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { WalletService, WalletData, PurchasedFeature } from '../lib/wallet-service';
 import { useAuth } from '../contexts/AuthContext';
 import { useColors, useTheme } from '@/contexts/ThemeContext';
-import { StoneMarketplace } from '../components/StoneMarketplace';
+import { CreditPurchase } from '../components/CreditPurchase';
 
 interface Feature {
   id: string;
@@ -88,7 +88,7 @@ export default function WalletScreen() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
-  const [showMarketplace, setShowMarketplace] = useState(false);
+  const [showCreditPurchase, setShowCreditPurchase] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -126,8 +126,8 @@ export default function WalletScreen() {
         [
           { text: 'Cancel', style: 'cancel' as const },
           {
-            text: 'Buy More Stones',
-            onPress: () => setShowMarketplace(true),
+            text: 'Buy More Credits',
+            onPress: () => setShowCreditPurchase(true),
           },
         ]
       );
@@ -161,8 +161,8 @@ export default function WalletScreen() {
       const alertButtons = [
          { text: 'Cancel', style: 'cancel' as const },
          {
-           text: 'Buy Stones',
-           onPress: () => setShowMarketplace(true),
+           text: 'Buy Credits',
+           onPress: () => setShowCreditPurchase(true),
          },
        ];
        
@@ -178,7 +178,7 @@ export default function WalletScreen() {
        
        Alert.alert(
          'Insufficient Credits',
-         `You need ${creditsNeeded} more credit(s) to purchase this feature. You can convert ${stonesNeeded} stones to get ${creditsNeeded} credit(s), or buy more stones from the marketplace.`,
+         `You need ${creditsNeeded} more credit(s) to purchase this feature. You can convert ${stonesNeeded} stones to get ${creditsNeeded} credit(s), or purchase more credits directly.`,
          alertButtons
        );
       return;
@@ -200,10 +200,10 @@ export default function WalletScreen() {
       const alertButtons = [
         { text: 'Cancel', style: 'cancel' as const },
         {
-          text: 'Buy Stones',
+          text: 'Buy Credits',
           onPress: () => {
             setShowPurchaseModal(false);
-            setShowMarketplace(true);
+            setShowCreditPurchase(true);
           },
         },
       ];
@@ -220,7 +220,7 @@ export default function WalletScreen() {
       
       Alert.alert(
         'Insufficient Credits',
-        `You need ${creditsNeeded} more credit(s) for this purchase. You can convert ${stonesNeeded} stones to get ${creditsNeeded} credit(s), or buy more stones.`,
+        `You need ${creditsNeeded} more credit(s) for this purchase. You can convert ${stonesNeeded} stones to get ${creditsNeeded} credit(s), or buy more credits directly.`,
         alertButtons
       );
       return;
@@ -309,20 +309,9 @@ export default function WalletScreen() {
             <View style={styles.balanceOverlay}>
                <View style={styles.balanceHeader}>
                  <Text style={styles.balanceLabelWithBg}>Premium Stones</Text>
-                 <TouchableOpacity 
-                   onPress={() => setShowMarketplace(true)}
-                   style={styles.marketplaceButton}
-                 >
-                   <ShoppingBag size={20} color="white" />
-                 </TouchableOpacity>
                </View>
                <Text style={styles.balanceAmountWithBg}>{walletData?.betame_stones || 0} Stones</Text>
-               <TouchableOpacity 
-                 onPress={() => setShowMarketplace(true)}
-                 style={styles.buyMoreButton}
-               >
-                 <Text style={styles.buyMoreText}>Buy More Stones</Text>
-               </TouchableOpacity>
+               <Text style={styles.balanceSubtextWithBg}>Convert to credits</Text>
              </View>
           </ImageBackground>
 
@@ -334,9 +323,20 @@ export default function WalletScreen() {
             <View style={styles.balanceOverlay}>
                <View style={styles.balanceHeader}>
                  <Text style={styles.balanceLabelWithBg}>BetaMe Credit Wallet</Text>
+                 <TouchableOpacity 
+                   onPress={() => setShowCreditPurchase(true)}
+                   style={styles.marketplaceButton}
+                 >
+                   <ShoppingBag size={20} color="white" />
+                 </TouchableOpacity>
                </View>
                <Text style={styles.balanceAmountWithBg}>{walletData?.betame_credits || 0} Credits</Text>
-               <Text style={styles.balanceSubtextWithBg}>Can buy BetaMe credits</Text>
+               <TouchableOpacity 
+                 onPress={() => setShowCreditPurchase(true)}
+                 style={styles.buyMoreButton}
+               >
+                 <Text style={styles.buyMoreText}>Purchase More Credits</Text>
+               </TouchableOpacity>
              </View>
           </ImageBackground>
         </View>
@@ -372,13 +372,13 @@ export default function WalletScreen() {
             
             {/* Buy More Stones Option */}
             <View style={styles.buyMoreSection}>
-              <Text style={[styles.buyMoreLabel, { color: colors.text.secondary }]}>Need more stones?</Text>
+              <Text style={[styles.buyMoreLabel, { color: colors.text.secondary }]}>Need more credits?</Text>
               <TouchableOpacity 
                 style={[styles.buyMoreStoneButton, { backgroundColor: colors.primary.main }]}
-                onPress={() => setShowMarketplace(true)}
+                onPress={() => setShowCreditPurchase(true)}
               >
                 <ShoppingBag size={16} color="white" />
-                <Text style={styles.buyMoreStoneText}>Buy More Stones</Text>
+                <Text style={styles.buyMoreStoneText}>Purchase More Credits</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -497,12 +497,12 @@ export default function WalletScreen() {
           </View>
         </Modal>
 
-        {/* Stone Marketplace */}
-        <StoneMarketplace
-          visible={showMarketplace}
-          onClose={() => setShowMarketplace(false)}
+        {/* Credit Purchase */}
+        <CreditPurchase
+          visible={showCreditPurchase}
+          onClose={() => setShowCreditPurchase(false)}
           onPurchaseSuccess={() => {
-            setShowMarketplace(false);
+            setShowCreditPurchase(false);
             loadWalletData();
           }}
         />

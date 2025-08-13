@@ -22,7 +22,7 @@ export interface PurchasedFeature {
 export interface Transaction {
   id?: string;
   user_id: string;
-  type: 'conversion' | 'feature_purchase' | 'stone_purchase' | 'credit_purchase' | 'daily_checkin' | 'referral_bonus' | 'service_payment' | 'service_payment_received';
+  type: 'conversion' | 'feature_purchase' | 'credit_purchase' | 'daily_checkin' | 'referral_bonus' | 'service_payment' | 'service_payment_received';
   amount: number;
   description: string;
   created_at?: string;
@@ -874,11 +874,11 @@ export class WalletService {
   }
 
   /**
-   * Add stones to user's wallet (for stone purchases)
+   * Add credits to user's wallet (for credit purchases)
    */
-  static async addStones(
+  static async addCredits(
     userId: string,
-    stonesAmount: number
+    creditsAmount: number
   ): Promise<{ success: boolean; wallet?: WalletData; error?: string }> {
     try {
       // Get current wallet
@@ -887,10 +887,10 @@ export class WalletService {
         return { success: false, error: 'Wallet not found' };
       }
 
-      // Update wallet with new stones
+      // Update wallet with new credits
       const updatedWallet = await this.updateWallet({
         ...wallet,
-        betame_stones: wallet.betame_stones + stonesAmount,
+        betame_credits: wallet.betame_credits + creditsAmount,
       });
 
       if (!updatedWallet) {
@@ -900,15 +900,15 @@ export class WalletService {
       // Record transaction
       await this.recordTransaction({
         user_id: userId,
-        type: 'stone_purchase',
-        amount: stonesAmount,
-        description: `Purchased ${stonesAmount} premium stones`,
+        type: 'credit_purchase',
+        amount: creditsAmount,
+        description: `Purchased ${creditsAmount} BetaMe credits`,
       });
 
       return { success: true, wallet: updatedWallet };
     } catch (error) {
-      console.error('Error in addStones:', error);
-      return { success: false, error: 'Failed to add stones' };
+      console.error('Error in addCredits:', error);
+      return { success: false, error: 'Failed to add credits' };
     }
   }
 }

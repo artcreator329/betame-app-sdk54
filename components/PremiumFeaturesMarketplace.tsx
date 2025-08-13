@@ -24,7 +24,7 @@ interface PremiumFeature {
   icon: string;
   badge?: string;
   benefits: string[];
-  stoneCost: number;
+  creditCost: number;
   type: 'feature_2x' | 'boost_instant' | 'showcase_max' | 'boost_feature_max';
 }
 
@@ -39,10 +39,10 @@ const premiumFeatures: PremiumFeature[] = [
     id: '1',
     name: 'Profile Boost',
     description: 'Get 3x more profile views',
-    price: '50 Stones',
+    price: '50 Credits',
     duration: '7 days',
     icon: '🚀',
-    stoneCost: 50,
+    creditCost: 50,
     type: 'feature_2x',
     benefits: ['3x profile visibility', 'Priority in search results', 'Featured badge']
   },
@@ -50,11 +50,11 @@ const premiumFeatures: PremiumFeature[] = [
     id: '2',
     name: 'Premium Badge',
     description: 'Stand out with premium status',
-    price: '100 Stones',
+    price: '100 Credits',
     duration: '30 days',
     icon: '👑',
     badge: 'MOST POPULAR',
-    stoneCost: 100,
+    creditCost: 100,
     type: 'boost_instant',
     benefits: ['Premium crown badge', 'Enhanced credibility', 'Priority support']
   },
@@ -62,10 +62,10 @@ const premiumFeatures: PremiumFeature[] = [
     id: '3',
     name: 'Super Likes',
     description: 'Send unlimited super likes',
-    price: '75 Stones',
+    price: '75 Credits',
     duration: '14 days',
     icon: '💖',
-    stoneCost: 75,
+    creditCost: 75,
     type: 'showcase_max',
     benefits: ['Unlimited super likes', 'Higher match rate', 'Express interest']
   },
@@ -73,10 +73,10 @@ const premiumFeatures: PremiumFeature[] = [
     id: '4',
     name: 'Advanced Filters',
     description: 'Filter by detailed preferences',
-    price: '120 Stones',
+    price: '120 Credits',
     duration: '30 days',
     icon: '🔍',
-    stoneCost: 120,
+    creditCost: 120,
     type: 'feature_2x',
     benefits: ['Age range filters', 'Location radius', 'Interest matching']
   },
@@ -84,11 +84,11 @@ const premiumFeatures: PremiumFeature[] = [
     id: '5',
     name: 'VIP Package',
     description: 'All premium features included',
-    price: '200 Stones',
+    price: '200 Credits',
     duration: '30 days',
     icon: '⭐',
     badge: 'BEST VALUE',
-    stoneCost: 200,
+    creditCost: 200,
     type: 'boost_feature_max',
     benefits: ['All premium features', 'Priority matching', 'Exclusive content']
   },
@@ -96,10 +96,10 @@ const premiumFeatures: PremiumFeature[] = [
     id: '6',
     name: 'Incognito Mode',
     description: 'Browse profiles privately',
-    price: '80 Stones',
+    price: '80 Credits',
     duration: '14 days',
     icon: '🕶️',
-    stoneCost: 80,
+    creditCost: 80,
     type: 'boost_instant',
     benefits: ['Anonymous browsing', 'Private profile views', 'Stealth mode']
   },
@@ -129,16 +129,16 @@ export function PremiumFeaturesMarketplace({ visible, onClose, onPurchaseSuccess
         return;
       }
       
-      if (walletData.betame_stones < selectedFeature.stoneCost) {
+      if (walletData.betame_credits < selectedFeature.creditCost) {
         Alert.alert(
-          'Insufficient Stones',
-          `You need ${selectedFeature.stoneCost} stones to purchase this feature. You currently have ${walletData.betame_stones} stones.`,
+          'Insufficient Credits',
+          `You need ${selectedFeature.creditCost} credits to purchase this feature. You currently have ${walletData.betame_credits} credits.`,
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Buy Stones', onPress: () => {
+            { text: 'Purchase Credits', onPress: () => {
               setShowConfirmModal(false);
               onClose();
-              // Navigate to stone marketplace
+              // Navigate to credit purchase screen
             }}
           ]
         );

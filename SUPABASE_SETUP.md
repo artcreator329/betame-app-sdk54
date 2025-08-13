@@ -43,7 +43,7 @@ The Supabase client is configured in `lib/supabase.ts` with:
 #### `transactions`
 - `id` (UUID, Primary Key)
 - `user_id` (UUID, Foreign Key to auth.users)
-- `type` (Text, enum: 'conversion', 'boost_purchase', 'stone_purchase', 'credit_purchase')
+- `type` (Text, enum: 'conversion', 'boost_purchase', 'credit_purchase')
 - `amount` (Integer)
 - `description` (Text)
 - `created_at` (Timestamp)
@@ -104,7 +104,7 @@ This project uses **remote Supabase only** - no local development setup is requi
 
 1. **Authentication Integration**: Set up Supabase Auth for user management
 2. **Real-time Updates**: Implement real-time wallet balance updates
-3. **Payment Integration**: Add payment processing for purchasing stones/credits
+3. **Payment Integration**: Add payment processing for purchasing credits
 4. **Analytics**: Track wallet usage and conversion rates
 5. **Testing**: Add unit tests for wallet service methods
 

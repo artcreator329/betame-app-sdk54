@@ -16,79 +16,83 @@ import { useColors } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { WalletService } from '@/lib/wallet-service';
 
-interface StoneBundle {
+interface CreditBundle {
   id: string;
-  stones: number;
+  credits: number;
   price: string;
+  priceValue: number;
   validity: string;
-  emoji: string;
+  image: any;
   badge?: string;
-  badgeColor?: string;
 }
 
-interface StoneMarketplaceProps {
+interface CreditPurchaseProps {
   visible: boolean;
   onClose: () => void;
   onPurchaseSuccess: () => void;
 }
 
-const stoneBundles: StoneBundle[] = [
+const creditBundles: CreditBundle[] = [
   {
     id: '1',
-    stones: 20,
+    credits: 5,
     price: 'RM 5',
+    priceValue: 5,
     validity: '1-year validity',
-    emoji: '💎',
+    image: require('../assets/images/credit-purchase/RM5.png'),
   },
   {
     id: '2',
-    stones: 100,
+    credits: 20,
     price: 'RM 20',
+    priceValue: 20,
     validity: '1-year validity',
-    emoji: '💰',
-    badge: 'MOST POPULAR',
-    badgeColor: '#FF4444',
+    image: require('../assets/images/credit-purchase/RM20.png'),
+    badge: 'POPULAR',
   },
   {
     id: '3',
-    stones: 250,
+    credits: 35,
     price: 'RM 35',
+    priceValue: 35,
     validity: '1-year validity',
-    emoji: '🪙',
+    image: require('../assets/images/credit-purchase/RM35.png'),
   },
   {
     id: '4',
-    stones: 600,
+    credits: 80,
     price: 'RM 80',
+    priceValue: 80,
     validity: '1-year validity',
-    emoji: '💸',
+    image: require('../assets/images/credit-purchase/RM80.png'),
   },
   {
     id: '5',
-    stones: 1000,
+    credits: 100,
     price: 'RM 100',
+    priceValue: 100,
     validity: '1-year validity',
-    emoji: '💰',
-    badge: 'SUPER DEAL',
-    badgeColor: '#FF6B35',
+    image: require('../assets/images/credit-purchase/RM100.png'),
+    badge: 'BEST VALUE',
   },
   {
     id: '6',
-    stones: 2000,
+    credits: 180,
     price: 'RM 180',
+    priceValue: 180,
     validity: '1-year validity',
-    emoji: '🏆',
+    image: require('../assets/images/credit-purchase/RM180.png'),
   },
 ];
 
-export function StoneMarketplace({ visible, onClose, onPurchaseSuccess }: StoneMarketplaceProps) {
+export function CreditPurchase({ visible, onClose, onPurchaseSuccess }: CreditPurchaseProps) {
   const colors = useColors();
   const { user } = useAuth();
-  const [selectedBundle, setSelectedBundle] = useState<StoneBundle | null>(null);
+  const [selectedBundle, setSelectedBundle] = useState<CreditBundle | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
 
-  const handleBundlePress = (bundle: StoneBundle) => {
+  const handleBundlePress = (bundle: CreditBundle) => {
     setSelectedBundle(bundle);
     setShowConfirmModal(true);
   };
@@ -100,12 +104,12 @@ export function StoneMarketplace({ visible, onClose, onPurchaseSuccess }: StoneM
     try {
       // Simulate purchase API call
       // In a real app, this would integrate with a payment processor
-      const result = await WalletService.addStones(user.id, selectedBundle.stones);
+      const result = await WalletService.addCredits(user.id, selectedBundle.credits);
       
       if (result.success) {
         Alert.alert(
           'Purchase Successful!',
-          `You have successfully purchased ${selectedBundle.stones} stones for ${selectedBundle.price}!`,
+          `You have successfully purchased ${selectedBundle.credits} credits for ${selectedBundle.price}!`,
           [
             {
               text: 'OK',
@@ -146,7 +150,7 @@ export function StoneMarketplace({ visible, onClose, onPurchaseSuccess }: StoneM
                 style={styles.headerIcon}
                 resizeMode="contain"
               />
-              <Text style={styles.headerTitle}>BETAME Marketplace</Text>
+              <Text style={styles.headerTitle}>Purchase Credits</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <X size={24} color="white" />
@@ -161,66 +165,36 @@ export function StoneMarketplace({ visible, onClose, onPurchaseSuccess }: StoneM
         >
           <View style={styles.subtitleContent}>
             <Sparkles size={20} color="#FFD700" style={styles.sparkleIcon} />
-            <Text style={styles.subtitle}>Maximize your savings</Text>
-            <Text style={styles.subtitleSecondary}>with bigger bundles!</Text>
+            <Text style={styles.subtitle}>Choose your credit package</Text>
+            <Text style={styles.subtitleSecondary}>Tap any banner to purchase instantly!</Text>
             <Sparkles size={16} color="#FFD700" style={styles.sparkleIconSmall} />
           </View>
         </LinearGradient>
 
-        {/* Stone Bundles */}
+        {/* Credit Purchase Banners */}
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.bundlesContainer}>
-            {stoneBundles.map((bundle) => (
+            {creditBundles.map((bundle) => (
               <TouchableOpacity
-              key={bundle.id}
-              style={[
-                styles.bundleCard,
-                selectedBundle?.id === bundle.id && styles.selectedCard,
-              ]}
-              onPress={() => setSelectedBundle(bundle)}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={selectedBundle?.id === bundle.id ? ['#667eea', '#764ba2'] : ['#ffffff', '#f8f9fa']}
-                style={styles.cardGradient}
+                key={bundle.id}
+                style={[
+                  styles.bannerButton,
+                  selectedBundle?.id === bundle.id && styles.selectedBanner,
+                ]}
+                onPress={() => handleBundlePress(bundle)}
+                activeOpacity={0.8}
               >
                 {bundle.badge && (
-                  <LinearGradient
-                    colors={bundle.badge === 'MOST POPULAR' ? ['#FF6B35', '#FF8E53'] : ['#FFD700', '#FFA500']}
-                    style={styles.badge}
-                  >
+                  <View style={styles.badge}>
                     <Text style={styles.badgeText}>{bundle.badge}</Text>
-                  </LinearGradient>
+                  </View>
                 )}
-                
-                <View style={styles.bundleContent}>
-                  <View style={styles.bundleLeft}>
-                    <LinearGradient
-                      colors={['#667eea', '#764ba2']}
-                      style={styles.iconContainer}
-                    >
-                      <Text style={styles.iconText}>{bundle.emoji}</Text>
-                    </LinearGradient>
-                    <View style={styles.bundleInfo}>
-                      <View style={styles.stoneAmount}>
-                        <Text style={styles.stoneIcon}>💎</Text>
-                        <Text style={[styles.stoneCount, { color: selectedBundle?.id === bundle.id ? '#ffffff' : '#2c3e50' }]}>{bundle.stones}</Text>
-                      </View>
-                      <Text style={[styles.validity, { color: selectedBundle?.id === bundle.id ? '#e8eaf6' : '#7f8c8d' }]}>{bundle.validity}</Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.bundleRight}>
-                    <LinearGradient
-                      colors={['#11998e', '#38ef7d']}
-                      style={styles.priceContainer}
-                    >
-                      <Text style={styles.price}>{bundle.price}</Text>
-                    </LinearGradient>
-                  </View>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
+                <Image 
+                  source={bundle.image} 
+                  style={styles.bannerImage}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
             ))}
           </View>
         </ScrollView>
@@ -238,12 +212,13 @@ export function StoneMarketplace({ visible, onClose, onPurchaseSuccess }: StoneM
               
               {selectedBundle && (
                 <View style={styles.modalBundleInfo}>
-                  <Text style={styles.modalEmoji}>{selectedBundle.emoji}</Text>
+                  <Image 
+                    source={selectedBundle.image} 
+                    style={styles.modalBundleImage}
+                    resizeMode="contain"
+                  />
                   <Text style={[styles.modalBundleText, { color: colors.text.primary }]}>
-                    {selectedBundle.stones} Premium Stones
-                  </Text>
-                  <Text style={[styles.modalPrice, { color: colors.primary.main }]}>
-                    {selectedBundle.price}
+                    {selectedBundle.credits} BetaMe Credits
                   </Text>
                   <Text style={[styles.modalValidity, { color: colors.text.secondary }]}>
                     {selectedBundle.validity}
@@ -349,12 +324,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bundlesContainer: {
-    padding: 20,
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    gap: 8,
+    alignItems: 'stretch',
   },
-  bundleCard: {
+  bannerButton: {
     borderRadius: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -363,86 +340,38 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 5,
+    position: 'relative',
+    overflow: 'hidden',
+    alignSelf: 'stretch',
   },
-  selectedCard: {
+  selectedBanner: {
     transform: [{ scale: 1.02 }],
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 8,
-  },
-  cardGradient: {
-    borderRadius: 16,
-    padding: 16,
-    position: 'relative',
+    borderWidth: 3,
+    borderColor: '#667eea',
   },
   badge: {
     position: 'absolute',
-    top: -6,
+    top: 12,
     right: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    zIndex: 1,
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    zIndex: 2,
   },
   badgeText: {
     color: 'white',
     fontSize: 10,
     fontWeight: '700',
+    textTransform: 'uppercase',
   },
-  bundleContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  bundleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  iconText: {
-    fontSize: 24,
-    color: 'white',
-  },
-  bundleInfo: {
-    flex: 1,
-  },
-  stoneAmount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  stoneIcon: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  stoneCount: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  bundleRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  validity: {
-    fontSize: 14,
-  },
-  priceContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  price: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: 'white',
+  bannerImage: {
+    width: '100%',
+    height: 100,
+    borderRadius: 16,
   },
   modalOverlay: {
     flex: 1,
@@ -467,19 +396,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  modalEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
+  modalBundleImage: {
+    width: 240,
+    height: 70,
+    marginBottom: 16,
+    borderRadius: 12,
   },
   modalBundleText: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 8,
-  },
-  modalPrice: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
   },
   modalValidity: {
     fontSize: 14,

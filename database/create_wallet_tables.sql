@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS transactions (
     type TEXT NOT NULL CHECK (type IN (
         'conversion', 
         'feature_purchase', 
-        'stone_purchase', 
         'credit_purchase', 
         'daily_checkin', 
         'referral_bonus', 

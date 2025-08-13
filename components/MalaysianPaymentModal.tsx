@@ -149,7 +149,7 @@ export function MalaysianPaymentModal({
         `You need ${totalAmount} credits but only have ${walletData.betame_credits} credits.`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Buy Credits', onPress: () => {
+          { text: 'Purchase Credits', onPress: () => {
             onClose();
             // Navigate to wallet/credits purchase screen
           }}
