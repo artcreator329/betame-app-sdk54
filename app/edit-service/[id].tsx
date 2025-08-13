@@ -22,6 +22,8 @@ import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
 import ServiceAreaPicker from '@/components/ServiceAreaPicker';
+import AIDescriptionModal from '@/components/AIDescriptionModal';
+import AIPricingSuggestions from '@/components/AIPricingSuggestions';
 
 interface ServiceVariant {
   id: string;
@@ -29,7 +31,7 @@ interface ServiceVariant {
   description: string;
   price: number;
   priceType: 'fixed' | 'starting';
-  priceUnit: 'per_hour' | 'per_day' | 'per_week' | 'per_month' | 'per_item' | 'per_project' | 'per_session' | 'one_time';
+  priceUnit: 'per_hour' | 'per_day' | 'per_week' | 'per_month' | 'per_year' | 'per_item' | 'per_project' | 'per_session' | 'one_time';
   isExisting?: boolean; // Track if this is an existing variant or new one
   serviceId?: string; // For existing variants
 }
@@ -57,6 +59,8 @@ export default function EditServiceScreen() {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [serviceVariants, setServiceVariants] = useState<ServiceVariant[]>([]);
   const [isLoadingVariants, setIsLoadingVariants] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [currentVariantId, setCurrentVariantId] = useState<string | null>(null);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
@@ -227,6 +231,7 @@ export default function EditServiceScreen() {
       'per_day': 'per day',
       'per_week': 'per week',
       'per_month': 'per month',
+      'per_year': 'per year',
       'per_item': 'per item',
       'per_project': 'per project',
       'per_session': 'per session',
@@ -246,6 +251,23 @@ export default function EditServiceScreen() {
     }
     setShowPriceUnitModal(false);
     setSelectedVariantId(null);
+  };
+
+  const handleAIDescriptionSelect = (description: string) => {
+    if (currentVariantId) {
+      updateServiceVariant(currentVariantId, 'description', description);
+    }
+  };
+
+  const openAIModal = (variantId: string) => {
+    setCurrentVariantId(variantId);
+    setShowAIModal(true);
+  };
+
+  const getCurrentVariantTitle = (): string => {
+    if (!currentVariantId) return '';
+    const variant = serviceVariants.find(v => v.id === currentVariantId);
+    return variant?.title || '';
   };
 
   const getCategoryDisplayText = (): string => {
@@ -799,7 +821,31 @@ export default function EditServiceScreen() {
                     
                     {/* Variant Description */}
                     <View style={styles.variantFieldContainer}>
-                      <Text style={styles.variantFieldLabel}>Description</Text>
+                      <View style={styles.descriptionHeader}>
+                        <Text style={styles.variantFieldLabel}>Description</Text>
+                        {index > 0 && (
+                          <TouchableOpacity
+                            style={[
+                              styles.aiButton,
+                              !variant.title.trim() && styles.aiButtonDisabled
+                            ]}
+                            onPress={() => {
+                              if (!variant.title.trim()) {
+                                Alert.alert('AI Tool', 'Please enter a variant title first to generate descriptions');
+                                return;
+                              }
+                              openAIModal(variant.id);
+                            }}
+                          >
+                            <Text style={[
+                              styles.aiButtonText,
+                              !variant.title.trim() && styles.aiButtonTextDisabled
+                            ]}>
+                              ✨ AI Tool
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                       <TextInput
                         style={[
                           styles.variantInput,
@@ -828,6 +874,16 @@ export default function EditServiceScreen() {
                             placeholder="0.00"
                             placeholderTextColor="#8E8E93"
                             keyboardType="decimal-pad"
+                          />
+                          
+                          {/* AI Pricing Suggestions */}
+                          <AIPricingSuggestions
+                            serviceTitle={variant.title}
+                            serviceDescription={variant.description}
+                            priceUnit={variant.priceUnit}
+                            industry={selectedCategories[0]}
+                            currentPrice={variant.price}
+                            onPriceSelect={(price) => updateServiceVariant(variant.id, 'price', price)}
                           />
                         </View>
                         
@@ -920,6 +976,7 @@ export default function EditServiceScreen() {
                 { value: 'per_day', label: 'Per Day' },
                 { value: 'per_week', label: 'Per Week' },
                 { value: 'per_month', label: 'Per Month' },
+                { value: 'per_year', label: 'Per Year' },
                 { value: 'per_item', label: 'Per Item' },
                 { value: 'per_project', label: 'Per Project' },
                 { value: 'per_session', label: 'Per Session' },
@@ -940,6 +997,22 @@ export default function EditServiceScreen() {
           </View>
         </View>
       )}
+
+      {/* Category Selection Modal */}
+      <CategorySelectionModal
+        visible={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        selectedCategories={selectedCategories}
+        onCategoriesChange={setSelectedCategories}
+      />
+
+      {/* AI Description Modal */}
+      <AIDescriptionModal
+        visible={showAIModal}
+        onClose={() => setShowAIModal(false)}
+        serviceTitle={getCurrentVariantTitle()}
+        onSelectDescription={handleAIDescriptionSelect}
+      />
     </SafeAreaView>
   );
 }
@@ -1445,5 +1518,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1D1D1F',
     textAlign: 'center',
+  },
+  // AI Tool styles
+  descriptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  aiButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  aiButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
+  },
+  aiButtonDisabled: {
+    backgroundColor: '#E5E5EA',
+  },
+  aiButtonTextDisabled: {
+    color: '#8E8E93',
   },
  });

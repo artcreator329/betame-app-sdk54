@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceService } from '@/lib/service-service';
 import AIDescriptionModal from '@/components/AIDescriptionModal';
+import AIPricingSuggestions from '@/components/AIPricingSuggestions';
 
 interface ServiceVariant {
   id: string;
@@ -22,7 +23,7 @@ interface ServiceVariant {
   description: string;
   price: number;
   priceType: 'fixed' | 'starting';
-  priceUnit: 'per_hour' | 'per_day' | 'per_week' | 'per_month' | 'per_item' | 'per_project' | 'per_session' | 'one_time';
+  priceUnit: 'per_hour' | 'per_day' | 'per_week' | 'per_month' | 'per_year' | 'per_item' | 'per_project' | 'per_session' | 'one_time';
 }
 
 interface BasicServiceData {
@@ -30,7 +31,7 @@ interface BasicServiceData {
   description: string;
   price?: number;
   priceType?: 'fixed' | 'starting';
-  priceUnit?: 'per_hour' | 'per_day' | 'per_week' | 'per_month' | 'per_item' | 'per_project' | 'per_session' | 'one_time';
+  priceUnit?: 'per_hour' | 'per_day' | 'per_week' | 'per_month' | 'per_year' | 'per_item' | 'per_project' | 'per_session' | 'one_time';
   currency?: string;
   imageUri?: string;
   industry?: string;
@@ -149,6 +150,7 @@ export default function DetailedServiceListingScreen() {
       'per_day': 'per day',
       'per_week': 'per week',
       'per_month': 'per month',
+      'per_year': 'per year',
       'per_item': 'per item',
       'per_project': 'per project',
       'per_session': 'per session',
@@ -158,7 +160,7 @@ export default function DetailedServiceListingScreen() {
   };
 
   const validateVariants = (): boolean => {
-    // Skip validation for main service (index 0) as it's pre-filled and non-editable
+    // Main service (index 0) doesn't need pricing validation, only additional variants do
     for (let i = 1; i < serviceVariants.length; i++) {
       const variant = serviceVariants[i];
       if (!variant.title.trim()) {
@@ -189,13 +191,13 @@ export default function DetailedServiceListingScreen() {
 
     setIsCreating(true);
     try {
-      // Create the main service with the first variant as the base
+      // Create the main service without pricing (pricing comes from variants)
       const firstVariant = serviceVariants[0];
       const mainServiceData = {
         user_id: user.id,
         title: firstVariant.title.trim(),
         description: firstVariant.description.trim(),
-        price: firstVariant.price,
+        // No pricing data for main service - pricing comes from variants
         currency: mainService.currency || 'RM',
         image_url: mainService.imageUri || undefined,
         category_name: mainService.industry || 'General',
@@ -217,37 +219,48 @@ export default function DetailedServiceListingScreen() {
         return;
       }
 
-      // If there are additional variants, create them as separate services linked to the main one
-      if (serviceVariants.length > 1) {
-        const additionalVariants = serviceVariants.slice(1);
-        for (const variant of additionalVariants) {
-          const variantData = {
-            user_id: user.id,
-            title: `${mainService.title} - ${variant.title.trim()}`,
-            description: variant.description.trim(),
-            price: variant.price,
-            currency: mainService.currency || 'RM',
-            image_url: mainService.imageUri || undefined,
-            category_name: mainService.industry || 'General',
-            location: mainService.serviceArea?.address,
-            latitude: mainService.serviceArea?.latitude,
-            longitude: mainService.serviceArea?.longitude,
-            service_area_radius: mainService.serviceArea?.radius,
-            service_area_description: mainService.serviceArea?.description,
-            rating: 0,
-            review_count: 0,
-            parent_service_id: createdService.id, // Link to main service
-            is_nearby: true, // Make new service variants appear in nearby section
-            is_trending: false, // New service variants start as non-trending
-          };
+      // Create service variants with pricing (all variants including the first one if it has pricing)
+      const variantsToCreate = serviceVariants.slice(1); // Skip main service, only create additional variants
+      
+      if (variantsToCreate.length === 0) {
+        // If no additional variants, user needs to add at least one variant with pricing
+        Alert.alert(
+          'No Service Variants', 
+          'Please add at least one service variant with pricing to complete your listing.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
 
-          await ServiceService.createService(variantData);
-        }
+      for (const variant of variantsToCreate) {
+        const variantData = {
+          user_id: user.id,
+          title: `${mainService.title} - ${variant.title.trim()}`,
+          description: variant.description.trim(),
+          price: variant.price,
+          price_type: variant.priceType,
+          price_unit: variant.priceUnit,
+          currency: mainService.currency || 'RM',
+          image_url: mainService.imageUri || undefined,
+          category_name: mainService.industry || 'General',
+          location: mainService.serviceArea?.address,
+          latitude: mainService.serviceArea?.latitude,
+          longitude: mainService.serviceArea?.longitude,
+          service_area_radius: mainService.serviceArea?.radius,
+          service_area_description: mainService.serviceArea?.description,
+          rating: 0,
+          review_count: 0,
+          parent_service_id: createdService.id, // Link to main service
+          is_nearby: true, // Make new service variants appear in nearby section
+          is_trending: false, // New service variants start as non-trending
+        };
+
+        await ServiceService.createService(variantData);
       }
 
       Alert.alert(
         'Success', 
-        `Service listing created successfully with ${serviceVariants.length} variant${serviceVariants.length > 1 ? 's' : ''}!`,
+        `Service listing created successfully with ${variantsToCreate.length} variant${variantsToCreate.length > 1 ? 's' : ''}!`,
         [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
       );
     } catch (error) {
@@ -433,6 +446,7 @@ export default function DetailedServiceListingScreen() {
                           { value: 'per_day', label: 'Per Day' },
                           { value: 'per_week', label: 'Per Week' },
                           { value: 'per_month', label: 'Per Month' },
+                          { value: 'per_year', label: 'Per Year' },
                           { value: 'per_item', label: 'Per Item' },
                           { value: 'per_project', label: 'Per Project' },
                           { value: 'per_session', label: 'Per Session' },
@@ -473,6 +487,16 @@ export default function DetailedServiceListingScreen() {
                           RM {variant.price.toFixed(2)} {getPriceUnitLabel(variant.priceUnit)}
                         </Text>
                       )}
+                      
+                      {/* AI Pricing Suggestions */}
+                      <AIPricingSuggestions
+                        serviceTitle={variant.title}
+                        serviceDescription={variant.description}
+                        priceUnit={variant.priceUnit}
+                        industry={mainService?.industry}
+                        currentPrice={variant.price}
+                        onPriceSelect={(price) => updateServiceVariant(variant.id, 'price', price)}
+                      />
                     </View>
                   </>
                 )}
@@ -485,33 +509,43 @@ export default function DetailedServiceListingScreen() {
             <Plus color="#007AFF" size={20} />
             <Text style={styles.addVariantText}>Add Service Variant</Text>
           </TouchableOpacity>
+
+          {serviceVariants.length === 1 && (
+            <View style={styles.helpMessage}>
+              <Text style={styles.helpMessageText}>
+                💡 Add at least one service variant with pricing to complete your listing. 
+                Variants allow you to offer different service options with specific prices.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Create Service Button */}
         <TouchableOpacity
           style={[
             styles.createButton,
-            // Main service is always valid, only check additional variants
-            serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0)
+            // Require at least one service variant with pricing
+            (serviceVariants.length > 1 && serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0))
               ? styles.createButtonActive
               : styles.createButtonDisabled
           ]}
           onPress={handleCreateService}
           disabled={
             isCreating ||
+            serviceVariants.length === 1 ||
             !serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0)
           }
         >
           <Text style={[
             styles.createButtonText,
-            serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0)
+            (serviceVariants.length > 1 && serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0))
               ? styles.createButtonTextActive
               : {}
           ]}>
             {isCreating ? 'Creating Services...' : 
               serviceVariants.length === 1 
-                ? 'Create Service Listing'
-                : `Create Service Listing (1 main + ${serviceVariants.length - 1} variant${serviceVariants.length > 2 ? 's' : ''})`
+                ? 'Add Service Variant to Continue'
+                : `Create Service Listing (${serviceVariants.length - 1} variant${serviceVariants.length > 2 ? 's' : ''})`
             }
           </Text>
         </TouchableOpacity>
@@ -783,5 +817,19 @@ const styles = StyleSheet.create({
   },
   aiButtonTextDisabled: {
     color: '#8E8E93',
+  },
+  helpMessage: {
+    backgroundColor: '#F0F8FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#007AFF20',
+  },
+  helpMessageText: {
+    fontSize: 14,
+    color: '#007AFF',
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });

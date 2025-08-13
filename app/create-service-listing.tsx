@@ -26,6 +26,7 @@ function getPriceUnitLabel(priceUnit: string): string {
     'per_day': ' per day',
     'per_week': ' per week',
     'per_month': ' per month',
+    'per_year': ' per year',
     'per_item': ' per item',
     'per_project': ' per project',
     'per_session': ' per session',
