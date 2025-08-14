@@ -79,6 +79,8 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
   const { user } = useAuth();
   const [selectedBundle, setSelectedBundle] = useState<BetaCoinBundle | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationData, setConfirmationData] = useState<{bundle: BetaCoinBundle, fees: any} | null>(null);
 
   const handlePurchase = async (bundle: BetaCoinBundle) => {
     if (!user) {
@@ -89,21 +91,21 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
     // Calculate fees for this purchase
     const fees = FeeService.calculateBetaCoinPurchaseFees(bundle.priceValue);
     
-    // Show confirmation with fee breakdown
-    Alert.alert(
-      'Confirm Purchase',
-      `BetaCoins: ${bundle.betacoins}\nBase Price: RM${bundle.priceValue.toFixed(2)}\nProcessing Fee (2.2%): RM${fees.processingFee.toFixed(2)}\nTotal: RM${fees.totalAmount.toFixed(2)}`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Confirm',
-          onPress: () => processPurchase(bundle, fees)
-        }
-      ]
-    );
+    // Show custom confirmation modal
+    setConfirmationData({ bundle, fees });
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmPurchase = () => {
+    if (confirmationData) {
+      setShowConfirmation(false);
+      processPurchase(confirmationData.bundle, confirmationData.fees);
+    }
+  };
+
+  const handleCancelPurchase = () => {
+    setShowConfirmation(false);
+    setConfirmationData(null);
   };
 
   const processPurchase = async (bundle: BetaCoinBundle, fees: any) => {
@@ -193,6 +195,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
   };
 
   return (
+    <>
     <Modal
       visible={visible}
       animationType="slide"
@@ -209,52 +212,148 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.description}>
-            <Text style={[styles.descriptionText, { color: colors.text.secondary }]}>
-              BetaCoins can be purchased with a 2.2% processing fee or exchanged with Diamond Stones. 
-              Use BetaCoins to pay for services, boost your listings, and unlock premium features.
-            </Text>
-          </View>
+        {!showConfirmation ? (
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.description}>
+              <Text style={[styles.descriptionText, { color: colors.text.secondary }]}>
+                BetaCoins can be purchased with a 2.2% processing fee or exchanged with Diamond Stones. 
+                Use BetaCoins to pay for services, boost your listings, and unlock premium features.
+              </Text>
+            </View>
 
-          <View style={styles.bundlesGrid}>
-            {betacoinBundles.map(renderBundle)}
-          </View>
+            <View style={styles.bundlesGrid}>
+              {betacoinBundles.map(renderBundle)}
+            </View>
 
-          <View style={styles.footer}>
-            <View style={styles.infoCard}>
-              <View style={styles.infoItem}>
-                <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
-                <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-                  All purchases include 2.2% processing fee
-                </Text>
-              </View>
-              
-              <View style={styles.infoItem}>
-                <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
-                <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-                  BetaCoins are valid for 1 year from purchase
-                </Text>
-              </View>
-              
-              <View style={styles.infoItem}>
-                <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
-                <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-                  Can be exchanged with Diamond Stones (10 stones = 1 BetaCoin)
-                </Text>
-              </View>
-              
-              <View style={styles.infoItem}>
-                <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
-                <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-                  Service providers pay 11% or RM4.90 platform fee (whichever higher)
-                </Text>
+            <View style={styles.footer}>
+              <View style={styles.infoCard}>
+                <View style={styles.infoItem}>
+                  <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
+                  <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+                    All purchases include 2.2% processing fee
+                  </Text>
+                </View>
+                
+                <View style={styles.infoItem}>
+                  <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
+                  <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+                    BetaCoins are valid for 1 year from purchase
+                  </Text>
+                </View>
+                
+                <View style={styles.infoItem}>
+                  <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
+                  <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+                    Can be exchanged with Diamond Stones (10 stones = 1 BetaCoin)
+                  </Text>
+                </View>
+                
+                <View style={styles.infoItem}>
+                  <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
+                  <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+                    Service providers pay 11% or RM4.90 platform fee (whichever higher)
+                  </Text>
+                </View>
               </View>
             </View>
+          </ScrollView>
+        ) : (
+          <View style={styles.confirmationContainer}>
+            {/* Header with coin animation */}
+            <View style={styles.confirmationHeader}>
+              <View style={[styles.coinContainer, { backgroundColor: colors.primary.main }]}>
+                <Text style={styles.coinIcon}>💰</Text>
+              </View>
+              <Text style={[styles.confirmationTitle, { color: colors.text.primary }]}>
+                Confirm Purchase
+              </Text>
+              <Text style={[styles.confirmationSubtitle, { color: colors.text.secondary }]}>
+                You're about to purchase BetaCoins
+              </Text>
+            </View>
+
+            {confirmationData && (
+              <View style={styles.confirmationContent}>
+                {/* BetaCoin Amount */}
+                <View style={[styles.confirmationCard, { backgroundColor: colors.background.secondary }]}>
+                  <View style={styles.confirmationRow}>
+                    <Text style={[styles.confirmationLabel, { color: colors.text.secondary }]}>
+                      BetaCoins
+                    </Text>
+                    <Text style={[styles.confirmationValue, { color: colors.primary.main }]}>
+                      {confirmationData?.bundle.betacoins}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Price Breakdown */}
+                <View style={[styles.confirmationCard, { backgroundColor: colors.background.secondary }]}>
+                  <View style={styles.confirmationRow}>
+                    <Text style={[styles.confirmationLabel, { color: colors.text.secondary }]}>
+                      Base Price
+                    </Text>
+                    <Text style={[styles.confirmationValue, { color: colors.text.primary }]}>
+                      RM{confirmationData?.bundle.priceValue.toFixed(2)}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.confirmationRow}>
+                    <Text style={[styles.confirmationLabel, { color: colors.text.secondary }]}>
+                      Processing Fee (2.2%)
+                    </Text>
+                    <Text style={[styles.confirmationValue, { color: colors.text.primary }]}>
+                      RM{confirmationData?.fees.processingFee.toFixed(2)}
+                    </Text>
+                  </View>
+                  
+                  <View style={[styles.confirmationDivider, { backgroundColor: colors.border.main }]} />
+                  
+                  <View style={styles.confirmationRow}>
+                    <Text style={[styles.confirmationTotalLabel, { color: colors.text.primary }]}>
+                      Total Amount
+                    </Text>
+                    <Text style={[styles.confirmationTotalValue, { color: colors.primary.main }]}>
+                      RM{confirmationData?.fees.totalAmount.toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Action Buttons */}
+            <View style={styles.confirmationActions}>
+              <TouchableOpacity 
+                style={[styles.confirmationButton, styles.cancelButton, { borderColor: colors.border.main }]}
+                onPress={handleCancelPurchase}
+              >
+                <Text style={[styles.cancelButtonText, { color: colors.text.secondary }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              
+              <LinearGradient
+                colors={[colors.primary.main, colors.primary.light]}
+                style={[styles.confirmationButton, styles.confirmButton]}
+              >
+                <TouchableOpacity 
+                  style={styles.confirmButtonInner}
+                  onPress={handleConfirmPurchase}
+                  disabled={isProcessing}
+                >
+                  <ShoppingCart size={20} color="white" />
+                  <Text style={styles.confirmButtonText}>
+                    {isProcessing ? 'Processing...' : 'Confirm Purchase'}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
           </View>
-        </ScrollView>
+        )}
       </View>
     </Modal>
+
+
+    </>
   );
 }
 
@@ -383,5 +482,120 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     flex: 1,
+  },
+  // Confirmation Modal Styles
+  confirmationContainer: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+  },
+  confirmationHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  coinContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  coinIcon: {
+    fontSize: 28,
+  },
+  confirmationTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  confirmationSubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    opacity: 0.8,
+  },
+  confirmationContent: {
+    marginBottom: 24,
+  },
+  confirmationCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  confirmationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  confirmationLabel: {
+    fontSize: 16,
+    flex: 1,
+  },
+  confirmationValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  confirmationDivider: {
+    height: 1,
+    marginVertical: 12,
+    opacity: 0.3,
+  },
+  confirmationTotalLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  confirmationTotalValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
+  confirmationActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  confirmationButton: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  cancelButton: {
+    borderWidth: 2,
+    backgroundColor: 'transparent',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
+  confirmButton: {
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  confirmButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
