@@ -15,8 +15,8 @@ import ServiceCard from '@/components/ServiceCard';
 import { adminService } from '@/lib/admin-service';
 import { LinearGradient } from 'expo-linear-gradient';
 import ProfileShareModal from '@/components/ProfileShareModal';
-import { ReferralCard } from '@/components/ReferralCard';
-import { ReferralHistoryModal } from '@/components/ReferralHistoryModal';
+import { ReferralModal } from '@/components/ReferralModal';
+import { ReferralStatsInline } from '@/components/ReferralStatsInline';
 
 
 
@@ -44,7 +44,7 @@ export default function ProfileScreen() {
   const [isAdjustingPhoto, setIsAdjustingPhoto] = useState(false);
   const [photoType, setPhotoType] = useState<'cover' | 'profile'>('profile');
   const [shareModalVisible, setShareModalVisible] = useState(false);
-  const [referralHistoryVisible, setReferralHistoryVisible] = useState(false);
+  const [referralModalVisible, setReferralModalVisible] = useState(false);
   const router = useRouter();
   const { user, userProfile, updateProfile } = useAuth();
   const colors = useColors();
@@ -770,22 +770,32 @@ export default function ProfileScreen() {
               {userProfile?.id === user?.id ? 'View Chat' : 'Chat to enquire'}
             </Text>
           </TouchableOpacity>
+          
+          <View style={styles.editShareContainer}>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
+              onPress={() => router.push('/edit-profile')}
+            >
+              <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Edit Profile</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
+              onPress={handleShareProfile}
+            >
+              <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Share Profile</Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
-            onPress={() => router.push('/edit-profile')}
+            style={[styles.referralButton, { backgroundColor: colors.background.secondary }]}
+            onPress={() => setReferralModalVisible(true)}
           >
-            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Edit Profile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
-            onPress={handleShareProfile}
-          >
-            <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Share Profile</Text>
+            <View style={styles.referralButtonContent}>
+              <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Referral Program</Text>
+              <ReferralStatsInline userId={user?.id} />
+            </View>
           </TouchableOpacity>
         </View>
-
-        {/* Referral Card */}
-        <ReferralCard userId={user?.id} />
 
         {/* Tab Navigation */}
         <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }]}>
@@ -829,10 +839,10 @@ export default function ProfileScreen() {
         userAvatar={userProfile?.avatar_url}
       />
 
-      {/* Referral History Modal */}
-      <ReferralHistoryModal
-        visible={referralHistoryVisible}
-        onClose={() => setReferralHistoryVisible(false)}
+      {/* Referral Modal */}
+      <ReferralModal
+        visible={referralModalVisible}
+        onClose={() => setReferralModalVisible(false)}
         userId={user?.id}
       />
     </SafeAreaView>
@@ -1082,6 +1092,15 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  referralButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  referralButtonContent: {
+    alignItems: 'center',
   },
   tabNavigation: {
     flexDirection: 'row',
