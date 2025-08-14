@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import React, { useEffect } from 'react';
 import { Platform, View, Text, Dimensions } from 'react-native';
-import { Chrome as Home, Users, FileText, Bell, User, Briefcase } from 'lucide-react-native';
+import { Home, Users, FileText, Bell, User, Briefcase } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
