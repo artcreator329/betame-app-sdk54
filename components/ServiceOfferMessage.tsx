@@ -11,7 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Check, X, Edit3, Clock, Tag } from 'lucide-react-native';
+import { Check, X, Edit3, Clock, Tag, Briefcase } from 'lucide-react-native';
 import { LiveChatMessage } from '../types/chat';
 import { Colors } from '../constants/Colors';
 import { FeeService } from '../lib/fee-service';
@@ -43,6 +43,9 @@ export function ServiceOfferMessage({
   const [showOfferDetailsModal, setShowOfferDetailsModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+
+  // Check if this is a job offer
+  const isJobOffer = serviceData?.isJobOffer || serviceData?.category_name === 'Job Application';
 
   // Debug logging
   console.log('🔍 ServiceOfferMessage: Full message data:', message);
@@ -178,6 +181,14 @@ export function ServiceOfferMessage({
             </Text>
           </View>
         </View>
+
+        {/* Job Offer Badge */}
+        {isJobOffer && (
+          <View style={styles.jobOfferBadge}>
+            <Briefcase size={16} color="#FFF" />
+            <Text style={styles.jobOfferBadgeText}>JOB APPLICATION</Text>
+          </View>
+        )}
 
         {/* Main Horizontal Content */}
         <View style={styles.mainContent}>
@@ -1076,6 +1087,31 @@ const styles = StyleSheet.create({
   },
   rejectedBubble: {
     opacity: 0.7,
+  },
+  jobOfferBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    shadowColor: '#6366F1',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  jobOfferBadgeText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginLeft: 6,
   },
   rejectedText: {
     opacity: 0.6,

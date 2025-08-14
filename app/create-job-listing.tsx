@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Upload, CreditCard as Edit3, MapPin, X, Search } from 'lucide-react-native';
+import { ArrowLeft, Upload, CreditCard as Edit3, MapPin, X, Search, Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -23,6 +23,7 @@ import { GOOGLE_PLACES_API_KEY } from '../config/maps';
 import { JobService } from '../lib/job-service';
 import { useAuth } from '../contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
+import AIDescriptionModal from '@/components/AIDescriptionModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -67,6 +68,7 @@ export default function CreateJobListingScreen() {
   const [currency, setCurrency] = useState('RM');
   const [showBudgetDetails, setShowBudgetDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
   
   const router = useRouter();
   const { user } = useAuth();
@@ -79,12 +81,6 @@ export default function CreateJobListingScreen() {
   const handleTitleChange = (text: string) => {
     if (text.length <= 25) {
       setTitle(text);
-    }
-  };
-
-  const handleDescriptionChange = (text: string) => {
-    if (text.length <= 1000) {
-      setDescription(text);
     }
   };
 
@@ -279,6 +275,17 @@ export default function CreateJobListingScreen() {
     setBudgetAmount(numericText);
   };
 
+  const handleAIDescriptionSelect = (aiDescription: string) => {
+    setDescription(aiDescription);
+    setShowAIModal(false);
+  };
+
+  const handleDescriptionChange = (text: string) => {
+    if (text.length <= 1000) {
+      setDescription(text);
+    }
+  };
+
   const getLocationDisplayText = () => {
     if (!selectedLocation) return 'Where should the work be done?';
     return selectedLocation.address;
@@ -351,7 +358,16 @@ export default function CreateJobListingScreen() {
           <View style={styles.fieldContainer}>
             <View style={styles.fieldHeader}>
               <Text style={styles.fieldLabel}>Job Description</Text>
-              <Text style={styles.characterCount}>{description.length}/1000</Text>
+              <View style={styles.headerActions}>
+                <TouchableOpacity 
+                  style={styles.aiButton} 
+                  onPress={() => setShowAIModal(true)}
+                >
+                  <Sparkles size={16} color={Colors.primary.main} />
+                  <Text style={styles.aiButtonText}>AI</Text>
+                </TouchableOpacity>
+                <Text style={styles.characterCount}>{description.length}/1000</Text>
+              </View>
             </View>
             <TextInput
               style={[styles.textInput, styles.textArea]}
@@ -363,11 +379,6 @@ export default function CreateJobListingScreen() {
               textAlignVertical="top"
               maxLength={1000}
             />
-            {coverPhoto && (
-              <TouchableOpacity style={styles.editIcon}>
-                <Edit3 size={16} color={Colors.text.secondary} />
-              </TouchableOpacity>
-            )}
           </View>
 
           <View style={styles.fieldContainer}>
@@ -573,6 +584,14 @@ export default function CreateJobListingScreen() {
           </MapView>
         </SafeAreaView>
       </Modal>
+
+      {/* AI Description Modal */}
+      <AIDescriptionModal
+        visible={showAIModal}
+        onClose={() => setShowAIModal(false)}
+        onSelectDescription={handleAIDescriptionSelect}
+        serviceTitle={title}
+      />
     </SafeAreaView>
   );
 }
@@ -613,6 +632,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  aiButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary.main + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  aiButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary.main,
   },
   fieldLabel: {
     fontSize: 16,

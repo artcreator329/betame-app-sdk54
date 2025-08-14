@@ -54,7 +54,11 @@ export default function ChatScreen() {
     selectedServiceCurrency,
     selectedServiceDescription,
     selectedServiceImage,
-    selectedServiceCategory
+    selectedServiceCategory,
+    jobId,
+    jobTitle,
+    prefilledMessage,
+    isJobApplication,
   } = useLocalSearchParams();
   const { user, userProfile } = useAuth();
   const [message, setMessage] = useState('');
@@ -112,7 +116,7 @@ export default function ChatScreen() {
     id: string;
     content: string;
     senderName: string;
-    messageType: 'text' | 'service' | 'offer';
+    messageType: 'text' | 'service' | 'offer' | 'job_offer';
   } | null>(null);
   
 
@@ -145,7 +149,7 @@ export default function ChatScreen() {
       // If we have a chatId from the route, use it directly
       if (routeChatId) {
         const chatIdStr = Array.isArray(routeChatId) ? routeChatId[0] : routeChatId;
-        console.log('🔄 Using provided chatId:', chatIdStr);
+        console.log('🔄 CHAT INIT: Using provided chatId:', chatIdStr);
         setChatId(chatIdStr);
         
         // Fetch participant info for the chat
@@ -193,7 +197,7 @@ export default function ChatScreen() {
       
       setChatLoading(true);
       try {
-        console.log('🔄 Initializing chat with:', { participantId: participantIdStr, userId: user.id });
+        console.log('🔄 CHAT INIT: Initializing chat with:', { participantId: participantIdStr, userId: user.id });
         
         // Initialize chat and fetch participant info in parallel
         const [chat, participant] = await Promise.all([
@@ -201,7 +205,7 @@ export default function ChatScreen() {
           chatService.getChatParticipant(participantIdStr)
         ]);
         
-        console.log('🔄 Chat initialization results:', { chat: chat?.id, participant: participant?.name });
+        console.log('🔄 CHAT INIT: Chat initialization results:', { chat: chat?.id, participant: participant?.name });
         
         if (chat) {
           setChatId(chat.id);
@@ -212,7 +216,6 @@ export default function ChatScreen() {
         
         if (participant) {
           setParticipantInfo(participant);
-          console.log('Participant info loaded:', participant.name);
         }
       } catch (error) {
         console.error('Error initializing chat:', error);
@@ -247,6 +250,16 @@ export default function ChatScreen() {
       setServiceSelectionModalVisible(true);
     }
   }, [selectedServiceId, selectedServiceTitle, selectedServicePrice, selectedServiceCurrency, selectedServiceDescription, selectedServiceImage, selectedServiceCategory]);
+  
+  // Handle prefilled message for job applications
+  useEffect(() => {
+    if (prefilledMessage && isJobApplication === 'true') {
+      const messageText = Array.isArray(prefilledMessage) ? prefilledMessage[0] : prefilledMessage;
+      setMessage(messageText);
+    }
+  }, [prefilledMessage, isJobApplication]);
+
+  // Note: Job offer sending is now handled directly from the job page for better reliability
   
   const fetchUserServices = async () => {
     if (!user?.id) return;
@@ -398,7 +411,7 @@ export default function ChatScreen() {
       quotedMessage?.id,
       quotedMessage?.content,
       quotedMessage?.senderName,
-      quotedMessage?.messageType
+      quotedMessage?.messageType === 'job_offer' ? 'offer' : quotedMessage?.messageType
     );
 
     if (!result) {
@@ -1351,7 +1364,7 @@ export default function ChatScreen() {
                     ]}>View Service</Text>
                   </TouchableOpacity>
                 </View>
-                ) : msg.messageType === 'location' ? (
+                ) : false ? (
                   <View style={styles.locationMessageContent}>
                     <View style={styles.locationHeader}>
                       <MapPin size={16} color={(msg.senderId === user?.id) ? '#FFFFFF' : '#007AFF'} />

@@ -5,7 +5,7 @@ import { Package } from 'lucide-react-native';
 interface QuotedMessageProps {
   content: string;
   senderName: string;
-  messageType: 'text' | 'service' | 'offer';
+  messageType: 'text' | 'service' | 'offer' | 'job_offer';
   isMyMessage: boolean;
   quotedMessageId?: string;
   onPress?: () => void;
@@ -24,6 +24,8 @@ export function QuotedMessage({
       return content.length > 50 ? `${content.substring(0, 50)}...` : content;
     } else if (messageType === 'service' || messageType === 'offer') {
       return 'Service/Offer';
+    } else if (messageType === 'job_offer') {
+      return 'Job Application';
     }
     return content;
   };

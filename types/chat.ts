@@ -25,6 +25,7 @@ export interface ServiceOfferData {
   customDescription?: string;
   customDeliveryTime?: number;
   isCustomOffer?: boolean; // Flag to indicate if this is a custom offer (not tied to existing service)
+  isJobOffer?: boolean; // Flag to indicate if this is a job offer
   jobData?: JobData; // Job details when offer is related to a job
   // Hustle job attributes
   startDate?: string;
@@ -70,6 +71,30 @@ export interface ServiceOffer {
   requirements?: string;
 }
 
+export interface JobOffer {
+  id: string;
+  chatId: string;
+  jobId: string;
+  sellerId: string; // The person applying for the job
+  buyerId: string;  // The person who posted the job
+  originalBudget: number;
+  proposedPrice?: number;
+  proposalDescription?: string;
+  proposedTimeline?: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
+  expiresAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  // Job-specific attributes
+  estimatedHours?: number;
+  startDate?: string;
+  completionDate?: string;
+  workType?: 'remote' | 'on_site' | 'hybrid';
+  portfolio?: string[]; // URLs to portfolio items
+  experience?: string;
+  qualifications?: string;
+}
+
 export interface ChatMessage {
   id: string;
   chatId: string;
@@ -79,16 +104,18 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   isRead: boolean;
-  messageType?: 'text' | 'service' | 'offer';
+  messageType?: 'text' | 'service' | 'offer' | 'job_offer';
   serviceData?: ServiceOfferData;
+  jobData?: JobData;
   offerId?: string;
+  jobOfferId?: string;
   offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
   offerExpiresAt?: Date;
   // Quote message fields
   quotedMessageId?: string;
   quotedMessageContent?: string;
   quotedMessageSenderName?: string;
-  quotedMessageType?: 'text' | 'service' | 'offer';
+  quotedMessageType?: 'text' | 'service' | 'offer' | 'job_offer';
 }
 
 export interface LiveChatMessage {
@@ -100,16 +127,18 @@ export interface LiveChatMessage {
   content: string;
   timestamp: Date;
   isRead: boolean;
-  messageType?: 'text' | 'service' | 'offer';
+  messageType?: 'text' | 'service' | 'offer' | 'job_offer';
   serviceData?: ServiceOfferData;
+  jobData?: JobData;
   offerId?: string;
+  jobOfferId?: string;
   offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
   offerExpiresAt?: Date;
   // Quote message fields
   quotedMessageId?: string;
   quotedMessageContent?: string;
   quotedMessageSenderName?: string;
-  quotedMessageType?: 'text' | 'service' | 'offer';
+  quotedMessageType?: 'text' | 'service' | 'offer' | 'job_offer';
 }
 
 export interface ChatParticipant {

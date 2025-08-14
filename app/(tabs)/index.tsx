@@ -409,6 +409,11 @@ export default function HomeScreen() {
                         <Text style={[styles.jobBudgetText, { color: colors.primary.main }]}>
                           {job.budget_amount ? `${job.currency} ${job.budget_amount}` : job.payment_type}
                         </Text>
+                        {job.budget_amount && job.payment_type !== 'negotiable' && (
+                          <Text style={[styles.jobSellerReceivesText, { color: colors.text.secondary }]}>
+                            Seller gets {job.currency}{(parseFloat(job.budget_amount) * 0.93).toFixed(2)}
+                          </Text>
+                        )}
                       </View>
                       <View style={styles.jobDate}>
                         <Calendar size={10} color={colors.primary.main} />
@@ -671,6 +676,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
 
+  },
+  jobSellerReceivesText: {
+    fontSize: 10,
+    marginTop: 2,
   },
   jobDate: {
     flexDirection: 'row',

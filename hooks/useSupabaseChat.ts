@@ -305,8 +305,16 @@ export function useUserChats(userId: string, excludeChatId?: string) {
         })
       );
       
-      setChats(chatsWithLastMessage);
-      return chatsWithLastMessage;
+      // Sort chats by last message timestamp (most recent first)
+      const sortedChats = chatsWithLastMessage.sort((a, b) => {
+        // Use lastMessageAt from the chat record, fallback to createdAt
+        const aTime = new Date(a.lastMessageAt || a.createdAt).getTime();
+        const bTime = new Date(b.lastMessageAt || b.createdAt).getTime();
+        return bTime - aTime; // Descending order (newest first)
+      });
+      
+      setChats(sortedChats);
+      return sortedChats;
     } catch (err) {
       console.error('Error loading chats:', err);
       setError('Failed to load chats');
@@ -332,29 +340,25 @@ export function useUserChats(userId: string, excludeChatId?: string) {
         const updatedChat = userChats.find(chat => chat.id === chatId);
         
         if (updatedChat) {
-          const [lastMessage, unreadCount] = await Promise.all([
-            supabaseChatService.getLastMessage(updatedChat.id),
-            supabaseChatService.getUnreadMessageCount(updatedChat.id, userId)
-          ]);
-          
-          const chatWithDetails = {
-            ...updatedChat,
-            lastMessage,
-            unreadCount
-          };
+          // updatedChat already has lastMessage and unreadCount from getUserChats
+          const chatWithDetails = updatedChat;
 
           setChats(prev => {
             const existingIndex = prev.findIndex(chat => chat.id === chatId);
             if (existingIndex >= 0) {
               const newChats = [...prev];
               newChats[existingIndex] = chatWithDetails;
-              return newChats.sort((a, b) => 
-                new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
-              );
+              return newChats.sort((a, b) => {
+                const aTime = new Date(a.lastMessageAt || a.createdAt).getTime();
+                const bTime = new Date(b.lastMessageAt || b.createdAt).getTime();
+                return bTime - aTime; // Descending order (newest first)
+              });
             } else {
-              return [chatWithDetails, ...prev].sort((a, b) => 
-                new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
-              );
+              return [chatWithDetails, ...prev].sort((a, b) => {
+                const aTime = new Date(a.lastMessageAt || a.createdAt).getTime();
+                const bTime = new Date(b.lastMessageAt || b.createdAt).getTime();
+                return bTime - aTime; // Descending order (newest first)
+              });
             }
           });
         }
