@@ -107,6 +107,11 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
   };
 
   const processPurchase = async (bundle: BetaCoinBundle, fees: any) => {
+    if (!user) {
+      Alert.alert('Error', 'Please log in to purchase BetaCoins');
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
@@ -194,7 +199,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: colors.background.main }]}>
+      <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
         <View style={[styles.header, { borderBottomColor: colors.border.main }]}>
           <Text style={[styles.title, { color: colors.text.primary }]}>
             Purchase BetaCoins
@@ -217,12 +222,35 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
           </View>
 
           <View style={styles.footer}>
-            <Text style={[styles.footerText, { color: colors.text.secondary }]}>
-              • All purchases include 2.2% processing fee{'\n'}
-              • BetaCoins are valid for 1 year from purchase{'\n'}
-              • Can be exchanged with Diamond Stones (10 stones = 1 BetaCoin){'\n'}
-              • Service providers pay 11% or RM4.90 platform fee (whichever higher)
-            </Text>
+            <View style={styles.infoCard}>
+              <View style={styles.infoItem}>
+                <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
+                <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+                  All purchases include 2.2% processing fee
+                </Text>
+              </View>
+              
+              <View style={styles.infoItem}>
+                <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
+                <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+                  BetaCoins are valid for 1 year from purchase
+                </Text>
+              </View>
+              
+              <View style={styles.infoItem}>
+                <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
+                <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+                  Can be exchanged with Diamond Stones (10 stones = 1 BetaCoin)
+                </Text>
+              </View>
+              
+              <View style={styles.infoItem}>
+                <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
+                <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+                  Service providers pay 11% or RM4.90 platform fee (whichever higher)
+                </Text>
+              </View>
+            </View>
           </View>
         </ScrollView>
       </View>
@@ -262,14 +290,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   bundlesGrid: {
-    gap: 16,
+    gap: 8,
+    paddingTop: 16,
   },
   bundleCard: {
     borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 12,
+    overflow: 'visible',
+    marginBottom: 4,
     backgroundColor: '#1A1A1A',
     height: 64,
+    marginTop: 8,
   },
   bundleImage: {
     height: '100%',
@@ -281,27 +311,31 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    right: 12,
-    top: '50%',
-    transform: [{ translateY: -12 }],
+    right: 8,
+    top: -6,
     backgroundColor: '#0891B2',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    zIndex: 1,
+    zIndex: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   badgeText: {
     color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   bundleContent: {
     flex: 1,
     height: '100%',
     width: '100%',
-  },
-  bundleImageStyle: {
-    borderRadius: 20,
   },
   bundleContentOverlay: {
     flex: 1,
@@ -323,10 +357,31 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingVertical: 24,
+    paddingHorizontal: 8,
   },
-  footerText: {
+  infoCard: {
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  bulletPoint: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 6,
+    marginRight: 12,
+    flexShrink: 0,
+  },
+  infoText: {
     fontSize: 14,
     lineHeight: 20,
-    textAlign: 'center',
+    flex: 1,
   },
 });
