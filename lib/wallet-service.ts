@@ -3,7 +3,7 @@ import { supabase, supabaseAdmin } from './supabase';
 export interface WalletData {
   id?: string;
   user_id: string;
-  betame_stones: number;
+  betame_diamonds: number;
   betame_betacoins: number;
   created_at?: string;
   updated_at?: string;
@@ -33,7 +33,7 @@ export interface CheckInData {
   user_id: string;
   last_checkin_date: string;
   streak_count: number;
-  total_stones_earned: number;
+  total_diamonds_earned: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -43,7 +43,7 @@ export interface ReferralData {
   referrer_id: string;
   referred_user_id: string;
   status: 'pending' | 'completed';
-  stones_awarded: number;
+  diamonds_awarded: number;
   created_at?: string;
 }
 
@@ -85,13 +85,13 @@ export class WalletService {
         console.log('✅ Found existing wallet for user:', userId, 'with', data.betame_betacoins, 'BetaCoins');
         
         // Handle backward compatibility for column name changes
-        if (data.premium_stones !== undefined && data.betame_stones === undefined) {
-          data.betame_stones = data.premium_stones;
+                if (data.premium_stones !== undefined && data.betame_diamonds === undefined) {
+          data.betame_diamonds = data.premium_stones;
         }
-        
-        // Ensure betame_stones has a value
-        if (data.betame_stones === null || data.betame_stones === undefined) {
-          data.betame_stones = data.premium_stones || 0;
+
+        // Ensure betame_diamonds has a value
+        if (data.betame_diamonds === null || data.betame_diamonds === undefined) {
+          data.betame_diamonds = data.premium_stones || 0;
         }
         
         return data;
@@ -113,7 +113,7 @@ export class WalletService {
     try {
       const defaultWallet: WalletData = {
         user_id: userId,
-        betame_stones: 10, // Default starting stones
+        betame_diamonds: 10, // Default starting diamonds
         betame_betacoins: 5, // Default starting BetaCoins
       };
 
@@ -130,7 +130,7 @@ export class WalletService {
         return null;
       }
 
-      console.log('✅ Created new wallet for user:', userId, 'with', data.betame_stones, 'stones and', data.betame_betacoins, 'BetaCoins');
+      console.log('✅ Created new wallet for user:', userId, 'with', data.betame_diamonds, 'diamonds and', data.betame_betacoins, 'BetaCoins');
       return data;
     } catch (error) {
       console.error('Error in createWallet:', error);
@@ -182,12 +182,12 @@ export class WalletService {
         console.log('✅ Admin found wallet for user:', userId, 'with', data.betame_betacoins, 'BetaCoins');
         
         // Handle backward compatibility
-        if (data.premium_stones !== undefined && data.betame_stones === undefined) {
-          data.betame_stones = data.premium_stones;
+                if (data.premium_stones !== undefined && data.betame_diamonds === undefined) {
+          data.betame_diamonds = data.premium_stones;
         }
-        
-        if (data.betame_stones === null || data.betame_stones === undefined) {
-          data.betame_stones = data.premium_stones || 0;
+
+        if (data.betame_diamonds === null || data.betame_diamonds === undefined) {
+          data.betame_diamonds = data.premium_stones || 0;
         }
         
         return data;
@@ -211,7 +211,7 @@ export class WalletService {
       const { data, error } = await supabaseAdmin
         .from('wallets')
         .update({
-          betame_stones: walletData.betame_stones,
+          betame_diamonds: walletData.betame_diamonds,
           betame_betacoins: walletData.betame_betacoins,
           updated_at: new Date().toISOString(),
         })
@@ -290,11 +290,11 @@ export class WalletService {
   }
 
   /**
-   * Convert premium stones to BetaCoins
+   * Convert premium diamonds to BetaCoins
    */
-  static async convertStonesToBetaCoins(
+  static async convertDiamondsToBetaCoins(
     userId: string,
-    stonesAmount: number
+    diamondsAmount: number
   ): Promise<{ success: boolean; wallet?: WalletData; error?: string }> {
     try {
       // Get current wallet
@@ -303,18 +303,18 @@ export class WalletService {
         return { success: false, error: 'Wallet not found' };
       }
 
-      // Check if user has enough stones
-      if (wallet.betame_stones < stonesAmount) {
-        return { success: false, error: 'Insufficient BetaMe stones' };
+      // Check if user has enough diamonds
+      if (wallet.betame_diamonds < diamondsAmount) {
+        return { success: false, error: 'Insufficient BetaMe diamonds' };
       }
 
-      // Calculate BetaCoins (10 stones = 1 BetaCoin)
-      const betaCoinsToAdd = Math.floor(stonesAmount / 10);
+      // Calculate BetaCoins (10 diamonds = 1 BetaCoin)
+      const betaCoinsToAdd = Math.floor(diamondsAmount / 10);
       
       // Update wallet
       const updatedWallet = await this.updateWallet({
         ...wallet,
-        betame_stones: wallet.betame_stones - stonesAmount,
+        betame_diamonds: wallet.betame_diamonds - diamondsAmount,
         betame_betacoins: wallet.betame_betacoins + betaCoinsToAdd,
       });
 
@@ -326,13 +326,13 @@ export class WalletService {
       await this.recordTransaction({
         user_id: userId,
         type: 'conversion',
-        amount: stonesAmount,
-        description: `Converted ${stonesAmount} stones to ${betaCoinsToAdd} BetaCoins`,
+        amount: diamondsAmount,
+        description: `Converted ${diamondsAmount} diamonds to ${betaCoinsToAdd} BetaCoins`,
       });
 
       return { success: true, wallet: updatedWallet };
     } catch (error) {
-      console.error('Error in convertStonesToBetaCoins:', error);
+      console.error('Error in convertDiamondsToBetaCoins:', error);
       return { success: false, error: 'Conversion failed' };
     }
   }
@@ -530,9 +530,9 @@ export class WalletService {
   }
 
   /**
-   * Daily check-in to earn BetaMe stones
+   * Daily check-in to earn BetaMe diamonds
    */
-  static async dailyCheckIn(userId: string): Promise<{ success: boolean; stones?: number; streak?: number; error?: string }> {
+  static async dailyCheckIn(userId: string): Promise<{ success: boolean; diamonds?: number; streak?: number; error?: string }> {
     try {
       const today = new Date().toISOString().split('T')[0];
       
@@ -553,9 +553,9 @@ export class WalletService {
         return { success: false, error: 'Already checked in today' };
       }
 
-      // Calculate streak and stones
+      // Calculate streak and diamonds
       let newStreak = 1;
-      let stonesToAward = 1;
+      let diamondsToAward = 1;
       
       if (checkInData) {
         const lastCheckIn = new Date(checkInData.last_checkin_date);
@@ -571,17 +571,17 @@ export class WalletService {
         }
       }
 
-      // Specific stone amounts for first 7 days
+      // Specific diamond amounts for first 7 days
       if (newStreak <= 7) {
         if (newStreak <= 3) {
-          stonesToAward = 1; // Days 1-3: 1 stone each
+          diamondsToAward = 1; // Days 1-3: 1 diamond each
         } else if (newStreak <= 6) {
-          stonesToAward = 2; // Days 4-6: 2 stones each
+          diamondsToAward = 2; // Days 4-6: 2 diamonds each
         } else {
-          stonesToAward = Math.floor(Math.random() * 6) + 5; // Day 7: Random 5-10 stones
+          diamondsToAward = Math.floor(Math.random() * 6) + 5; // Day 7: Random 5-10 diamonds
         }
       } else if (newStreak % 30 === 0) {
-        stonesToAward = 10; // Monthly bonus
+        diamondsToAward = 10; // Monthly bonus
       }
 
       // Update or insert check-in data
@@ -593,7 +593,7 @@ export class WalletService {
           .update({
             last_checkin_date: today,
             streak_count: newStreak,
-            total_stones_earned: checkInData.total_stones_earned + stonesToAward,
+            total_diamonds_earned: checkInData.total_diamonds_earned + diamondsToAward,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', userId);
@@ -606,7 +606,7 @@ export class WalletService {
             user_id: userId,
             last_checkin_date: today,
             streak_count: newStreak,
-            total_stones_earned: stonesToAward,
+            total_diamonds_earned: diamondsToAward,
             updated_at: new Date().toISOString(),
           });
         upsertError = error;
@@ -617,12 +617,12 @@ export class WalletService {
         return { success: false, error: 'Failed to update check-in' };
       }
 
-      // Update wallet stones
+      // Update wallet diamonds
       const wallet = await this.getWallet(userId);
       if (wallet) {
         await this.updateWallet({
           ...wallet,
-          betame_stones: wallet.betame_stones + stonesToAward,
+          betame_diamonds: wallet.betame_diamonds + diamondsToAward,
         });
       }
 
@@ -631,17 +631,17 @@ export class WalletService {
         await this.recordTransaction({
           user_id: userId,
           type: 'daily_checkin',
-          amount: stonesToAward,
-          description: `Daily check-in reward (Day ${newStreak}) - ${stonesToAward} stones`,
+          amount: diamondsToAward,
+          description: `Daily check-in reward (Day ${newStreak}) - ${diamondsToAward} diamonds`,
         });
         console.log('Daily check-in transaction recorded successfully');
       } catch (transactionError) {
         console.error('Failed to record daily check-in transaction:', transactionError);
         // Don't fail the entire check-in if transaction recording fails
-        // The user still gets their stones and check-in is recorded
+        // The user still gets their diamonds and check-in is recorded
       }
 
-      return { success: true, stones: stonesToAward, streak: newStreak };
+      return { success: true, diamonds: diamondsToAward, streak: newStreak };
     } catch (error) {
       console.error('Error in dailyCheckIn:', error);
       return { success: false, error: 'Check-in failed' };
@@ -935,7 +935,7 @@ export class WalletService {
         return { success: false, error: 'Referral already processed' };
       }
 
-      const bonusStones = 100;
+      const bonusDiamonds = 100;
 
       // Add referral record
       const { error: referralError } = await supabase
@@ -944,7 +944,7 @@ export class WalletService {
           referrer_id: referrerId,
           referred_user_id: referredUserId,
           status: 'completed',
-          stones_awarded: bonusStones,
+          diamonds_awarded: bonusDiamonds,
         });
 
       if (referralError) {
@@ -957,7 +957,7 @@ export class WalletService {
       if (wallet) {
         await this.updateWallet({
           ...wallet,
-          betame_stones: wallet.betame_stones + bonusStones,
+          betame_diamonds: wallet.betame_diamonds + bonusDiamonds,
         });
       }
 
@@ -965,7 +965,7 @@ export class WalletService {
       await this.recordTransaction({
         user_id: referrerId,
         type: 'referral_bonus',
-        amount: bonusStones,
+        amount: bonusDiamonds,
         description: `Referral bonus for inviting user`,
       });
 

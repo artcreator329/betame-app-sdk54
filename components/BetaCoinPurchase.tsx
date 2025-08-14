@@ -216,7 +216,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             <View style={styles.description}>
               <Text style={[styles.descriptionText, { color: colors.text.secondary }]}>
-                BetaCoins can be purchased with a 2.2% processing fee or exchanged with Diamond Stones. 
+                BetaCoins can be purchased with a 2.2% processing fee or exchanged with Diamonds. 
                 Use BetaCoins to pay for services, boost your listings, and unlock premium features.
               </Text>
             </View>
@@ -244,7 +244,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
                 <View style={styles.infoItem}>
                   <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
                   <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-                    Can be exchanged with Diamond Stones (10 stones = 1 BetaCoin)
+                    Can be exchanged with Diamonds (10 diamonds = 1 BetaCoin)
                   </Text>
                 </View>
                 

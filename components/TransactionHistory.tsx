@@ -41,7 +41,7 @@ interface TransactionGroup {
 const TRANSACTION_TYPES = {
   all: 'All Transactions',
   betacoin_purchase: 'BetaCoin Purchases',
-  conversion: 'Stone Conversions',
+  conversion: 'Diamond Conversions',
   feature_purchase: 'Feature Purchases',
   daily_checkin: 'Daily Check-ins',
   referral_bonus: 'Referral Bonuses',
@@ -159,7 +159,7 @@ export function TransactionHistory({ visible, onClose, userId }: TransactionHist
       case 'betacoin_purchase':
         return 'BetaCoin Purchase';
       case 'conversion':
-        return 'Stone Conversion';
+        return 'Diamond Conversion';
       case 'feature_purchase':
         return 'Feature Purchase';
       case 'daily_checkin':
@@ -184,7 +184,7 @@ export function TransactionHistory({ visible, onClose, userId }: TransactionHist
     } else if (type === 'conversion') {
       return `+${Math.floor(amount / 10)} BetaCoins`;
     } else if (type === 'daily_checkin' || type === 'referral_bonus') {
-      return `${prefix}${amount} Stones`;
+      return `${prefix}${amount} Diamonds`;
     } else if (type === 'service_payment' || type === 'feature_purchase') {
       return `${amount} BetaCoins`;
     }

@@ -112,7 +112,7 @@ export default function WalletScreen() {
         WalletService.getPurchasedFeatures(user.id)
       ]);
       
-      setWalletData(wallet || { user_id: user.id, betame_stones: 0, betame_betacoins: 0 });
+      setWalletData(wallet || { user_id: user.id, betame_diamonds: 0, betame_betacoins: 0 });
       setPurchasedFeatures(features);
     } catch (error) {
       console.error('Error loading wallet data:', error);
@@ -125,10 +125,10 @@ export default function WalletScreen() {
     if (!user?.id || !walletData) return;
     
     const amount = parseInt(convertAmount);
-    if (amount > walletData.betame_stones) {
+    if (amount > walletData.betame_diamonds) {
       Alert.alert(
-        'Insufficient Stones',
-        'You don\'t have enough BetaMe stones to convert.',
+        'Insufficient Diamonds',
+        'You don\'t have enough BetaMe diamonds to convert.',
         [
           { text: 'Cancel', style: 'cancel' as const },
           {
@@ -140,18 +140,18 @@ export default function WalletScreen() {
       return;
     }
     if (amount < 10) {
-      Alert.alert('Minimum Conversion', 'Minimum conversion is 10 BetaMe stones.');
+      Alert.alert('Minimum Conversion', 'Minimum conversion is 10 BetaMe diamonds.');
       return;
     }
     
-    const result = await WalletService.convertStonesToBetaCoins(user.id, amount);
+    const result = await WalletService.convertDiamondsToBetaCoins(user.id, amount);
     if (result.success && result.wallet) {
       setWalletData(result.wallet);
       setConvertAmount('10');
       const betaCoinsEarned = Math.floor(amount / 10);
-      Alert.alert('Conversion Successful', `Converted ${amount} BetaMe stones to ${betaCoinsEarned} BetaCoin(s)!`);
+      Alert.alert('Conversion Successful', `Converted ${amount} BetaMe diamonds to ${betaCoinsEarned} BetaCoin(s)!`);
     } else {
-      Alert.alert('Conversion Failed', result.error || 'Failed to convert stones');
+      Alert.alert('Conversion Failed', result.error || 'Failed to convert diamonds');
     }
   };
 
@@ -160,9 +160,9 @@ export default function WalletScreen() {
     
     // Check if user has enough BetaCoins for at least 1 quantity
     if (walletData.betame_betacoins < feature.cost) {
-      // Calculate how many stones needed to get enough BetaCoins
+      // Calculate how many diamonds needed to get enough BetaCoins
       const betaCoinsNeeded = feature.cost - walletData.betame_betacoins;
-      const stonesNeeded = betaCoinsNeeded * 10; // 10 stones = 1 BetaCoin
+      const diamondsNeeded = betaCoinsNeeded * 10; // 10 diamonds = 1 BetaCoin
       
       const alertButtons = [
          { text: 'Cancel', style: 'cancel' as const },
@@ -172,11 +172,11 @@ export default function WalletScreen() {
          },
        ];
        
-       if (walletData.betame_stones >= stonesNeeded) {
+       if (walletData.betame_diamonds >= diamondsNeeded) {
          alertButtons.push({
-           text: 'Convert Stones',
+           text: 'Convert Diamonds',
            onPress: () => {
-             setConvertAmount(stonesNeeded.toString());
+             setConvertAmount(diamondsNeeded.toString());
              // Scroll to conversion section or highlight it
            },
          });
@@ -184,7 +184,7 @@ export default function WalletScreen() {
        
        Alert.alert(
          'Insufficient BetaCoins',
-         `You need ${betaCoinsNeeded} more BetaCoin(s) to purchase this feature. You can convert ${stonesNeeded} stones to get ${betaCoinsNeeded} BetaCoin(s), or purchase more BetaCoins directly.`,
+         `You need ${betaCoinsNeeded} more BetaCoin(s) to purchase this feature. You can convert ${diamondsNeeded} diamonds to get ${betaCoinsNeeded} BetaCoin(s), or purchase more BetaCoins directly.`,
          alertButtons
        );
       return;
@@ -201,7 +201,7 @@ export default function WalletScreen() {
     const totalCost = selectedFeature.cost * purchaseQuantity;
     if (walletData.betame_betacoins < totalCost) {
       const betaCoinsNeeded = totalCost - walletData.betame_betacoins;
-      const stonesNeeded = betaCoinsNeeded * 10;
+      const diamondsNeeded = betaCoinsNeeded * 10;
       
       const alertButtons = [
         { text: 'Cancel', style: 'cancel' as const },
@@ -214,19 +214,19 @@ export default function WalletScreen() {
         },
       ];
       
-      if (walletData.betame_stones >= stonesNeeded) {
+      if (walletData.betame_diamonds >= diamondsNeeded) {
         alertButtons.push({
-          text: 'Convert Stones',
+          text: 'Convert Diamonds',
           onPress: () => {
             setShowPurchaseModal(false);
-            setConvertAmount(stonesNeeded.toString());
+            setConvertAmount(diamondsNeeded.toString());
           },
         });
       }
       
       Alert.alert(
         'Insufficient BetaCoins',
-        `You need ${betaCoinsNeeded} more BetaCoin(s) for this purchase. You can convert ${stonesNeeded} stones to get ${betaCoinsNeeded} BetaCoin(s), or buy more BetaCoins directly.`,
+        `You need ${betaCoinsNeeded} more BetaCoin(s) for this purchase. You can convert ${diamondsNeeded} diamonds to get ${betaCoinsNeeded} BetaCoin(s), or buy more BetaCoins directly.`,
         alertButtons
       );
       return;
@@ -327,9 +327,9 @@ export default function WalletScreen() {
           >
             <View style={styles.balanceOverlay}>
                <View style={styles.balanceHeader}>
-                 <Text style={styles.balanceLabelWithBg}>Premium Stones</Text>
+                 <Text style={styles.balanceLabelWithBg}>Premium Diamonds</Text>
                </View>
-               <Text style={styles.balanceAmountWithBg}>{walletData?.betame_stones || 0} Stones</Text>
+               <Text style={styles.balanceAmountWithBg}>{walletData?.betame_diamonds || 0} Diamonds</Text>
                <Text style={styles.balanceSubtextWithBg}>Convert to BetaCoins</Text>
              </View>
           </ImageBackground>
@@ -385,7 +385,7 @@ export default function WalletScreen() {
                   Transaction History
                 </Text>
                 <Text style={[styles.transactionQuickSubtitle, { color: colors.text.secondary }]}>
-                  View all your Stones, BetaCoins, and real currency transactions
+                  View all your Diamonds, BetaCoins, and real currency transactions
                 </Text>
               </View>
               <ArrowLeft size={20} color={colors.text.secondary} style={{ transform: [{ rotate: '180deg' }] }} />
@@ -395,8 +395,8 @@ export default function WalletScreen() {
 
         {/* Conversion Section */}
         <View style={styles.conversionSection}>
-          <Text style={[styles.conversionTitle, { color: colors.text.primary }]}>Convert your stones to BetaCoins!</Text>
-          <Text style={[styles.conversionSubtitle, { color: colors.text.secondary }]}>Convert 10 premium stones into 1 BetaCoin</Text>
+          <Text style={[styles.conversionTitle, { color: colors.text.primary }]}>Convert your diamonds to BetaCoins!</Text>
+          <Text style={[styles.conversionSubtitle, { color: colors.text.secondary }]}>Convert 10 premium diamonds into 1 BetaCoin</Text>
           
           <View style={[styles.conversionCard, { backgroundColor: colors.background.tertiary }]}>
             <View style={styles.conversionRow}>
@@ -422,15 +422,15 @@ export default function WalletScreen() {
               <Text style={styles.convertButtonText}>Convert</Text>
             </TouchableOpacity>
             
-            {/* Buy More Stones Option */}
+            {/* Buy More Diamonds Option */}
             <View style={styles.buyMoreSection}>
               <Text style={[styles.buyMoreLabel, { color: colors.text.secondary }]}>Need more BetaCoins?</Text>
               <TouchableOpacity 
-                style={[styles.buyMoreStoneButton, { backgroundColor: colors.primary.main }]}
+                style={[styles.buyMoreDiamondButton, { backgroundColor: colors.primary.main }]}
                 onPress={() => setShowBetaCoinPurchase(true)}
               >
                 <ShoppingBag size={16} color="white" />
-                <Text style={styles.buyMoreStoneText}>Purchase More BetaCoins</Text>
+                <Text style={styles.buyMoreDiamondText}>Purchase More BetaCoins</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
-  stoneIcon: {
+  diamondIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -739,12 +739,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stoneImage: {
+  diamondImage: {
     width: 20,
     height: 20,
     resizeMode: 'contain',
   },
-  stoneEmoji: {
+  diamondEmoji: {
     fontSize: 16,
   },
   creditIcon: {
@@ -1356,7 +1356,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
   },
-  buyMoreStoneButton: {
+  buyMoreDiamondButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -1364,7 +1364,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 8,
   },
-  buyMoreStoneText: {
+  buyMoreDiamondText: {
     color: 'white',
     fontSize: 14,
     fontWeight: '600',

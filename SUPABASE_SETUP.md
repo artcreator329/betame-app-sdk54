@@ -35,7 +35,7 @@ The Supabase client is configured in `lib/supabase.ts` with:
 #### `wallets`
 - `id` (UUID, Primary Key)
 - `user_id` (UUID, Foreign Key to auth.users)
-- `premium_stones` (Integer, default: 0)
+- `betame_diamonds` (Integer, default: 0) - Replaces premium_stones
 - `betame_betacoins` (Integer, default: 0)
 - `created_at` (Timestamp)
 - `updated_at` (Timestamp)
@@ -52,7 +52,7 @@ The Supabase client is configured in `lib/supabase.ts` with:
 
 - **Row Level Security (RLS)** enabled on all tables
 - Users can only access their own wallet and transaction data
-- Automatic wallet creation for new users (10 stones, 5 BetaCoins)
+- Automatic wallet creation for new users (10 diamonds, 5 BetaCoins)
 - Automatic timestamp updates
 
 ## Wallet Service
@@ -63,7 +63,7 @@ The `WalletService` class in `lib/wallet-service.ts` provides:
 
 - `getWallet(userId)` - Retrieve user's wallet data
 - `updateWallet(walletData)` - Update wallet balances
-- `convertStonesToBetaCoins(userId, stonesAmount)` - Convert stones to BetaCoins
+- `convertDiamondsToBetaCoins(userId, diamondsAmount)` - Convert diamonds to BetaCoins
 - `purchaseBoost(userId, boostCost, boostTitle)` - Purchase visibility boosts
 - `recordTransaction(transaction)` - Record transaction history
 - `getTransactionHistory(userId)` - Get user's transaction history
@@ -76,8 +76,8 @@ import { WalletService } from '../lib/wallet-service';
 // Get user's wallet
 const wallet = await WalletService.getWallet(userId);
 
-// Convert stones to BetaCoins
-const result = await WalletService.convertStonesToBetaCoins(userId, 20);
+// Convert diamonds to BetaCoins
+const result = await WalletService.convertDiamondsToBetaCoins(userId, 20);
 if (result.success) {
   console.log('Conversion successful:', result.wallet);
 } else {

@@ -7,7 +7,7 @@ Successfully migrated the entire application from "Credits" to "BetaCoins" with 
 
 ### Column Rename
 - `wallets.betame_credits` → `wallets.betame_betacoins`
-- Added column comment: "BetaCoin balance - can be purchased with 2.2% extra charges or exchanged with Diamond Stones"
+- Added column comment: "BetaCoin balance - can be purchased with 2.2% extra charges or exchanged with Diamonds"
 
 ### Transaction Types Updated
 - `credit_purchase` → `betacoin_purchase`
@@ -18,7 +18,7 @@ Successfully migrated the entire application from "Credits" to "BetaCoins" with 
 
 ### Function Updates
 - `create_user_wallet()` function updated to use `betame_betacoins` column
-- New users still get 10 stones and 5 BetaCoins by default
+- New users still get 10 diamonds and 5 BetaCoins by default
 
 ## Code Changes ✅
 
@@ -26,7 +26,7 @@ Successfully migrated the entire application from "Credits" to "BetaCoins" with 
 1. **WalletService (`lib/wallet-service.ts`)**
    - Interface `WalletData.betame_credits` → `WalletData.betame_betacoins`
    - Transaction type `credit_purchase` → `betacoin_purchase`
-   - Function `convertStonesToCredits()` → `convertStonesToBetaCoins()`
+   - Function `convertStonesToCredits()` → `convertDiamondsToBetaCoins()`
    - Function `addCredits()` → `addBetaCoins()`
    - All error messages and logs updated to use "BetaCoin" terminology
 
@@ -96,7 +96,7 @@ Successfully migrated the entire application from "Credits" to "BetaCoins" with 
 
 ### Purchase Options
 - **Direct Purchase**: Available with 2.2% processing fee clearly displayed
-- **Diamond Stone Exchange**: 10 stones = 1 BetaCoin conversion rate
+- **Diamond Exchange**: 10 diamonds = 1 BetaCoin conversion rate
 - **Validity**: 1-year validity from purchase date
 
 ### Usage
@@ -108,7 +108,7 @@ Successfully migrated the entire application from "Credits" to "BetaCoins" with 
 - **Clear Pricing**: Processing fee transparently shown
 - **Professional UI**: Modern purchase interface with gradient backgrounds
 - **Value Indicators**: "Popular" and "Best Value" badges on bundles
-- **Exchange Information**: Clear explanation of stone-to-BetaCoin conversion
+- **Exchange Information**: Clear explanation of diamond-to-BetaCoin conversion
 
 ## Migration Status: COMPLETE ✅
 
@@ -120,4 +120,4 @@ All systems have been successfully migrated from Credits to BetaCoins:
 - ✅ Test scripts updated
 - ✅ Migration scripts applied
 
-The application now fully supports BetaCoins with the 2.2% processing fee and Diamond Stone exchange functionality as requested.
+The application now fully supports BetaCoins with the 2.2% processing fee and Diamond exchange functionality as requested.

@@ -24,7 +24,7 @@ const { width, height } = Dimensions.get('window');
 
 interface CheckInDay {
   day: number;
-  stones: number;
+  diamonds: number;
   claimed: boolean;
   isToday: boolean;
   bonus?: boolean;
@@ -34,7 +34,7 @@ export default function CheckInScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [currentStreak, setCurrentStreak] = useState(0);
-  const [totalStones, setTotalStones] = useState(0);
+  const [totalDiamonds, setTotalDiamonds] = useState(0);
   const [loading, setLoading] = useState(true);
   const [canCheckIn, setCanCheckIn] = useState(false);
   const [isCheckedInToday, setIsCheckedInToday] = useState(false);
@@ -94,7 +94,7 @@ export default function CheckInScreen() {
       }
       
       if (walletData) {
-        setTotalStones(walletData.betame_stones);
+        setTotalDiamonds(walletData.betame_diamonds);
       }
     } catch (error) {
       console.error('Error loading check-in data:', error);
@@ -145,13 +145,13 @@ export default function CheckInScreen() {
   };
 
   const checkInDays: CheckInDay[] = [
-    { day: 1, stones: 1, claimed: currentStreak >= 1, isToday: currentStreak === 0 && canCheckIn },
-    { day: 2, stones: 1, claimed: currentStreak >= 2, isToday: currentStreak === 1 && canCheckIn },
-    { day: 3, stones: 1, claimed: currentStreak >= 3, isToday: currentStreak === 2 && canCheckIn },
-    { day: 4, stones: 2, claimed: currentStreak >= 4, isToday: currentStreak === 3 && canCheckIn },
-    { day: 5, stones: 2, claimed: currentStreak >= 5, isToday: currentStreak === 4 && canCheckIn },
-    { day: 6, stones: 2, claimed: currentStreak >= 6, isToday: currentStreak === 5 && canCheckIn },
-    { day: 7, stones: 0, claimed: currentStreak >= 7, isToday: currentStreak === 6 && canCheckIn, bonus: true },
+    { day: 1, diamonds: 1, claimed: currentStreak >= 1, isToday: currentStreak === 0 && canCheckIn },
+    { day: 2, diamonds: 1, claimed: currentStreak >= 2, isToday: currentStreak === 1 && canCheckIn },
+    { day: 3, diamonds: 1, claimed: currentStreak >= 3, isToday: currentStreak === 2 && canCheckIn },
+    { day: 4, diamonds: 2, claimed: currentStreak >= 4, isToday: currentStreak === 3 && canCheckIn },
+    { day: 5, diamonds: 2, claimed: currentStreak >= 5, isToday: currentStreak === 4 && canCheckIn },
+    { day: 6, diamonds: 2, claimed: currentStreak >= 6, isToday: currentStreak === 5 && canCheckIn },
+    { day: 7, diamonds: 0, claimed: currentStreak >= 7, isToday: currentStreak === 6 && canCheckIn, bonus: true },
   ];
 
   const handleCheckIn = async () => {
@@ -177,7 +177,7 @@ export default function CheckInScreen() {
         // Reload data to get updated state from server
         await loadCheckInData();
         
-        const reward = result.stones || 1;
+        const reward = result.diamonds || 1;
         const newStreak = currentStreak + 1;
         
         // Reset streak if it reaches 7
@@ -185,13 +185,13 @@ export default function CheckInScreen() {
           setTimeout(() => {
             Alert.alert(
               '🎉 Week Complete!', 
-              `Amazing! You've completed a full week of check-ins and earned ${reward} stones! Your streak will reset and you can start a new 7-day journey.`,
+              `Amazing! You've completed a full week of check-ins and earned ${reward} diamonds! Your streak will reset and you can start a new 7-day journey.`,
               [{ text: 'Continue', onPress: () => loadCheckInData() }]
             );
           }, 800);
         } else {
           setTimeout(() => {
-            Alert.alert('✅ Check-in Successful!', `You've earned ${reward} stones! Keep your streak going!`);
+            Alert.alert('✅ Check-in Successful!', `You've earned ${reward} diamonds! Keep your streak going!`);
           }, 800);
         }
       } else {
@@ -218,7 +218,7 @@ export default function CheckInScreen() {
       const historyText = checkInTransactions
         .slice(-10) // Show last 10 transactions
         .reverse()
-        .map(t => `${new Date(t.created_at!).toLocaleDateString()}: +${t.amount} stones`)
+        .map(t => `${new Date(t.created_at!).toLocaleDateString()}: +${t.amount} diamonds`)
         .join('\n');
         
       Alert.alert('Recent Check-in History', historyText);
@@ -279,7 +279,7 @@ export default function CheckInScreen() {
   };
 
   const renderFerrisWheelCard = (dayData: CheckInDay, index: number) => {
-    const { day, stones, claimed, isToday, bonus } = dayData;
+    const { day, diamonds, claimed, isToday, bonus } = dayData;
     const position = getCardPosition(index);
     
     // Floating animation for Day 7
@@ -350,13 +350,13 @@ export default function CheckInScreen() {
             Day {day}
           </Text>
           
-          {/* Stone Count */}
+          {/* Diamond Count */}
           <Text style={[
-            styles.stoneCount,
-            claimed ? styles.claimedStoneCount : styles.unclaimedStoneCount,
-            day === 7 && !claimed && styles.mysteryStoneCount
+            styles.diamondCount,
+            claimed ? styles.claimedDiamondCount : styles.unclaimedDiamondCount,
+            day === 7 && !claimed && styles.mysteryDiamondCount
           ]}>
-            {day === 7 && !claimed ? '+?' : `+${stones}`}
+            {day === 7 && !claimed ? '+?' : `+${diamonds}`}
           </Text>
           
           {/* Check Mark for Claimed */}
@@ -425,19 +425,19 @@ export default function CheckInScreen() {
           </View>
         </View>
 
-        {/* Stones Counter */}
-        <View style={styles.stonesHeader}>
+        {/* Diamonds Counter */}
+        <View style={styles.diamondsHeader}>
           <LinearGradient
             colors={['#007AFF', '#0056CC']}
-            style={styles.stonesGradient}
+            style={styles.diamondsGradient}
           >
-            <View style={styles.stonesContent}>
+            <View style={styles.diamondsContent}>
               <Image 
                 source={require('../assets/images/diamond.webp')}
-                style={styles.headerStoneImage}
+                style={styles.headerDiamondImage}
               />
-              <Text style={styles.stonesCount}>{totalStones}</Text>
-              <Text style={styles.stonesLabel}>Total Stones</Text>
+              <Text style={styles.diamondsCount}>{totalDiamonds}</Text>
+              <Text style={styles.diamondsLabel}>Total Diamonds</Text>
             </View>
           </LinearGradient>
         </View>
@@ -654,17 +654,17 @@ const styles = StyleSheet.create({
     color: 'white',
     opacity: 0.9,
   },
-  stoneContainer: {
+  diamondInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  stoneImage: {
+  diamondInfoImage: {
     width: 20,
     height: 20,
     resizeMode: 'contain',
   },
-  stoneCount: {
+  diamondCount: {
     position: 'absolute',
     bottom: 15,
     fontSize: 14,
@@ -674,13 +674,13 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
-  claimedStoneCount: {
+  claimedDiamondCount: {
     color: '#1a1a1a',
   },
-  unclaimedStoneCount: {
+  unclaimedDiamondCount: {
     color: '#9E9E9E',
   },
-  mysteryStoneCount: {
+  mysteryDiamondCount: {
     position: 'absolute',
     top: '50%',
     left: '50%',
@@ -747,31 +747,31 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: 'white',
   },
-  stonesHeader: {
+  diamondsHeader: {
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
-  stonesGradient: {
+  diamondsGradient: {
     borderRadius: 20,
     padding: 20,
   },
-  stonesContent: {
+  diamondsContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
   },
-  headerStoneImage: {
+  headerDiamondImage: {
     width: 32,
     height: 32,
     resizeMode: 'contain',
   },
-  stonesCount: {
+  diamondsCount: {
     fontSize: 28,
     fontWeight: '800',
     color: 'white',
   },
-  stonesLabel: {
+  diamondsLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: 'white',

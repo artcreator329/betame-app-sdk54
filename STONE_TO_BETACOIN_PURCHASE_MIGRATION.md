@@ -1,16 +1,16 @@
-# Stone Purchase to BetaCoin Purchase Migration
+# Diamond Purchase to BetaCoin Purchase Migration
 
 ## Overview
-This migration removes the ability to purchase stones directly and replaces it with BetaCoin purchase functionality. Users can now only purchase BetaCoins directly (with 2.2% processing fee), while stones remain available through daily check-ins and can be converted to BetaCoins.
+This migration removes the ability to purchase diamonds directly and replaces it with BetaCoin purchase functionality. Users can now only purchase BetaCoins directly (with 2.2% processing fee), while diamonds remain available through daily check-ins and can be converted to BetaCoins.
 
 ## Changes Made
 
 ### 1. Wallet Service Updates (`lib/wallet-service.ts`)
-- **Removed**: `addStones()` method for stone purchases
+- **Removed**: `addDiamonds()` method for diamond purchases
 - **Added**: `addBetaCoins()` method for BetaCoin purchases
-- **Updated**: Transaction type enum to remove `'stone_purchase'` and keep only `'betacoin_purchase'`
+- **Updated**: Transaction type enum to remove `'diamond_purchase'` and keep only `'betacoin_purchase'`
 - **Updated**: Database column from `betame_credits` to `betame_betacoins`
-- **Updated**: Function name from `convertStonesToCredits()` to `convertStonesToBetaCoins()`
+- **Updated**: Function name from `convertDiamondsToBetaCoins()` to maintain consistency
 
 ### 2. New BetaCoin Purchase Component (`components/BetaCoinPurchase.tsx`)
 - **Created**: New component to handle BetaCoin purchases
@@ -24,7 +24,7 @@ This migration removes the ability to purchase stones directly and replaces it w
 ### 3. Wallet Screen Updates (`app/wallet.tsx`)
 - **Replaced**: `CreditPurchase` import with `BetaCoinPurchase`
 - **Updated**: All "Buy Credits" buttons to "Buy BetaCoins"
-- **Modified**: Stone balance card to remove purchase options
+- **Modified**: Diamond balance card to remove purchase options
 - **Enhanced**: BetaCoin balance card with purchase functionality
 - **Updated**: Alert messages to reference BetaCoin purchases instead of credit purchases
 - **Updated**: Wallet label from "BetaMe Credit Wallet" to "BetaCoin Wallet"
@@ -54,7 +54,7 @@ This migration removes the ability to purchase stones directly and replaces it w
 
 ### Purchase Options
 - **Direct Purchase**: Buy BetaCoins with 2.2% processing fee
-- **Stone Exchange**: Convert Diamond Stones to BetaCoins (10 stones = 1 BetaCoin)
+- **Diamond Exchange**: Convert Diamonds to BetaCoins (10 diamonds = 1 BetaCoin)
 - **Validity**: All BetaCoins are valid for 1 year from purchase
 
 ### Usage
@@ -73,5 +73,5 @@ This migration removes the ability to purchase stones directly and replaces it w
 ## Migration Benefits
 - **Clear Branding**: BetaCoin provides distinct identity
 - **Transparent Pricing**: 2.2% processing fee clearly communicated
-- **Exchange Flexibility**: Users can still convert stones to BetaCoins
+- **Exchange Flexibility**: Users can still convert diamonds to BetaCoins
 - **Professional UX**: Modern purchase interface with clear value proposition
