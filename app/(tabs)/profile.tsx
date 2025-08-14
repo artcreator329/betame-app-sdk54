@@ -17,6 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import ProfileShareModal from '@/components/ProfileShareModal';
 import { ReferralModal } from '@/components/ReferralModal';
 import { ReferralStatsInline } from '@/components/ReferralStatsInline';
+import { JobProposalNotifications } from '@/components/JobProposalNotifications';
+import { JobNotificationService, JobNotificationPayload } from '@/lib/job-notification-service';
 
 
 
@@ -45,6 +47,8 @@ export default function ProfileScreen() {
   const [photoType, setPhotoType] = useState<'cover' | 'profile'>('profile');
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [referralModalVisible, setReferralModalVisible] = useState(false);
+  const [unreadJobNotifications, setUnreadJobNotifications] = useState(0);
+  const [jobNotificationService] = useState(() => JobNotificationService.getInstance());
   const router = useRouter();
   const { user, userProfile, updateProfile } = useAuth();
   const colors = useColors();
@@ -144,8 +148,52 @@ export default function ProfileScreen() {
     if (user) {
       fetchProfileData();
       checkAdminStatus();
+      setupJobNotifications();
     }
   }, [user]);
+
+  const setupJobNotifications = async () => {
+    if (!user) return;
+
+    try {
+      // Load initial unread count
+      const unreadCount = await JobService.getUnreadActivityCount(user.id);
+      setUnreadJobNotifications(unreadCount);
+
+      // Subscribe to real-time updates (only if tables exist)
+      if (unreadCount >= 0) { // If we got a valid response, tables exist
+        const unsubscribe = await jobNotificationService.subscribeToJobProposalUpdates(
+          user.id,
+          (activity) => {
+            console.log('New job activity received:', activity);
+            
+            // Update unread count
+            setUnreadJobNotifications(prev => prev + 1);
+            
+            // Refresh job listings to show updated proposal counts
+            fetchProfileData();
+          }
+        );
+
+        // Cleanup subscription on unmount
+        return () => {
+          unsubscribe();
+        };
+      } else {
+        console.log('ℹ️  Job proposal notifications not available - database migration needed');
+      }
+    } catch (error) {
+      console.error('Error setting up job notifications:', error);
+      console.log('ℹ️  Job proposal features will be limited until database migration is applied');
+    }
+  };
+
+  const handleJobNotificationPress = (activity: any) => {
+    // Mark notification as read and navigate to job details
+    if (activity.job_listing_id) {
+      router.push(`/job/${activity.job_listing_id}`);
+    }
+  };
 
   const checkAdminStatus = async () => {
     if (!user) return;
@@ -382,6 +430,20 @@ export default function ProfileScreen() {
         return (
           <View style={styles.tabSectionContainer}>
             <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Job Postings ({jobListings.length})</Text>
+            
+            {/* Job Proposal Notifications */}
+            {user && unreadJobNotifications > 0 && (
+              <View style={[styles.notificationsContainer, { backgroundColor: colors.background.secondary }]}>
+                <Text style={[styles.notificationsTitle, { color: colors.text.primary }]}>
+                  Recent Activity
+                </Text>
+                <JobProposalNotifications
+                  userId={user.id}
+                  onNotificationPress={handleJobNotificationPress}
+                  limit={5}
+                />
+              </View>
+            )}
             {jobListings.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>You do not have any job postings</Text>
@@ -412,10 +474,46 @@ export default function ProfileScreen() {
                     <Image source={{ uri: job.cover_photo }} style={styles.jobImage} />
                   )}
                   <View style={[styles.jobInfo, { backgroundColor: colors.background.secondary }]}>
-                    <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{job.title}</Text>
+                    <View style={styles.jobHeader}>
+                      <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{job.title}</Text>
+                      {/* Show proposal indicators */}
+                      {job.pending_proposals && job.pending_proposals > 0 && (
+                        <View style={[styles.proposalBadge, { backgroundColor: colors.primary.main }]}>
+                          <Text style={[styles.proposalBadgeText, { color: colors.text.white }]}>
+                            {job.pending_proposals} new
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    
                     <Text style={[styles.jobDescription, { color: colors.text.secondary }]} numberOfLines={2}>
                       {job.description}
                     </Text>
+                    
+                    {/* Enhanced proposal stats */}
+                    {job.total_proposals && job.total_proposals > 0 && (
+                      <View style={styles.proposalStats}>
+                        <View style={styles.proposalStatItem}>
+                          <Text style={[styles.proposalStatNumber, { color: colors.primary.main }]}>
+                            {job.total_proposals}
+                          </Text>
+                          <Text style={[styles.proposalStatLabel, { color: colors.text.secondary }]}>
+                            {job.total_proposals === 1 ? 'Proposal' : 'Proposals'}
+                          </Text>
+                        </View>
+                        {job.unique_sellers && job.unique_sellers > 0 && (
+                          <View style={styles.proposalStatItem}>
+                            <Text style={[styles.proposalStatNumber, { color: colors.text.primary }]}>
+                              {job.unique_sellers}
+                            </Text>
+                            <Text style={[styles.proposalStatLabel, { color: colors.text.secondary }]}>
+                              {job.unique_sellers === 1 ? 'Applicant' : 'Applicants'}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                    
                     {job.location_address && (
                       <View style={styles.jobLocation}>
                         <MapPin size={14} color={colors.text.secondary} />
@@ -439,6 +537,14 @@ export default function ProfileScreen() {
                       <Text style={[styles.jobDate, { color: colors.text.secondary }]}>
                         {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Date not available'}
                       </Text>
+                      {job.last_activity_date && (
+                        <>
+                          <Text style={[styles.jobDateSeparator, { color: colors.text.secondary }]}> • </Text>
+                          <Text style={[styles.jobLastActivity, { color: colors.primary.main }]}>
+                            Last activity: {new Date(job.last_activity_date).toLocaleDateString()}
+                          </Text>
+                        </>
+                      )}
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -808,21 +914,31 @@ export default function ProfileScreen() {
               ]}
               onPress={() => setActiveTab(tab)}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: activeTab === tab ? colors.primary.main : colors.text.secondary },
-                  activeTab === tab && styles.activeTabText,
-                ]}
-              >
-                {tab}
-              </Text>
+              <View style={styles.tabContent}>
+                <Text
+                  style={[
+                    styles.tabText,
+                    { color: activeTab === tab ? colors.primary.main : colors.text.secondary },
+                    activeTab === tab && styles.activeTabText,
+                  ]}
+                >
+                  {tab}
+                </Text>
+                {/* Show notification badge for I'm Hiring tab */}
+                {tab === 'I\'m Hiring' && unreadJobNotifications > 0 && (
+                  <View style={[styles.notificationBadge, { backgroundColor: colors.primary.main }]}>
+                    <Text style={[styles.notificationBadgeText, { color: colors.text.white }]}>
+                      {unreadJobNotifications > 99 ? '99+' : unreadJobNotifications}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Tab Content */}
-        <View style={[styles.tabContent, { backgroundColor: colors.background.primary }]}>
+        <View style={[styles.tabContentArea, { backgroundColor: colors.background.primary }]}>
           {renderTabContent()}
         </View>
 
@@ -1116,6 +1232,12 @@ const styles = StyleSheet.create({
   },
   activeTab: {
   },
+  tabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
   tabText: {
     fontSize: 16,
     fontWeight: '500',
@@ -1123,7 +1245,23 @@ const styles = StyleSheet.create({
   activeTabText: {
     fontWeight: '600',
   },
-  tabContent: {
+  notificationBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -12,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  notificationBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  tabContentArea: {
     minHeight: 400,
     paddingBottom: 40,
   },
@@ -1353,6 +1491,59 @@ const styles = StyleSheet.create({
   jobDate: {
     fontSize: 11,
     marginLeft: 4,
+  },
+  jobDateSeparator: {
+    fontSize: 11,
+  },
+  jobLastActivity: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  jobHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  proposalBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  proposalBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  proposalStats: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    gap: 16,
+  },
+  proposalStatItem: {
+    alignItems: 'center',
+  },
+  proposalStatNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  proposalStatLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  notificationsContainer: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  notificationsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
   },
   loginPromptContainer: {
     flex: 1,

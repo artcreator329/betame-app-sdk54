@@ -101,6 +101,30 @@ export default function JobDetailScreen() {
       console.log('🚀 JOB OFFER: Starting to send job offer with data:', offerData);
       console.log('🚀 JOB OFFER: Job details:', { jobId: job.id, jobTitle: job.title, jobUserId: job.user_id });
       
+      // First, submit the job proposal to track it properly
+      const proposalData = {
+        job_listing_id: job.id!,
+        seller_id: user.id,
+        buyer_id: job.user_id,
+        proposed_price: offerData.proposedPrice,
+        proposal_description: offerData.proposalDescription!,
+        proposed_timeline: offerData.proposedTimeline,
+        estimated_hours: offerData.estimatedHours,
+        start_date: offerData.startDate,
+        completion_date: offerData.completionDate,
+        work_type: offerData.workType || 'remote',
+        experience: offerData.experience,
+        qualifications: offerData.qualifications,
+        status: 'pending' as const
+      };
+
+      const submittedProposal = await JobService.submitJobProposal(proposalData);
+      
+      if (!submittedProposal) {
+        Alert.alert('Error', 'Failed to submit proposal. Please try again.');
+        return;
+      }
+      
       // Import the chat service
       const { SupabaseChatService } = await import('../../lib/supabase-chat-service');
       const supabaseChatService = SupabaseChatService.getInstance();

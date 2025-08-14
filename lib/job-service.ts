@@ -15,6 +15,78 @@ export interface JobListing {
   status: 'active' | 'paused' | 'completed' | 'cancelled';
   created_at?: string;
   updated_at?: string;
+  // Stats from job_listing_stats table
+  total_proposals?: number;
+  pending_proposals?: number;
+  accepted_proposals?: number;
+  rejected_proposals?: number;
+  unique_sellers?: number;
+  last_proposal_date?: string;
+  last_activity_date?: string;
+}
+
+export interface JobProposal {
+  id?: string;
+  job_listing_id: string;
+  seller_id: string;
+  buyer_id: string;
+  
+  // Proposal details
+  proposed_price?: number;
+  proposal_description: string;
+  proposed_timeline?: string;
+  estimated_hours?: number;
+  start_date?: string;
+  completion_date?: string;
+  work_type?: 'remote' | 'on_site' | 'hybrid';
+  experience?: string;
+  qualifications?: string;
+  
+  // Proposal status
+  status: 'pending' | 'accepted' | 'rejected' | 'withdrawn' | 'expired';
+  
+  // Response details
+  buyer_response?: string;
+  buyer_response_date?: string;
+  rejection_reason?: string;
+  
+  // Tracking
+  is_read_by_buyer?: boolean;
+  is_read_by_seller?: boolean;
+  proposal_count?: number;
+  
+  // Timestamps
+  created_at?: string;
+  updated_at?: string;
+  
+  // Populated data
+  seller_profile?: {
+    id: string;
+    full_name: string;
+    avatar_url?: string;
+  };
+  
+  job_listing?: JobListing;
+}
+
+export interface JobProposalActivity {
+  id?: string;
+  job_proposal_id: string;
+  job_listing_id: string;
+  activity_type: 'proposal_submitted' | 'proposal_updated' | 'proposal_accepted' | 'proposal_rejected' | 'proposal_withdrawn' | 'buyer_message' | 'seller_message' | 'work_started' | 'work_completed' | 'payment_released';
+  actor_id: string;
+  target_user_id: string;
+  activity_description: string;
+  metadata?: any;
+  is_read?: boolean;
+  created_at?: string;
+  
+  // Populated data
+  actor_profile?: {
+    id: string;
+    full_name: string;
+    avatar_url?: string;
+  };
 }
 
 export class JobService {
@@ -45,22 +117,63 @@ export class JobService {
   }
 
   /**
-   * Get all job listings for a user
+   * Get all job listings for a user with proposal stats
    */
   static async getUserJobs(userId: string): Promise<JobListing[]> {
     try {
-      const { data, error } = await supabase
+      // First, get the job listings
+      const { data: jobs, error: jobError } = await supabase
         .from('job_listings')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching user jobs:', error);
+      if (jobError) {
+        console.error('Error fetching user jobs:', jobError);
         return [];
       }
 
-      return data || [];
+      if (!jobs || jobs.length === 0) {
+        return [];
+      }
+
+      // Get job IDs for stats lookup
+      const jobIds = jobs.map(job => job.id);
+
+      // Try to get stats for all jobs in one query
+      let stats: any[] = [];
+      try {
+        const { data: statsData, error: statsError } = await supabase
+          .from('job_listing_stats')
+          .select('*')
+          .in('job_listing_id', jobIds);
+
+        if (statsError) {
+          console.error('Job stats table not found or accessible:', statsError.message);
+          console.log('ℹ️  This is normal if the job proposals migration hasn\'t been applied yet');
+          // Continue without stats rather than failing completely
+        } else {
+          stats = statsData || [];
+        }
+      } catch (error) {
+        console.error('Error fetching job stats:', error);
+        // Continue without stats rather than failing completely
+      }
+
+      // Merge jobs with their stats
+      return jobs.map(job => {
+        const jobStats = stats?.find(stat => stat.job_listing_id === job.id);
+        return {
+          ...job,
+          total_proposals: jobStats?.total_proposals || 0,
+          pending_proposals: jobStats?.pending_proposals || 0,
+          accepted_proposals: jobStats?.accepted_proposals || 0,
+          rejected_proposals: jobStats?.rejected_proposals || 0,
+          unique_sellers: jobStats?.unique_sellers || 0,
+          last_proposal_date: jobStats?.last_proposal_date,
+          last_activity_date: jobStats?.last_activity_date,
+        };
+      });
     } catch (error) {
       console.error('Error in getUserJobs:', error);
       return [];
@@ -184,6 +297,238 @@ export class JobService {
     } catch (error) {
       console.error('Error in updateJobStatus:', error);
       return false;
+    }
+  }
+
+  /**
+   * Submit a job proposal
+   */
+  static async submitJobProposal(proposalData: Omit<JobProposal, 'id' | 'created_at' | 'updated_at'>): Promise<JobProposal | null> {
+    try {
+      const { data, error } = await supabase
+        .from('job_proposals')
+        .insert(proposalData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error submitting job proposal:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in submitJobProposal:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get job proposals for a specific job listing
+   */
+  static async getJobProposals(jobListingId: string): Promise<JobProposal[]> {
+    try {
+      const { data, error } = await supabase
+        .from('job_proposals')
+        .select(`
+          *,
+          seller_profile:profiles!job_proposals_seller_id_fkey (
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('job_listing_id', jobListingId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching job proposals:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getJobProposals:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get proposals submitted by a seller
+   */
+  static async getSellerProposals(sellerId: string): Promise<JobProposal[]> {
+    try {
+      const { data, error } = await supabase
+        .from('job_proposals')
+        .select(`
+          *,
+          job_listing:job_listings!job_proposals_job_listing_id_fkey (
+            id,
+            title,
+            description,
+            cover_photo,
+            payment_type,
+            budget_amount,
+            currency,
+            status
+          )
+        `)
+        .eq('seller_id', sellerId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching seller proposals:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getSellerProposals:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Update proposal status (accept/reject/withdraw)
+   */
+  static async updateProposalStatus(
+    proposalId: string, 
+    status: JobProposal['status'], 
+    response?: string,
+    rejectionReason?: string
+  ): Promise<boolean> {
+    try {
+      const updateData: any = {
+        status,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (status === 'accepted' || status === 'rejected') {
+        updateData.buyer_response = response;
+        updateData.buyer_response_date = new Date().toISOString();
+        if (status === 'rejected' && rejectionReason) {
+          updateData.rejection_reason = rejectionReason;
+        }
+      }
+
+      const { error } = await supabase
+        .from('job_proposals')
+        .update(updateData)
+        .eq('id', proposalId);
+
+      if (error) {
+        console.error('Error updating proposal status:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in updateProposalStatus:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Mark proposal as read
+   */
+  static async markProposalAsRead(proposalId: string, isReadByBuyer: boolean): Promise<boolean> {
+    try {
+      const updateField = isReadByBuyer ? 'is_read_by_buyer' : 'is_read_by_seller';
+      
+      const { error } = await supabase
+        .from('job_proposals')
+        .update({ 
+          [updateField]: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', proposalId);
+
+      if (error) {
+        console.error('Error marking proposal as read:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in markProposalAsRead:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get job activities for a user (buyer notifications)
+   */
+  static async getJobActivities(userId: string, limit: number = 50): Promise<JobProposalActivity[]> {
+    try {
+      const { data, error } = await supabase
+        .from('job_proposal_activities')
+        .select(`
+          *,
+          actor_profile:profiles!job_proposal_activities_actor_id_fkey (
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('target_user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching job activities:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getJobActivities:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Mark job activities as read
+   */
+  static async markActivitiesAsRead(activityIds: string[]): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('job_proposal_activities')
+        .update({ is_read: true })
+        .in('id', activityIds);
+
+      if (error) {
+        console.error('Error marking activities as read:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in markActivitiesAsRead:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get unread activity count for a user
+   */
+  static async getUnreadActivityCount(userId: string): Promise<number> {
+    try {
+      const { count, error } = await supabase
+        .from('job_proposal_activities')
+        .select('*', { count: 'exact', head: true })
+        .eq('target_user_id', userId)
+        .eq('is_read', false);
+
+      if (error) {
+        console.error('Job proposal activities table not found or accessible:', error.message);
+        console.log('ℹ️  This is normal if the job proposals migration hasn\'t been applied yet');
+        return 0;
+      }
+
+      return count || 0;
+    } catch (error) {
+      console.error('Error in getUnreadActivityCount:', error);
+      return 0;
     }
   }
 }
