@@ -87,16 +87,16 @@ export class EscrowService {
       const platformFee = Math.floor(amount * 0.05);
       const totalAmount = amount + platformFee;
 
-      // Check if buyer has sufficient credits
+      // Check if buyer has sufficient BetaCoins
       const buyerWallet = await WalletService.getWallet(buyerId);
-      if (!buyerWallet || buyerWallet.betame_credits < totalAmount) {
+      if (!buyerWallet || buyerWallet.betame_betacoins < totalAmount) {
         return { 
           success: false, 
-          error: `Insufficient credits. Need ${totalAmount} credits (${amount} + ${platformFee} platform fee), have ${buyerWallet?.betame_credits || 0}` 
+          error: `Insufficient BetaCoins. Need ${totalAmount} BetaCoins (${amount} + ${platformFee} platform fee), have ${buyerWallet?.betame_betacoins || 0}` 
         };
       }
 
-      // Deduct credits from buyer's wallet
+      // Deduct BetaCoins from buyer's wallet
       const paymentResult = await WalletService.processServicePayment(buyerId, totalAmount, serviceTitle, serviceOfferId);
       if (!paymentResult.success) {
         return { success: false, error: paymentResult.error };
@@ -191,7 +191,7 @@ export class EscrowService {
       await this.sendJobNotification(
         jobStatusData.id,
         'system_notification',
-        `New job received! Payment of ${amount} credits is held in escrow. Please acknowledge the order to begin.`,
+        `New job received! Payment of ${amount} BetaCoins is held in escrow. Please acknowledge the order to begin.`,
         buyerId
       );
 
@@ -450,7 +450,7 @@ export class EscrowService {
       await this.sendJobNotification(
         jobStatusId,
         'system_notification',
-        `Payment of ${escrowTransaction.amount} credits has been released to your wallet!`,
+        `Payment of ${escrowTransaction.amount} BetaCoins has been released to your wallet!`,
         buyerId
       );
 
@@ -589,7 +589,7 @@ export class EscrowService {
         await supabaseAdmin
           .from('platform_wallet')
           .update({
-            total_escrowed_credits: (platformWallet.total_escrowed_credits || 0) + totalAmount,
+            total_escrowed_betacoins: (platformWallet.total_escrowed_betacoins || 0) + totalAmount,
             total_platform_fees: (platformWallet.total_platform_fees || 0) + platformFee,
             updated_at: new Date().toISOString()
           })
@@ -599,7 +599,7 @@ export class EscrowService {
         await supabaseAdmin
           .from('platform_wallet')
           .insert({
-            total_escrowed_credits: totalAmount,
+            total_escrowed_betacoins: totalAmount,
             total_platform_fees: platformFee,
           });
       }
@@ -625,7 +625,7 @@ export class EscrowService {
         await supabaseAdmin
           .from('platform_wallet')
           .update({
-            total_escrowed_credits: Math.max(0, (platformWallet.total_escrowed_credits || 0) - totalAmount),
+            total_escrowed_betacoins: Math.max(0, (platformWallet.total_escrowed_betacoins || 0) - totalAmount),
             total_released_today: (platformWallet.total_released_today || 0) + totalAmount,
             updated_at: new Date().toISOString()
           })

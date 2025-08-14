@@ -522,7 +522,7 @@ class AdminService {
           const [servicesResult, jobsResult, walletResult] = await Promise.all([
             supabaseAdmin.from('services').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
             supabaseAdmin.from('job_listings').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-            supabaseAdmin.from('wallets').select('stones, credits').eq('user_id', user.id).single()
+            supabaseAdmin.from('wallets').select('betame_stones, betame_betacoins').eq('user_id', user.id).single()
           ]);
 
           return {
@@ -530,7 +530,7 @@ class AdminService {
             status: 'active' as const,
             total_services: servicesResult.count || 0,
             total_jobs: jobsResult.count || 0,
-            wallet_balance: (walletResult.data?.stones || 0) + (walletResult.data?.credits || 0),
+            wallet_balance: (walletResult.data?.betame_stones || 0) + (walletResult.data?.betame_betacoins || 0),
             last_sign_in_at: undefined // TODO: Get from auth.users if needed
           };
         })

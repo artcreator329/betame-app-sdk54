@@ -120,7 +120,7 @@ async function testReferralSystem() {
 
     if (referralCode) {
       const totalReferrals = referrals ? referrals.length : 0;
-      const totalCreditsEarned = referrals ? referrals.reduce((sum, ref) => sum + ref.total_credits_earned, 0) : 0;
+      const totalBetaCoinsEarned = referrals ? referrals.reduce((sum, ref) => sum + ref.total_betacoins_earned, 0) : 0;
       const pendingReferrals = referrals ? referrals.filter(ref => 
         ref.status === 'pending' || ref.status === 'signup_completed'
       ).length : 0;
@@ -131,7 +131,7 @@ async function testReferralSystem() {
       console.log(`✅ Referral Statistics for ${testUser.full_name}:`);
       console.log(`   - Referral Code: ${referralCode.referral_code}`);
       console.log(`   - Total Referrals: ${totalReferrals}`);
-      console.log(`   - Total Credits Earned: ${totalCreditsEarned}`);
+      console.log(`   - Total BetaCoins Earned: ${totalBetaCoinsEarned}`);
       console.log(`   - Pending Referrals: ${pendingReferrals}`);
       console.log(`   - Completed Referrals: ${completedReferrals}`);
     }
@@ -160,7 +160,7 @@ async function testReferralSystem() {
 
     if (wallet) {
       console.log(`✅ User wallet found:`);
-      console.log(`   - Credits: ${wallet.betame_credits}`);
+      console.log(`   - BetaCoins: ${wallet.betame_betacoins}`);
       console.log(`   - Stones: ${wallet.betame_stones}`);
     } else {
       console.log(`❌ No wallet found for user ${testUser.id}`);
@@ -180,7 +180,7 @@ async function testReferralSystem() {
     if (transactions && transactions.length > 0) {
       console.log(`✅ Found ${transactions.length} referral transactions:`);
       transactions.forEach((tx, index) => {
-        console.log(`   ${index + 1}. ${tx.amount} credits - ${tx.description} (${new Date(tx.created_at).toLocaleDateString()})`);
+        console.log(`   ${index + 1}. ${tx.amount} BetaCoins - ${tx.description} (${new Date(tx.created_at).toLocaleDateString()})`);
       });
     } else {
       console.log(`ℹ️  No referral transactions found for user ${testUser.id}`);

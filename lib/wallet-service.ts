@@ -4,7 +4,7 @@ export interface WalletData {
   id?: string;
   user_id: string;
   betame_stones: number;
-  betame_credits: number;
+  betame_betacoins: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -22,7 +22,7 @@ export interface PurchasedFeature {
 export interface Transaction {
   id?: string;
   user_id: string;
-  type: 'conversion' | 'feature_purchase' | 'credit_purchase' | 'daily_checkin' | 'referral_bonus' | 'service_payment' | 'service_payment_received';
+  type: 'conversion' | 'feature_purchase' | 'betacoin_purchase' | 'daily_checkin' | 'referral_bonus' | 'service_payment' | 'service_payment_received';
   amount: number;
   description: string;
   created_at?: string;
@@ -82,7 +82,7 @@ export class WalletService {
 
       // If wallet exists, return it
       if (data) {
-        console.log('✅ Found existing wallet for user:', userId, 'with', data.betame_credits, 'credits');
+        console.log('✅ Found existing wallet for user:', userId, 'with', data.betame_betacoins, 'BetaCoins');
         
         // Handle backward compatibility for column name changes
         if (data.premium_stones !== undefined && data.betame_stones === undefined) {
@@ -114,7 +114,7 @@ export class WalletService {
       const defaultWallet: WalletData = {
         user_id: userId,
         betame_stones: 10, // Default starting stones
-        betame_credits: 5, // Default starting credits
+        betame_betacoins: 5, // Default starting BetaCoins
       };
 
       // Use admin client to bypass RLS when creating wallets for other users
@@ -130,7 +130,7 @@ export class WalletService {
         return null;
       }
 
-      console.log('✅ Created new wallet for user:', userId, 'with', data.betame_stones, 'stones and', data.betame_credits, 'credits');
+      console.log('✅ Created new wallet for user:', userId, 'with', data.betame_stones, 'stones and', data.betame_betacoins, 'BetaCoins');
       return data;
     } catch (error) {
       console.error('Error in createWallet:', error);
@@ -179,7 +179,7 @@ export class WalletService {
       }
 
       if (data) {
-        console.log('✅ Admin found wallet for user:', userId, 'with', data.betame_credits, 'credits');
+        console.log('✅ Admin found wallet for user:', userId, 'with', data.betame_betacoins, 'BetaCoins');
         
         // Handle backward compatibility
         if (data.premium_stones !== undefined && data.betame_stones === undefined) {
@@ -212,7 +212,7 @@ export class WalletService {
         .from('wallets')
         .update({
           betame_stones: walletData.betame_stones,
-          betame_credits: walletData.betame_credits,
+          betame_betacoins: walletData.betame_betacoins,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', walletData.user_id)
@@ -290,9 +290,9 @@ export class WalletService {
   }
 
   /**
-   * Convert premium stones to BetaMe credits
+   * Convert premium stones to BetaCoins
    */
-  static async convertStonesToCredits(
+  static async convertStonesToBetaCoins(
     userId: string,
     stonesAmount: number
   ): Promise<{ success: boolean; wallet?: WalletData; error?: string }> {
@@ -308,14 +308,14 @@ export class WalletService {
         return { success: false, error: 'Insufficient BetaMe stones' };
       }
 
-      // Calculate credits (10 stones = 1 credit)
-      const creditsToAdd = Math.floor(stonesAmount / 10);
+      // Calculate BetaCoins (10 stones = 1 BetaCoin)
+      const betaCoinsToAdd = Math.floor(stonesAmount / 10);
       
       // Update wallet
       const updatedWallet = await this.updateWallet({
         ...wallet,
         betame_stones: wallet.betame_stones - stonesAmount,
-        betame_credits: wallet.betame_credits + creditsToAdd,
+        betame_betacoins: wallet.betame_betacoins + betaCoinsToAdd,
       });
 
       if (!updatedWallet) {
@@ -327,12 +327,12 @@ export class WalletService {
         user_id: userId,
         type: 'conversion',
         amount: stonesAmount,
-        description: `Converted ${stonesAmount} stones to ${creditsToAdd} credits`,
+        description: `Converted ${stonesAmount} stones to ${betaCoinsToAdd} BetaCoins`,
       });
 
       return { success: true, wallet: updatedWallet };
     } catch (error) {
-      console.error('Error in convertStonesToCredits:', error);
+      console.error('Error in convertStonesToBetaCoins:', error);
       return { success: false, error: 'Conversion failed' };
     }
   }
@@ -352,15 +352,15 @@ export class WalletService {
         return { success: false, error: 'Wallet not found' };
       }
 
-      // Check if user has enough credits
-      if (wallet.betame_credits < boostCost) {
-        return { success: false, error: 'Insufficient BetaMe credits' };
+      // Check if user has enough BetaCoins
+      if (wallet.betame_betacoins < boostCost) {
+        return { success: false, error: 'Insufficient BetaCoins' };
       }
 
       // Update wallet
       const updatedWallet = await this.updateWallet({
         ...wallet,
-        betame_credits: wallet.betame_credits - boostCost,
+        betame_betacoins: wallet.betame_betacoins - boostCost,
       });
 
       if (!updatedWallet) {
@@ -398,18 +398,18 @@ export class WalletService {
         return { success: false, error: 'Failed to get or create wallet' };
       }
 
-      // Check if user has enough credits
-      if (wallet.betame_credits < amount) {
+      // Check if user has enough BetaCoins
+      if (wallet.betame_betacoins < amount) {
         return { 
           success: false, 
-          error: `Insufficient credits. You have ${wallet.betame_credits} credits but need ${amount}` 
+          error: `Insufficient BetaCoins. You have ${wallet.betame_betacoins} BetaCoins but need ${amount}` 
         };
       }
 
-      // Update wallet - deduct credits
+      // Update wallet - deduct BetaCoins
       const updatedWallet = await this.updateWallet({
         ...wallet,
-        betame_credits: wallet.betame_credits - amount,
+        betame_betacoins: wallet.betame_betacoins - amount,
       });
 
       if (!updatedWallet) {
@@ -424,7 +424,7 @@ export class WalletService {
         description: `Payment for service: ${serviceTitle}`,
       });
 
-      console.log(`✅ Service payment processed: ${amount} credits deducted for ${serviceTitle}`);
+      console.log(`✅ Service payment processed: ${amount} BetaCoins deducted for ${serviceTitle}`);
       return { success: true, wallet: updatedWallet };
     } catch (error) {
       console.error('Error in processServicePayment:', error);
@@ -454,10 +454,10 @@ export class WalletService {
         }
       }
 
-      // Update wallet - add credits using admin access (cross-user operation)
+      // Update wallet - add BetaCoins using admin access (cross-user operation)
       const updatedWallet = await this.updateWalletAdmin({
         ...wallet,
-        betame_credits: wallet.betame_credits + amount,
+        betame_betacoins: wallet.betame_betacoins + amount,
       });
 
       if (!updatedWallet) {
@@ -472,7 +472,7 @@ export class WalletService {
         description: `Payment received for service: ${serviceTitle}${serviceId ? ` (ID: ${serviceId})` : ''}`,
       });
 
-      console.log(`✅ Service payment received: ${amount} credits added for ${serviceTitle}`);
+      console.log(`✅ Service payment received: ${amount} BetaCoins added for ${serviceTitle}`);
       return { success: true, wallet: updatedWallet };
     } catch (error) {
       console.error('Error in recordServicePaymentReceived:', error);
@@ -672,7 +672,7 @@ export class WalletService {
   }
 
   /**
-   * Purchase a feature with credits
+   * Purchase a feature with BetaCoins
    */
   static async purchaseFeature(
     userId: string,
@@ -698,14 +698,14 @@ export class WalletService {
       
       // Check wallet balance
       const wallet = await this.getWallet(userId);
-      if (!wallet || wallet.betame_credits < totalCost) {
-        return { success: false, error: 'Insufficient BetaMe credits' };
+      if (!wallet || wallet.betame_betacoins < totalCost) {
+        return { success: false, error: 'Insufficient BetaCoins' };
       }
 
-      // Deduct credits
+      // Deduct BetaCoins
       await this.updateWallet({
         ...wallet,
-        betame_credits: wallet.betame_credits - totalCost,
+        betame_betacoins: wallet.betame_betacoins - totalCost,
       });
 
       // Add purchased feature
@@ -813,6 +813,109 @@ export class WalletService {
   }
 
   /**
+   * Apply a purchased feature to a specific service
+   */
+  static async applyFeatureToService(
+    userId: string,
+    featureId: string,
+    serviceId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data: feature, error: fetchError } = await supabase
+        .from('purchased_features')
+        .select('*')
+        .eq('id', featureId)
+        .eq('user_id', userId)
+        .single();
+
+      if (fetchError || !feature) {
+        return { success: false, error: 'Feature not found' };
+      }
+
+      if (feature.quantity <= 0) {
+        return { success: false, error: 'Feature already used' };
+      }
+
+      if (new Date(feature.expires_at) < new Date()) {
+        return { success: false, error: 'Feature expired' };
+      }
+
+      // Decrease feature quantity
+      const { error: updateError } = await supabase
+        .from('purchased_features')
+        .update({ quantity: feature.quantity - 1 })
+        .eq('id', featureId);
+
+      if (updateError) {
+        console.error('Error using feature:', updateError);
+        return { success: false, error: 'Failed to use feature' };
+      }
+
+      // Apply the feature to the service based on feature type
+      const featureUpdates: any = {};
+      const featureExpiry = new Date();
+      
+      switch (feature.feature_type) {
+        case 'feature_2x':
+          featureUpdates.is_trending = true;
+          featureExpiry.setDate(featureExpiry.getDate() + 14); // 2 weeks
+          break;
+        case 'boost_instant':
+          featureUpdates.is_nearby = true;
+          featureExpiry.setDate(featureExpiry.getDate() + 7); // 1 week
+          break;
+        case 'showcase_max':
+          featureUpdates.is_trending = true;
+          featureUpdates.is_nearby = true;
+          featureExpiry.setDate(featureExpiry.getDate() + 14); // 2 weeks
+          break;
+        case 'boost_feature_max':
+          featureUpdates.is_trending = true;
+          featureUpdates.is_nearby = true;
+          featureExpiry.setDate(featureExpiry.getDate() + 14); // 2 weeks
+          break;
+      }
+
+      // Update the service with the boost features
+      const { error: serviceUpdateError } = await supabase
+        .from('services')
+        .update({
+          ...featureUpdates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', serviceId)
+        .eq('user_id', userId); // Ensure user owns the service
+
+      if (serviceUpdateError) {
+        console.error('Error applying feature to service:', serviceUpdateError);
+        return { success: false, error: 'Failed to apply feature to service' };
+      }
+
+      // Record the feature application
+      const { error: recordError } = await supabase
+        .from('service_feature_applications')
+        .insert({
+          user_id: userId,
+          service_id: serviceId,
+          feature_type: feature.feature_type,
+          feature_name: feature.feature_name,
+          applied_at: new Date().toISOString(),
+          expires_at: featureExpiry.toISOString(),
+        });
+
+      if (recordError) {
+        console.error('Error recording feature application:', recordError);
+        // Don't fail the operation if recording fails
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error in applyFeatureToService:', error);
+      return { success: false, error: 'Failed to apply feature to service' };
+    }
+  }
+
+  /**
    * Process referral bonus
    */
   static async processReferralBonus(
@@ -874,11 +977,11 @@ export class WalletService {
   }
 
   /**
-   * Add credits to user's wallet (for credit purchases)
+   * Add BetaCoins to user's wallet (for BetaCoin purchases)
    */
-  static async addCredits(
+  static async addBetaCoins(
     userId: string,
-    creditsAmount: number
+    betaCoinsAmount: number
   ): Promise<{ success: boolean; wallet?: WalletData; error?: string }> {
     try {
       // Get current wallet
@@ -887,10 +990,10 @@ export class WalletService {
         return { success: false, error: 'Wallet not found' };
       }
 
-      // Update wallet with new credits
+      // Update wallet with new BetaCoins
       const updatedWallet = await this.updateWallet({
         ...wallet,
-        betame_credits: wallet.betame_credits + creditsAmount,
+        betame_betacoins: wallet.betame_betacoins + betaCoinsAmount,
       });
 
       if (!updatedWallet) {
@@ -900,15 +1003,15 @@ export class WalletService {
       // Record transaction
       await this.recordTransaction({
         user_id: userId,
-        type: 'credit_purchase',
-        amount: creditsAmount,
-        description: `Purchased ${creditsAmount} BetaMe credits`,
+        type: 'betacoin_purchase',
+        amount: betaCoinsAmount,
+        description: `Purchased ${betaCoinsAmount} BetaCoins`,
       });
 
       return { success: true, wallet: updatedWallet };
     } catch (error) {
-      console.error('Error in addCredits:', error);
-      return { success: false, error: 'Failed to add credits' };
+      console.error('Error in addBetaCoins:', error);
+      return { success: false, error: 'Failed to add BetaCoins' };
     }
   }
 }

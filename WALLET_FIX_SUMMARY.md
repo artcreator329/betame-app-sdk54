@@ -9,7 +9,7 @@
 **Fix Applied**:
 - Changed `getWallet` method to use `.maybeSingle()` instead of `.single()`
 - Added automatic wallet creation when no wallet exists
-- New users get 10 BetaMe stones and 5 credits by default
+- New users get 10 BetaMe stones and 5 BetaCoins by default
 
 ### 2. **Payment Failures**
 **Problem**: Service payments were failing because wallet operations couldn't complete
@@ -39,7 +39,7 @@
    - Handles backward compatibility for column name changes
 
 2. **Added `createWallet` method**:
-   - Creates new wallet with 10 stones and 5 credits
+   - Creates new wallet with 10 stones and 5 BetaCoins
    - Proper error handling and logging
 
 3. **Added `ensureWalletExists` method**:

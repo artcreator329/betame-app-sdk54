@@ -44,12 +44,12 @@ async function demoReferralFlow() {
     // Check initial wallet balance
     const { data: initialWallet } = await supabase
       .from('wallets')
-      .select('betame_credits')
+      .select('betame_betacoins')
       .eq('user_id', referrer.id)
       .single();
 
-    const initialCredits = initialWallet ? initialWallet.betame_credits : 0;
-    console.log(`✅ Initial credits: ${initialCredits}`);
+    const initialBetaCoins = initialWallet ? initialWallet.betame_betacoins : 0;
+    console.log(`✅ Initial BetaCoins: ${initialBetaCoins}`);
 
     // Step 2: Simulate a new user signup with referral code
     console.log('\n2. Simulating new user signup...');
@@ -76,12 +76,12 @@ async function demoReferralFlow() {
       // Check updated wallet balance
       const { data: updatedWallet } = await supabase
         .from('wallets')
-        .select('betame_credits')
+        .select('betame_betacoins')
         .eq('user_id', referrer.id)
         .single();
 
-      const newCredits = updatedWallet ? updatedWallet.betame_credits : 0;
-      console.log(`✅ New credits: ${newCredits} (+${newCredits - initialCredits})`);
+      const newBetaCoins = updatedWallet ? updatedWallet.betame_betacoins : 0;
+      console.log(`✅ New BetaCoins: ${newBetaCoins} (+${newBetaCoins - initialBetaCoins})`);
 
       // Check referral record
       const { data: referralRecord } = await supabase
@@ -93,8 +93,8 @@ async function demoReferralFlow() {
       if (referralRecord) {
         console.log('✅ Referral record created:');
         console.log(`   - Status: ${referralRecord.status}`);
-        console.log(`   - Signup credits: ${referralRecord.signup_credits_awarded}`);
-        console.log(`   - Total credits: ${referralRecord.total_credits_earned}`);
+        console.log(`   - Signup BetaCoins: ${referralRecord.signup_betacoins_awarded}`);
+        console.log(`   - Total BetaCoins: ${referralRecord.total_betacoins_earned}`);
       }
 
       // Step 3: Simulate first job completion
@@ -113,12 +113,12 @@ async function demoReferralFlow() {
         // Check final wallet balance
         const { data: finalWallet } = await supabase
           .from('wallets')
-          .select('betame_credits')
+          .select('betame_betacoins')
           .eq('user_id', referrer.id)
           .single();
 
-        const finalCredits = finalWallet ? finalWallet.betame_credits : 0;
-        console.log(`✅ Final credits: ${finalCredits} (+${finalCredits - initialCredits} total)`);
+        const finalBetaCoins = finalWallet ? finalWallet.betame_betacoins : 0;
+        console.log(`✅ Final BetaCoins: ${finalBetaCoins} (+${finalBetaCoins - initialBetaCoins} total)`);
 
         // Check updated referral record
         const { data: updatedReferral } = await supabase
@@ -130,9 +130,9 @@ async function demoReferralFlow() {
         if (updatedReferral) {
           console.log('✅ Updated referral record:');
           console.log(`   - Status: ${updatedReferral.status}`);
-          console.log(`   - Signup credits: ${updatedReferral.signup_credits_awarded}`);
-          console.log(`   - First job credits: ${updatedReferral.first_job_credits_awarded}`);
-          console.log(`   - Total credits: ${updatedReferral.total_credits_earned}`);
+          console.log(`   - Signup BetaCoins: ${updatedReferral.signup_betacoins_awarded}`);
+          console.log(`   - First job BetaCoins: ${updatedReferral.first_job_betacoins_awarded}`);
+          console.log(`   - Total BetaCoins: ${updatedReferral.total_betacoins_earned}`);
         }
       }
 
@@ -150,7 +150,7 @@ async function demoReferralFlow() {
       if (transactions && transactions.length > 0) {
         console.log('✅ Recent referral transactions:');
         transactions.forEach((tx, index) => {
-          console.log(`   ${index + 1}. +${tx.amount} credits - ${tx.description}`);
+          console.log(`   ${index + 1}. +${tx.amount} BetaCoins - ${tx.description}`);
         });
       }
 
@@ -170,9 +170,9 @@ async function demoReferralFlow() {
 
     console.log('\n🎉 Referral flow demo completed!');
     console.log('\nSummary:');
-    console.log('- User signs up with referral code → Referrer gets 15 credits');
-    console.log('- Referred user completes first job → Referrer gets 25 more credits');
-    console.log('- Total potential earnings per referral: 40 credits');
+    console.log('- User signs up with referral code → Referrer gets 15 BetaCoins');
+    console.log('- Referred user completes first job → Referrer gets 25 more BetaCoins');
+    console.log('- Total potential earnings per referral: 40 BetaCoins');
 
   } catch (error) {
     console.error('❌ Demo error:', error);

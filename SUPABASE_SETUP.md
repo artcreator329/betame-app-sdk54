@@ -36,14 +36,14 @@ The Supabase client is configured in `lib/supabase.ts` with:
 - `id` (UUID, Primary Key)
 - `user_id` (UUID, Foreign Key to auth.users)
 - `premium_stones` (Integer, default: 0)
-- `betame_credits` (Integer, default: 0)
+- `betame_betacoins` (Integer, default: 0)
 - `created_at` (Timestamp)
 - `updated_at` (Timestamp)
 
 #### `transactions`
 - `id` (UUID, Primary Key)
 - `user_id` (UUID, Foreign Key to auth.users)
-- `type` (Text, enum: 'conversion', 'boost_purchase', 'credit_purchase')
+- `type` (Text, enum: 'conversion', 'boost_purchase', 'betacoin_purchase')
 - `amount` (Integer)
 - `description` (Text)
 - `created_at` (Timestamp)
@@ -52,7 +52,7 @@ The Supabase client is configured in `lib/supabase.ts` with:
 
 - **Row Level Security (RLS)** enabled on all tables
 - Users can only access their own wallet and transaction data
-- Automatic wallet creation for new users (10 stones, 5 credits)
+- Automatic wallet creation for new users (10 stones, 5 BetaCoins)
 - Automatic timestamp updates
 
 ## Wallet Service
@@ -63,7 +63,7 @@ The `WalletService` class in `lib/wallet-service.ts` provides:
 
 - `getWallet(userId)` - Retrieve user's wallet data
 - `updateWallet(walletData)` - Update wallet balances
-- `convertStonesToCredits(userId, stonesAmount)` - Convert stones to credits
+- `convertStonesToBetaCoins(userId, stonesAmount)` - Convert stones to BetaCoins
 - `purchaseBoost(userId, boostCost, boostTitle)` - Purchase visibility boosts
 - `recordTransaction(transaction)` - Record transaction history
 - `getTransactionHistory(userId)` - Get user's transaction history
@@ -76,8 +76,8 @@ import { WalletService } from '../lib/wallet-service';
 // Get user's wallet
 const wallet = await WalletService.getWallet(userId);
 
-// Convert stones to credits
-const result = await WalletService.convertStonesToCredits(userId, 20);
+// Convert stones to BetaCoins
+const result = await WalletService.convertStonesToBetaCoins(userId, 20);
 if (result.success) {
   console.log('Conversion successful:', result.wallet);
 } else {
@@ -104,7 +104,7 @@ This project uses **remote Supabase only** - no local development setup is requi
 
 1. **Authentication Integration**: Set up Supabase Auth for user management
 2. **Real-time Updates**: Implement real-time wallet balance updates
-3. **Payment Integration**: Add payment processing for purchasing credits
+3. **Payment Integration**: Add payment processing for purchasing BetaCoins
 4. **Analytics**: Track wallet usage and conversion rates
 5. **Testing**: Add unit tests for wallet service methods
 

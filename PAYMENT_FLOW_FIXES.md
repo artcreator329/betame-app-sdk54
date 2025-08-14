@@ -17,7 +17,7 @@
 **Solution**: 
 - ✅ **Payment Options Modal** - Buyer now gets prompted with payment choices
 - ✅ **Two Payment Methods**:
-  1. **"Pay with Credits"** → Uses escrow system (platform holds funds)
+  1. **"Pay with BetaCoins"** → Uses escrow system (platform holds funds)
   2. **"Pay with Card/Bank"** → Uses external payment modal
 - ✅ **Clear Pricing Display** - Shows service amount, platform fee (5%), and total
 
@@ -32,21 +32,21 @@
    Choose Payment Method
    
    Service: [Service Title]
-   Amount: 500 credits
-   Platform Fee: 25 credits  
-   Total: 525 credits
+   Amount: 500 BetaCoins
+   Platform Fee: 25 BetaCoins  
+   Total: 525 BetaCoins
    
    How would you like to pay?
    
-   [Cancel] [Pay with Credits] [Pay with Card/Bank]
+   [Cancel] [Pay with BetaCoins] [Pay with Card/Bank]
    ```
 
-### **Step 2A: Pay with Credits (Escrow)**
-1. Buyer selects "Pay with Credits"
+### **Step 2A: Pay with BetaCoins (Escrow)**
+1. Buyer selects "Pay with BetaCoins"
 2. System processes escrow payment:
-   - Deducts 525 credits from buyer wallet
-   - Holds 500 credits in platform escrow
-   - Platform keeps 25 credits as fee
+   - Deducts 525 BetaCoins from buyer wallet
+   - Holds 500 BetaCoins in platform escrow
+   - Platform keeps 25 BetaCoins as fee
 3. Seller gets notification: "Payment held in escrow"
 4. Job tracking begins in seller dashboard
 
@@ -65,11 +65,11 @@
 ✅ **Choice & Flexibility** - Buyers can choose their preferred payment method
 ✅ **Transparent Pricing** - Clear breakdown of costs before payment
 ✅ **Familiar Flow** - Maintains existing external payment option
-✅ **Escrow Benefits** - Credits option provides instant escrow protection
+✅ **Escrow Benefits** - BetaCoins option provides instant escrow protection
 
 ### **Business Benefits:**
 ✅ **Revenue Generation** - 5% platform fee on all transactions
-✅ **Payment Flexibility** - Supports both credit and external payments  
+✅ **Payment Flexibility** - Supports both BetaCoin and external payments  
 ✅ **Trust Building** - Escrow system creates confidence
 ✅ **Lower Risk** - Platform holds funds until completion
 
@@ -90,7 +90,7 @@
 - All tables have proper RLS policies
 
 ### **✅ Payment Methods:**
-1. **Credits (Escrow)** - Platform holds funds, releases on completion
+1. **BetaCoins (Escrow)** - Platform holds funds, releases on completion
 2. **External** - Card/bank payments via existing payment gateway
 
 ### **✅ User Interfaces:**
@@ -111,9 +111,9 @@
 
 The payment system now provides:
 
-1. **Buyer Choice** - Credits or external payment options
+1. **Buyer Choice** - BetaCoins or external payment options
 2. **Platform Revenue** - 5% fee on all transactions  
-3. **Trust & Safety** - Escrow protection for credit payments
+3. **Trust & Safety** - Escrow protection for BetaCoin payments
 4. **Flexibility** - Supports existing external payment flows
 5. **Professional UX** - Clear pricing and payment options
 

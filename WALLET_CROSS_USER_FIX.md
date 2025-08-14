@@ -8,7 +8,7 @@ The payment system was failing because of **Row Level Security (RLS) violations 
 1. **User A** (buyer) initiates payment ✅ - Works (own wallet)
 2. **User A** records transaction ✅ - Works (own transaction)  
 3. **System** tries to create wallet for **User B** (provider) ❌ - **RLS VIOLATION**
-4. **System** tries to add credits to **User B's** wallet ❌ - **RLS VIOLATION**
+4. **System** tries to add BetaCoins to **User B's** wallet ❌ - **RLS VIOLATION**
 
 **The Problem**: When User A is authenticated, they can only access their own wallet due to RLS policies. The system cannot create or update wallets for other users (service providers).
 
@@ -34,7 +34,7 @@ await supabaseAdmin.from('wallets').insert(defaultWallet)
 
 **Service Payment Processing:**
 1. **Buyer Payment** (User A) - Uses regular client ✅
-2. **Provider Credit** (User B) - Uses admin client ✅
+2. **Provider BetaCoin** (User B) - Uses admin client ✅
 3. **Transaction Recording** - Uses appropriate client based on user ✅
 
 #### **4. Code Changes Made**
@@ -61,7 +61,7 @@ static async recordServicePaymentReceived(providerId: string, amount: number) {
   // Update wallet with admin access
   const updatedWallet = await this.updateWalletAdmin({
     ...wallet,
-    betame_credits: wallet.betame_credits + amount,
+    betame_betacoins: wallet.betame_betacoins + amount,
   });
   
   // Record transaction with admin access
@@ -79,13 +79,13 @@ static async recordServicePaymentReceived(providerId: string, amount: number) {
 ✅ **Payment Flow:**
 1. User A pays for service → ✅ Deducts from User A's wallet
 2. System creates User B's wallet if needed → ✅ Uses admin client
-3. System adds credits to User B's wallet → ✅ Uses admin client  
+3. System adds BetaCoins to User B's wallet → ✅ Uses admin client  
 4. Both transactions recorded → ✅ Proper access for each
 
 ✅ **No More Errors:**
 - ❌ `Error creating wallet: {"code": "42501", "message": "new row violates row-level security policy"}`
-- ✅ `✅ Created new wallet for user: [provider-id] with 10 stones and 5 credits`
-- ✅ `✅ Service payment received: 500 credits added for [service-title]`
+- ✅ `✅ Created new wallet for user: [provider-id] with 10 stones and 5 BetaCoins`
+- ✅ `✅ Service payment received: 500 BetaCoins added for [service-title]`
 
 ### **🔐 Security Considerations:**
 
@@ -98,13 +98,13 @@ static async recordServicePaymentReceived(providerId: string, amount: number) {
 **Admin Client Usage:**
 - Only used for system-initiated cross-user operations
 - Used for wallet creation during payments
-- Used for crediting service providers
+- Used for crediting service providers with BetaCoins
 - Not accessible to regular users
 
 ### **📋 Testing Checklist:**
 
-1. **User Payment** → Should deduct credits from buyer
-2. **Provider Credit** → Should add credits to provider (auto-create wallet if needed)
+1. **User Payment** → Should deduct BetaCoins from buyer
+2. **Provider BetaCoin** → Should add BetaCoins to provider (auto-create wallet if needed)
 3. **Transaction History** → Should record both payment and receipt
 4. **New Users** → Should auto-create wallets during first payment
 5. **Error Handling** → Should show meaningful errors, not RLS violations

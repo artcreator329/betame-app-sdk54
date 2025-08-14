@@ -31,18 +31,18 @@ export class PaymentService {
         };
       }
 
-      // Check if buyer has sufficient credits
-      if (buyerWallet.betame_credits < finalPrice) {
+      // Check if buyer has sufficient BetaCoins
+      if (buyerWallet.betame_betacoins < finalPrice) {
         return {
           success: false,
-          error: `Insufficient credits. You need ${finalPrice} credits but only have ${buyerWallet.betame_credits} credits.`
+          error: `Insufficient BetaCoins. You need ${finalPrice} BetaCoins but only have ${buyerWallet.betame_betacoins} BetaCoins.`
         };
       }
 
-      // Deduct credits from buyer
+      // Deduct BetaCoins from buyer
       const updatedBuyerWallet = {
         ...buyerWallet,
-        betame_credits: buyerWallet.betame_credits - finalPrice
+        betame_betacoins: buyerWallet.betame_betacoins - finalPrice
       };
 
       const buyerUpdateResult = await WalletService.updateWallet(updatedBuyerWallet);
@@ -72,10 +72,10 @@ export class PaymentService {
         };
       }
 
-      // Add credits to seller (escrow - will be released when job is completed)
+      // Add BetaCoins to seller (escrow - will be released when job is completed)
       const updatedSellerWallet = {
         ...sellerWallet,
-        betame_credits: sellerWallet.betame_credits + finalPrice
+        betame_betacoins: sellerWallet.betame_betacoins + finalPrice
       };
 
       const sellerUpdateResult = await WalletService.updateWallet(updatedSellerWallet);
