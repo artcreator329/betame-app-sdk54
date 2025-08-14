@@ -13,13 +13,14 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles, ShoppingBag } from 'lucide-react-native';
+import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles, ShoppingBag, History } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { WalletService, WalletData, PurchasedFeature } from '../lib/wallet-service';
 import { useAuth } from '../contexts/AuthContext';
 import { useColors, useTheme } from '@/contexts/ThemeContext';
 import { BetaCoinPurchase } from '../components/BetaCoinPurchase';
 import { ServiceSelectionModal } from '../components/ServiceSelectionModal';
+import { TransactionHistory } from '../components/TransactionHistory';
 import { Service } from '../lib/service-service';
 
 interface Feature {
@@ -93,6 +94,7 @@ export default function WalletScreen() {
   const [showBetaCoinPurchase, setShowBetaCoinPurchase] = useState(false);
   const [showServiceSelection, setShowServiceSelection] = useState(false);
   const [selectedPurchasedFeature, setSelectedPurchasedFeature] = useState<PurchasedFeature | null>(null);
+  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -302,9 +304,17 @@ export default function WalletScreen() {
               <ArrowLeft size={24} color={colors.text.primary} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Wallet</Text>
-            <TouchableOpacity onPress={navigateToCheckIn}>
-              <Trophy size={24} color={colors.status.warning} />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity 
+                onPress={() => setShowTransactionHistory(true)}
+                style={styles.headerButton}
+              >
+                <History size={24} color={colors.text.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={navigateToCheckIn}>
+                <Trophy size={24} color={colors.status.warning} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -348,6 +358,39 @@ export default function WalletScreen() {
                </TouchableOpacity>
              </View>
           </ImageBackground>
+        </View>
+
+        {/* Transaction History Quick Access */}
+        <View style={styles.transactionSection}>
+          <View style={styles.transactionHeader}>
+            <Text style={[styles.transactionTitle, { color: colors.text.primary }]}>Recent Transactions</Text>
+            <TouchableOpacity 
+              onPress={() => setShowTransactionHistory(true)}
+              style={[styles.viewAllButton, { backgroundColor: colors.primary.main }]}
+            >
+              <History size={16} color="white" />
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity 
+            style={[styles.transactionQuickAccess, { backgroundColor: colors.background.tertiary }]}
+            onPress={() => setShowTransactionHistory(true)}
+          >
+            <View style={styles.transactionQuickContent}>
+              <View style={[styles.transactionQuickIcon, { backgroundColor: colors.primary.main }]}>
+                <TrendingUp size={24} color="white" />
+              </View>
+              <View style={styles.transactionQuickInfo}>
+                <Text style={[styles.transactionQuickTitle, { color: colors.text.primary }]}>
+                  Transaction History
+                </Text>
+                <Text style={[styles.transactionQuickSubtitle, { color: colors.text.secondary }]}>
+                  View all your Stones, BetaCoins, and real currency transactions
+                </Text>
+              </View>
+              <ArrowLeft size={20} color={colors.text.secondary} style={{ transform: [{ rotate: '180deg' }] }} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Conversion Section */}
@@ -596,6 +639,15 @@ export default function WalletScreen() {
           onServiceSelect={handleServiceSelect}
           featureTitle={selectedPurchasedFeature?.feature_name || ''}
         />
+
+        {/* Transaction History Modal */}
+        {user?.id && (
+          <TransactionHistory
+            visible={showTransactionHistory}
+            onClose={() => setShowTransactionHistory(false)}
+            userId={user.id}
+          />
+        )}
       </ScrollView>
       </SafeAreaView>
     </>
@@ -621,6 +673,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerButton: {
+    padding: 4,
   },
   placeholder: {
     width: 24,
@@ -1308,5 +1368,69 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Transaction History Styles
+  transactionSection: {
+    padding: 20,
+    paddingTop: 10,
+  },
+  transactionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  transactionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  viewAllText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  transactionQuickAccess: {
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  transactionQuickContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transactionQuickIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  transactionQuickInfo: {
+    flex: 1,
+  },
+  transactionQuickTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  transactionQuickSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
