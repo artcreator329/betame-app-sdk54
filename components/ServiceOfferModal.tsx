@@ -19,6 +19,7 @@ import { Service } from '../lib/service-service';
 import { GOOGLE_PLACES_API_KEY } from '../config/maps';
 import Colors from '../constants/Colors';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { FeeService } from '../lib/fee-service';
 
 // Conditional import for MapView to handle native module availability
 let MapView: any = null;
@@ -419,6 +420,36 @@ export function ServiceOfferModal({
                 Original Price: ${safeService.price} {safeService.currency}
               </Text>
             </View>
+          </View>
+
+          {/* Fee Breakdown */}
+          <View style={styles.feeBreakdown}>
+            <Text style={styles.feeBreakdownTitle}>Payment Breakdown</Text>
+            {(() => {
+              const finalPrice = customPrice ? parseFloat(customPrice) : safeService.price;
+              const fees = FeeService.calculateFees(finalPrice);
+              return (
+                <View style={styles.feeDetails}>
+                  <View style={styles.feeRow}>
+                    <Text style={styles.feeLabel}>Service Amount:</Text>
+                    <Text style={styles.feeAmount}>{safeService.currency}{finalPrice.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.feeRow}>
+                    <Text style={styles.feeLabel}>Your Processing Fee (2.2%):</Text>
+                    <Text style={styles.feeAmount}>+{safeService.currency}{fees.buyerFee.toFixed(2)}</Text>
+                  </View>
+                  <View style={[styles.feeRow, styles.totalRow]}>
+                    <Text style={styles.totalLabel}>You Pay:</Text>
+                    <Text style={styles.totalAmount}>{safeService.currency}{fees.buyerTotal.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.sellerInfo}>
+                    <Text style={styles.sellerInfoText}>
+                      Service provider receives {safeService.currency}{fees.sellerReceives.toFixed(2)} after platform fee
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
           </View>
 
           {/* Custom Price */}
@@ -1389,5 +1420,64 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1976D2',
     lineHeight: 20,
+  },
+  feeBreakdown: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  feeBreakdownTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 12,
+  },
+  feeDetails: {
+    gap: 8,
+  },
+  feeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  feeLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  feeAmount: {
+    fontSize: 14,
+    color: '#1A1A1A',
+    fontWeight: '500',
+  },
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  totalAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#007AFF',
+  },
+  sellerInfo: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  sellerInfoText: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 });

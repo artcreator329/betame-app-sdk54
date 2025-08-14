@@ -981,7 +981,12 @@ export class WalletService {
    */
   static async addBetaCoins(
     userId: string,
-    betaCoinsAmount: number
+    betaCoinsAmount: number,
+    transactionDetails?: {
+      transactionAmount?: number;
+      processingFee?: number;
+      baseAmount?: number;
+    }
   ): Promise<{ success: boolean; wallet?: WalletData; error?: string }> {
     try {
       // Get current wallet
@@ -1000,12 +1005,19 @@ export class WalletService {
         return { success: false, error: 'Failed to update wallet' };
       }
 
+      // Record transaction with fee details
+      const transactionAmount = transactionDetails?.transactionAmount || betaCoinsAmount;
+      const processingFee = transactionDetails?.processingFee || 0;
+      const description = processingFee > 0 
+        ? `Purchased ${betaCoinsAmount} BetaCoins (Total: RM${transactionAmount.toFixed(2)}, Processing Fee: RM${processingFee.toFixed(2)})`
+        : `Purchased ${betaCoinsAmount} BetaCoins`;
+
       // Record transaction
       await this.recordTransaction({
         user_id: userId,
         type: 'betacoin_purchase',
         amount: betaCoinsAmount,
-        description: `Purchased ${betaCoinsAmount} BetaCoins`,
+        description,
       });
 
       return { success: true, wallet: updatedWallet };

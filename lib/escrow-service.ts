@@ -1,6 +1,7 @@
 import { supabase, supabaseAdmin } from './supabase';
 import { WalletService } from './wallet-service';
 import { notificationService } from './notification-service';
+import { FeeService } from './fee-service';
 
 export interface EscrowTransaction {
   id?: string;
@@ -83,21 +84,22 @@ export class EscrowService {
     try {
       console.log('💰 Processing payment to escrow:', { serviceOfferId, buyerId, sellerId, amount });
 
-      // Calculate platform fee (5% of service amount)
-      const platformFee = Math.floor(amount * 0.05);
-      const totalAmount = amount + platformFee;
+      // Use new fee calculation service
+      const feeCalculation = FeeService.calculateFees(amount);
+      const buyerTotal = feeCalculation.buyerTotal;
+      const sellerPlatformFee = feeCalculation.platformFee;
 
-      // Check if buyer has sufficient BetaCoins
+      // Check if buyer has sufficient BetaCoins (including buyer processing fee)
       const buyerWallet = await WalletService.getWallet(buyerId);
-      if (!buyerWallet || buyerWallet.betame_betacoins < totalAmount) {
+      if (!buyerWallet || buyerWallet.betame_betacoins < buyerTotal) {
         return { 
           success: false, 
-          error: `Insufficient BetaCoins. Need ${totalAmount} BetaCoins (${amount} + ${platformFee} platform fee), have ${buyerWallet?.betame_betacoins || 0}` 
+          error: `Insufficient BetaCoins. Need ${buyerTotal} BetaCoins (${amount} service + ${feeCalculation.buyerFee} processing fee), have ${buyerWallet?.betame_betacoins || 0}` 
         };
       }
 
-      // Deduct BetaCoins from buyer's wallet
-      const paymentResult = await WalletService.processServicePayment(buyerId, totalAmount, serviceTitle, serviceOfferId);
+      // Deduct total amount (service + buyer processing fee) from buyer's wallet
+      const paymentResult = await WalletService.processServicePayment(buyerId, buyerTotal, serviceTitle, serviceOfferId);
       if (!paymentResult.success) {
         return { success: false, error: paymentResult.error };
       }
@@ -108,8 +110,8 @@ export class EscrowService {
         buyer_id: buyerId,
         seller_id: sellerId,
         amount: amount,
-        platform_fee: platformFee,
-        total_amount: totalAmount,
+        platform_fee: sellerPlatformFee,
+        total_amount: buyerTotal,
         status: 'held',
         service_title: serviceTitle,
         service_description: serviceDescription,
@@ -126,7 +128,7 @@ export class EscrowService {
       if (escrowError) {
         console.error('Error creating escrow transaction:', escrowError);
         // Refund buyer if escrow creation fails
-        await WalletService.recordServicePaymentReceived(buyerId, totalAmount, `Refund for failed escrow: ${serviceTitle}`);
+        await WalletService.recordServicePaymentReceived(buyerId, buyerTotal, `Refund for failed escrow: ${serviceTitle}`);
         return { success: false, error: 'Failed to create escrow transaction' };
       }
 
@@ -185,7 +187,7 @@ export class EscrowService {
       }
 
       // Update platform wallet
-      await this.updatePlatformWallet(totalAmount, platformFee);
+      await this.updatePlatformWallet(buyerTotal, sellerPlatformFee);
 
       // Send notification to seller
       await this.sendJobNotification(
@@ -431,11 +433,14 @@ export class EscrowService {
         })
         .eq('id', escrowTransaction.id);
 
-      // Release payment to seller
+      // Calculate seller payout after platform fees
+      const sellerPayout = escrowTransaction.amount - escrowTransaction.platform_fee;
+      
+      // Release payment to seller (after deducting platform fee)
       const releaseResult = await WalletService.recordServicePaymentReceived(
         escrowTransaction.seller_id,
-        escrowTransaction.amount,
-        escrowTransaction.service_title,
+        sellerPayout,
+        `${escrowTransaction.service_title} (after ${FeeService.formatAmount(escrowTransaction.platform_fee)} platform fee)`,
         escrowTransaction.service_offer_id
       );
 
@@ -450,7 +455,7 @@ export class EscrowService {
       await this.sendJobNotification(
         jobStatusId,
         'system_notification',
-        `Payment of ${escrowTransaction.amount} BetaCoins has been released to your wallet!`,
+        `Payment of ${sellerPayout} BetaCoins has been released to your wallet! (${escrowTransaction.amount} service fee - ${escrowTransaction.platform_fee} platform fee)`,
         buyerId
       );
 

@@ -9,19 +9,20 @@ import {
   Alert,
   Image,
   ImageBackground,
+  Animated,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X, ShoppingCart, Sparkles } from 'lucide-react-native';
 import { useColors } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { WalletService } from '@/lib/wallet-service';
+import { FeeService } from '@/lib/fee-service';
 
 interface BetaCoinBundle {
   id: string;
   betacoins: number;
-  price: string;
   priceValue: number;
-  validity: string;
   image: any;
   badge?: string;
 }
@@ -36,50 +37,38 @@ const betacoinBundles: BetaCoinBundle[] = [
   {
     id: '1',
     betacoins: 20,
-    price: 'RM 5',
     priceValue: 5,
-    validity: '1-year validity',
     image: require('../assets/images/credit-purchase/RM5.png'),
   },
   {
     id: '2',
     betacoins: 100,
-    price: 'RM 20',
     priceValue: 20,
-    validity: '1-year validity',
     image: require('../assets/images/credit-purchase/RM20.png'),
   },
   {
     id: '3',
     betacoins: 250,
-    price: 'RM 35',
     priceValue: 35,
-    validity: '1-year validity',
     image: require('../assets/images/credit-purchase/RM35.png'),
     badge: 'Popular',
   },
   {
     id: '4',
     betacoins: 600,
-    price: 'RM 80',
     priceValue: 80,
-    validity: '1-year validity',
     image: require('../assets/images/credit-purchase/RM80.png'),
   },
   {
     id: '5',
     betacoins: 1000,
-    price: 'RM 100',
     priceValue: 100,
-    validity: '1-year validity',
     image: require('../assets/images/credit-purchase/RM100.png'),
   },
   {
     id: '6',
     betacoins: 2000,
-    price: 'RM 180',
     priceValue: 180,
-    validity: '1-year validity',
     image: require('../assets/images/credit-purchase/RM180.png'),
     badge: 'Best Value',
   },
@@ -97,19 +86,44 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
       return;
     }
 
+    // Calculate fees for this purchase
+    const fees = FeeService.calculateBetaCoinPurchaseFees(bundle.priceValue);
+    
+    // Show confirmation with fee breakdown
+    Alert.alert(
+      'Confirm Purchase',
+      `BetaCoins: ${bundle.betacoins}\nBase Price: RM${bundle.priceValue.toFixed(2)}\nProcessing Fee (2.2%): RM${fees.processingFee.toFixed(2)}\nTotal: RM${fees.totalAmount.toFixed(2)}`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Confirm',
+          onPress: () => processPurchase(bundle, fees)
+        }
+      ]
+    );
+  };
+
+  const processPurchase = async (bundle: BetaCoinBundle, fees: any) => {
     setIsProcessing(true);
     
     try {
-      // Simulate payment processing
+      // Simulate payment processing with fees
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Add BetaCoins to wallet
-      const result = await WalletService.addBetaCoins(user.id, bundle.betacoins);
+      // Record the transaction with the total amount including fees
+      const result = await WalletService.addBetaCoins(user.id, bundle.betacoins, {
+        transactionAmount: fees.totalAmount,
+        processingFee: fees.processingFee,
+        baseAmount: fees.baseAmount
+      });
       
       if (result.success) {
         Alert.alert(
           'Purchase Successful!',
-          `${bundle.betacoins} BetaCoins have been added to your wallet.`,
+          `${bundle.betacoins} BetaCoins have been added to your wallet.\nTotal paid: RM${fees.totalAmount.toFixed(2)} (including RM${fees.processingFee.toFixed(2)} processing fee)`,
           [
             {
               text: 'OK',
@@ -131,14 +145,25 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
     }
   };
 
-  const renderBundle = (bundle: BetaCoinBundle) => (
-    <TouchableOpacity
-      key={bundle.id}
-      style={[styles.bundleCard, { borderColor: colors.border.main }]}
-      onPress={() => handlePurchase(bundle)}
-      disabled={isProcessing}
-    >
-      <ImageBackground
+  const renderBundle = (bundle: BetaCoinBundle) => {
+    const fees = FeeService.calculateBetaCoinPurchaseFees(bundle.priceValue);
+    
+    return (
+      <Animated.View key={bundle.id}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.bundleCard,
+            { borderColor: colors.border.main },
+            {
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+              opacity: pressed ? 0.9 : 1,
+            }
+          ]}
+          onPress={() => handlePurchase(bundle)}
+          disabled={isProcessing}
+          android_ripple={{ color: 'rgba(0, 0, 0, 0.1)' }}
+        >
+              <ImageBackground
         source={bundle.image}
         style={styles.bundleImage}
         imageStyle={styles.bundleImageStyle}
@@ -149,31 +174,18 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
           </View>
         )}
         
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.8)']}
-          style={styles.bundleGradient}
+        <ImageBackground
+          source={bundle.image}
+          style={styles.bundleContent}
+          imageStyle={styles.bundleImageStyle}
         >
-          <View style={styles.bundleContent}>
-            <View style={styles.bundleHeader}>
-              <Sparkles size={20} color="#FFD700" />
-              <Text style={styles.bundleCredits}>{bundle.betacoins} BetaCoins</Text>
-            </View>
-            
-            <Text style={styles.bundlePrice}>{bundle.price}</Text>
-            <Text style={styles.bundleValidity}>{bundle.validity}</Text>
-            <Text style={styles.processingFee}>+2.2% processing fee</Text>
-            
-            <View style={[styles.purchaseButton, { backgroundColor: colors.primary.main }]}>
-              <ShoppingCart size={16} color="white" />
-              <Text style={styles.purchaseButtonText}>
-                {isProcessing ? 'Processing...' : 'Purchase'}
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
+          <View style={styles.bundleContentOverlay} />
+        </ImageBackground>
       </ImageBackground>
-    </TouchableOpacity>
-  );
+        </Pressable>
+      </Animated.View>
+    );
+  };
 
   return (
     <Modal
@@ -208,7 +220,8 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
             <Text style={[styles.footerText, { color: colors.text.secondary }]}>
               • All purchases include 2.2% processing fee{'\n'}
               • BetaCoins are valid for 1 year from purchase{'\n'}
-              • Can be exchanged with Diamond Stones (10 stones = 1 BetaCoin)
+              • Can be exchanged with Diamond Stones (10 stones = 1 BetaCoin){'\n'}
+              • Service providers pay 11% or RM4.90 platform fee (whichever higher)
             </Text>
           </View>
         </ScrollView>
@@ -252,64 +265,47 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   bundleCard: {
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 1,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginBottom: 12,
+    backgroundColor: '#1A1A1A',
+    height: 64,
   },
   bundleImage: {
-    height: 200,
-    justifyContent: 'flex-end',
+    height: '100%',
+    width: '100%',
+    backgroundColor: 'transparent',
   },
   bundleImageStyle: {
-    borderRadius: 16,
+    borderRadius: 20,
   },
   badge: {
     position: 'absolute',
-    top: 12,
     right: 12,
+    top: '50%',
+    transform: [{ translateY: -12 }],
+    backgroundColor: '#0891B2',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    zIndex: 1,
   },
   badgeText: {
     color: 'white',
     fontSize: 12,
-    fontWeight: 'bold',
-  },
-  bundleGradient: {
-    padding: 16,
-  },
-  bundleContent: {
-    gap: 8,
-  },
-  bundleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  bundleCredits: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  bundlePrice: {
-    color: 'white',
-    fontSize: 20,
     fontWeight: '600',
   },
-  bundleValidity: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
+  bundleContent: {
+    flex: 1,
+    height: '100%',
+    width: '100%',
   },
-  processingFee: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-    fontStyle: 'italic',
+  bundleImageStyle: {
+    borderRadius: 20,
+  },
+  bundleContentOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.01)', // Very subtle overlay for depth
   },
   purchaseButton: {
     flexDirection: 'row',

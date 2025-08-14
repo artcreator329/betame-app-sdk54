@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Check, X, Edit3, Clock, Tag } from 'lucide-react-native';
 import { LiveChatMessage } from '../types/chat';
 import { Colors } from '../constants/Colors';
+import { FeeService } from '../lib/fee-service';
 
 interface ServiceOfferMessageProps {
   message: LiveChatMessage;
@@ -218,6 +219,26 @@ export function ServiceOfferMessage({
                 <Text style={[styles.priceText, (isRejected || isCancelled) && styles.rejectedText]}>
                   RM {serviceData.customPrice || serviceData.price || '0'}
                 </Text>
+              )}
+              
+              {/* Fee Breakdown */}
+              {!isCurrentUser && !isRejected && !isCancelled && (
+                <View style={styles.feeBreakdown}>
+                  {(() => {
+                    const finalPrice = serviceData.customPrice || serviceData.price || 0;
+                    const fees = FeeService.calculateFees(finalPrice);
+                    return (
+                      <>
+                        <Text style={styles.feeText}>
+                          You pay: RM{fees.buyerTotal.toFixed(2)} (incl. RM{fees.buyerFee.toFixed(2)} processing fee)
+                        </Text>
+                        <Text style={styles.sellerFeeText}>
+                          Provider receives: RM{fees.sellerReceives.toFixed(2)}
+                        </Text>
+                      </>
+                    );
+                  })()}
+                </View>
               )}
             </View>
 
@@ -561,6 +582,35 @@ export function ServiceOfferMessage({
                       <Text style={styles.modalPrice}>
                         RM {serviceData.customPrice || serviceData.price || '0'}
                       </Text>
+                    )}
+                    
+                    {/* Fee Breakdown in Modal */}
+                    {!isCurrentUser && !isRejected && !isCancelled && (
+                      <View style={styles.modalFeeBreakdown}>
+                        {(() => {
+                          const finalPrice = serviceData.customPrice || serviceData.price || 0;
+                          const fees = FeeService.calculateFees(finalPrice);
+                          return (
+                            <>
+                              <View style={styles.modalFeeRow}>
+                                <Text style={styles.modalFeeLabel}>Service Amount:</Text>
+                                <Text style={styles.modalFeeAmount}>RM{finalPrice.toFixed(2)}</Text>
+                              </View>
+                              <View style={styles.modalFeeRow}>
+                                <Text style={styles.modalFeeLabel}>Processing Fee (2.2%):</Text>
+                                <Text style={styles.modalFeeAmount}>+RM{fees.buyerFee.toFixed(2)}</Text>
+                              </View>
+                              <View style={[styles.modalFeeRow, styles.modalFeeTotal]}>
+                                <Text style={styles.modalFeeTotalLabel}>You Pay:</Text>
+                                <Text style={styles.modalFeeTotalAmount}>RM{fees.buyerTotal.toFixed(2)}</Text>
+                              </View>
+                              <Text style={styles.modalSellerNote}>
+                                Provider receives RM{fees.sellerReceives.toFixed(2)} after platform fee
+                              </Text>
+                            </>
+                          );
+                        })()}
+                      </View>
                     )}
                   </View>
 
@@ -1112,6 +1162,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
+  feeBreakdown: {
+    marginTop: 8,
+    gap: 2,
+  },
+  feeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  sellerFeeText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontStyle: 'italic',
+  },
   detailsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1390,6 +1454,50 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     textDecorationLine: 'line-through',
     marginBottom: 4,
+  },
+  modalFeeBreakdown: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 8,
+    gap: 8,
+  },
+  modalFeeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalFeeLabel: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+  },
+  modalFeeAmount: {
+    fontSize: 14,
+    color: Colors.text.primary,
+    fontWeight: '500',
+  },
+  modalFeeTotal: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border.light,
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  modalFeeTotalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text.primary,
+  },
+  modalFeeTotalAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.primary.main,
+  },
+  modalSellerNote: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
   },
   modalJobTitle: {
     fontSize: 16,
