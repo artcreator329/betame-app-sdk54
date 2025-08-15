@@ -37,7 +37,7 @@ function ServiceVariantCard({ variant, onPress }: ServiceVariantCardProps) {
         </Text>
         {!isMainServiceVariant ? (
           <Text style={styles.variantPrice}>
-            From {variant.currency}{variant.price}
+            From {variant.currency}{String(variant.price)}
           </Text>
         ) : (
           <Text style={styles.variantMainService}>

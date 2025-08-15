@@ -582,6 +582,12 @@ export class NotificationService {
       console.error('❌ NotificationService: senderId is required for chat notifications');
       return;
     }
+
+    // CRITICAL: Prevent self-notifications - don't notify if sender is the same as recipient
+    if (senderId === participantId) {
+      console.log('ℹ️ NotificationService: Skipping self-notification - sender and recipient are the same:', senderId);
+      return;
+    }
     
     // Ensure service is initialized
     if (!this.isInitialized) {
@@ -638,6 +644,12 @@ export class NotificationService {
       serviceTitle,
       senderId
     });
+
+    // CRITICAL: Prevent self-notifications - don't notify if sender is the same as recipient
+    if (senderId === participantId) {
+      console.log('ℹ️ NotificationService: Skipping self-offer-notification - sender and recipient are the same:', senderId);
+      return;
+    }
 
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'offer' as const,

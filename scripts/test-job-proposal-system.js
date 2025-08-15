@@ -96,29 +96,44 @@ async function testJobProposalSystem() {
     // 4. Test job activities query
     console.log('\n4. Testing job activities query...');
     
+    // First get the activities
     const { data: activities, error: activitiesError } = await supabase
       .from('job_proposal_activities')
-      .select(`
-        *,
-        actor_profile:profiles!job_proposal_activities_actor_id_fkey (
-          id,
-          full_name,
-          avatar_url
-        )
-      `)
+      .select('*')
       .eq('target_user_id', testJob.user_id)
       .limit(5);
+
+    let activitiesWithProfiles = activities;
+    
+    if (activities && activities.length > 0) {
+      // Get unique actor IDs
+      const actorIds = [...new Set(activities.map(a => a.actor_id))];
+
+      // Fetch profiles for all actors
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', actorIds);
+
+      if (!profilesError && profiles) {
+        // Combine activities with profiles
+        activitiesWithProfiles = activities.map(activity => {
+          const actorProfile = profiles.find(p => p.id === activity.actor_id) || null;
+          return { ...activity, actor_profile: actorProfile };
+        });
+      }
+    }
 
     if (activitiesError) {
       console.log(`❌ Error fetching activities: ${activitiesError.message}`);
     } else {
-      console.log(`✅ Found ${activities.length} activities for job owner`);
-      if (activities.length > 0) {
+      console.log(`✅ Found ${activitiesWithProfiles.length} activities for job owner`);
+      if (activitiesWithProfiles.length > 0) {
         console.log(`   Sample activity:`, {
-          id: activities[0].id,
-          type: activities[0].activity_type,
-          description: activities[0].activity_description,
-          actor: activities[0].actor_profile?.full_name
+          id: activitiesWithProfiles[0].id,
+          type: activitiesWithProfiles[0].activity_type,
+          description: activitiesWithProfiles[0].activity_description,
+          actor: activitiesWithProfiles[0].actor_profile?.full_name
         });
       }
     }

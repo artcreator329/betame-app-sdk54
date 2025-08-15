@@ -1326,24 +1326,8 @@ export class SupabaseChatService {
           const transformedMessage = await this.transformMessage(payload.new, currentUserId);
           console.log('📡 SupabaseChatService: Transformed message:', transformedMessage);
           
-          // Trigger notification if message is from another user
-          if (payload.new.sender_id !== currentUserId) {
-            const participant = await this.getParticipantById(payload.new.sender_id);
-            if (participant) {
-              try {
-                await notificationService.addChatNotification({
-                  participantId: currentUserId, // Send notification TO the current user (recipient)
-                  participantName: participant.name, // FROM the sender
-                  participantImage: participant.image,
-                  message: payload.new.message,
-                  chatId: chatId,
-                  senderId: payload.new.sender_id, // Add sender ID for navigation
-                });
-              } catch (error) {
-                console.error('Error adding notification:', error);
-              }
-            }
-          }
+          // Note: Notifications are already handled in sendMessage() method to avoid duplicates
+          // This subscription is only for real-time message updates in the UI
           
           onMessage(transformedMessage);
         }
@@ -1458,29 +1442,9 @@ export class SupabaseChatService {
             .single();
           
           if (chat) {
-            // Trigger notification if message is from another user
-            console.log('🔔 UserChats: Message received from:', payload.new.sender_id, 'Current user:', userId);
-             if (payload.new.sender_id !== userId) {
-               console.log('🔔 UserChats: Message is from another user, creating notification...');
-               const participant = await this.getParticipantById(payload.new.sender_id);
-               if (participant) {
-                 console.log('🔔 UserChats: Participant found:', participant.name, 'Adding notification...');
-                 await notificationService.addChatNotification({
-                   participantId: userId, // Send notification TO the current user
-                   participantName: participant.name,
-                   participantImage: participant.image,
-                   message: payload.new.message,
-                   chatId: payload.new.chat_id,
-                   senderId: payload.new.sender_id, // Add senderId for navigation
-                 });
-                 console.log('✅ UserChats: Notification added successfully');
-               } else {
-                 console.log('❌ UserChats: Participant not found for notification');
-               }
-             } else {
-               console.log('ℹ️ UserChats: Message is from current user, no notification needed');
-             }
-            
+            // Note: Notifications are already handled in sendMessage() method to avoid duplicates
+            // This subscription is only for chat list updates
+            console.log('🔔 UserChats: Message received, updating chat list for chat:', chat.id);
             onChatUpdate(chat.id);
           }
         }
@@ -1708,35 +1672,9 @@ export class SupabaseChatService {
             console.log('🔔 Chat check result:', chat);
 
             if (chat) {
-              console.log('🔔 Message is for this user, getting participant...');
-              const participant = await this.getParticipantById(payload.new.sender_id);
-              console.log('🔔 Participant result:', participant);
-              
-              if (participant) {
-                console.log('🔔 Creating notification for:', participant.name);
-                console.log('🔔 NOTIFICATION DATA:', {
-                  participantId: payload.new.sender_id,
-                  participantName: participant.name,
-                  message: payload.new.message,
-                  messageType: payload.new.message_type,
-                  chatId: payload.new.chat_id
-                });
-                try {
-                  await notificationService.addChatNotification({
-                    participantId: userId, // Send notification TO the current user (recipient)
-                    participantName: participant.name,
-                    participantImage: participant.image,
-                    message: payload.new.message,
-                    chatId: payload.new.chat_id,
-                    senderId: payload.new.sender_id, // Add senderId for navigation
-                  });
-                  console.log('✅ Global notification created successfully for message type:', payload.new.message_type);
-                } catch (error) {
-                  console.error('❌ Error adding global notification:', error);
-                }
-              } else {
-                console.log('❌ Participant not found for notification');
-              }
+              // Note: Notifications are already handled in sendMessage() method to avoid duplicates
+              // This global subscription should not create additional notifications
+              console.log('🔔 Message is for this user, but notifications handled in sendMessage()');
             } else {
               console.log('ℹ️ Message not for this user');
             }

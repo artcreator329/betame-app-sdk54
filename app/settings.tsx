@@ -8,9 +8,11 @@ import {
   Image,
   Alert,
   Switch,
+  Share,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, Briefcase, Share, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet } from 'lucide-react-native';
+import { ArrowLeft, Heart, Briefcase, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme, useColors } from '@/contexts/ThemeContext';
@@ -108,6 +110,105 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleInviteFriends = () => {
+    // Open referral modal instead of generic share
+    router.push('/(tabs)/profile');
+    // This will trigger the referral modal from the profile page
+    setTimeout(() => {
+      // You could also create a direct referral route if needed
+      Alert.alert(
+        'Invite Friends',
+        'Use your referral code to invite friends and earn rewards!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'View Referrals', onPress: () => router.push('/(tabs)/profile') }
+        ]
+      );
+    }, 500);
+  };
+
+  const handleBecomeSeller = () => {
+    router.push('/create-service-listing');
+  };
+
+  const handleMyAccount = () => {
+    router.push('/edit-profile');
+  };
+
+  const handlePrivacySecurity = () => {
+    Alert.alert(
+      'Privacy & Security',
+      'Choose an option:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Privacy Policy', onPress: () => router.push('/privacy-policy') },
+        { text: 'Account Security', onPress: () => router.push('/edit-profile') },
+      ]
+    );
+  };
+
+  const handlePaymentMethods = () => {
+    router.push('/wallet');
+  };
+
+  const handleLanguageRegion = () => {
+    Alert.alert(
+      'Language & Region',
+      'Current Settings:\n• Language: English\n• Region: Malaysia\n\nMore language options will be available in future updates.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleCommunityLegal = () => {
+    Alert.alert(
+      'Community & Legal',
+      'Choose an option:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Terms of Service', onPress: () => router.push('/terms-of-service') },
+        { text: 'Privacy Policy', onPress: () => router.push('/privacy-policy') },
+        { text: 'Community Guidelines', onPress: () => Alert.alert('Coming Soon', 'Community guidelines will be available soon.') },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account? This action cannot be undone.\n\nAll your data, including:\n• Profile information\n• Service listings\n• Transaction history\n• Messages and reviews\n• BetaCoin balance\n\nWill be permanently deleted.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            // Second confirmation
+            Alert.alert(
+              'Final Confirmation',
+              'This is your final warning. Deleting your account is permanent and cannot be reversed.\n\nTo proceed with account deletion, please contact our support team who will assist you with the process and ensure all your data is properly removed.',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+                {
+                  text: 'Contact Support',
+                  style: 'destructive',
+                  onPress: () => {
+                    Linking.openURL('mailto:customer.service@betame.com.my?subject=Account Deletion Request&body=I would like to permanently delete my BetaMe account. Please assist me with this process.\n\nAccount Email: ' + (userProfile?.email || 'Not available') + '\nReason for deletion: [Please specify your reason]\n\nI understand this action is permanent and cannot be undone.');
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -180,25 +281,19 @@ export default function SettingsScreen() {
           <SettingItem
             icon={<Briefcase size={20} color={colors.text.primary} />}
             title="Become a seller"
-            onPress={() => router.push('/become-seller')}
+            onPress={handleBecomeSeller}
           />
           
           <SettingItem
-            icon={<Share size={20} color={colors.text.primary} />}
+            icon={<ShareIcon size={20} color={colors.text.primary} />}
             title="Invite friends"
-            onPress={() => console.log('Invite friends')}
-          />
-          
-          <SettingItem
-            icon={<SettingsIcon size={20} color={colors.text.primary} />}
-            title="Settings"
-            onPress={() => console.log('Settings')}
+            onPress={handleInviteFriends}
           />
           
           <SettingItem
             icon={<User size={20} color={colors.text.primary} />}
             title="My account"
-            onPress={() => router.push('/my-account')}
+            onPress={handleMyAccount}
           />
 
           <SettingItem
@@ -210,19 +305,19 @@ export default function SettingsScreen() {
           <SettingItem
             icon={<Shield size={20} color={colors.text.primary} />}
             title="Privacy & Security"
-            onPress={() => console.log('Privacy & Security')}
+            onPress={handlePrivacySecurity}
           />
 
           <SettingItem
             icon={<CreditCard size={20} color={colors.text.primary} />}
             title="Payment Methods"
-            onPress={() => console.log('Payment Methods')}
+            onPress={handlePaymentMethods}
           />
 
           <SettingItem
             icon={<Globe size={20} color={colors.text.primary} />}
             title="Language & Region"
-            onPress={() => console.log('Language & Region')}
+            onPress={handleLanguageRegion}
           />
 
           <SettingItem
@@ -237,37 +332,37 @@ export default function SettingsScreen() {
           <SettingItem
             icon={<HelpCircle size={20} color={colors.text.primary} />}
             title="Support"
-            onPress={() => console.log('Support')}
+            onPress={() => router.push('/support')}
           />
 
           <SettingItem
             icon={<MessageCircle size={20} color={colors.text.primary} />}
             title="Contact Us"
-            onPress={() => console.log('Contact Us')}
+            onPress={() => router.push('/contact-us')}
           />
           
           <SettingItem
             icon={<Users size={20} color={colors.text.primary} />}
             title="Community & legal"
-            onPress={() => console.log('Community & legal')}
+            onPress={handleCommunityLegal}
           />
 
           <SettingItem
             icon={<FileText size={20} color={colors.text.primary} />}
             title="Terms of Service"
-            onPress={() => console.log('Terms of Service')}
+            onPress={() => router.push('/terms-of-service')}
           />
 
           <SettingItem
             icon={<Shield size={20} color={colors.text.primary} />}
             title="Privacy Policy"
-            onPress={() => console.log('Privacy Policy')}
+            onPress={() => router.push('/privacy-policy')}
           />
           
           <SettingItem
             icon={<Info size={20} color={colors.text.primary} />}
             title="About us"
-            onPress={() => console.log('About us')}
+            onPress={() => router.push('/about-us')}
           />
           
           <SettingItem
@@ -279,9 +374,21 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* Danger Zone - Delete Account */}
+        <View style={[styles.dangerZone, { backgroundColor: colors.background.tertiary }]}>
+          <SettingItem
+            icon={<User size={20} color={colors.status.error} />}
+            title="Delete Account"
+            hasArrow={false}
+            isLogout={true}
+            onPress={handleDeleteAccount}
+          />
+        </View>
+
         {/* App Version */}
         <View style={styles.versionContainer}>
           <Text style={[styles.versionText, { color: colors.text.secondary }]}>BetaMe v1.0.0</Text>
+          <Text style={[styles.copyrightText, { color: colors.text.secondary }]}>© 2025 Betame Sdn. Bhd.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -355,6 +462,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 8,
   },
+  dangerZone: {
+    marginHorizontal: 20,
+    marginTop: 32,
+    borderRadius: 12,
+    paddingVertical: 8,
+  },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -388,5 +501,10 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 14,
+    marginBottom: 4,
+  },
+  copyrightText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

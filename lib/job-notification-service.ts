@@ -46,18 +46,32 @@ export class JobNotificationService {
           
           // Fetch the complete activity data with related information
           try {
-            const { data, error } = await supabase
+            // First get the activity
+            const { data: activity, error: activityError } = await supabase
               .from('job_proposal_activities')
-              .select(`
-                *,
-                actor_profile:profiles!job_proposal_activities_actor_id_fkey (
-                  id,
-                  full_name,
-                  avatar_url
-                )
-              `)
+              .select('*')
               .eq('id', payload.new.id)
               .single();
+
+            if (activityError) {
+              console.error('Error fetching activity:', activityError);
+              return;
+            }
+
+            // Then get the actor profile
+            const { data: actorProfile, error: profileError } = await supabase
+              .from('profiles')
+              .select('id, full_name, avatar_url')
+              .eq('id', activity.actor_id)
+              .single();
+
+            if (profileError) {
+              console.error('Error fetching actor profile:', profileError);
+              return;
+            }
+
+            const data = { ...activity, actor_profile: actorProfile };
+            const error = null;
 
             if (!error && data) {
               onUpdate(data);

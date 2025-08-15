@@ -460,26 +460,44 @@ export class JobService {
    */
   static async getJobActivities(userId: string, limit: number = 50): Promise<JobProposalActivity[]> {
     try {
-      const { data, error } = await supabase
+      // First get the activities
+      const { data: activities, error: activitiesError } = await supabase
         .from('job_proposal_activities')
-        .select(`
-          *,
-          actor_profile:profiles!job_proposal_activities_actor_id_fkey (
-            id,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('target_user_id', userId)
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      if (error) {
-        console.error('Error fetching job activities:', error);
+      if (activitiesError) {
+        console.error('Error fetching job activities:', activitiesError);
         return [];
       }
 
-      return data || [];
+      if (!activities || activities.length === 0) {
+        return [];
+      }
+
+      // Get unique actor IDs
+      const actorIds = [...new Set(activities.map(a => a.actor_id))];
+
+      // Fetch profiles for all actors
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', actorIds);
+
+      if (profilesError) {
+        console.error('Error fetching actor profiles:', profilesError);
+        return activities.map(activity => ({ ...activity, actor_profile: null }));
+      }
+
+      // Combine activities with profiles
+      const activitiesWithProfiles = activities.map(activity => {
+        const actorProfile = profiles?.find(p => p.id === activity.actor_id) || null;
+        return { ...activity, actor_profile: actorProfile };
+      });
+
+      return activitiesWithProfiles;
     } catch (error) {
       console.error('Error in getJobActivities:', error);
       return [];

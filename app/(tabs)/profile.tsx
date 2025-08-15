@@ -14,6 +14,7 @@ import { Service as UIService } from '@/types/service';
 import ServiceCard from '@/components/ServiceCard';
 import { adminService } from '@/lib/admin-service';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import ProfileShareModal from '@/components/ProfileShareModal';
 import { ReferralModal } from '@/components/ReferralModal';
 import { ReferralStatsInline } from '@/components/ReferralStatsInline';
@@ -36,7 +37,7 @@ interface Review {
 }
 
 export default function ProfileScreen() {
-  const [activeTab, setActiveTab] = useState('');
+  const [activeTab, setActiveTab] = useState('My Services');
   const [services, setServices] = useState<any[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [jobListings, setJobListings] = useState<JobListing[]>([]);
@@ -132,7 +133,7 @@ export default function ProfileScreen() {
       setLoading(false);
 
       // Set default active tab based on available content
-      if (!activeTab) {
+      if (activeTab === 'My Services') {
         if (userJobs.length > 0) {
           setActiveTab('I\'m Hiring');
         } else if (userServices.length > 0) {
@@ -429,7 +430,7 @@ export default function ProfileScreen() {
         }
         return (
           <View style={styles.tabSectionContainer}>
-            <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Job Postings ({jobListings.length})</Text>
+            <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Job Postings ({String(jobListings.length)})</Text>
             
             {/* Job Proposal Notifications */}
             {user && unreadJobNotifications > 0 && (
@@ -480,7 +481,7 @@ export default function ProfileScreen() {
                       {job.pending_proposals && job.pending_proposals > 0 && (
                         <View style={[styles.proposalBadge, { backgroundColor: colors.primary.main }]}>
                           <Text style={[styles.proposalBadgeText, { color: colors.text.white }]}>
-                            {job.pending_proposals} new
+                            {String(job.pending_proposals)} new
                           </Text>
                         </View>
                       )}
@@ -495,7 +496,7 @@ export default function ProfileScreen() {
                       <View style={styles.proposalStats}>
                         <View style={styles.proposalStatItem}>
                           <Text style={[styles.proposalStatNumber, { color: colors.primary.main }]}>
-                            {job.total_proposals}
+                            {String(job.total_proposals)}
                           </Text>
                           <Text style={[styles.proposalStatLabel, { color: colors.text.secondary }]}>
                             {job.total_proposals === 1 ? 'Proposal' : 'Proposals'}
@@ -504,7 +505,7 @@ export default function ProfileScreen() {
                         {job.unique_sellers && job.unique_sellers > 0 && (
                           <View style={styles.proposalStatItem}>
                             <Text style={[styles.proposalStatNumber, { color: colors.text.primary }]}>
-                              {job.unique_sellers}
+                              {String(job.unique_sellers)}
                             </Text>
                             <Text style={[styles.proposalStatLabel, { color: colors.text.secondary }]}>
                               {job.unique_sellers === 1 ? 'Applicant' : 'Applicants'}
@@ -523,7 +524,7 @@ export default function ProfileScreen() {
                     <View style={styles.jobDetails}>
                       <View style={styles.jobBudget}>
                         <Text style={[styles.jobBudgetText, { color: colors.text.primary }]}>
-                          {job.payment_type === 'negotiable' ? 'Negotiable' : `${job.currency}${job.budget_amount} (${job.payment_type})`}
+                          {job.payment_type === 'negotiable' ? 'Negotiable' : `${job.currency}${String(job.budget_amount)} (${job.payment_type})`}
                         </Text>
                       </View>
                       <View style={styles.jobStatus}>
@@ -569,7 +570,7 @@ export default function ProfileScreen() {
         }
         return (
           <View style={styles.servicesContent}>
-            <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Available Listings ({services.length})</Text>
+            <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Available Listings ({String(services.length)})</Text>
             {services.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>You don't have any services yet</Text>
@@ -762,47 +763,7 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* Left Side Icons - Vertical Stack */}
-            <View style={styles.leftIconsContainer}>
-              <TouchableOpacity
-                style={styles.leftIcon}
-                onPress={() => router.push('/wallet')}
-              >
-                <WalletFilled size={24} color="#3B82F6" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.leftIcon}
-                onPress={() => router.push('/check-in')}
-              >
-                <TrophyFilled size={24} color="#3B82F6" />
-              </TouchableOpacity>
-            </View>
 
-            {/* Right Side Icons - Horizontal Row */}
-            <View style={styles.rightIconsContainer}>
-              <TouchableOpacity
-                style={styles.rightIcon}
-                onPress={() => router.push('/favorites')}
-              >
-                <HeartFilled size={24} color="#3B82F6" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.rightIcon}
-                onPress={toggleTheme}
-              >
-                {isDarkMode ? (
-                  <SunFilled size={24} color="#3B82F6" />
-                ) : (
-                  <MoonFilled size={24} color="#3B82F6" />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.rightIcon}
-                onPress={() => router.push('/settings')}
-              >
-                <SettingsFilled size={24} color="#3B82F6" />
-              </TouchableOpacity>
-            </View>
 
 
 
@@ -860,6 +821,46 @@ export default function ProfileScreen() {
 
         {/* Action Buttons */}
         <View style={[styles.actionButtons, { backgroundColor: colors.background.primary }]}>
+          {/* Centered Icons Capsule */}
+          <View style={styles.centeredIconsContainer}>
+            <BlurView intensity={50} style={styles.centeredIconsCapsule}>
+              <TouchableOpacity
+                style={styles.centeredIcon}
+                onPress={() => router.push('/wallet')}
+              >
+                <WalletFilled size={24} color="#1F2937" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.centeredIcon}
+                onPress={() => router.push('/check-in')}
+              >
+                <TrophyFilled size={24} color="#1F2937" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.centeredIcon}
+                onPress={() => router.push('/favorites')}
+              >
+                <HeartFilled size={24} color="#DC2626" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.centeredIcon}
+                onPress={toggleTheme}
+              >
+                {isDarkMode ? (
+                  <SunFilled size={24} color="#F59E0B" />
+                ) : (
+                  <MoonFilled size={24} color="#1F2937" />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.centeredIcon}
+                onPress={() => router.push('/settings')}
+              >
+                <SettingsFilled size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </BlurView>
+          </View>
+
           <TouchableOpacity
             style={[styles.chatButton, { backgroundColor: colors.primary.main }]}
             onPress={() => {
@@ -928,7 +929,7 @@ export default function ProfileScreen() {
                 {tab === 'I\'m Hiring' && unreadJobNotifications > 0 && (
                   <View style={[styles.notificationBadge, { backgroundColor: colors.primary.main }]}>
                     <Text style={[styles.notificationBadgeText, { color: colors.text.white }]}>
-                      {unreadJobNotifications > 99 ? '99+' : unreadJobNotifications}
+                      {unreadJobNotifications > 99 ? '99+' : String(unreadJobNotifications)}
                     </Text>
                   </View>
                 )}
@@ -1089,25 +1090,33 @@ const styles = StyleSheet.create({
     elevation: 5,
     zIndex: 15,
   },
-  leftIconsContainer: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    flexDirection: 'column',
-    zIndex: 15,
+  centeredIconsContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  leftIcon: {
-    marginVertical: 8,
-  },
-  rightIconsContainer: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
+  centeredIconsCapsule: {
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 30,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 12,
+    overflow: 'hidden',
     flexDirection: 'row',
-    zIndex: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  rightIcon: {
-    marginHorizontal: 6,
+  centeredIcon: {
+    marginHorizontal: 12,
+    padding: 8,
   },
   profileContent: {
     position: 'absolute',
