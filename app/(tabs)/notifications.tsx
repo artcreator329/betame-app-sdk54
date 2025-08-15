@@ -14,6 +14,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/contexts/ThemeContext';
 import SwipeableNotification from '@/components/SwipeableNotification';
+import NotificationDetailModal from '@/components/NotificationDetailModal';
 import { Notification } from '@/types/notification';
 
 // Filter types
@@ -35,6 +36,8 @@ export default function NotificationsScreen() {
     readStatus: 'all',
     dateRange: 'all',
   });
+  const [selectedNotification, setSelectedNotification] = React.useState<Notification | null>(null);
+  const [showDetailModal, setShowDetailModal] = React.useState(false);
 
   // Debug logging
   React.useEffect(() => {
@@ -112,6 +115,14 @@ export default function NotificationsScreen() {
       await markAsRead(notification.id);
     }
 
+    // Handle marketing, system, and check_in notifications with modal
+    if (notification.type === 'marketing' || notification.type === 'system' || notification.type === 'check_in') {
+      console.log('🔔 Showing notification detail modal for:', notification.type);
+      setSelectedNotification(notification);
+      setShowDetailModal(true);
+      return;
+    }
+
     // Navigate based on notification type
     if (notification.type === 'chat' && notification.data?.participantId) {
       console.log('🔔 Navigating to chat with participant:', notification.data.participantId);
@@ -130,12 +141,6 @@ export default function NotificationsScreen() {
       router.push(`/orders`);
     } else if (notification.type === 'service' && notification.data?.serviceId) {
       router.push(`/service/${notification.data.serviceId}`);
-    } else if (notification.type === 'check_in') {
-      console.log('🔔 Navigating to check-in page');
-      router.push('/check-in');
-    } else if (notification.type === 'marketing') {
-      console.log('🔔 Marketing notification tapped, navigating to home');
-      router.push('/(tabs)');
     } else {
       console.log('🔔 Unknown notification type or missing data:', notification);
     }
@@ -168,6 +173,11 @@ export default function NotificationsScreen() {
       readStatus: 'all',
       dateRange: 'all',
     });
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedNotification(null);
   };
 
   const hasActiveFilters = filters.category !== 'all' || filters.readStatus !== 'all' || filters.dateRange !== 'all';
@@ -484,6 +494,13 @@ export default function NotificationsScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Notification Detail Modal */}
+      <NotificationDetailModal
+        notification={selectedNotification}
+        visible={showDetailModal}
+        onClose={handleCloseDetailModal}
+      />
     </SafeAreaView>
   );
 }
