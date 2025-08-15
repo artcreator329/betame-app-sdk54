@@ -142,72 +142,67 @@ export default function AdminNotificationPanel() {
   };
 
   const sendBroadcastNotification = async () => {
+    console.log('🔍 sendBroadcastNotification called');
+    console.log('🔍 Title:', broadcastTitle);
+    console.log('🔍 Message:', broadcastMessage);
+    console.log('🔍 Type:', broadcastType);
+    console.log('🔍 User ID:', user?.id);
+    
     if (!broadcastTitle.trim() || !broadcastMessage.trim()) {
+      console.log('🔍 Error: Missing title or message');
       Alert.alert('Error', 'Please enter both title and message');
       return;
     }
 
     if (!user?.id) {
+      console.log('🔍 Error: No user ID');
       Alert.alert('Error', 'Admin user not found');
       return;
     }
 
-    Alert.alert(
-      'Send Broadcast Notification',
-      `Are you sure you want to send this ${broadcastType} notification to all users?\n\nTitle: ${broadcastTitle}\nMessage: ${broadcastMessage}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Send',
-          style: 'destructive',
-          onPress: async () => {
-            setIsSending(true);
-            try {
-              // Send broadcast notification via admin service
-              const result = await adminService.sendBroadcastNotification(
-                broadcastTitle,
-                broadcastMessage,
-                broadcastType === 'marketing' ? 'marketing' : 'system'
-              );
+    setIsSending(true);
+    try {
+      // Send broadcast notification via admin service
+      const result = await adminService.sendBroadcastNotification(
+        broadcastTitle,
+        broadcastMessage,
+        broadcastType === 'marketing' ? 'marketing' : 'system'
+      );
 
-              if (result.success) {
-                Alert.alert(
-                  'Success', 
-                  `Broadcast notification sent to ${result.sentCount} users!`
-                );
-                setBroadcastTitle('');
-                setBroadcastMessage('');
-                
-                // Also send to current admin for testing
-                if (broadcastType === 'marketing') {
-                  await notificationService.addMarketingNotification({
-                    userId: user.id,
-                    title: broadcastTitle,
-                    message: broadcastMessage,
-                  });
-                } else {
-                  await notificationService.addNotification({
-                    type: 'system',
-                    title: broadcastTitle,
-                    message: broadcastMessage,
-                    data: { source: 'admin_broadcast' }
-                  }, user.id);
-                }
-                
-                loadStats(); // Refresh stats
-              } else {
-                Alert.alert('Error', result.error || 'Failed to send broadcast notification');
-              }
-            } catch (error) {
-              console.error('Error sending broadcast:', error);
-              Alert.alert('Error', 'Failed to send broadcast notification');
-            } finally {
-              setIsSending(false);
-            }
-          }
+      if (result.success) {
+        Alert.alert(
+          'Success', 
+          `Broadcast notification sent to ${result.sentCount} users!`
+        );
+        setBroadcastTitle('');
+        setBroadcastMessage('');
+        
+        // Also send to current admin for testing
+        if (broadcastType === 'marketing') {
+          await notificationService.addMarketingNotification({
+            userId: user.id,
+            title: broadcastTitle,
+            message: broadcastMessage,
+          });
+        } else {
+          await notificationService.addNotification({
+            type: 'system',
+            title: broadcastTitle,
+            message: broadcastMessage,
+            data: { source: 'admin_broadcast' }
+          }, user.id);
         }
-      ]
-    );
+        
+        loadStats(); // Refresh stats
+      } else {
+        Alert.alert('Error', result.error || 'Failed to send broadcast notification');
+      }
+    } catch (error) {
+      console.error('Error sending broadcast:', error);
+      Alert.alert('Error', 'Failed to send broadcast notification');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const createSampleNotifs = async () => {
@@ -458,7 +453,10 @@ export default function AdminNotificationPanel() {
                 opacity: (broadcastTitle.trim() && broadcastMessage.trim() && !isSending) ? 1 : 0.5
               }
             ]}
-            onPress={sendBroadcastNotification}
+            onPress={() => {
+              console.log('🔍 Send button clicked!');
+              sendBroadcastNotification();
+            }}
             disabled={!broadcastTitle.trim() || !broadcastMessage.trim() || isSending}
           >
             <Send size={18} color="white" />

@@ -898,6 +898,14 @@ export default function ProfileScreen() {
               >
                 <SettingsFilled size={24} color="#1F2937" />
               </TouchableOpacity>
+              {isAdmin && (
+                <TouchableOpacity
+                  style={styles.centeredIcon}
+                  onPress={() => router.push('/admin')}
+                >
+                  <Shield size={24} color="#2196F3" />
+                </TouchableOpacity>
+              )}
             </BlurView>
           </View>
 

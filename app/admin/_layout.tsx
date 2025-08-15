@@ -166,9 +166,9 @@ export default function AdminLayout() {
             <Stack.Screen name="users" />
             <Stack.Screen name="services" />
             <Stack.Screen name="transactions" />
-            <Stack.Screen name="chats" />
-            <Stack.Screen name="notifications" />
-            <Stack.Screen name="analytics" />
+                  <Stack.Screen name="chats" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="analytics" />
             <Stack.Screen name="settings" />
           </Stack>
         </View>

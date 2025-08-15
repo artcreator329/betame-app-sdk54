@@ -10,6 +10,8 @@ import {
   Alert,
   Dimensions,
   Platform,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,8 +35,20 @@ export default function AdminDashboard() {
   const { user, signOut } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Broadcast notification state
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState('Test Broadcast Notification');
+  const [broadcastMessage, setBroadcastMessage] = useState('This is a test broadcast notification from the admin panel.');
+  const [broadcastType, setBroadcastType] = useState<'marketing' | 'system'>('system');
+  const [isSending, setIsSending] = useState(false);
+
+  // Debug modal state changes
+
 
   useEffect(() => {
+    console.log('🔍 AdminDashboard component loaded');
+    console.log('🔍 Management options:', managementOptions.map(opt => opt.title));
     loadDashboardStats();
   }, []);
 
@@ -104,6 +118,57 @@ export default function AdminDashboard() {
         ]
       );
     }
+  };
+
+  const sendBroadcastNotification = async () => {
+    if (!broadcastTitle.trim() || !broadcastMessage.trim()) {
+      Alert.alert('Error', 'Please enter both title and message');
+      return;
+    }
+
+    if (!user?.id) {
+      Alert.alert('Error', 'Admin user not found');
+      return;
+    }
+
+    Alert.alert(
+      'Send Broadcast Notification',
+      `Are you sure you want to send this ${broadcastType} notification to all users?\n\nTitle: ${broadcastTitle}\nMessage: ${broadcastMessage}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          style: 'destructive',
+                      onPress: async () => {
+              setIsSending(true);
+              try {
+                const result = await adminService.sendBroadcastNotification(
+                  broadcastTitle,
+                  broadcastMessage,
+                  broadcastType
+                );
+
+                if (result.success) {
+                  Alert.alert(
+                    'Success', 
+                    `Broadcast notification sent to ${result.sentCount} users!`
+                  );
+                  setBroadcastTitle('');
+                  setBroadcastMessage('');
+                  setShowBroadcastModal(false);
+                } else {
+                  Alert.alert('Error', result.error || 'Failed to send broadcast notification');
+                }
+              } catch (error) {
+                console.error('Error sending broadcast:', error);
+                Alert.alert('Error', 'Failed to send broadcast notification');
+              } finally {
+                setIsSending(false);
+              }
+            }
+        }
+      ]
+    );
   };
 
   const dashboardCards: DashboardCard[] = [
@@ -195,6 +260,13 @@ export default function AdminDashboard() {
       color: '#FF3B30',
     },
     {
+      title: 'Broadcast Notifications',
+      description: 'Send notifications to all users',
+      icon: 'notifications' as keyof typeof Ionicons.glyphMap,
+      route: '',
+      color: '#FF6B35',
+    },
+    {
       title: 'Settings',
       description: 'System settings and configuration',
       icon: 'settings' as keyof typeof Ionicons.glyphMap,
@@ -261,7 +333,13 @@ export default function AdminDashboard() {
                 <TouchableOpacity
                   key={index}
                   style={styles.desktopManagementCard}
-                  onPress={() => router.push(option.route as any)}
+                  onPress={() => {
+                    if (option.route) {
+                      router.push(option.route as any);
+                    } else {
+                      setShowBroadcastModal(true);
+                    }
+                  }}
                 >
                   <View style={[styles.desktopManagementIcon, { backgroundColor: option.color }]}>
                     <Ionicons name={option.icon} size={28} color="white" />
@@ -321,7 +399,13 @@ export default function AdminDashboard() {
             <TouchableOpacity
               key={index}
               style={styles.managementCard}
-              onPress={() => router.push(option.route as any)}
+              onPress={() => {
+                if (option.route) {
+                  router.push(option.route as any);
+                } else {
+                  setShowBroadcastModal(true);
+                }
+              }}
             >
               <View style={[styles.managementIcon, { backgroundColor: option.color }]}>
                 <Ionicons name={option.icon} size={24} color="white" />
@@ -335,6 +419,104 @@ export default function AdminDashboard() {
           ))}
         </View>
       </ScrollView>
+
+      {/* Broadcast Notification Modal */}
+      <Modal
+        visible={showBroadcastModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowBroadcastModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Send Broadcast Notification</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowBroadcastModal(false)}
+              >
+                <Ionicons name="close" size={24} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Type Selection */}
+              <Text style={styles.modalLabel}>Notification Type</Text>
+              <View style={styles.typeSelector}>
+                <TouchableOpacity
+                  style={[
+                    styles.typeButton,
+                    { backgroundColor: broadcastType === 'system' ? '#007AFF' : '#F2F2F7' }
+                  ]}
+                  onPress={() => setBroadcastType('system')}
+                >
+                  <Text style={[
+                    styles.typeButtonText,
+                    { color: broadcastType === 'system' ? 'white' : '#8E8E93' }
+                  ]}>System</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[
+                    styles.typeButton,
+                    { backgroundColor: broadcastType === 'marketing' ? '#007AFF' : '#F2F2F7' }
+                  ]}
+                  onPress={() => setBroadcastType('marketing')}
+                >
+                  <Text style={[
+                    styles.typeButtonText,
+                    { color: broadcastType === 'marketing' ? 'white' : '#8E8E93' }
+                  ]}>Marketing</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Title Input */}
+              <Text style={styles.modalLabel}>Title</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter notification title..."
+                placeholderTextColor="#8E8E93"
+                value={broadcastTitle}
+                onChangeText={setBroadcastTitle}
+                maxLength={100}
+              />
+
+              {/* Message Input */}
+              <Text style={styles.modalLabel}>Message</Text>
+              <TextInput
+                style={[styles.modalInput, styles.modalTextArea]}
+                placeholder="Enter notification message..."
+                placeholderTextColor="#8E8E93"
+                value={broadcastMessage}
+                onChangeText={setBroadcastMessage}
+                multiline
+                numberOfLines={4}
+                maxLength={300}
+              />
+
+              {/* Send Button */}
+              <TouchableOpacity
+                style={[
+                  styles.modalSendButton,
+                  { 
+                    opacity: (broadcastTitle.trim() && broadcastMessage.trim() && !isSending) ? 1 : 0.5
+                  }
+                ]}
+                onPress={() => {
+                  console.log('🔍 Send button clicked!');
+                  sendBroadcastNotification();
+                }}
+                disabled={!broadcastTitle.trim() || !broadcastMessage.trim() || isSending}
+              >
+                <Ionicons name="send" size={18} color="white" />
+                <Text style={styles.modalSendButtonText}>
+                  {isSending ? 'Sending...' : 'Send to All Users'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -619,5 +801,91 @@ const styles = StyleSheet.create({
   managementDescription: {
     fontSize: 14,
     color: '#8E8E93',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '90%',
+    maxWidth: 500,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1D1D1F',
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalContent: {
+    padding: 20,
+  },
+  modalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1D1D1F',
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  typeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  typeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1D1D1F',
+    backgroundColor: 'white',
+    marginBottom: 16,
+  },
+  modalTextArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  modalSendButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    borderRadius: 8,
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  modalSendButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -753,18 +753,42 @@ class AdminService {
    */
   async getNotificationStats() {
     try {
-      // In a real app, these would come from a notifications table
-      // For now, return mock data
+      // Get real notification statistics from the database
+      const [totalNotifications, marketingNotifications, checkInNotifications, systemNotifications, totalUsers] = await Promise.all([
+        supabaseAdmin.from('notifications').select('id', { count: 'exact', head: true }),
+        supabaseAdmin.from('notifications').select('id', { count: 'exact', head: true }).eq('type', 'marketing'),
+        supabaseAdmin.from('notifications').select('id', { count: 'exact', head: true }).eq('type', 'check_in'),
+        supabaseAdmin.from('notifications').select('id', { count: 'exact', head: true }).eq('type', 'system'),
+        supabaseAdmin.from('profiles').select('id', { count: 'exact', head: true }),
+      ]);
+
+      const totalSent = totalNotifications.count || 0;
+      const marketingSent = marketingNotifications.count || 0;
+      const checkInsSent = checkInNotifications.count || 0;
+      const systemNotificationsSent = systemNotifications.count || 0;
+      const totalUsersCount = totalUsers.count || 0;
+
+      // Calculate daily average (last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { count: recentNotifications } = await supabaseAdmin
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', sevenDaysAgo.toISOString());
+
+      const dailyAverage = Math.round((recentNotifications || 0) / 7);
+
       return {
-        totalSent: 1247,
-        marketingSent: 892,
-        checkInsSent: 355,
-        systemNotificationsSent: 156,
-        usersWithPermissions: 1834,
-        totalUsers: 2156,
-        dailyAverage: 45,
-        openRate: 68.5,
-        clickRate: 12.3,
+        totalSent,
+        marketingSent,
+        checkInsSent,
+        systemNotificationsSent,
+        usersWithPermissions: totalUsersCount, // Assume all users have permissions for now
+        totalUsers: totalUsersCount,
+        dailyAverage,
+        openRate: 68.5, // Mock data for now
+        clickRate: 12.3, // Mock data for now
       };
     } catch (error) {
       console.error('Error fetching notification stats:', error);
@@ -788,7 +812,7 @@ class AdminService {
   async sendBroadcastNotification(
     title: string,
     message: string,
-    type: 'marketing' | 'system' | 'announcement',
+    type: 'marketing' | 'system', // Now supports both marketing and system types
     targetUserIds?: string[]
   ): Promise<{ success: boolean; error?: string; sentCount?: number }> {
     try {
@@ -802,6 +826,7 @@ class AdminService {
           .limit(1000); // Limit for safety
 
         if (error) {
+          console.error('Error fetching users for broadcast:', error);
           return { success: false, error: 'Failed to fetch users' };
         }
 
@@ -812,22 +837,53 @@ class AdminService {
         return { success: false, error: 'No users found' };
       }
 
-      // In a real app, you would:
-      // 1. Insert notification records into a notifications table
-      // 2. Queue them for delivery via a background job system
-      // 3. Send push notifications via FCM/APNS
-      
-      // For demo purposes, we'll just log the broadcast
       console.log(`📢 Broadcasting ${type} notification to ${userIds.length} users:`);
       console.log(`Title: ${title}`);
       console.log(`Message: ${message}`);
 
-      // Simulate some processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Send notifications directly to Supabase for all users
+      const notificationPromises = userIds.map(async (userId) => {
+        try {
+          const notificationId = `broadcast_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Insert notification directly into Supabase
+          const { error } = await supabaseAdmin.rpc('create_notification', {
+            p_user_id: userId,
+            p_type: type,
+            p_title: title,
+            p_message: message,
+            p_data: { 
+              source: 'admin_broadcast',
+              broadcastType: type,
+              notificationId
+            },
+            p_id: notificationId,
+          });
+          
+          if (error) {
+            console.error(`Failed to send notification to user ${userId}:`, error);
+            errorCount++;
+          } else {
+            successCount++;
+          }
+        } catch (error) {
+          console.error(`Failed to send notification to user ${userId}:`, error);
+          errorCount++;
+        }
+      });
+
+      // Wait for all notifications to be sent
+      await Promise.allSettled(notificationPromises);
+
+      console.log(`✅ Broadcast completed: ${successCount} successful, ${errorCount} failed`);
 
       return { 
-        success: true, 
-        sentCount: userIds.length 
+        success: successCount > 0, 
+        sentCount: successCount,
+        error: errorCount > 0 ? `${errorCount} notifications failed to send` : undefined
       };
     } catch (error) {
       console.error('Error sending broadcast notification:', error);

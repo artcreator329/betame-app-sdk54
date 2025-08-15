@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { adminService } from '@/lib/admin-service';
 import { referralService } from '@/lib/referral-service';
 import { ReferralInputModal } from '@/components/ReferralInputModal';
+import { AdminSignInChoiceModal } from '@/components/AdminSignInChoiceModal';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -29,6 +30,8 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [newUserId, setNewUserId] = useState<string | null>(null);
+  const [showAdminChoice, setShowAdminChoice] = useState(false);
+  const [adminUser, setAdminUser] = useState<{ id: string; email: string } | null>(null);
   const router = useRouter();
   const { signIn, signUp } = useAuth();
   const videoRef = useRef<Video>(null);
@@ -75,8 +78,12 @@ export default function LoginScreen() {
         const isAdmin = await adminService.isAdmin(result.user.id);
         
         if (isAdmin) {
-          // Navigate to admin dashboard
-          router.replace('/admin');
+          // Show admin choice modal
+          setAdminUser({ 
+            id: result.user.id, 
+            email: result.user.email || email.trim() 
+          });
+          setShowAdminChoice(true);
         } else {
           // Navigate to main app
           router.replace('/(tabs)');
@@ -87,6 +94,18 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAdminChoiceToDashboard = () => {
+    setShowAdminChoice(false);
+    setAdminUser(null);
+    router.replace('/admin');
+  };
+
+  const handleAdminChoiceToApp = () => {
+    setShowAdminChoice(false);
+    setAdminUser(null);
+    router.replace('/(tabs)');
   };
 
   const handleReferralSuccess = () => {
@@ -331,6 +350,14 @@ export default function LoginScreen() {
           userId={newUserId}
         />
       )}
+
+      {/* Admin Sign In Choice Modal */}
+      <AdminSignInChoiceModal
+        visible={showAdminChoice}
+        onContinueToApp={handleAdminChoiceToApp}
+        onGoToDashboard={handleAdminChoiceToDashboard}
+        userEmail={adminUser?.email}
+      />
     </SafeAreaView>
   );
 }
