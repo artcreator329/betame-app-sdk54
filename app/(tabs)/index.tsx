@@ -11,6 +11,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MessageCircle, Heart, ChevronRight, Wallet, MapPin, Calendar } from 'lucide-react-native';
@@ -28,6 +29,8 @@ import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import { useColors } from '@/contexts/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && screenWidth >= 1024;
 
 // Unread message badge component
 const MessageBadge = ({ count }: { count: number }) => {
@@ -195,7 +198,7 @@ export default function HomeScreen() {
   };
 
   const renderBannerItem = ({ item }: { item: BannerSlide }) => (
-    <View style={[styles.bannerSlide, { width: screenWidth - 40 }]}>
+    <View style={[styles.bannerSlide, { width: isDesktop ? screenWidth - 200 : screenWidth - 40 }]}>
       <Image source={{ uri: item.image }} style={styles.bannerImage} />
       <View style={[styles.bannerOverlay, { backgroundColor: item.backgroundColor }]}>
         <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
@@ -208,7 +211,7 @@ export default function HomeScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScrollView 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, isDesktop && styles.desktopScrollContent]}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -313,7 +316,7 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.nearbyContent}
             >
-              {nearbyServices.slice(0, 8).map((service) => (
+              {nearbyServices.slice(0, isDesktop ? 16 : 8).map((service) => (
                 <View key={service.id} style={styles.nearbyServiceCard}>
                   <ServiceCard service={service} />
                 </View>
@@ -342,7 +345,7 @@ export default function HomeScreen() {
               </View>
           ) : trendingServices.length > 0 ? (
             <View style={styles.servicesGrid}>
-              {trendingServices.slice(0, 4).map((service) => (
+              {trendingServices.slice(0, isDesktop ? 8 : 4).map((service) => (
                 <View key={service.id} style={styles.serviceCardContainer}>
                   <ServiceCard service={service} />
                 </View>
@@ -368,7 +371,7 @@ export default function HomeScreen() {
             </View>
           ) : jobListings.length > 0 ? (
             <View style={styles.jobsGrid}>
-              {jobListings.map((job) => (
+              {jobListings.slice(0, isDesktop ? 8 : 4).map((job) => (
                 <TouchableOpacity 
                   key={job.id} 
                   style={[styles.jobCard, { backgroundColor: colors.background.secondary }]}
@@ -452,11 +455,17 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
+  desktopScrollContent: {
+    paddingBottom: 40, // Reduced since no bottom nav
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: isDesktop ? 40 : 20,
+    paddingVertical: isDesktop ? 24 : 16,
   },
   logoContainer: {
     flex: 1,
@@ -465,7 +474,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   logoText: {
-    fontSize: 24,
+    fontSize: isDesktop ? 28 : 24,
     fontWeight: '700',
     letterSpacing: 1,
   },
@@ -485,8 +494,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   searchSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: isDesktop ? 40 : 20,
+    paddingBottom: isDesktop ? 24 : 16,
   },
   headerIcons: {
     flexDirection: 'row',
@@ -495,9 +504,9 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   iconBackground: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: isDesktop ? 40 : 36,
+    height: isDesktop ? 40 : 36,
+    borderRadius: isDesktop ? 20 : 18,
     justifyContent: 'center',
     alignItems: 'center',
     shadowOffset: {
@@ -510,12 +519,11 @@ const styles = StyleSheet.create({
   },
 
   bannerContainer: {
-    margin: 20,
-    borderRadius: 12,
+    margin: isDesktop ? 40 : 20,
+    borderRadius: isDesktop ? 16 : 12,
     overflow: 'hidden',
     position: 'relative',
-    height: 140,
-
+    height: isDesktop ? 200 : 140,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -529,12 +537,12 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   bannerSlide: {
-    height: 140,
+    height: isDesktop ? 200 : 140,
     position: 'relative',
   },
   bannerImage: {
     width: '100%',
-    height: 140,
+    height: isDesktop ? 200 : 140,
   },
   bannerOverlay: {
     position: 'absolute',
@@ -543,10 +551,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     justifyContent: 'center',
-    paddingLeft: 20,
+    paddingLeft: isDesktop ? 40 : 20,
   },
   bannerTitle: {
-    fontSize: 20,
+    fontSize: isDesktop ? 24 : 20,
     fontWeight: 'bold',
     marginBottom: 4,
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
@@ -554,8 +562,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   bannerSubtext: {
-    fontSize: 14,
-
+    fontSize: isDesktop ? 16 : 14,
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -577,11 +584,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 1)',
   },
   section: {
-
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 12,
-    padding: 16,
+    marginHorizontal: isDesktop ? 40 : 20,
+    marginBottom: isDesktop ? 24 : 16,
+    borderRadius: isDesktop ? 16 : 12,
+    padding: isDesktop ? 24 : 16,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -590,16 +596,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: isDesktop ? 22 : 18,
     fontWeight: '600',
-
   },
   nearbyContent: {
     paddingRight: 16,
   },
   nearbyServiceCard: {
-    width: 200,
-    marginRight: 12,
+    width: isDesktop ? 220 : 200, // Smaller width for more cards per row
+    marginRight: isDesktop ? 16 : 12,
   },
   servicesGrid: {
     flexDirection: 'row',
@@ -607,8 +612,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   serviceCardContainer: {
-    width: '48%',
-    marginBottom: 16,
+    width: isDesktop ? '23%' : '48%', // 4 columns on desktop, 2 on mobile
+    marginBottom: isDesktop ? 16 : 16,
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -627,31 +632,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   jobCard: {
-    width: '48%',
-
-    borderRadius: 12,
-    marginBottom: 12,
+    width: isDesktop ? '23%' : '48%', // 4 columns on desktop, 2 on mobile
+    borderRadius: isDesktop ? 12 : 12,
+    marginBottom: isDesktop ? 16 : 12,
     overflow: 'hidden',
   },
   jobImage: {
     width: '100%',
-    height: 80,
-
+    height: isDesktop ? 100 : 80, // Smaller height for more compact cards
   },
   jobContent: {
-    padding: 12,
+    padding: isDesktop ? 12 : 12, // Reduced padding
   },
   jobTitle: {
-    fontSize: 14,
+    fontSize: isDesktop ? 16 : 14,
     fontWeight: '600',
-
     marginBottom: 4,
   },
   jobDescription: {
-    fontSize: 12,
-
+    fontSize: isDesktop ? 14 : 12,
     marginBottom: 8,
-    lineHeight: 16,
+    lineHeight: isDesktop ? 18 : 16,
   },
   jobLocation: {
     flexDirection: 'row',

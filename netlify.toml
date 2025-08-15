@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build:web && cp -r public/* dist/ 2>/dev/null || true"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Note: _redirects and _headers files will be copied from public/ folder
+# This provides more flexibility than inline configuration

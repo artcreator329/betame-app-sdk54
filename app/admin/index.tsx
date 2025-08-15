@@ -8,11 +8,17 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminService, DashboardStats } from '@/lib/admin-service';
 import { Ionicons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && width >= 1024;
 
 interface DashboardCard {
   title: string;
@@ -46,25 +52,58 @@ export default function AdminDashboard() {
   };
 
   const handleSignOut = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-              router.replace('/auth/login');
-            } catch (error) {
-              console.error('Error signing out:', error);
-            }
+    // For web, use confirm instead of Alert which might not work properly
+    if (isWeb) {
+      const confirmed = confirm('Are you sure you want to sign out?');
+      if (!confirmed) return;
+      
+      try {
+        console.log('🔄 Admin: Starting sign out process...');
+        
+        // Try to sign out properly first
+        await signOut();
+        console.log('✅ Admin: Sign out completed, redirecting...');
+        
+        // Force a complete page reload to clear all state
+        window.location.href = '/';
+        
+      } catch (error) {
+        console.error('❌ Admin: Sign out exception:', error);
+        // Force redirect even on error to prevent loops
+        window.location.href = '/';
+      }
+    } else {
+      // Use Alert for mobile
+      Alert.alert(
+        'Sign Out',
+        'Are you sure you want to sign out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Sign Out',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                console.log('🔄 Admin: Starting sign out process...');
+                const result = await signOut();
+                
+                if (result && result.error) {
+                  console.error('❌ Admin: Sign out error:', result.error);
+                  Alert.alert('Error', 'Failed to sign out. Please try again.');
+                } else {
+                  console.log('✅ Admin: Sign out successful, navigating...');
+                  // Navigate to main app instead of login
+                  router.replace('/(tabs)');
+                }
+              } catch (error) {
+                console.error('❌ Admin: Sign out exception:', error);
+                Alert.alert('Error', 'An unexpected error occurred while signing out.');
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const dashboardCards: DashboardCard[] = [
@@ -175,6 +214,69 @@ export default function AdminDashboard() {
     );
   }
 
+  if (isDesktop) {
+    return (
+      <View style={styles.desktopContainer}>
+        {/* Desktop Header */}
+        <View style={styles.desktopHeader}>
+          <View style={styles.desktopHeaderContent}>
+            <Text style={styles.desktopHeaderTitle}>Admin Dashboard</Text>
+            <Text style={styles.desktopHeaderSubtitle}>Welcome back, Admin</Text>
+          </View>
+          <TouchableOpacity style={styles.desktopSignOutButton} onPress={handleSignOut}>
+            <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.desktopScrollView} showsVerticalScrollIndicator={false}>
+          {/* Desktop Stats Grid */}
+          <View style={styles.desktopStatsContainer}>
+            <Text style={styles.desktopSectionTitle}>Overview</Text>
+            <View style={styles.desktopStatsGrid}>
+              {dashboardCards.map((card, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.desktopStatCard}
+                  onPress={() => router.push(card.route as any)}
+                >
+                  <View style={styles.desktopStatHeader}>
+                    <View style={[styles.desktopStatIcon, { backgroundColor: card.color }]}>
+                      <Ionicons name={card.icon} size={24} color="white" />
+                    </View>
+                    <Ionicons name="arrow-forward" size={16} color="#C7C7CC" />
+                  </View>
+                  <Text style={styles.desktopStatValue}>{card.value}</Text>
+                  <Text style={styles.desktopStatTitle}>{card.title}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Desktop Management Grid */}
+          <View style={styles.desktopManagementContainer}>
+            <Text style={styles.desktopSectionTitle}>Quick Actions</Text>
+            <View style={styles.desktopManagementGrid}>
+              {managementOptions.map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.desktopManagementCard}
+                  onPress={() => router.push(option.route as any)}
+                >
+                  <View style={[styles.desktopManagementIcon, { backgroundColor: option.color }]}>
+                    <Ionicons name={option.icon} size={28} color="white" />
+                  </View>
+                  <Text style={styles.desktopManagementTitle}>{option.title}</Text>
+                  <Text style={styles.desktopManagementDescription}>{option.description}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -241,6 +343,149 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',
+  },
+  desktopContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  desktopHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 32,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  desktopHeaderContent: {
+    flex: 1,
+  },
+  desktopHeaderTitle: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#1D1D1F',
+  },
+  desktopHeaderSubtitle: {
+    fontSize: 18,
+    color: '#8E8E93',
+    marginTop: 4,
+  },
+  desktopSignOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+    gap: 8,
+  },
+  signOutText: {
+    color: '#FF3B30',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  desktopScrollView: {
+    flex: 1,
+  },
+  desktopStatsContainer: {
+    padding: 32,
+  },
+  desktopSectionTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1D1D1F',
+    marginBottom: 24,
+  },
+  desktopStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 20,
+  },
+  desktopStatCard: {
+    width: (width - 280 - 64 - 40) / 3, // Sidebar width - padding - gaps, divided by 3
+    minWidth: 200,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  desktopStatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  desktopStatIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  desktopStatValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1D1D1F',
+    marginBottom: 4,
+  },
+  desktopStatTitle: {
+    fontSize: 16,
+    color: '#8E8E93',
+    fontWeight: '500',
+  },
+  desktopManagementContainer: {
+    padding: 32,
+    paddingTop: 0,
+  },
+  desktopManagementGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 20,
+  },
+  desktopManagementCard: {
+    width: (width - 280 - 64 - 20) / 2, // Sidebar width - padding - gap, divided by 2
+    minWidth: 300,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+    alignItems: 'center',
+    textAlign: 'center',
+  },
+  desktopManagementIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  desktopManagementTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1D1D1F',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  desktopManagementDescription: {
+    fontSize: 14,
+    color: '#8E8E93',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   scrollView: {
     flex: 1,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Alert, Switch } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Alert, Switch, Platform, Dimensions } from 'react-native';
 import { Star, ChevronDown, ChevronUp, Edit3, Eye, EyeOff, Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Service } from '@/types/service';
@@ -7,6 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
 import { ServiceService } from '@/lib/service-service';
 import { FavoritesService } from '@/lib/favorites-service';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && width >= 1024;
 
 interface ServiceCardProps {
   service: Service;
@@ -343,12 +347,12 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 100,
+    height: isDesktop ? 120 : 100, // Slightly taller for better aspect ratio on desktop
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
   content: {
-    padding: 12,
+    padding: isDesktop ? 10 : 12, // Slightly less padding on desktop for more compact cards
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -356,27 +360,27 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   rating: {
-    fontSize: 11,
+    fontSize: isDesktop ? 12 : 11,
     fontWeight: '600',
     color: Colors.text.primary,
     marginLeft: 3,
   },
   reviewCount: {
-    fontSize: 11,
+    fontSize: isDesktop ? 12 : 11,
     color: Colors.text.secondary,
     marginLeft: 2,
   },
   provider: {
-    fontSize: 13,
+    fontSize: isDesktop ? 14 : 13,
     fontWeight: '600',
     color: Colors.text.primary,
     marginBottom: 2,
   },
   title: {
-    fontSize: 12,
+    fontSize: isDesktop ? 13 : 12,
     color: Colors.text.secondary,
-    marginBottom: 8,
-    lineHeight: 16,
+    marginBottom: isDesktop ? 6 : 8, // Less margin on desktop
+    lineHeight: isDesktop ? 18 : 16,
   },
   priceContainer: {
     flexDirection: 'row',
@@ -384,7 +388,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   price: {
-    fontSize: 13,
+    fontSize: isDesktop ? 14 : 13,
     fontWeight: '600',
     color: Colors.text.primary,
   },

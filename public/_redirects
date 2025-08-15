@@ -1,0 +1,34 @@
+# Netlify redirects for BetaMe SPA routing
+
+# Handle SPA routing - redirect all routes to index.html with 200 status
+/*    /index.html   200
+
+# API redirects (if needed for future API endpoints)
+/api/*  /api/:splat  200
+
+# Admin routes - ensure they work properly
+/admin/*  /index.html  200
+
+# Auth routes - handle authentication flows
+/auth/*  /index.html  200
+
+# Profile routes with dynamic parameters
+/profile/*  /index.html  200
+/user-profile/*  /index.html  200
+
+# Service and job routes
+/service/*  /index.html  200
+/job/*  /index.html  200
+
+# Chat routes
+/chat/*  /index.html  200
+
+# Search routes
+/search  /index.html  200
+/search/*  /index.html  200
+
+# Other dynamic routes
+/edit-service/*  /index.html  200
+
+# Handle deep linking for mobile app
+/betame/*  /index.html  200

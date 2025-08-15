@@ -369,13 +369,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
       cleanupChatSubscription();
       console.log('🔄 AuthContext: Chat subscription cleaned up');
       
-      // Clear session data from storage
-      console.log('🔄 AuthContext: Session cleared');
+      // Clear local state immediately regardless of result
+      setUser(null);
+      setSession(null);
+      setUserProfile(null);
+      setIsAdmin(false);
+      console.log('🔄 AuthContext: Local state cleared');
       
       return result;
     } catch (error) {
       console.error('❌ AuthContext: SignOut error:', error);
-      throw error;
+      // Still clear local state even on error
+      setUser(null);
+      setSession(null);
+      setUserProfile(null);
+      setIsAdmin(false);
+      // Return error instead of throwing
+      return { error: error as any };
     } finally {
       setLoading(false);
       console.log('🔄 AuthContext: SignOut process completed');

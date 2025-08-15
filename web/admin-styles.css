@@ -1,0 +1,176 @@
+/* Desktop-optimized styles for admin dashboard and main app */
+@media (min-width: 1024px) {
+  /* Smooth transitions for hover effects */
+  * {
+    transition: all 0.2s ease-in-out;
+  }
+
+  /* Card hover effects */
+  .admin-card:hover,
+  .service-card:hover,
+  .job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Button hover effects */
+  .admin-button:hover,
+  .app-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  }
+
+  /* Sidebar hover effects */
+  .admin-nav-item:hover {
+    background-color: #f0f8ff;
+    transform: translateX(4px);
+  }
+
+  /* Table hover effects */
+  .admin-table-row:hover {
+    background-color: #f8f9fa;
+  }
+
+  /* Main app optimizations */
+  .app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  .app-section {
+    margin-bottom: 32px;
+    padding: 24px;
+    border-radius: 16px;
+  }
+
+  .app-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .app-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .app-banner {
+    height: 200px;
+    border-radius: 16px;
+    margin: 40px;
+  }
+
+  .app-service-card {
+    transition: transform 0.2s ease-in-out;
+  }
+
+  .app-service-card:hover {
+    transform: translateY(-4px);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+
+  /* Focus styles for accessibility */
+  .admin-focusable:focus,
+  .app-focusable:focus {
+    outline: 2px solid #2196F3;
+    outline-offset: 2px;
+  }
+
+  /* Grid layouts */
+  .admin-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .admin-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .admin-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  /* Responsive breakpoints */
+  @media (max-width: 1440px) {
+    .admin-grid-4 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .app-container {
+      max-width: 1000px;
+      padding: 0 30px;
+    }
+  }
+
+  @media (max-width: 1200px) {
+    .admin-grid-3 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .app-grid-3 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .app-container {
+      max-width: 800px;
+      padding: 0 20px;
+    }
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .admin-container {
+    background-color: #1a1a1a;
+    color: #ffffff;
+  }
+
+  .admin-card {
+    background-color: #2d2d2d;
+    border-color: #404040;
+  }
+
+  .admin-sidebar {
+    background-color: #2d2d2d;
+    border-color: #404040;
+  }
+}
+
+/* Print styles */
+@media print {
+  .admin-sidebar,
+  .admin-nav,
+  .admin-button {
+    display: none !important;
+  }
+
+  .admin-main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}
