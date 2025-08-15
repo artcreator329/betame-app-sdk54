@@ -293,18 +293,48 @@ class AuthService {
       const user = userId || (await this.getCurrentUser())?.id;
       if (!user) return null;
 
-      const { data, error } = await supabase
+      // Fetch from profiles table (main profile data)
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching user profile:', error);
+      if (profileError) {
+        console.error('Error fetching profile data:', profileError);
         return null;
       }
 
-      return data;
+      // Fetch from user_profiles table (seller-specific data)
+      const { data: userProfileData, error: userProfileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user)
+        .maybeSingle();
+
+      // If user_profiles query fails with anything other than "no rows", log it
+      if (userProfileError && userProfileError.code !== 'PGRST116') {
+        console.error('Error fetching user profile data:', userProfileError);
+      }
+
+      // Merge the data, but only take seller-specific fields from user_profiles
+      // to avoid data inconsistency
+      const mergedProfile = {
+        ...profileData,
+        // Only take seller-specific fields from user_profiles
+        is_seller: userProfileData?.is_seller || false,
+        seller_badge: userProfileData?.seller_badge,
+        seller_badge_subtitle: userProfileData?.seller_badge_subtitle,
+        seller_description: userProfileData?.seller_description,
+        rating: userProfileData?.rating || profileData?.rating || 0,
+        review_count: userProfileData?.review_count || profileData?.review_count || 0,
+        // Ensure we have the user_id for consistency
+        user_id: user,
+      };
+
+
+
+      return mergedProfile;
     } catch (error) {
       console.error('❌ AuthService: Exception fetching user profile:', error);
       return null;

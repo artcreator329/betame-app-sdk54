@@ -1,19 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 export default function BecomeSellerScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, userProfile, refreshProfile } = useAuth();
+  const [isBecomingSeller, setIsBecomingSeller] = useState(false);
 
   // Check if user is authenticated
   useEffect(() => {
@@ -28,6 +31,65 @@ export default function BecomeSellerScreen() {
       );
     }
   }, [user, router]);
+
+  // Function to register user as seller
+  const handleBecomeSeller = async () => {
+    if (!user) return;
+
+    setIsBecomingSeller(true);
+    try {
+      // Check if user_profiles record exists
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      if (existingProfile) {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update({ is_seller: true })
+          .eq('user_id', user.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new profile record with only seller-specific data
+        const { error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: user.id,
+            is_seller: true,
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      // Refresh the user profile
+      await refreshProfile();
+
+      Alert.alert(
+        'Success!',
+        'You are now registered as a seller. You can start creating service listings!',
+        [
+          { text: 'OK', onPress: () => router.push('/create-service-listing') }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Error becoming seller:', error);
+      Alert.alert(
+        'Error',
+        'Failed to register as seller. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsBecomingSeller(false);
+    }
+  };
 
   // Don't render the main content if user is not authenticated
   if (!user) {
@@ -57,31 +119,59 @@ export default function BecomeSellerScreen() {
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.title}>You're a verified seller!</Text>
-        <Text style={styles.subtitle}>Start listing your services/jobs!</Text>
+        {userProfile?.is_seller ? (
+          <>
+            <Text style={styles.title}>You're a verified seller!</Text>
+            <Text style={styles.subtitle}>Start listing your services/jobs!</Text>
 
-        {/* Action Buttons */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => router.push('/create-service-listing')}
-          >
-            <Text style={styles.buttonText}>Create service listing</Text>
-            <View style={styles.iconContainer}>
-              <Plus size={20} color="white" />
-            </View>
-          </TouchableOpacity>
+            {/* Action Buttons */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => router.push('/create-service-listing')}
+              >
+                <Text style={styles.buttonText}>Create service listing</Text>
+                <View style={styles.iconContainer}>
+                  <Plus size={20} color="white" />
+                </View>
+              </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => router.push('/create-job-listing')}
-          >
-            <Text style={styles.buttonText}>Create job listing</Text>
-            <View style={styles.iconContainer}>
-              <Plus size={20} color="white" />
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => router.push('/create-job-listing')}
+              >
+                <Text style={styles.buttonText}>Create job listing</Text>
+                <View style={styles.iconContainer}>
+                  <Plus size={20} color="white" />
+                </View>
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>Become a Seller</Text>
+            <Text style={styles.subtitle}>Start offering your services and earn money on our platform!</Text>
+            
+            <View style={styles.benefitsList}>
+              <Text style={styles.benefitItem}>• Create unlimited service listings</Text>
+              <Text style={styles.benefitItem}>• Set your own prices and terms</Text>
+              <Text style={styles.benefitItem}>• Build your reputation with reviews</Text>
+              <Text style={styles.benefitItem}>• Earn money from your skills</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.becomeSellerButton, isBecomingSeller && styles.disabledButton]}
+              onPress={handleBecomeSeller}
+              disabled={isBecomingSeller}
+            >
+              {isBecomingSeller ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.becomeSellerButtonText}>Become a Seller</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -143,5 +233,33 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  benefitsList: {
+    marginVertical: 30,
+    paddingHorizontal: 20,
+  },
+  benefitItem: {
+    fontSize: 16,
+    color: '#1D1D1F',
+    marginBottom: 12,
+    lineHeight: 22,
+  },
+  becomeSellerButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    minHeight: 56,
+  },
+  becomeSellerButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });

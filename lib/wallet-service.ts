@@ -113,8 +113,8 @@ export class WalletService {
     try {
       const defaultWallet: WalletData = {
         user_id: userId,
-        betame_diamonds: 10, // Default starting diamonds
-        betame_betacoins: 5, // Default starting BetaCoins
+        betame_diamonds: 0, // New users start with zero diamonds
+        betame_betacoins: 0, // New users start with zero BetaCoins
       };
 
       // Use admin client to bypass RLS when creating wallets for other users

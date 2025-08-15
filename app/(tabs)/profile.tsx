@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform, StatusBar, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun, Heart as HeartFilled, Settings as SettingsFilled, Sun as SunFilled, Moon as MoonFilled, Wallet as WalletFilled, Trophy as TrophyFilled } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -50,8 +50,9 @@ export default function ProfileScreen() {
   const [referralModalVisible, setReferralModalVisible] = useState(false);
   const [unreadJobNotifications, setUnreadJobNotifications] = useState(0);
   const [jobNotificationService] = useState(() => JobNotificationService.getInstance());
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const { user, userProfile, updateProfile } = useAuth();
+  const { user, userProfile, updateProfile, refreshProfile } = useAuth();
   const colors = useColors();
   const { isDarkMode, toggleTheme } = useTheme();
 
@@ -207,6 +208,19 @@ export default function ProfileScreen() {
       setIsAdmin(false);
     }
   };
+
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshProfile(); // Refresh profile from AuthContext
+      await fetchProfileData(); // Refresh local data
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshProfile]);
 
   // Refetch profile data when screen comes into focus
   useFocusEffect(
@@ -571,6 +585,24 @@ export default function ProfileScreen() {
         return (
           <View style={styles.servicesContent}>
             <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Available Listings ({String(services.length)})</Text>
+            
+            {/* Show seller status */}
+            {userProfile?.is_seller ? (
+              <View style={[styles.verifiedSellerContainer, { backgroundColor: colors.background.secondary }]}>
+                <Text style={[styles.verifiedSellerText, { color: colors.text.primary }]}>
+                  {userProfile?.full_name || 'User'} is a verified seller
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.becomeSellerButton, { backgroundColor: colors.primary.main }]}
+                onPress={() => router.push('/become-seller')}
+              >
+                <Text style={[styles.becomeSellerButtonText, { color: colors.text.white }]}>Become a Seller</Text>
+                <Text style={[styles.becomeSellerButtonSubtext, { color: colors.text.white }]}>Start offering your services and earn money</Text>
+              </TouchableOpacity>
+            )}
+            
             {services.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>You don't have any services yet</Text>
@@ -707,6 +739,14 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         style={{ backgroundColor: colors.background.primary }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary.main}
+            colors={[colors.primary.main]}
+          />
+        }
       >
 
 
@@ -1653,5 +1693,44 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '500',
+  },
+  becomeSellerButton: {
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  becomeSellerButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  becomeSellerButtonSubtext: {
+    fontSize: 14,
+    opacity: 0.9,
+    textAlign: 'center',
+  },
+  verifiedSellerContainer: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  verifiedSellerText: {
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

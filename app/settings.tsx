@@ -128,7 +128,7 @@ export default function SettingsScreen() {
   };
 
   const handleBecomeSeller = () => {
-    router.push('/create-service-listing');
+    router.push('/become-seller');
   };
 
   const handleMyAccount = () => {
