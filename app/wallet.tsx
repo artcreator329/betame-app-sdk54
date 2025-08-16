@@ -13,7 +13,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles, ShoppingBag, History } from 'lucide-react-native';
+import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles, ShoppingBag, History, Plus, Minus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { WalletService, WalletData, PurchasedFeature } from '../lib/wallet-service';
 import { useAuth } from '../contexts/AuthContext';
@@ -153,6 +153,24 @@ export default function WalletScreen() {
     } else {
       Alert.alert('Conversion Failed', result.error || 'Failed to convert diamonds');
     }
+  };
+
+  const handleIncrementDiamonds = () => {
+    const currentAmount = parseInt(convertAmount) || 0;
+    const newAmount = currentAmount + 1;
+    console.log('Incrementing diamonds:', currentAmount, '->', newAmount);
+    if (!walletData || newAmount <= walletData.betame_diamonds) {
+      setConvertAmount(newAmount.toString());
+    } else {
+      Alert.alert('Maximum Diamonds', `You can only convert up to ${walletData.betame_diamonds} diamonds.`);
+    }
+  };
+
+  const handleDecrementDiamonds = () => {
+    const currentAmount = parseInt(convertAmount) || 0;
+    const newAmount = Math.max(10, currentAmount - 1);
+    console.log('Decrementing diamonds:', currentAmount, '->', newAmount);
+    setConvertAmount(newAmount.toString());
   };
 
   const handleFeaturePurchase = (feature: Feature) => {
@@ -400,20 +418,40 @@ export default function WalletScreen() {
           
           <View style={[styles.conversionCard, { backgroundColor: colors.background.tertiary }]}>
             <View style={styles.conversionRow}>
-              <View style={styles.conversionInput}>
-                <TextInput
-                  style={styles.input}
-                  value={convertAmount}
-                  onChangeText={setConvertAmount}
-                  keyboardType="numeric"
-                  placeholder="10"
-                  placeholderTextColor="#7bb3f0"
-                />
-                <Text style={styles.inputLabel}>💎</Text>
+              <View style={[styles.conversionInput, { backgroundColor: colors.background.primary, borderColor: colors.border.medium }]}>
+                <View style={styles.inputContainer}>
+                  <TouchableOpacity 
+                    style={styles.incrementButton}
+                    onPress={handleDecrementDiamonds}
+                    activeOpacity={0.6}
+                  >
+                    <Minus size={20} color={colors.primary.main} />
+                  </TouchableOpacity>
+                  <View style={styles.numberSection}>
+                    <TextInput
+                      style={[styles.input, { color: colors.text.primary }]}
+                      value={convertAmount}
+                      onChangeText={setConvertAmount}
+                      keyboardType="numeric"
+                      placeholder="10"
+                      placeholderTextColor={colors.text.secondary}
+                    />
+                    <Text style={styles.inputLabel}>💎</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.incrementButton}
+                    onPress={handleIncrementDiamonds}
+                    activeOpacity={0.6}
+                  >
+                    <Plus size={20} color={colors.primary.main} />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <Text style={styles.conversionArrow}>→</Text>
-              <View style={styles.conversionOutput}>
-                <Text style={styles.outputValue}>{Math.floor(parseInt(convertAmount || '0') / 10)}</Text>
+              <View style={styles.conversionArrowContainer}>
+                <Text style={[styles.conversionArrow, { color: colors.primary.main }]}>→</Text>
+              </View>
+              <View style={[styles.conversionOutput, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
+                <Text style={[styles.outputValue, { color: colors.text.primary }]}>{Math.floor(parseInt(convertAmount || '0') / 10)}</Text>
                 <Text style={styles.outputLabel}>B</Text>
               </View>
             </View>
@@ -814,58 +852,96 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
+    gap: 12,
   },
   conversionInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e6f3ff',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     flex: 1,
-    marginRight: 16,
     borderWidth: 1,
-    borderColor: '#b8e0ff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingHorizontal: 12,
+  },
+  numberSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginHorizontal: 8,
+  },
+  incrementButton: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
-    flex: 1,
     fontSize: 16,
-    color: '#1a365d',
+    fontWeight: '600',
     textAlign: 'center',
+    color: '#1a365d',
+    minWidth: 40,
   },
   inputLabel: {
     fontSize: 16,
-    marginLeft: 8,
+    marginLeft: 6,
+  },
+  conversionArrowContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
   },
   conversionArrow: {
-    fontSize: 20,
-    color: '#4a90e2',
-    marginHorizontal: 16,
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   conversionOutput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e6f3ff',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     flex: 1,
-    marginLeft: 16,
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#b8e0ff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   outputValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a365d',
+    fontSize: 20,
+    fontWeight: '700',
   },
   outputLabel: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#FFD700',
-    marginLeft: 8,
+    marginLeft: 10,
   },
   convertButton: {
     backgroundColor: '#E91E63',

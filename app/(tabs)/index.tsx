@@ -21,7 +21,6 @@ import SearchBarWithAutoComplete from '@/components/SearchBarWithAutoComplete';
 import NearbyCategoryIcon from '@/components/NearbyCategoryIcon';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
-import { JobService, JobListing } from '@/lib/job-service';
 
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -112,8 +111,6 @@ const bannerSlides: BannerSlide[] = [
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [jobListings, setJobListings] = useState<JobListing[]>([]);
-  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
   const [nearbyServices, setNearbyServices] = useState<Service[]>([]);
   const [trendingServices, setTrendingServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
@@ -148,24 +145,20 @@ export default function HomeScreen() {
   };
 
   const fetchData = useCallback(async () => {
-    setIsLoadingJobs(true);
     setIsLoadingServices(true);
     
     try {
       // Fetch all data concurrently
-      const [jobs, nearby, trending] = await Promise.all([
-        JobService.getAllActiveJobs(),
+      const [nearby, trending] = await Promise.all([
         ServiceService.getNearbyServices(),
         ServiceService.getTrendingServices()
       ]);
       
-      setJobListings(jobs.slice(0, 4)); // Show only first 4 jobs on homepage
       setNearbyServices(nearby.map(convertToUIService));
       setTrendingServices(trending.map(convertToUIService));
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
-      setIsLoadingJobs(false);
       setIsLoadingServices(false);
     }
   }, []);
@@ -216,7 +209,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={[styles.logoText, { color: colors.text.primary }]}>BETAME</Text>
+            <Text style={[styles.logoText, { color: colors.text.primary }]}>BetaMe</Text>
           </View>
           {user ? (
             <View style={styles.headerIcons}>
@@ -358,91 +351,7 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Job Listings */}
-        <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Latest Job Opportunities</Text>
-            <ChevronRight size={20} color={colors.primary.main} />
-          </View>
-          {isLoadingJobs ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={colors.primary.main} />
-              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading jobs...</Text>
-            </View>
-          ) : jobListings.length > 0 ? (
-            <View style={styles.jobsGrid}>
-              {jobListings.slice(0, isDesktop ? 8 : 4).map((job) => (
-                <TouchableOpacity 
-                  key={job.id} 
-                  style={[styles.jobCard, { backgroundColor: colors.background.secondary }]}
-                  onPress={() => {
-                    if (!user) {
-                      Alert.alert(
-                        'Sign In Required',
-                        'Please sign in to view job details.',
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Sign In', onPress: () => router.push('/auth/login') }
-                        ]
-                      );
-                      return;
-                    }
-                    router.push(`/job/${job.id}`);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  {job.cover_photo && (
-                    <Image source={{ uri: job.cover_photo }} style={[styles.jobImage, { backgroundColor: colors.border.light }]} />
-                  )}
-                  <View style={styles.jobContent}>
-                    <Text style={[styles.jobTitle, { color: colors.text.primary }]} numberOfLines={2}>{job.title}</Text>
-                    <Text style={[styles.jobDescription, { color: colors.text.secondary }]} numberOfLines={2}>{job.description}</Text>
-                    
-                    {job.location_address && (
-                      <View style={styles.jobLocation}>
-                        <MapPin size={12} color={colors.primary.main} />
-                        <Text style={[styles.jobLocationText, { color: colors.text.secondary }]} numberOfLines={1}>
-                          {job.location_address}
-                        </Text>
-                      </View>
-                    )}
-                    
-                    <View style={styles.jobFooter}>
-                      <View style={styles.jobBudget}>
-                        <Text style={[styles.jobBudgetText, { color: colors.primary.main }]}>
-                          {job.budget_amount ? `${job.currency} ${job.budget_amount}` : job.payment_type}
-                        </Text>
-                        {job.budget_amount && job.payment_type !== 'negotiable' && (
-                          <Text style={[styles.jobSellerReceivesText, { color: colors.text.secondary }]}>
-                            Seller gets {job.currency}{(parseFloat(job.budget_amount) * 0.93).toFixed(2)}
-                          </Text>
-                        )}
-                      </View>
-                      <View style={styles.jobDate}>
-                        <Calendar size={10} color={colors.primary.main} />
-                        <Text style={[styles.jobDateText, { color: colors.text.secondary }]}>
-                          {job.created_at ? new Date(job.created_at).toLocaleDateString() : ''}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No job opportunities available at the moment</Text>
-              {user && (
-                <TouchableOpacity 
-                  style={[styles.createJobButton, { backgroundColor: colors.primary.main }]}
-                  onPress={() => router.push('/create-job-listing')}
-                >
-                  <Text style={[styles.createJobButtonText, { color: colors.text.white }]}>Post a Job</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
+
       </ScrollView>
     </SafeAreaView>
   );

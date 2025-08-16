@@ -134,10 +134,8 @@ export default function ProfileScreen() {
       setLoading(false);
 
       // Set default active tab based on available content
-      if (activeTab === 'My Services') {
-        if (userJobs.length > 0) {
-          setActiveTab('I\'m Hiring');
-        } else if (userServices.length > 0) {
+      if (activeTab === 'My Services' || activeTab === 'I\'m Hiring') {
+        if (userServices.length > 0) {
           setActiveTab('My Services');
         } else {
           setActiveTab('Reviews');
@@ -423,146 +421,6 @@ export default function ProfileScreen() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'I\'m Hiring':
-        if (loading) {
-          return (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary.main} />
-              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading job listings...</Text>
-            </View>
-          );
-        }
-        return (
-          <View style={styles.tabSectionContainer}>
-            <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Job Postings ({String(jobListings.length)})</Text>
-            
-            {/* Job Proposal Notifications */}
-            {user && unreadJobNotifications > 0 && (
-              <View style={[styles.notificationsContainer, { backgroundColor: colors.background.secondary }]}>
-                <Text style={[styles.notificationsTitle, { color: colors.text.primary }]}>
-                  Recent Activity
-                </Text>
-                <JobProposalNotifications
-                  userId={user.id}
-                  onNotificationPress={handleJobNotificationPress}
-                  limit={5}
-                />
-              </View>
-            )}
-            {jobListings.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>You do not have any job postings</Text>
-                <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>Why don't you post your first job?</Text>
-              </View>
-            ) : (
-              jobListings.map((job) => (
-                <TouchableOpacity
-                  key={job.id}
-                  style={styles.jobItem}
-                  onPress={() => {
-                    if (!user) {
-                      Alert.alert(
-                        'Sign In Required',
-                        'Please sign in to view job details.',
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Sign In', onPress: () => router.push('/auth/login') }
-                        ]
-                      );
-                      return;
-                    }
-                    router.push(`/job/${job.id}`);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  {job.cover_photo && (
-                    <Image source={{ uri: job.cover_photo }} style={styles.jobImage} />
-                  )}
-                  <View style={[styles.jobInfo, { backgroundColor: colors.background.secondary }]}>
-                    <View style={styles.jobHeader}>
-                      <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{job.title}</Text>
-                      {/* Show proposal indicators */}
-                      {job.pending_proposals && job.pending_proposals > 0 && (
-                        <View style={[styles.proposalBadge, { backgroundColor: colors.primary.main }]}>
-                          <Text style={[styles.proposalBadgeText, { color: colors.text.white }]}>
-                            {String(job.pending_proposals)} new
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    
-                    <Text style={[styles.jobDescription, { color: colors.text.secondary }]} numberOfLines={2}>
-                      {job.description}
-                    </Text>
-                    
-                    {/* Enhanced proposal stats */}
-                    {job.total_proposals && job.total_proposals > 0 && (
-                      <View style={styles.proposalStats}>
-                        <View style={styles.proposalStatItem}>
-                          <Text style={[styles.proposalStatNumber, { color: colors.primary.main }]}>
-                            {String(job.total_proposals)}
-                          </Text>
-                          <Text style={[styles.proposalStatLabel, { color: colors.text.secondary }]}>
-                            {job.total_proposals === 1 ? 'Proposal' : 'Proposals'}
-                          </Text>
-                        </View>
-                        {job.unique_service_providers && job.unique_service_providers > 0 && (
-                          <View style={styles.proposalStatItem}>
-                            <Text style={[styles.proposalStatNumber, { color: colors.text.primary }]}>
-                              {String(job.unique_service_providers)}
-                            </Text>
-                            <Text style={[styles.proposalStatLabel, { color: colors.text.secondary }]}>
-                              {job.unique_service_providers === 1 ? 'Applicant' : 'Applicants'}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    )}
-                    
-                    {job.location_address && (
-                      <View style={styles.jobLocation}>
-                        <MapPin size={14} color={colors.text.secondary} />
-                        <Text style={[styles.jobLocationText, { color: colors.text.secondary }]}>{job.location_address}</Text>
-                      </View>
-                    )}
-                    <View style={styles.jobDetails}>
-                      <View style={styles.jobBudget}>
-                        <Text style={[styles.jobBudgetText, { color: colors.text.primary }]}>
-                          {job.payment_type === 'negotiable' ? 'Negotiable' : `${job.currency}${String(job.budget_amount)} (${job.payment_type})`}
-                        </Text>
-                      </View>
-                      <View style={styles.jobStatus}>
-                        <Text style={[styles.jobStatusText, { color: job.status === 'active' ? '#4CAF50' : '#FF9800' }]}>
-                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.jobMeta}>
-                      <Calendar size={12} color={colors.text.secondary} />
-                      <Text style={[styles.jobDate, { color: colors.text.secondary }]}>
-                        {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Date not available'}
-                      </Text>
-                      {job.last_activity_date && (
-                        <>
-                          <Text style={[styles.jobDateSeparator, { color: colors.text.secondary }]}> • </Text>
-                          <Text style={[styles.jobLastActivity, { color: colors.primary.main }]}>
-                            Last activity: {new Date(job.last_activity_date).toLocaleDateString()}
-                          </Text>
-                        </>
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: colors.primary.main }]}
-              onPress={() => router.push('/create-job-listing')}
-            >
-              <Text style={[styles.addButtonText, { color: colors.text.white }]}>Hire Someone Now</Text>
-            </TouchableOpacity>
-          </View>
-        );
       case 'My Services':
         if (loading) {
           return (
@@ -944,7 +802,7 @@ export default function ProfileScreen() {
 
         {/* Tab Navigation */}
         <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }]}>
-          {['I\'m Hiring', 'My Services', 'Reviews'].map((tab) => (
+          {['My Services', 'Reviews'].map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[
@@ -963,14 +821,6 @@ export default function ProfileScreen() {
                 >
                   {tab}
                 </Text>
-                {/* Show notification badge for I'm Hiring tab */}
-                {tab === 'I\'m Hiring' && unreadJobNotifications > 0 && (
-                  <View style={[styles.notificationBadge, { backgroundColor: colors.primary.main }]}>
-                    <Text style={[styles.notificationBadgeText, { color: colors.text.white }]}>
-                      {unreadJobNotifications > 99 ? '99+' : String(unreadJobNotifications)}
-                    </Text>
-                  </View>
-                )}
               </View>
             </TouchableOpacity>
           ))}
