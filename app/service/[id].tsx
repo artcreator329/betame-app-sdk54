@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, MessageCircle, X, Package } from 'lucide-react-native';
+import { ArrowLeft, Star, MessageCircle, X, Package, ShoppingCart } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ServiceService, Service } from '@/lib/service-service';
@@ -20,6 +20,7 @@ import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/contexts/ThemeContext';
 import { authService } from '@/lib/auth-service';
+import { PaymentModal } from '@/components/PaymentModal';
 
 interface SubPlan {
   id: string;
@@ -47,6 +48,8 @@ export default function ServiceDetailsScreen() {
   const [serviceVariantModalVisible, setServiceVariantModalVisible] = useState(false);
   const [serviceVariants, setServiceVariants] = useState<Service[]>([]);
   const [loadingVariants, setLoadingVariants] = useState(false);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedServiceForOrder, setSelectedServiceForOrder] = useState<Service | null>(null);
 
   console.log('🔍 ServiceDetailsScreen: Component mounted with ID:', id);
   console.log('🔍 ServiceDetailsScreen: ID type:', typeof id);
@@ -207,6 +210,49 @@ export default function ServiceDetailsScreen() {
     });
   };
 
+  const handleOrderNow = () => {
+    // Check if user is authenticated
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'You need to sign in to order services. Would you like to sign in now?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+      return;
+    }
+
+    // If service has variants, show selection modal
+    if (serviceVariants.length > 1) {
+      setServiceVariantModalVisible(true);
+    } else {
+      // If no variants, proceed directly to payment
+      setSelectedServiceForOrder(service);
+      setPaymentModalVisible(true);
+    }
+  };
+
+  const handleVariantSelectionForOrder = (selectedVariant: Service) => {
+    setServiceVariantModalVisible(false);
+    setSelectedServiceForOrder(selectedVariant);
+    setPaymentModalVisible(true);
+  };
+
+  const handlePaymentSuccess = (activeJobId: string) => {
+    setPaymentModalVisible(false);
+    setSelectedServiceForOrder(null);
+    Alert.alert(
+      'Order Successful!',
+      'Your order has been placed successfully. You can track the progress in your profile.',
+      [
+        { text: 'View Orders', onPress: () => router.push('/orders') },
+        { text: 'OK', onPress: () => router.back() }
+      ]
+    );
+  };
+
   const subPlans = getServicePlans(service.id || '');
   const selectedSubPlan = subPlans.find((plan: SubPlan) => plan.id === selectedPlan);
 
@@ -329,19 +375,39 @@ export default function ServiceDetailsScreen() {
             </View>
           )}
 
-          {/* Action Button - Chat or Edit based on ownership */}
-          <View style={styles.chatSection}>
+          {/* Action Buttons - Chat/Edit/Order based on ownership */}
+          <View style={styles.actionButtonsSection}>
             {!isOwnService ? (
-              <TouchableOpacity style={[styles.chatButton, { backgroundColor: colors.primary.main }]} onPress={handleChatWithSeller}>
-                <MessageCircle size={20} color={colors.text.white} />
-                <Text style={[styles.chatButtonText, { color: colors.text.white }]}>Chat with seller</Text>
-                <Image
-                  source={{ 
-                    uri: serviceOwnerProfile?.avatar_url || 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=100' 
-                  }}
-                  style={styles.chatProviderImage}
-                />
-              </TouchableOpacity>
+              <View style={styles.actionButtonsContainer}>
+                {/* Order Now Button - Prominent */}
+                <TouchableOpacity 
+                  style={[styles.orderButton, { backgroundColor: colors.status.success }]} 
+                  onPress={handleOrderNow}
+                >
+                  <ShoppingCart size={24} color={colors.text.white} />
+                  <Text style={[styles.orderButtonText, { color: colors.text.white }]}>Order Now</Text>
+                </TouchableOpacity>
+                
+                {/* Chat Section with Helper Text */}
+                <View style={styles.chatSection}>
+                  <Text style={[styles.chatHelperText, { color: colors.text.secondary }]}>
+                    Need help? Ask questions first
+                  </Text>
+                  <TouchableOpacity 
+                    style={[styles.chatButton, { backgroundColor: colors.primary.main }]} 
+                    onPress={handleChatWithSeller}
+                  >
+                    <MessageCircle size={20} color={colors.text.white} />
+                    <Text style={[styles.chatButtonText, { color: colors.text.white }]}>Chat with</Text>
+                    <Image
+                      source={{ 
+                        uri: serviceOwnerProfile?.avatar_url || 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=100' 
+                      }}
+                      style={styles.chatProviderImage}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
             ) : (
               <TouchableOpacity 
                 style={[styles.editButton, { backgroundColor: colors.primary.main }]} 
@@ -389,7 +455,14 @@ export default function ServiceDetailsScreen() {
                       styles.variantItem,
                       index === 0 && styles.mainVariantItem
                     ]}
-                    onPress={() => handleVariantSelection(item)}
+                    onPress={() => {
+                      // Check if this is for order or chat
+                      if (paymentModalVisible) {
+                        handleVariantSelectionForOrder(item);
+                      } else {
+                        handleVariantSelection(item);
+                      }
+                    }}
                   >
                     <View style={styles.variantContent}>
                       <View style={styles.variantHeader}>
@@ -413,6 +486,43 @@ export default function ServiceDetailsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Payment Modal */}
+      {selectedServiceForOrder && (
+        <PaymentModal
+          visible={paymentModalVisible}
+          offer={{
+            id: '',
+            chatId: '',
+            serviceId: selectedServiceForOrder.id || '',
+            serviceProviderId: selectedServiceForOrder.user_id,
+            buyerId: user?.id || '',
+            originalPrice: selectedServiceForOrder.price,
+            customPrice: selectedServiceForOrder.price,
+            customDescription: '',
+            customDeliveryTime: 7,
+            status: 'pending',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }}
+          serviceData={{
+            id: selectedServiceForOrder.id || '',
+            title: selectedServiceForOrder.title,
+            description: selectedServiceForOrder.description,
+            price: selectedServiceForOrder.price,
+            currency: selectedServiceForOrder.currency,
+            image_url: selectedServiceForOrder.image_url,
+            category_name: selectedServiceForOrder.category_name,
+          }}
+          buyerId={user?.id || ''}
+          serviceProviderId={selectedServiceForOrder.user_id}
+          onClose={() => {
+            setPaymentModalVisible(false);
+            setSelectedServiceForOrder(null);
+          }}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -542,15 +652,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   chatSection: {
-    marginTop: 20,
+    alignItems: 'center',
   },
   chatButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 25,
-    position: 'relative',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    minWidth: 200,
   },
   chatButtonText: {
     fontSize: 16,
@@ -558,11 +669,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   chatProviderImage: {
-    position: 'absolute',
-    right: 16,
     width: 32,
     height: 32,
     borderRadius: 16,
+    marginLeft: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -702,5 +812,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#2196f3',
+  },
+  actionButtonsSection: {
+    marginTop: 20,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'column',
+    gap: 16,
+  },
+  orderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  orderButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 10,
+  },
+  chatHelperText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+    textAlign: 'center',
   },
 });
