@@ -43,4 +43,4 @@ END;
 $ language 'plpgsql';
 
 -- Add comment for documentation
-COMMENT ON COLUMN wallets.betame_betacoins IS 'BetaCoin balance - can be purchased with 2.2% extra charges or exchanged with Diamond Stones';
+COMMENT ON COLUMN wallets.betame_betacoins IS 'BetaCoin balance - can be purchased directly or exchanged with Diamond Stones';

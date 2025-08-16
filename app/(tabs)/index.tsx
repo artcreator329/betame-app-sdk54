@@ -351,6 +351,42 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Footer Links */}
+        <View style={[styles.footerSection, { backgroundColor: colors.background.tertiary }]}>
+          <View style={styles.footerLinks}>
+            <TouchableOpacity 
+              style={styles.footerLink}
+              onPress={() => router.push('/terms-of-service')}
+            >
+              <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>Terms of Use</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.footerLink}
+              onPress={() => router.push('/legal')}
+            >
+              <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>Legal</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.footerLink}
+              onPress={() => router.push('/faq')}
+            >
+              <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>FAQ</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.footerLink}
+              onPress={() => router.push('/about-us')}
+            >
+              <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>About Us</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.footerLink}
+              onPress={() => router.push('/contact-us')}
+            >
+              <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>Contact</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
 
       </ScrollView>
     </SafeAreaView>
@@ -635,5 +671,27 @@ const styles = StyleSheet.create({
 
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Footer Styles
+  footerSection: {
+    marginHorizontal: isDesktop ? 40 : 20,
+    marginBottom: isDesktop ? 24 : 16,
+    borderRadius: isDesktop ? 16 : 12,
+    padding: isDesktop ? 24 : 16,
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: isDesktop ? 24 : 16,
+  },
+  footerLink: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  footerLinkText: {
+    fontSize: isDesktop ? 16 : 14,
+    fontWeight: '500',
+    textDecorationLine: 'none',
   },
 });

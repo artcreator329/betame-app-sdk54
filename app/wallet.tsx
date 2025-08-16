@@ -416,6 +416,20 @@ export default function WalletScreen() {
           <Text style={[styles.conversionTitle, { color: colors.text.primary }]}>Convert your diamonds to BetaCoins!</Text>
           <Text style={[styles.conversionSubtitle, { color: colors.text.secondary }]}>Convert 10 premium diamonds into 1 BetaCoin</Text>
           
+          {/* Current Diamond Count Display */}
+          <View style={[styles.currentDiamondDisplay, { backgroundColor: colors.background.secondary }]}>
+            <View style={styles.diamondCountContainer}>
+              <Text style={styles.diamondEmoji}>💎</Text>
+              <Text style={[styles.currentDiamondText, { color: colors.text.primary }]}>
+                You currently have{' '}
+                <Text style={[styles.diamondCount, { color: colors.primary.main }]}>
+                  {walletData?.betame_diamonds || 0} diamonds
+                </Text>
+                {' '}available for conversion
+              </Text>
+            </View>
+          </View>
+          
           <View style={[styles.conversionCard, { backgroundColor: colors.background.tertiary }]}>
             <View style={styles.conversionRow}>
               <View style={[styles.conversionInput, { backgroundColor: colors.background.primary, borderColor: colors.border.medium }]}>
@@ -1508,5 +1522,45 @@ const styles = StyleSheet.create({
   transactionQuickSubtitle: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  // Current Diamond Count Display Styles
+  currentDiamondDisplay: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  diamondCountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  diamondEmoji: {
+    fontSize: 24,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  currentDiamondText: {
+    fontSize: 16,
+    fontWeight: '500',
+    lineHeight: 22,
+    flex: 1,
+  },
+  diamondCount: {
+    fontSize: 18,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 });

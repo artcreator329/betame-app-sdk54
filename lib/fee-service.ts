@@ -72,7 +72,7 @@ export class FeeService {
   }
 
   /**
-   * Calculate BetaCoin purchase fees (2.2% processing fee)
+   * Calculate BetaCoin purchase fees (no processing fee)
    */
   static calculateBetaCoinPurchaseFees(amount: number): {
     baseAmount: number;
@@ -80,8 +80,8 @@ export class FeeService {
     totalAmount: number;
   } {
     const baseAmount = amount;
-    const processingFee = Math.round((baseAmount * this.BUYER_FEE_RATE) * 100) / 100;
-    const totalAmount = baseAmount + processingFee;
+    const processingFee = 0; // No processing fee for BetaCoin purchases
+    const totalAmount = baseAmount; // User pays exactly the bundle price
 
     return {
       baseAmount,

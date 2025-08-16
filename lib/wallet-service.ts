@@ -1008,9 +1008,7 @@ export class WalletService {
       // Record transaction with fee details
       const transactionAmount = transactionDetails?.transactionAmount || betaCoinsAmount;
       const processingFee = transactionDetails?.processingFee || 0;
-      const description = processingFee > 0 
-        ? `Purchased ${betaCoinsAmount} BetaCoins (Total: RM${transactionAmount.toFixed(2)}, Processing Fee: RM${processingFee.toFixed(2)})`
-        : `Purchased ${betaCoinsAmount} BetaCoins`;
+      const description = `Purchased ${betaCoinsAmount} BetaCoins (Total: RM${transactionAmount.toFixed(2)})`;
 
       // Record transaction
       await this.recordTransaction({

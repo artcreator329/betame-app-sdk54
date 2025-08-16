@@ -7,17 +7,15 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
-  Image,
   ImageBackground,
   Animated,
   Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { X, ShoppingCart, Sparkles } from 'lucide-react-native';
+import { X, ShoppingCart } from 'lucide-react-native';
 import { useColors } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { WalletService } from '@/lib/wallet-service';
-import { FeeService } from '@/lib/fee-service';
 
 interface BetaCoinBundle {
   id: string;
@@ -77,7 +75,6 @@ const betacoinBundles: BetaCoinBundle[] = [
 export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCoinPurchaseProps) {
   const colors = useColors();
   const { user } = useAuth();
-  const [selectedBundle, setSelectedBundle] = useState<BetaCoinBundle | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmationData, setConfirmationData] = useState<{bundle: BetaCoinBundle, fees: any} | null>(null);
@@ -88,8 +85,12 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
       return;
     }
 
-    // Calculate fees for this purchase
-    const fees = FeeService.calculateBetaCoinPurchaseFees(bundle.priceValue);
+    // No fees applied - user pays exactly the bundle price
+    const fees = {
+      baseAmount: bundle.priceValue,
+      processingFee: 0,
+      totalAmount: bundle.priceValue
+    };
     
     // Show custom confirmation modal
     setConfirmationData({ bundle, fees });
@@ -120,17 +121,17 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
       // Simulate payment processing with fees
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Record the transaction with the total amount including fees
+      // Record the transaction with no additional fees
       const result = await WalletService.addBetaCoins(user.id, bundle.betacoins, {
         transactionAmount: fees.totalAmount,
-        processingFee: fees.processingFee,
+        processingFee: 0,
         baseAmount: fees.baseAmount
       });
       
       if (result.success) {
         Alert.alert(
           'Purchase Successful!',
-          `${bundle.betacoins} BetaCoins have been added to your wallet.\nTotal paid: RM${fees.totalAmount.toFixed(2)} (including RM${fees.processingFee.toFixed(2)} processing fee)`,
+          `${bundle.betacoins} BetaCoins have been added to your wallet.\nTotal paid: RM${fees.totalAmount.toFixed(2)}`,
           [
             {
               text: 'OK',
@@ -153,8 +154,6 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
   };
 
   const renderBundle = (bundle: BetaCoinBundle) => {
-    const fees = FeeService.calculateBetaCoinPurchaseFees(bundle.priceValue);
-    
     return (
       <Animated.View key={bundle.id}>
         <Pressable
@@ -216,7 +215,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             <View style={styles.description}>
               <Text style={[styles.descriptionText, { color: colors.text.secondary }]}>
-                BetaCoins can be purchased with a 2.2% processing fee or exchanged with Diamonds. 
+                BetaCoins can be purchased or exchanged with Diamonds. 
                 Use BetaCoins to pay for services, boost your listings, and unlock premium features.
               </Text>
             </View>
@@ -227,12 +226,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
 
             <View style={styles.footer}>
               <View style={styles.infoCard}>
-                <View style={styles.infoItem}>
-                  <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
-                  <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-                    All purchases include 2.2% processing fee
-                  </Text>
-                </View>
+
                 
                 <View style={styles.infoItem}>
                   <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
@@ -248,12 +242,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
                   </Text>
                 </View>
                 
-                <View style={styles.infoItem}>
-                  <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
-                  <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-                    Service providers pay 11% or RM4.90 platform fee (whichever higher)
-                  </Text>
-                </View>
+
               </View>
             </View>
           </ScrollView>
@@ -288,26 +277,6 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
 
                 {/* Price Breakdown */}
                 <View style={[styles.confirmationCard, { backgroundColor: colors.background.secondary }]}>
-                  <View style={styles.confirmationRow}>
-                    <Text style={[styles.confirmationLabel, { color: colors.text.secondary }]}>
-                      Base Price
-                    </Text>
-                    <Text style={[styles.confirmationValue, { color: colors.text.primary }]}>
-                      RM{confirmationData?.bundle.priceValue.toFixed(2)}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.confirmationRow}>
-                    <Text style={[styles.confirmationLabel, { color: colors.text.secondary }]}>
-                      Processing Fee (2.2%)
-                    </Text>
-                    <Text style={[styles.confirmationValue, { color: colors.text.primary }]}>
-                      RM{confirmationData?.fees.processingFee.toFixed(2)}
-                    </Text>
-                  </View>
-                  
-                  <View style={[styles.confirmationDivider, { backgroundColor: colors.border.main }]} />
-                  
                   <View style={styles.confirmationRow}>
                     <Text style={[styles.confirmationTotalLabel, { color: colors.text.primary }]}>
                       Total Amount

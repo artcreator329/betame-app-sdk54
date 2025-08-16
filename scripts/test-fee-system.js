@@ -74,7 +74,7 @@ console.log(`- Buyer pays: ${FeeService.formatAmount(example.buyerTotal)} (RM100
 console.log(`- Seller receives: ${FeeService.formatAmount(example.sellerReceives)} (RM100 - ${FeeService.formatAmount(example.platformFee)} platform fee)`);
 console.log(`- Platform gets: ${FeeService.formatAmount(example.buyerFee + example.platformFee)} total`);
 
-// Test BetaCoin purchase fees
+// Test BetaCoin purchase fees (no processing fees)
 console.log();
 console.log('🪙 BetaCoin Purchase Fee Tests:');
 console.log('-'.repeat(40));
@@ -86,9 +86,9 @@ const betacoinTests = [
 ];
 
 betacoinTests.forEach(test => {
-  const processingFee = Math.round((test.price * 0.022) * 100) / 100;
-  const total = test.price + processingFee;
-  console.log(`${test.betacoins} BetaCoins - Base: RM${test.price.toFixed(2)}, Fee: +RM${processingFee.toFixed(2)}, Total: RM${total.toFixed(2)}`);
+  const processingFee = 0; // No processing fee for BetaCoin purchases
+  const total = test.price; // User pays exactly the bundle price
+  console.log(`${test.betacoins} BetaCoins - Price: RM${test.price.toFixed(2)}, Fee: RM${processingFee.toFixed(2)}, Total: RM${total.toFixed(2)}`);
 });
 
 console.log();
