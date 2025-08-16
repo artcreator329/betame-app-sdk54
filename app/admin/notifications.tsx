@@ -69,20 +69,9 @@ export default function AdminNotificationsScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border.light, backgroundColor: colors.background.primary }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
-          Admin Notifications
-        </Text>
-        <View style={styles.headerRight} />
-      </View>
-
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <AdminNotificationPanel />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -90,24 +79,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  headerRight: {
-    width: 32,
-  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
