@@ -182,7 +182,14 @@ export default function AdminDashboard() {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => {
+              // Try to go back first, if that fails, go to profile
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.push('/(tabs)/profile');
+              }
+            }}
           >
             <ArrowLeft size={24} color={Colors.text} />
           </TouchableOpacity>

@@ -538,11 +538,7 @@ export default function AdminOrderManagementScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Order Management</Text>
-      </View>
-
+    <View style={styles.container}>
       <View style={styles.tabContainer}>
         {renderTabButton('interventions', 'Interventions', 'warning-outline')}
         {renderTabButton('payouts', 'Payouts', 'wallet-outline')}
@@ -587,7 +583,7 @@ export default function AdminOrderManagementScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -262,22 +262,11 @@ export default function AdminChats() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Chat Management</Text>
-          <Text style={styles.headerSubtitle}>{(filteredChats || []).length} active chats</Text>
-        </View>
-      </View>
-
+    <View style={styles.container}>
       {/* Search and Filter */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
-          <Search size={20} color="#6B7280" />
+          <Search size={18} color="#6B7280" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search chats..."
@@ -287,12 +276,12 @@ export default function AdminChats() {
           />
         </View>
         <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color={Colors.primary.main} />
+          <Filter size={18} color={Colors.primary.main} />
         </TouchableOpacity>
       </View>
 
       {/* Filter Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterTabs}>
+      <View style={styles.filterTabs}>
         {['all', 'active', 'inactive'].map((status) => (
           <TouchableOpacity
             key={status}
@@ -312,7 +301,7 @@ export default function AdminChats() {
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       {/* Chats List */}
       <ScrollView
@@ -356,7 +345,7 @@ export default function AdminChats() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -375,51 +364,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 12,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
+
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
-    gap: 12,
+    gap: 8,
   },
   searchInputContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
@@ -427,19 +391,22 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   filterButton: {
-    padding: 12,
+    padding: 8,
     backgroundColor: '#007AFF' + '10',
-    borderRadius: 12,
+    borderRadius: 8,
   },
   filterTabs: {
+    flexDirection: 'row',
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   filterTab: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    marginHorizontal: 4,
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
   },
   activeFilterTab: {
     borderBottomWidth: 2,
@@ -457,28 +424,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 32,
+    padding: 12,
+    paddingBottom: 20,
   },
   chatCard: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
   },
   chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   chatInfo: {
     flex: 1,
@@ -487,8 +454,8 @@ const styles = StyleSheet.create({
   chatParticipants: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
-    gap: 8,
+    marginBottom: 2,
+    gap: 6,
   },
   participantNames: {
     fontSize: 16,
@@ -498,7 +465,7 @@ const styles = StyleSheet.create({
   chatStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   messageCount: {
     fontSize: 14,
@@ -524,14 +491,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 12,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     flex: 1,
   },
   detailText: {
@@ -549,17 +516,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 64,
+    paddingVertical: 40,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 14,
@@ -571,8 +537,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
-    gap: 12,
+    paddingVertical: 12,
+    gap: 8,
   },
   loadingMoreText: {
     fontSize: 14,

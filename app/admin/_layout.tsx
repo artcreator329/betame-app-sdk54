@@ -71,7 +71,14 @@ function DesktopSidebar() {
       <View style={styles.sidebarFooter}>
         <TouchableOpacity 
           style={styles.logoutButton}
-          onPress={() => router.push('/(tabs)')}
+          onPress={() => {
+            // Try to go back first, if that fails, go to profile
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push('/(tabs)/profile');
+            }
+          }}
         >
           <Ionicons name="arrow-back-outline" size={20} color="#666" />
           <Text style={styles.logoutText}>Back to App</Text>
@@ -90,27 +97,32 @@ function MobileHeader() {
 
   return (
     <>
-      <SafeAreaView style={styles.safeAreaHeader} edges={['top']}>
-        <View style={styles.mobileHeader}>
-          <TouchableOpacity 
-            onPress={() => setMenuOpen(!menuOpen)}
-            style={styles.headerButton}
-          >
-            <Ionicons name="menu-outline" size={24} color="#333" />
-          </TouchableOpacity>
-          
-          <Text style={styles.mobileHeaderTitle}>
-            {currentItem?.title || 'Admin'}
-          </Text>
-          
-          <TouchableOpacity 
-            onPress={() => router.push('/(tabs)')}
-            style={styles.headerButton}
-          >
-            <Ionicons name="arrow-back-outline" size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <View style={styles.mobileHeader}>
+        <TouchableOpacity 
+          onPress={() => setMenuOpen(!menuOpen)}
+          style={styles.headerButton}
+        >
+          <Ionicons name="menu-outline" size={24} color="#333" />
+        </TouchableOpacity>
+        
+        <Text style={styles.mobileHeaderTitle}>
+          {currentItem?.title || 'Admin'}
+        </Text>
+        
+        <TouchableOpacity 
+          onPress={() => {
+            // Try to go back first, if that fails, go to profile
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push('/(tabs)/profile');
+            }
+          }}
+          style={styles.headerButton}
+        >
+          <Ionicons name="arrow-back-outline" size={24} color="#333" />
+        </TouchableOpacity>
+      </View>
 
       {menuOpen && (
         <>
@@ -243,11 +255,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  safeAreaHeader: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
+
   sidebar: {
     width: 280,
     backgroundColor: '#fff',
@@ -319,8 +327,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 70, // Increased safe area for status bar and dynamic island
+    paddingBottom: 12,
     backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   mobileHeaderTitle: {
     fontSize: 18,
