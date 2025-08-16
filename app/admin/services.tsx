@@ -38,7 +38,7 @@ interface Service {
   images: string[];
   user_id: string;
   created_at: string;
-  is_active: boolean;
+  status: string;
   profiles: {
     full_name: string;
     email: string;
@@ -96,7 +96,7 @@ function ServiceCard({ service, onView, onDelete }: ServiceCardProps) {
           style={[
             styles.statusBadge,
             {
-              backgroundColor: service.is_active ? '#10B98120' : '#EF444420',
+              backgroundColor: service.status === 'active' ? '#10B98120' : '#EF444420',
             },
           ]}
         >
@@ -104,11 +104,11 @@ function ServiceCard({ service, onView, onDelete }: ServiceCardProps) {
             style={[
               styles.statusText,
               {
-                color: service.is_active ? '#10B981' : '#EF4444',
+                color: service.status === 'active' ? '#10B981' : '#EF4444',
               },
             ]}
           >
-              {service.is_active ? 'Active' : 'Inactive'}
+              {service.status === 'active' ? 'Active' : 'Inactive'}
             </Text>
           </View>
           <TouchableOpacity
@@ -194,7 +194,9 @@ export default function AdminServices() {
     }
 
     if (filterActive !== null) {
-      filtered = filtered.filter((service) => service.is_active === filterActive);
+      filtered = filtered.filter((service) => 
+        filterActive ? service.status === 'active' : service.status !== 'active'
+      );
     }
 
     setFilteredServices(filtered);

@@ -18,6 +18,13 @@ export interface DashboardStats {
   totalRevenue: number;
   activeChats: number;
   pendingReviews: number;
+  activeServices: number;
+  activeJobs: number;
+  totalOrders: number;
+  escrowHeld: number;
+  pendingReports: number;
+  criticalViolations: number;
+  totalNotifications: number;
 }
 
 export interface UserManagement {
@@ -127,19 +134,47 @@ class AdminService {
   }
 
   /**
-   * Get dashboard statistics
+   * Get comprehensive dashboard statistics
    */
   async getDashboardStats(): Promise<DashboardStats> {
     try {
-      const [usersResult, servicesResult, jobsResult, transactionsResult, chatsResult] = await Promise.all([
-        supabaseAdmin.from('profiles').select('id', { count: 'exact', head: true }),
-        supabaseAdmin.from('services').select('id', { count: 'exact', head: true }),
-        supabaseAdmin.from('job_listings').select('id', { count: 'exact', head: true }),
-        supabaseAdmin.from('transactions').select('amount', { count: 'exact' }),
-        supabaseAdmin.from('chats').select('id', { count: 'exact', head: true })
+      const [
+        usersResult, 
+        servicesResult, 
+        jobsResult, 
+        transactionsResult, 
+        chatsResult,
+        ordersResult,
+        escrowResult,
+        reportsResult,
+        violationsResult,
+        notificationsResult
+      ] = await Promise.all([
+        supabaseAdmin.from('profiles').select('id, created_at', { count: 'exact' }),
+        supabaseAdmin.from('services').select('id, status, created_at', { count: 'exact' }),
+        supabaseAdmin.from('job_listings').select('id, status, created_at', { count: 'exact' }),
+        supabaseAdmin.from('transactions').select('amount, type, created_at', { count: 'exact' }),
+        supabaseAdmin.from('chats').select('id, is_active, created_at', { count: 'exact' }),
+        supabaseAdmin.from('orders').select('id, status, total_amount, created_at', { count: 'exact' }),
+        supabaseAdmin.from('escrow_transactions').select('id, status, total_amount', { count: 'exact' }),
+        supabaseAdmin.from('user_reports').select('id, status', { count: 'exact' }),
+        supabaseAdmin.from('user_violations').select('id, severity', { count: 'exact' }),
+        supabaseAdmin.from('notifications').select('id, type, created_at', { count: 'exact' })
       ]);
 
-      const totalRevenue = transactionsResult.data?.reduce((sum, transaction) => sum + (transaction.amount || 0), 0) || 0;
+      // Calculate revenue from multiple sources
+      const transactionRevenue = transactionsResult.data?.reduce((sum, transaction) => sum + (transaction.amount || 0), 0) || 0;
+      const orderRevenue = ordersResult.data?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+      const escrowRevenue = escrowResult.data?.reduce((sum, escrow) => sum + (escrow.total_amount || 0), 0) || 0;
+      
+      const totalRevenue = transactionRevenue + orderRevenue + escrowRevenue;
+
+      // Calculate active metrics
+      const activeServices = servicesResult.data?.filter(s => s.status === 'active').length || 0;
+      const activeJobs = jobsResult.data?.filter(j => j.status === 'active').length || 0;
+      const activeChats = chatsResult.data?.filter(c => c.is_active).length || 0;
+      const pendingReports = reportsResult.data?.filter(r => r.status === 'pending').length || 0;
+      const criticalViolations = violationsResult.data?.filter(v => v.severity === 'critical').length || 0;
 
       return {
         totalUsers: usersResult.count || 0,
@@ -147,8 +182,15 @@ class AdminService {
         totalJobs: jobsResult.count || 0,
         totalTransactions: transactionsResult.count || 0,
         totalRevenue,
-        activeChats: chatsResult.count || 0,
-        pendingReviews: 0 // TODO: Implement reviews count
+        activeChats: activeChats,
+        pendingReviews: pendingReports,
+        activeServices,
+        activeJobs,
+        totalOrders: ordersResult.count || 0,
+        escrowHeld: escrowResult.data?.filter(e => e.status === 'held').length || 0,
+        pendingReports,
+        criticalViolations,
+        totalNotifications: notificationsResult.count || 0
       };
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -159,7 +201,14 @@ class AdminService {
         totalTransactions: 0,
         totalRevenue: 0,
         activeChats: 0,
-        pendingReviews: 0
+        pendingReviews: 0,
+        activeServices: 0,
+        activeJobs: 0,
+        totalOrders: 0,
+        escrowHeld: 0,
+        pendingReports: 0,
+        criticalViolations: 0,
+        totalNotifications: 0
       };
     }
   }
@@ -353,12 +402,26 @@ class AdminService {
    */
   async getAnalyticsData() {
     try {
-      const [stats, userGrowth, revenueData, categoryBreakdown, topPerformers] = await Promise.all([
+      const [
+        stats, 
+        userGrowth, 
+        revenueData, 
+        categoryBreakdown, 
+        topPerformers,
+        platformHealth,
+        userEngagement,
+        orderAnalytics,
+        moderationStats
+      ] = await Promise.all([
         this.getDashboardStats(),
         this.getUserGrowthAnalytics(),
         this.getRevenueAnalytics(),
         this.getCategoryBreakdown(),
-        this.getTopPerformers()
+        this.getTopPerformers(),
+        this.getPlatformHealthMetrics(),
+        this.getUserEngagementMetrics(),
+        this.getOrderAnalytics(),
+        this.getModerationAnalytics()
       ]);
 
       return {
@@ -372,11 +435,251 @@ class AdminService {
         userGrowth,
         revenueData,
         categoryBreakdown,
-        topPerformers
+        topPerformers,
+        platformHealth,
+        userEngagement,
+        orderAnalytics,
+        moderationStats
       };
     } catch (error) {
       console.error('Error in getAnalyticsData:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get platform health metrics
+   */
+  async getPlatformHealthMetrics() {
+    try {
+      const [
+        activeUsers,
+        completedOrders,
+        disputedOrders,
+        averageRating,
+        systemUptime
+      ] = await Promise.all([
+        // Active users in last 30 days
+        supabaseAdmin.from('profiles')
+          .select('id')
+          .gte('updated_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+        
+        // Completed orders
+        supabaseAdmin.from('orders')
+          .select('id')
+          .eq('status', 'completed'),
+        
+        // Dispute rate
+        supabaseAdmin.from('orders')
+          .select('id, dispute_status')
+          .neq('dispute_status', 'none'),
+        
+        // Average service rating
+        supabaseAdmin.from('services')
+          .select('rating')
+          .gt('rating', 0),
+        
+        // Mock system uptime (in real app, this would come from monitoring)
+        Promise.resolve({ uptime: 99.8 })
+      ]);
+
+      const totalOrders = await supabaseAdmin.from('orders').select('id', { count: 'exact', head: true });
+      const disputeRateCalc = totalOrders.count ? (disputedOrders.data?.length || 0) / totalOrders.count * 100 : 0;
+      const avgRating = averageRating.data?.reduce((sum, s) => sum + (s.rating || 0), 0) / (averageRating.data?.length || 1) || 0;
+
+      return {
+        activeUsers: activeUsers.data?.length || 0,
+        completedOrders: completedOrders.data?.length || 0,
+        disputeRate: Math.round(disputeRateCalc * 100) / 100,
+        averageRating: Math.round(avgRating * 10) / 10,
+        systemUptime: systemUptime.uptime,
+        healthScore: Math.round((100 - disputeRateCalc + (avgRating * 20) + systemUptime.uptime) / 3)
+      };
+    } catch (error) {
+      console.error('Error in getPlatformHealthMetrics:', error);
+      return {
+        activeUsers: 0,
+        completedOrders: 0,
+        disputeRate: 0,
+        averageRating: 0,
+        systemUptime: 0,
+        healthScore: 0
+      };
+    }
+  }
+
+  /**
+   * Get user engagement metrics
+   */
+  async getUserEngagementMetrics() {
+    try {
+      const [
+        dailyActiveUsers,
+        messagesSent,
+        servicesCreated,
+        jobsPosted,
+        checkIns
+      ] = await Promise.all([
+        // Daily active users (last 7 days)
+        supabaseAdmin.from('profiles')
+          .select('id, updated_at')
+          .gte('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        
+        // Messages sent in last 7 days
+        supabaseAdmin.from('chat_messages')
+          .select('id, created_at')
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        
+        // Services created in last 7 days
+        supabaseAdmin.from('services')
+          .select('id, created_at')
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        
+        // Jobs posted in last 7 days
+        supabaseAdmin.from('job_listings')
+          .select('id, created_at')
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        
+        // Check-ins in last 7 days
+        supabaseAdmin.from('checkins')
+          .select('id, last_checkin_date')
+          .gte('last_checkin_date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+      ]);
+
+      return {
+        dailyActiveUsers: dailyActiveUsers.data?.length || 0,
+        messagesSent: messagesSent.data?.length || 0,
+        servicesCreated: servicesCreated.data?.length || 0,
+        jobsPosted: jobsPosted.data?.length || 0,
+        checkIns: checkIns.data?.length || 0,
+        engagementScore: Math.round(
+          ((dailyActiveUsers.data?.length || 0) * 0.3 +
+           (messagesSent.data?.length || 0) * 0.2 +
+           (servicesCreated.data?.length || 0) * 0.25 +
+           (jobsPosted.data?.length || 0) * 0.25) / 10
+        )
+      };
+    } catch (error) {
+      console.error('Error in getUserEngagementMetrics:', error);
+      return {
+        dailyActiveUsers: 0,
+        messagesSent: 0,
+        servicesCreated: 0,
+        jobsPosted: 0,
+        checkIns: 0,
+        engagementScore: 0
+      };
+    }
+  }
+
+  /**
+   * Get order analytics
+   */
+  async getOrderAnalytics() {
+    try {
+      const [
+        ordersByStatus,
+        averageOrderValue,
+        completionRate,
+        timeToCompletion
+      ] = await Promise.all([
+        supabaseAdmin.from('orders').select('status, total_amount'),
+        supabaseAdmin.from('orders').select('total_amount'),
+        supabaseAdmin.from('orders').select('status'),
+        supabaseAdmin.from('orders')
+          .select('created_at, completion_confirmed_at')
+          .not('completion_confirmed_at', 'is', null)
+      ]);
+
+      const statusBreakdown = ordersByStatus.data?.reduce((acc, order) => {
+        acc[order.status] = (acc[order.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      const avgOrderValue = averageOrderValue.data?.reduce((sum, order) => sum + (order.total_amount || 0), 0) / (averageOrderValue.data?.length || 1) || 0;
+      
+      const completedOrders = completionRate.data?.filter(o => o.status === 'completed').length || 0;
+      const totalOrders = completionRate.data?.length || 0;
+      const completionRatePercent = totalOrders ? (completedOrders / totalOrders) * 100 : 0;
+
+      const avgCompletionTime = timeToCompletion.data?.reduce((sum, order) => {
+        const start = new Date(order.created_at).getTime();
+        const end = new Date(order.completion_confirmed_at).getTime();
+        return sum + (end - start);
+      }, 0) / (timeToCompletion.data?.length || 1) || 0;
+
+      return {
+        statusBreakdown,
+        averageOrderValue: Math.round(avgOrderValue),
+        completionRate: Math.round(completionRatePercent * 100) / 100,
+        averageCompletionTime: Math.round(avgCompletionTime / (1000 * 60 * 60 * 24)), // days
+        totalOrders
+      };
+    } catch (error) {
+      console.error('Error in getOrderAnalytics:', error);
+      return {
+        statusBreakdown: {},
+        averageOrderValue: 0,
+        completionRate: 0,
+        averageCompletionTime: 0,
+        totalOrders: 0
+      };
+    }
+  }
+
+  /**
+   * Get moderation analytics
+   */
+  async getModerationAnalytics() {
+    try {
+      const [
+        violations,
+        reports,
+        warnings,
+        bannedUsers
+      ] = await Promise.all([
+        supabaseAdmin.from('user_violations').select('violation_type, severity, created_at'),
+        supabaseAdmin.from('user_reports').select('status, created_at'),
+        supabaseAdmin.from('user_warnings').select('warning_type, created_at'),
+        supabaseAdmin.from('user_moderation_status').select('is_banned').eq('is_banned', true)
+      ]);
+
+      const violationsByType = violations.data?.reduce((acc, v) => {
+        acc[v.violation_type] = (acc[v.violation_type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      const reportsByStatus = reports.data?.reduce((acc, r) => {
+        acc[r.status] = (acc[r.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      const recentViolations = violations.data?.filter(v => 
+        new Date(v.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      ).length || 0;
+
+      return {
+        totalViolations: violations.data?.length || 0,
+        totalReports: reports.data?.length || 0,
+        totalWarnings: warnings.data?.length || 0,
+        bannedUsers: bannedUsers.data?.length || 0,
+        violationsByType,
+        reportsByStatus,
+        recentViolations,
+        moderationScore: Math.max(0, 100 - (recentViolations * 5) - (bannedUsers.data?.length || 0))
+      };
+    } catch (error) {
+      console.error('Error in getModerationAnalytics:', error);
+      return {
+        totalViolations: 0,
+        totalReports: 0,
+        totalWarnings: 0,
+        bannedUsers: 0,
+        violationsByType: {},
+        reportsByStatus: {},
+        recentViolations: 0,
+        moderationScore: 100
+      };
     }
   }
 
@@ -548,25 +851,49 @@ class AdminService {
     try {
       const offset = (page - 1) * limit;
 
-      const { data, error, count } = await supabaseAdmin
+      // Get services first
+      const { data: services, error: servicesError, count } = await supabaseAdmin
         .from('services')
-        .select(`
-          *,
-          profiles!services_user_id_fkey(
-            full_name,
-            email
-          )
-        `, { count: 'exact' })
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
-      if (error) {
-        console.error('Error fetching services:', error);
+      if (servicesError) {
+        console.error('Error fetching services:', servicesError);
         return { services: [], total: 0 };
       }
 
+      if (!services || services.length === 0) {
+        return { services: [], total: count || 0 };
+      }
+
+      // Get user profiles for the services
+      const userIds = services.map(service => service.user_id).filter(Boolean);
+      const { data: profiles, error: profilesError } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Return services without profile data
+        return {
+          services: services.map(service => ({ ...service, profiles: null })),
+          total: count || 0
+        };
+      }
+
+      // Combine services with profile data
+      const servicesWithProfiles = services.map(service => {
+        const profile = profiles?.find(p => p.id === service.user_id);
+        return {
+          ...service,
+          profiles: profile || null
+        };
+      });
+
       return {
-        services: data || [],
+        services: servicesWithProfiles,
         total: count || 0
       };
     } catch (error) {

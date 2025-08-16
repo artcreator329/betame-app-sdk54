@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Platform } from '
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -89,46 +90,75 @@ function MobileHeader() {
 
   return (
     <>
-      <View style={styles.mobileHeader}>
-        <TouchableOpacity onPress={() => setMenuOpen(!menuOpen)}>
-          <Ionicons name="menu-outline" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.mobileHeaderTitle}>
-          {currentItem?.title || 'Admin'}
-        </Text>
-        <TouchableOpacity onPress={() => router.push('/(tabs)')}>
-          <Ionicons name="arrow-back-outline" size={24} color="#333" />
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={styles.safeAreaHeader} edges={['top']}>
+        <View style={styles.mobileHeader}>
+          <TouchableOpacity 
+            onPress={() => setMenuOpen(!menuOpen)}
+            style={styles.headerButton}
+          >
+            <Ionicons name="menu-outline" size={24} color="#333" />
+          </TouchableOpacity>
+          
+          <Text style={styles.mobileHeaderTitle}>
+            {currentItem?.title || 'Admin'}
+          </Text>
+          
+          <TouchableOpacity 
+            onPress={() => router.push('/(tabs)')}
+            style={styles.headerButton}
+          >
+            <Ionicons name="arrow-back-outline" size={24} color="#333" />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
 
       {menuOpen && (
-        <View style={styles.mobileMenu}>
-          {adminNavItems.map((item) => (
-            <TouchableOpacity
-              key={item.name}
-              style={[
-                styles.mobileMenuItem,
-                currentRoute === item.name && styles.mobileMenuItemActive
-              ]}
-              onPress={() => {
-                router.push(item.route as any);
-                setMenuOpen(false);
-              }}
-            >
-              <Ionicons 
-                name={item.icon as any} 
-                size={20} 
-                color={currentRoute === item.name ? '#2196F3' : '#666'} 
-              />
-              <Text style={[
-                styles.mobileMenuItemText,
-                currentRoute === item.name && styles.mobileMenuItemTextActive
-              ]}>
-                {item.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <>
+          <TouchableOpacity 
+            style={styles.overlay} 
+            onPress={() => setMenuOpen(false)}
+            activeOpacity={1}
+          />
+          <SafeAreaView style={styles.mobileDrawer} edges={['top', 'left', 'bottom']}>
+            <View style={styles.drawerHeader}>
+              <View style={styles.logoContainer}>
+                <Ionicons name="shield-checkmark" size={24} color="#2196F3" />
+                <Text style={styles.drawerTitle}>BetaMe Admin</Text>
+              </View>
+              <TouchableOpacity onPress={() => setMenuOpen(false)}>
+                <Ionicons name="close-outline" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.drawerContent}>
+              {adminNavItems.map((item) => (
+                <TouchableOpacity
+                  key={item.name}
+                  style={[
+                    styles.drawerItem,
+                    currentRoute === item.name && styles.drawerItemActive
+                  ]}
+                  onPress={() => {
+                    router.push(item.route as any);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Ionicons 
+                    name={item.icon as any} 
+                    size={20} 
+                    color={currentRoute === item.name ? '#2196F3' : '#666'} 
+                  />
+                  <Text style={[
+                    styles.drawerItemText,
+                    currentRoute === item.name && styles.drawerItemTextActive
+                  ]}>
+                    {item.title}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </SafeAreaView>
+        </>
       )}
     </>
   );
@@ -213,6 +243,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  safeAreaHeader: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
   sidebar: {
     width: 280,
     backgroundColor: '#fff',
@@ -286,34 +321,83 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   mobileHeaderTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
   },
-  mobileMenu: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  headerButton: {
+    padding: 4,
+    borderRadius: 8,
   },
-  mobileMenuItem: {
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 999,
+  },
+  mobileDrawer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '80%',
+    maxWidth: 300,
+    height: '100%',
+    backgroundColor: '#fff',
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 2,
+      height: 0,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    flex: 1,
+  },
+  drawerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#f8f9fa',
   },
-  mobileMenuItemActive: {
+  drawerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 8,
+  },
+  drawerContent: {
+    flex: 1,
+    paddingTop: 8,
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    marginHorizontal: 8,
+    marginVertical: 2,
+    borderRadius: 8,
+  },
+  drawerItemActive: {
     backgroundColor: '#f0f8ff',
   },
-  mobileMenuItemText: {
+  drawerItemText: {
     fontSize: 16,
     color: '#666',
     marginLeft: 12,
+    fontWeight: '500',
   },
-  mobileMenuItemTextActive: {
+  drawerItemTextActive: {
     color: '#2196F3',
     fontWeight: '600',
   },
