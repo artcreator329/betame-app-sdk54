@@ -22,6 +22,7 @@ interface AuthContextType {
   updateProfile: (updates: any) => Promise<{ data: any; error: any }>;
   refreshProfile: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  checkAdminStatus: (userId?: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,16 +54,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const profile = await authService.getUserProfile(userId);
       setUserProfile(profile);
       
-      // Check admin status
-      const adminStatus = await adminService.isAdmin(userId);
-      console.log('🔍 AuthContext: Admin status for user', userId, ':', adminStatus);
-      setIsAdmin(adminStatus);
+      // Don't automatically check admin status during sign-in
+      // This allows the login flow to handle admin routing with the choice modal
+      // Admin status will be checked separately when needed
       
       // Ensure wallet exists for the user
       console.log('🔄 AuthContext: Ensuring wallet exists for user:', userId);
       await WalletService.ensureWalletExists(userId);
     } catch (error) {
       console.error('Error fetching user profile:', error);
+    }
+  };
+
+  // Separate method to check and set admin status
+  const checkAdminStatus = async (userId?: string) => {
+    try {
+      const userIdToCheck = userId || user?.id;
+      if (!userIdToCheck) return false;
+      
+      const adminStatus = await adminService.isAdmin(userIdToCheck);
+      console.log('🔍 AuthContext: Admin status for user', userIdToCheck, ':', adminStatus);
+      setIsAdmin(adminStatus);
+      return adminStatus;
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      return false;
     }
   };
 
@@ -422,6 +438,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     updateProfile,
     refreshProfile,
     refreshSession,
+    checkAdminStatus,
   };
 
   return (

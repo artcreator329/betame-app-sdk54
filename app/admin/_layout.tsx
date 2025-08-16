@@ -24,6 +24,7 @@ const adminNavItems: AdminNavItem[] = [
   { name: 'chats', title: 'Chats', icon: 'chatbubbles-outline', route: '/admin/chats' },
   { name: 'notifications', title: 'Notifications', icon: 'notifications-outline', route: '/admin/notifications' },
   { name: 'analytics', title: 'Analytics', icon: 'bar-chart-outline', route: '/admin/analytics' },
+  { name: 'preferences', title: 'Preferences', icon: 'options-outline', route: '/admin/preferences' },
   { name: 'settings', title: 'Settings', icon: 'settings-outline', route: '/admin/settings' },
 ];
 
@@ -169,6 +170,7 @@ export default function AdminLayout() {
                   <Stack.Screen name="chats" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="analytics" />
+            <Stack.Screen name="preferences" />
             <Stack.Screen name="settings" />
           </Stack>
         </View>
@@ -194,6 +196,7 @@ export default function AdminLayout() {
         <Stack.Screen name="chats" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="analytics" />
+        <Stack.Screen name="preferences" />
         <Stack.Screen name="settings" />
       </Stack>
     </View>

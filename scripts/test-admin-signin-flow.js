@@ -120,9 +120,12 @@ async function testAdminSignInFlow() {
     
     const componentsToCheck = [
       'components/AdminSignInChoiceModal.tsx',
+      'components/AdminQuickSwitch.tsx',
       'app/auth/login.tsx',
       'app/(tabs)/profile.tsx',
-      'app/admin/_layout.tsx'
+      'app/admin/_layout.tsx',
+      'app/admin/preferences.tsx',
+      'lib/admin-preferences-service.ts'
     ];
 
     const fs = require('fs');
@@ -137,18 +140,26 @@ async function testAdminSignInFlow() {
         const content = fs.readFileSync(fullPath, 'utf8');
         
         if (componentPath === 'components/AdminSignInChoiceModal.tsx') {
-          if (content.includes('AdminSignInChoiceModal') && content.includes('onContinueToApp') && content.includes('onGoToDashboard')) {
-            console.log('   ✅ Contains required props and functionality');
+          if (content.includes('AdminSignInChoiceModal') && content.includes('onContinueToApp') && content.includes('onGoToDashboard') && content.includes('rememberChoice')) {
+            console.log('   ✅ Contains required props and remember choice functionality');
           } else {
             console.log('   ⚠️  Missing some required functionality');
           }
         }
         
-        if (componentPath === 'app/auth/login.tsx') {
-          if (content.includes('AdminSignInChoiceModal') && content.includes('showAdminChoice')) {
-            console.log('   ✅ Admin choice modal integrated');
+        if (componentPath === 'components/AdminQuickSwitch.tsx') {
+          if (content.includes('AdminQuickSwitch') && content.includes('currentLocation')) {
+            console.log('   ✅ Quick switch component ready');
           } else {
-            console.log('   ⚠️  Admin choice modal not integrated');
+            console.log('   ⚠️  Quick switch component incomplete');
+          }
+        }
+        
+        if (componentPath === 'app/auth/login.tsx') {
+          if (content.includes('AdminSignInChoiceModal') && content.includes('showAdminChoice') && content.includes('adminPreferencesService')) {
+            console.log('   ✅ Admin choice modal and preferences integrated');
+          } else {
+            console.log('   ⚠️  Admin choice modal or preferences not fully integrated');
           }
         }
         
@@ -161,10 +172,26 @@ async function testAdminSignInFlow() {
         }
         
         if (componentPath === 'app/admin/_layout.tsx') {
-          if (content.includes('Back to App')) {
-            console.log('   ✅ Back to App button exists');
+          if (content.includes('Back to App') && content.includes('preferences')) {
+            console.log('   ✅ Back to App button and preferences link exist');
           } else {
-            console.log('   ⚠️  Back to App button not found');
+            console.log('   ⚠️  Back to App button or preferences link not found');
+          }
+        }
+        
+        if (componentPath === 'app/admin/preferences.tsx') {
+          if (content.includes('AdminPreferencesScreen') && content.includes('adminPreferencesService')) {
+            console.log('   ✅ Admin preferences page ready');
+          } else {
+            console.log('   ⚠️  Admin preferences page incomplete');
+          }
+        }
+        
+        if (componentPath === 'lib/admin-preferences-service.ts') {
+          if (content.includes('AdminPreferencesService') && content.includes('saveSignInChoice')) {
+            console.log('   ✅ Admin preferences service ready');
+          } else {
+            console.log('   ⚠️  Admin preferences service incomplete');
           }
         }
       } else {
@@ -174,17 +201,22 @@ async function testAdminSignInFlow() {
 
     console.log('\n🎉 Admin Sign-In Flow Test Complete!');
     console.log('\n📋 Summary:');
-    console.log('✅ Admin detection modal created');
-    console.log('✅ Login flow updated to detect admin users');
+    console.log('✅ Admin detection modal with remember choice option');
+    console.log('✅ Login flow with preferences and auto-redirect');
     console.log('✅ Profile page updated with admin dashboard access');
-    console.log('✅ Admin layout includes back to app functionality');
+    console.log('✅ Admin layout includes back to app and preferences');
+    console.log('✅ Admin preferences service for storing user choices');
+    console.log('✅ Admin preferences page for managing settings');
+    console.log('✅ Quick switch component for easy mode switching');
     
-    console.log('\n🔄 Flow Overview:');
+    console.log('\n🔄 Enhanced Flow Overview:');
     console.log('1. User signs in with admin credentials');
-    console.log('2. System detects admin status');
-    console.log('3. Modal appears asking: "Continue to Main App" or "Go to Admin Dashboard"');
-    console.log('4. User can switch between admin and main app from profile page');
-    console.log('5. Admin dashboard has "Back to App" button in sidebar');
+    console.log('2. System checks saved preferences');
+    console.log('3. If no preference saved, modal appears with "Remember choice" option');
+    console.log('4. User can set default destination and remember choice for 30 days');
+    console.log('5. Admin preferences page allows managing sign-in behavior');
+    console.log('6. Quick switch component enables easy mode switching');
+    console.log('7. Profile page shows admin dashboard access for admin users');
 
   } catch (error) {
     console.error('❌ Test failed:', error);

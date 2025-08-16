@@ -40,29 +40,24 @@ class AdminService {
    */
   async isAdmin(userId?: string): Promise<boolean> {
     try {
-      console.log('🔍 AdminService: isAdmin called with userId:', userId);
       const user = userId || (await supabase.auth.getUser()).data.user?.id;
-      console.log('🔍 AdminService: Final user ID to check:', user);
       
       if (!user) {
-        console.log('🔍 AdminService: No user ID found, returning false');
         return false;
       }
 
-      console.log('🔍 AdminService: Querying admin_roles table for user:', user);
+      // Use the secure database function
       const { data, error } = await supabase
-        .from('admin_roles')
-        .select('id')
-        .eq('user_id', user)
-        .single();
-
-      console.log('🔍 AdminService: Query result - data:', data, 'error:', error);
-      const isAdmin = !error && !!data;
-      console.log('🔍 AdminService: Final admin status:', isAdmin);
+        .rpc('is_user_admin', { user_id: user });
       
-      return isAdmin;
+      if (error) {
+        console.error('AdminService: Error checking admin status:', error);
+        return false;
+      }
+      
+      return !!data;
     } catch (error) {
-      console.error('🔍 AdminService: Error checking admin status:', error);
+      console.error('AdminService: Error checking admin status:', error);
       return false;
     }
   }

@@ -100,12 +100,13 @@ function RootLayoutNav() {
       return;
     }
     
-    // If user is authenticated and is admin, redirect to admin dashboard
-    if (user && isAdmin && !inAdminGroup) {
-      console.log('🔍 Layout: Admin user not in admin group, redirecting to /admin');
-      router.replace('/admin');
-      return;
-    }
+    // Don't auto-redirect admin users - let the login flow handle admin routing
+    // This allows the AdminSignInChoiceModal to appear
+    // if (user && isAdmin && !inAdminGroup) {
+    //   console.log('🔍 Layout: Admin user not in admin group, redirecting to /admin');
+    //   router.replace('/admin');
+    //   return;
+    // }
     
     // If user is not admin but trying to access admin pages, redirect to homepage
     if (inAdminGroup && (!user || !isAdmin)) {

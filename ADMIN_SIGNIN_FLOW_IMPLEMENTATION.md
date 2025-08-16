@@ -10,6 +10,7 @@ This document describes the implementation of an enhanced admin sign-in flow tha
 - **Component**: `AdminSignInChoiceModal.tsx`
 - **Purpose**: Presents admin users with a choice between main app and admin dashboard
 - **Design**: Clean, professional modal with clear options and descriptions
+- **Enhanced**: "Remember my choice" option to skip dialog for 30 days
 
 ### 2. Enhanced Login Flow
 - **File**: `app/auth/login.tsx`
@@ -26,7 +27,30 @@ This document describes the implementation of an enhanced admin sign-in flow tha
 
 ### 4. Admin Dashboard Navigation
 - **File**: `app/admin/_layout.tsx`
-- **Existing Feature**: "Back to App" button in sidebar footer
+- **Features**: 
+  - "Back to App" button in sidebar footer
+  - "Preferences" link in navigation menu
+
+### 5. User Preferences System
+- **Service**: `lib/admin-preferences-service.ts`
+- **Purpose**: Store and manage admin sign-in preferences
+- **Features**:
+  - Remember user choice for 30 days
+  - Auto-redirect based on saved preferences
+  - Preference expiration and reset
+
+### 6. Admin Preferences Page
+- **File**: `app/admin/preferences.tsx`
+- **Purpose**: Allow admins to manage their sign-in behavior
+- **Features**:
+  - Toggle remember choice option
+  - Set default sign-in destination
+  - Reset preferences to defaults
+
+### 7. Quick Switch Component
+- **Component**: `AdminQuickSwitch.tsx`
+- **Purpose**: Easy switching between admin and main app modes
+- **Design**: Compact button with appropriate icons and colors
 
 ## Implementation Details
 

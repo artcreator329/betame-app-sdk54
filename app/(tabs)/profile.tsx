@@ -43,7 +43,7 @@ export default function ProfileScreen() {
   const [jobListings, setJobListings] = useState<JobListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  // isAdmin is now provided by AuthContext
   const [isAdjustingPhoto, setIsAdjustingPhoto] = useState(false);
   const [photoType, setPhotoType] = useState<'cover' | 'profile'>('profile');
   const [shareModalVisible, setShareModalVisible] = useState(false);
@@ -52,7 +52,7 @@ export default function ProfileScreen() {
   const [jobNotificationService] = useState(() => JobNotificationService.getInstance());
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const { user, userProfile, updateProfile, refreshProfile } = useAuth();
+  const { user, userProfile, updateProfile, refreshProfile, checkAdminStatus: contextCheckAdminStatus, isAdmin } = useAuth();
   const colors = useColors();
   const { isDarkMode, toggleTheme } = useTheme();
 
@@ -149,7 +149,7 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (user) {
       fetchProfileData();
-      checkAdminStatus();
+      contextCheckAdminStatus();
       setupJobNotifications();
     }
   }, [user]);
@@ -197,17 +197,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const checkAdminStatus = async () => {
-    if (!user) return;
-
-    try {
-      const adminStatus = await adminService.isAdmin(user.id);
-      setIsAdmin(adminStatus);
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-      setIsAdmin(false);
-    }
-  };
+  // checkAdminStatus is now provided by AuthContext
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {

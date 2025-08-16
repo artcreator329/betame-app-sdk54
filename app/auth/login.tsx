@@ -21,6 +21,7 @@ import { adminService } from '@/lib/admin-service';
 import { referralService } from '@/lib/referral-service';
 import { ReferralInputModal } from '@/components/ReferralInputModal';
 import { AdminSignInChoiceModal } from '@/components/AdminSignInChoiceModal';
+import { adminPreferencesService } from '@/lib/admin-preferences-service';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -32,8 +33,10 @@ export default function LoginScreen() {
   const [newUserId, setNewUserId] = useState<string | null>(null);
   const [showAdminChoice, setShowAdminChoice] = useState(false);
   const [adminUser, setAdminUser] = useState<{ id: string; email: string } | null>(null);
+  const [adminFlowCompleted, setAdminFlowCompleted] = useState(false);
+  const adminModalRef = useRef({ shouldShow: false, userData: null });
   const router = useRouter();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, checkAdminStatus, user } = useAuth();
   const videoRef = useRef<Video>(null);
 
   // Add video error handling and rotation
@@ -61,6 +64,46 @@ export default function LoginScreen() {
     setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
   };
 
+  // Effect to handle admin flow after successful sign-in
+  useEffect(() => {
+    const handleAdminFlow = async () => {
+      if (user && !adminFlowCompleted) {
+        const isAdmin = await adminService.isAdmin(user.id);
+        
+        if (isAdmin) {
+          const shouldShowModal = await adminPreferencesService.shouldShowChoiceModal(user.id);
+          
+          if (shouldShowModal) {
+            const adminUserData = { 
+              id: user.id, 
+              email: user.email || email.trim() 
+            };
+            
+            adminModalRef.current = { shouldShow: true, userData: adminUserData };
+            setAdminUser(adminUserData);
+            setShowAdminChoice(true);
+            setAdminFlowCompleted(true);
+          } else {
+            // Auto-redirect based on saved preference
+            const destination = await adminPreferencesService.getAutoRedirectDestination(user.id);
+            await checkAdminStatus(user.id);
+            
+            if (destination === 'dashboard') {
+              router.replace('/admin');
+            } else {
+              router.replace('/(tabs)');
+            }
+          }
+        } else {
+          // Navigate to main app for non-admin users
+          router.replace('/(tabs)');
+        }
+      }
+    };
+
+    handleAdminFlow();
+  }, [user, adminFlowCompleted]);
+
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
@@ -74,20 +117,7 @@ export default function LoginScreen() {
       if (result.error) {
         Alert.alert('Error', result.error.message);
       } else if (result.user) {
-        // Check if user is admin
-        const isAdmin = await adminService.isAdmin(result.user.id);
-        
-        if (isAdmin) {
-          // Show admin choice modal
-          setAdminUser({ 
-            id: result.user.id, 
-            email: result.user.email || email.trim() 
-          });
-          setShowAdminChoice(true);
-        } else {
-          // Navigate to main app
-          router.replace('/(tabs)');
-        }
+        // Admin flow will be handled by useEffect when user state updates
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'An unexpected error occurred');
@@ -96,15 +126,33 @@ export default function LoginScreen() {
     }
   };
 
-  const handleAdminChoiceToDashboard = () => {
+  const handleAdminChoiceToDashboard = async (rememberChoice?: boolean) => {
+    if (adminUser && rememberChoice) {
+      await adminPreferencesService.saveSignInChoice(adminUser.id, 'dashboard', true);
+    }
+    
+    // Set admin status in context now that user has made their choice
+    await checkAdminStatus(adminUser?.id);
+    
+    adminModalRef.current = { shouldShow: false, userData: null };
     setShowAdminChoice(false);
     setAdminUser(null);
+    setAdminFlowCompleted(false);
     router.replace('/admin');
   };
 
-  const handleAdminChoiceToApp = () => {
+  const handleAdminChoiceToApp = async (rememberChoice?: boolean) => {
+    if (adminUser && rememberChoice) {
+      await adminPreferencesService.saveSignInChoice(adminUser.id, 'app', true);
+    }
+    
+    // Set admin status in context now that user has made their choice
+    await checkAdminStatus(adminUser?.id);
+    
+    adminModalRef.current = { shouldShow: false, userData: null };
     setShowAdminChoice(false);
     setAdminUser(null);
+    setAdminFlowCompleted(false);
     router.replace('/(tabs)');
   };
 
@@ -352,12 +400,14 @@ export default function LoginScreen() {
       )}
 
       {/* Admin Sign In Choice Modal */}
-      <AdminSignInChoiceModal
-        visible={showAdminChoice}
-        onContinueToApp={handleAdminChoiceToApp}
-        onGoToDashboard={handleAdminChoiceToDashboard}
-        userEmail={adminUser?.email}
-      />
+      {(showAdminChoice || adminModalRef.current.shouldShow) && (
+        <AdminSignInChoiceModal
+          visible={showAdminChoice || adminModalRef.current.shouldShow}
+          onContinueToApp={handleAdminChoiceToApp}
+          onGoToDashboard={handleAdminChoiceToDashboard}
+          userEmail={adminUser?.email || adminModalRef.current.userData?.email}
+        />
+      )}
     </SafeAreaView>
   );
 }

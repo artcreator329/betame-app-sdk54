@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Modal,
   Dimensions,
   Platform,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -15,8 +16,8 @@ const { width, height } = Dimensions.get('window');
 
 interface AdminSignInChoiceModalProps {
   visible: boolean;
-  onContinueToApp: () => void;
-  onGoToDashboard: () => void;
+  onContinueToApp: (rememberChoice?: boolean) => void;
+  onGoToDashboard: (rememberChoice?: boolean) => void;
   userEmail?: string;
 }
 
@@ -65,10 +66,11 @@ function ModalContent({
   onGoToDashboard, 
   userEmail 
 }: {
-  onContinueToApp: () => void;
-  onGoToDashboard: () => void;
+  onContinueToApp: (rememberChoice?: boolean) => void;
+  onGoToDashboard: (rememberChoice?: boolean) => void;
   userEmail?: string;
 }) {
+  const [rememberChoice, setRememberChoice] = useState(false);
   return (
     <>
       {/* Header */}
@@ -89,7 +91,7 @@ function ModalContent({
       <View style={styles.optionsContainer}>
         <TouchableOpacity 
           style={styles.optionButton}
-          onPress={onGoToDashboard}
+          onPress={() => onGoToDashboard(rememberChoice)}
           activeOpacity={0.8}
         >
           <View style={styles.optionIconContainer}>
@@ -106,7 +108,7 @@ function ModalContent({
 
         <TouchableOpacity 
           style={styles.optionButton}
-          onPress={onContinueToApp}
+          onPress={() => onContinueToApp(rememberChoice)}
           activeOpacity={0.8}
         >
           <View style={styles.optionIconContainer}>
@@ -120,6 +122,20 @@ function ModalContent({
           </View>
           <Ionicons name="chevron-forward" size={20} color="#666" />
         </TouchableOpacity>
+      </View>
+
+      {/* Remember Choice Option */}
+      <View style={styles.rememberContainer}>
+        <View style={styles.rememberContent}>
+          <Text style={styles.rememberText}>Remember my choice</Text>
+          <Text style={styles.rememberSubtext}>Skip this dialog for 30 days</Text>
+        </View>
+        <Switch
+          value={rememberChoice}
+          onValueChange={setRememberChoice}
+          trackColor={{ false: '#E0E0E0', true: '#2196F3' }}
+          thumbColor={rememberChoice ? '#FFFFFF' : '#FFFFFF'}
+        />
       </View>
 
       {/* Footer */}
@@ -240,6 +256,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 18,
+  },
+  rememberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    marginBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  rememberContent: {
+    flex: 1,
+  },
+  rememberText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  rememberSubtext: {
+    fontSize: 14,
+    color: '#666',
   },
   footer: {
     paddingTop: 16,
