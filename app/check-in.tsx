@@ -8,6 +8,8 @@ import {
   Dimensions,
   Alert,
   Animated,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Gift, Clock } from 'lucide-react-native';
@@ -31,6 +33,8 @@ interface CheckInDay {
 }
 
 export default function CheckInScreen() {
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const isDesktop = screenWidth > 768;
   const router = useRouter();
   const { user } = useAuth();
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -39,6 +43,8 @@ export default function CheckInScreen() {
   const [canCheckIn, setCanCheckIn] = useState(false);
   const [isCheckedInToday, setIsCheckedInToday] = useState(false);
   const [lastCheckInDate, setLastCheckInDate] = useState<Date | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyData, setHistoryData] = useState<any[]>([]);
   
   // Animation refs
   const flashAnimation = useRef(new Animated.Value(1)).current;
@@ -211,20 +217,38 @@ export default function CheckInScreen() {
       const checkInTransactions = transactions.filter(t => t.type === 'daily_checkin');
       
       if (checkInTransactions.length === 0) {
-        Alert.alert('Check-in History', 'No check-in history found.');
+        if (Platform.OS === 'web') {
+          // For web, show in a more web-friendly way
+          setHistoryData([]);
+          setShowHistory(true);
+        } else {
+          Alert.alert('Check-in History', 'No check-in history found.');
+        }
         return;
       }
       
-      const historyText = checkInTransactions
-        .slice(-10) // Show last 10 transactions
-        .reverse()
-        .map(t => `${new Date(t.created_at!).toLocaleDateString()}: +${t.amount} diamonds`)
-        .join('\n');
-        
-      Alert.alert('Recent Check-in History', historyText);
+      if (Platform.OS === 'web') {
+        // For web, show in a modal-like view
+        setHistoryData(checkInTransactions.slice(-10).reverse());
+        setShowHistory(true);
+      } else {
+        // For mobile, use Alert
+        const historyText = checkInTransactions
+          .slice(-10) // Show last 10 transactions
+          .reverse()
+          .map(t => `${new Date(t.created_at!).toLocaleDateString()}: +${t.amount} diamonds`)
+          .join('\n');
+          
+        Alert.alert('Recent Check-in History', historyText);
+      }
     } catch (error) {
       console.error('Error fetching history:', error);
-      Alert.alert('Error', 'Failed to load check-in history.');
+      if (Platform.OS === 'web') {
+        setHistoryData([]);
+        setShowHistory(true);
+      } else {
+        Alert.alert('Error', 'Failed to load check-in history.');
+      }
     }
   };
 
@@ -246,36 +270,66 @@ export default function CheckInScreen() {
   };
 
   const getCardPosition = (index: number) => {
-    const centerX = width / 2;
-    const centerY = height * 0.25; // Position ferris wheel much higher
-    const radius = Math.min(width, height) * 0.32; // Even larger radius to prevent blocking
-    
-    if (index === 6) {
-      // Day 7 in center
+    if (isDesktop) {
+      // Desktop layout - more compact and centered
+      const centerX = 400; // Fixed center for desktop
+      const centerY = 150; // Move up to prevent overlap
+      const radius = 160; // Smaller radius for desktop
+      
+      if (index === 6) {
+        // Day 7 in center
+        return {
+          left: centerX - 60,
+          top: centerY - 60,
+          scale: 1.2,
+          zIndex: 10,
+        };
+      }
+      
+      // Calculate angle for each card (6 cards around the circle)
+      const angle = (index * 60 - 90) * (Math.PI / 180);
+      
+      const x = centerX + radius * Math.cos(angle);
+      const y = centerY + radius * Math.sin(angle);
+      
+      // Scale based on position
+      const scale = 0.6 + (index * 0.1);
+      
       return {
-        left: centerX - 60,
-        top: centerY - 60,
-        scale: 1.3,
-        zIndex: 10,
+        left: x - 60,
+        top: y - 60,
+        scale: Math.min(scale, 1.0),
+        zIndex: index,
+      };
+    } else {
+      // Mobile layout - original positioning but moved up
+      const centerX = width / 2;
+      const centerY = height * 0.2; // Move up from 0.25 to 0.2
+      const radius = Math.min(width, height) * 0.28; // Reduce radius slightly
+      
+      if (index === 6) {
+        return {
+          left: centerX - 60,
+          top: centerY - 60,
+          scale: 1.3,
+          zIndex: 10,
+        };
+      }
+      
+      const angle = (index * 60 - 90) * (Math.PI / 180);
+      
+      const x = centerX + radius * Math.cos(angle);
+      const y = centerY + radius * Math.sin(angle);
+      
+      const scale = 0.5 + (index * 0.15);
+      
+      return {
+        left: x - 60,
+        top: y - 60,
+        scale: Math.min(scale, 1.1),
+        zIndex: index,
       };
     }
-    
-    // Calculate angle for each card (6 cards around the circle)
-    // Start from top (12 o'clock position) and go clockwise
-    const angle = (index * 60 - 90) * (Math.PI / 180); // 60 degrees apart, starting from top
-    
-    const x = centerX + radius * Math.cos(angle);
-    const y = centerY + radius * Math.sin(angle);
-    
-    // Scale based on position (much more dramatic scaling from small to big)
-    const scale = 0.5 + (index * 0.15);
-    
-    return {
-      left: x - 60,
-      top: y - 60,
-      scale: Math.min(scale, 1.1),
-      zIndex: index,
-    };
   };
 
   const renderFerrisWheelCard = (dayData: CheckInDay, index: number) => {
@@ -408,65 +462,104 @@ export default function CheckInScreen() {
         />
       </View>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#1a1a1a" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Daily Check-in</Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      <View style={styles.content}>
-        {/* Ferris Wheel - Big and at the top */}
-        <View style={styles.ferrisWheelContainer}>
-          <View style={styles.ferrisWheel}>
-            {checkInDays.map((dayData, index) => renderFerrisWheelCard(dayData, index))}
+      {/* History Modal for Web */}
+      {showHistory && Platform.OS === 'web' && (
+        <View style={styles.historyModal}>
+          <View style={styles.historyModalContent}>
+            <View style={styles.historyModalHeader}>
+              <Text style={styles.historyModalTitle}>Check-in History</Text>
+              <TouchableOpacity 
+                style={styles.historyModalClose}
+                onPress={() => setShowHistory(false)}
+              >
+                <Text style={styles.historyModalCloseText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.historyModalBody}>
+              {historyData.length === 0 ? (
+                <Text style={styles.historyEmptyText}>No check-in history found.</Text>
+              ) : (
+                historyData.map((transaction, index) => (
+                  <View key={index} style={styles.historyItem}>
+                    <Text style={styles.historyDate}>
+                      {new Date(transaction.created_at!).toLocaleDateString()}
+                    </Text>
+                    <Text style={styles.historyAmount}>+{transaction.amount} diamonds</Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
           </View>
         </View>
+      )}
 
-        {/* Diamonds Counter */}
-        <View style={styles.diamondsHeader}>
-          <LinearGradient
-            colors={['#007AFF', '#0056CC']}
-            style={styles.diamondsGradient}
-          >
-            <View style={styles.diamondsContent}>
-              <Image 
-                source={require('../assets/images/diamond.webp')}
-                style={styles.headerDiamondImage}
-              />
-              <Text style={styles.diamondsCount}>{totalDiamonds}</Text>
-              <Text style={styles.diamondsLabel}>Total Diamonds</Text>
-            </View>
-          </LinearGradient>
+      {/* Desktop Container */}
+      <View style={[isDesktop && styles.desktopContainer]}>
+        {/* Header */}
+        <View style={[styles.header, isDesktop && styles.headerDesktop]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color="#1a1a1a" />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, isDesktop && styles.headerTitleDesktop]}>Daily Check-in</Text>
+          <View style={styles.headerRight} />
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={[
-              styles.checkInButton,
-              !canCheckIn && styles.disabledButton
-            ]}
-            onPress={handleCheckIn}
-            disabled={!canCheckIn || loading}
-          >
+        <View style={[styles.content, isDesktop && styles.contentDesktop]}>
+          {/* Ferris Wheel - Compact on desktop */}
+          <View style={[styles.ferrisWheelContainer, isDesktop && styles.ferrisWheelContainerDesktop]}>
+            <View style={[styles.ferrisWheel, isDesktop && styles.ferrisWheelDesktop]}>
+              {checkInDays.map((dayData, index) => renderFerrisWheelCard(dayData, index))}
+            </View>
+          </View>
+
+          {/* Diamonds Counter */}
+          <View style={[styles.diamondsHeader, isDesktop && styles.diamondsHeaderDesktop]}>
             <LinearGradient
-              colors={canCheckIn ? ['#667eea', '#764ba2'] : ['#6c757d', '#495057']}
-              style={styles.buttonGradient}
+              colors={['#007AFF', '#0056CC']}
+              style={[styles.diamondsGradient, isDesktop && styles.diamondsGradientDesktop]}
             >
-              <Gift size={24} color="white" />
-              <Text style={styles.checkInButtonText}>
-                {canCheckIn ? 'Check-in Now!' : 'Already Checked-in'}
-              </Text>
+              <View style={styles.diamondsContent}>
+                <Image 
+                  source={require('../assets/images/diamond.webp')}
+                  style={styles.headerDiamondImage}
+                />
+                <Text style={styles.diamondsCount}>{totalDiamonds}</Text>
+                <Text style={styles.diamondsLabel}>Total Diamonds</Text>
+              </View>
             </LinearGradient>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.historyButton} onPress={handleHistory}>
-            <Clock size={20} color={Colors.primary.main} />
-            <Text style={styles.historyButtonText}>View History</Text>
-          </TouchableOpacity>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={[styles.actionButtons, isDesktop && styles.actionButtonsDesktop]}>
+            <TouchableOpacity 
+              style={[
+                styles.checkInButton,
+                !canCheckIn && styles.disabledButton,
+                isDesktop && styles.checkInButtonDesktop
+              ]}
+              onPress={handleCheckIn}
+              disabled={!canCheckIn || loading}
+            >
+              <LinearGradient
+                colors={canCheckIn ? ['#667eea', '#764ba2'] : ['#6c757d', '#495057']}
+                style={styles.buttonGradient}
+              >
+                <Gift size={24} color="white" />
+                <Text style={styles.checkInButtonText}>
+                  {canCheckIn ? 'Check-in Now!' : 'Already Checked-in'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.historyButton, isDesktop && styles.historyButtonDesktop]} 
+              onPress={handleHistory}
+              activeOpacity={0.7}
+            >
+              <Clock size={20} color={Colors.primary.main} />
+              <Text style={styles.historyButtonText}>View History</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -539,7 +632,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ferrisWheelContainer: {
-    height: height * 0.5,
+    height: height * 0.45,
     alignItems: 'center',
     justifyContent: 'flex-start',
     marginTop: 0,
@@ -547,7 +640,7 @@ const styles = StyleSheet.create({
   },
   ferrisWheel: {
     width: width,
-    height: height * 0.4,
+    height: height * 0.35,
     position: 'relative',
   },
   ferrisCard: {
@@ -750,6 +843,7 @@ const styles = StyleSheet.create({
   diamondsHeader: {
     paddingHorizontal: 20,
     paddingVertical: 10,
+    marginTop: 20,
   },
   diamondsGradient: {
     borderRadius: 20,
@@ -822,5 +916,126 @@ const styles = StyleSheet.create({
     color: Colors.primary.main,
     fontSize: 16,
     fontWeight: '600',
+  },
+  // New styles for desktop layout
+  desktopContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerDesktop: {
+    width: '100%',
+    paddingHorizontal: 40,
+    paddingVertical: 20,
+  },
+  headerTitleDesktop: {
+    fontSize: 24,
+  },
+  contentDesktop: {
+    width: '100%',
+    paddingHorizontal: 40,
+    paddingVertical: 20,
+  },
+  ferrisWheelContainerDesktop: {
+    height: 400, // Fixed height for desktop
+    marginTop: 0,
+    paddingTop: 20,
+    marginBottom: 20,
+  },
+  ferrisWheelDesktop: {
+    width: 800,
+    height: 360,
+    position: 'relative',
+    alignSelf: 'center',
+  },
+  diamondsHeaderDesktop: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    marginTop: 40,
+  },
+  diamondsGradientDesktop: {
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+  },
+  actionButtonsDesktop: {
+    width: '100%',
+    marginTop: 20,
+    marginBottom: 0,
+  },
+  checkInButtonDesktop: {
+    marginBottom: 16,
+  },
+  historyButtonDesktop: {
+    marginTop: 8,
+  },
+  // New styles for history modal
+  historyModal: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  historyModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    width: '80%',
+    maxHeight: '80%',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  historyModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  historyModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  historyModalClose: {
+    padding: 5,
+  },
+  historyModalCloseText: {
+    fontSize: 24,
+    color: '#555',
+  },
+  historyModalBody: {
+    maxHeight: '70%',
+  },
+  historyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  historyDate: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  historyAmount: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  historyEmptyText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+    paddingVertical: 20,
   },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform, StatusBar, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform, StatusBar, RefreshControl, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun, Heart as HeartFilled, Settings as SettingsFilled, Sun as SunFilled, Moon as MoonFilled, Wallet as WalletFilled, Trophy as TrophyFilled } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -37,6 +37,8 @@ interface Review {
 }
 
 export default function ProfileScreen() {
+  const { width: screenWidth } = useWindowDimensions();
+  const isDesktop = screenWidth > 768;
   const [activeTab, setActiveTab] = useState('My Services');
   const [services, setServices] = useState<any[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -585,7 +587,7 @@ export default function ProfileScreen() {
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
         style={{ backgroundColor: colors.background.primary }}
         refreshControl={
           <RefreshControl
@@ -596,242 +598,377 @@ export default function ProfileScreen() {
           />
         }
       >
-
-
-
-
-        {/* Profile Section */}
-        <View style={styles.profileHeader}>
-          <View style={styles.profileBackgroundContainer}>
-            {/* Cover Photo */}
-            {userProfile?.cover_photo_url ? (
-              <Image
-                source={{ uri: userProfile.cover_photo_url }}
-                style={styles.profileBackgroundImage}
-              />
-            ) : (
-              <View style={styles.profileBackgroundPlaceholder}>
-                <User size={80} color={isDarkMode ? "white" : "black"} />
-              </View>
-            )}
-            <LinearGradient
-              colors={isDarkMode
-                ? ['transparent', 'transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,1.0)']
-                : ['transparent', 'transparent', 'rgba(241,248,255,0.4)', 'rgba(255,255,255,1.0)']
-              }
-              style={styles.profileBackgroundGradient}
-            />
-
-            {/* Circular Profile Photo */}
-            <View style={styles.profilePhotoContainer}>
-              {userProfile?.avatar_url ? (
+        {/* Desktop Container */}
+        <View style={[isDesktop && styles.desktopContainer]}>
+          {/* Profile Section */}
+          <View style={[styles.profileHeader, isDesktop && styles.profileHeaderDesktop]}>
+            <View style={[styles.profileBackgroundContainer, isDesktop && styles.profileBackgroundContainerDesktop]}>
+              {/* Cover Photo */}
+              {userProfile?.cover_photo_url ? (
                 <Image
-                  source={{ uri: userProfile.avatar_url }}
-                  style={styles.profilePhoto}
+                  source={{ uri: userProfile.cover_photo_url }}
+                  style={styles.profileBackgroundImage}
                 />
               ) : (
-                <View style={[styles.profilePhotoPlaceholder, { backgroundColor: colors.background.secondary }]}>
-                  <User size={40} color={colors.text.secondary} />
+                <View style={styles.profileBackgroundPlaceholder}>
+                  <User size={isDesktop ? 120 : 80} color={isDarkMode ? "white" : "black"} />
                 </View>
               )}
-              {/* Only show camera button when viewing own profile */}
-              {user && userProfile && user.id === userProfile.id && (
-                <TouchableOpacity
-                  style={[styles.profilePhotoEditButton, { backgroundColor: colors.primary.main }]}
-                  onPress={handleCameraPress}
-                  disabled={uploadingPhoto}
-                  activeOpacity={0.8}
-                >
-                  {uploadingPhoto ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Camera size={16} color="white" />
-                  )}
-                </TouchableOpacity>
+              <LinearGradient
+                colors={isDarkMode
+                  ? ['transparent', 'transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,1.0)']
+                  : ['transparent', 'transparent', 'rgba(241,248,255,0.4)', 'rgba(255,255,255,1.0)']
+                }
+                style={styles.profileBackgroundGradient}
+              />
+
+              {/* Circular Profile Photo */}
+              <View style={[styles.profilePhotoContainer, isDesktop && styles.profilePhotoContainerDesktop]}>
+                {userProfile?.avatar_url ? (
+                  <Image
+                    source={{ uri: userProfile.avatar_url }}
+                    style={[styles.profilePhoto, isDesktop && styles.profilePhotoDesktop]}
+                  />
+                ) : (
+                  <View style={[styles.profilePhotoPlaceholder, { backgroundColor: colors.background.secondary }, isDesktop && styles.profilePhotoPlaceholderDesktop]}>
+                    <User size={isDesktop ? 60 : 40} color={colors.text.secondary} />
+                  </View>
+                )}
+                {/* Only show camera button when viewing own profile */}
+                {user && userProfile && user.id === userProfile.id && (
+                  <TouchableOpacity
+                    style={[styles.profilePhotoEditButton, { backgroundColor: colors.primary.main }, isDesktop && styles.profilePhotoEditButtonDesktop]}
+                    onPress={handleCameraPress}
+                    disabled={uploadingPhoto}
+                    activeOpacity={0.8}
+                  >
+                    {uploadingPhoto ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Camera size={isDesktop ? 20 : 16} color="white" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {isAdjustingPhoto ? (
+                <View style={styles.adjustmentOverlay}>
+                  <View style={[styles.adjustmentContent, isDesktop && styles.adjustmentContentDesktop]}>
+                    <Text style={[styles.adjustmentTitle, { color: isDarkMode ? 'white' : 'black' }]}>
+                      Adjust Photo Position
+                    </Text>
+                    <Text style={[styles.adjustmentSubtitle, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>
+                      Drag to move, pinch to zoom
+                    </Text>
+
+                    <View style={styles.adjustmentButtons}>
+                      <TouchableOpacity
+                        style={[styles.adjustmentButton, styles.cancelButton]}
+                        onPress={handleCancelAdjustment}
+                      >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.adjustmentButton, styles.saveButton]}
+                        onPress={handleSaveAdjustment}
+                        disabled={uploadingPhoto}
+                      >
+                        {uploadingPhoto ? (
+                          <ActivityIndicator size="small" color="white" />
+                        ) : (
+                          <Text style={styles.saveButtonText}>Save</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <View style={[styles.profileContent, isDesktop && styles.profileContentDesktop]}>
+                  <View style={[styles.profileInfo, isDesktop && styles.profileInfoDesktop]}>
+                    <Text style={[styles.userName, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userNameDesktop]}>
+                      {userProfile?.full_name || 'User'}
+                    </Text>
+                    {userProfile?.bio && (
+                      <Text style={[styles.userBio, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userBioDesktop]}>{userProfile.bio}</Text>
+                    )}
+                    <View style={styles.ratingContainer}>
+                      <Text style={[styles.ratingText, { color: isDarkMode ? 'white' : 'black' }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
+                      {averageRating > 0 && renderStars(averageRating)}
+                      <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({reviews.length} reviews)</Text>
+                    </View>
+                  </View>
+                </View>
               )}
             </View>
+          </View>
 
+          {/* Two Column Layout for Desktop */}
+          {isDesktop ? (
+            <View style={styles.desktopTwoColumnLayout}>
+              {/* Left Column - Profile Actions */}
+              <View style={styles.desktopLeftColumn}>
+                {/* Action Buttons */}
+                <View style={[styles.actionButtons, { backgroundColor: colors.background.primary }, isDesktop && styles.actionButtonsDesktop]}>
+                  {/* Centered Icons Capsule */}
+                  <View style={[styles.centeredIconsContainer, isDesktop && styles.centeredIconsContainerDesktop]}>
+                    <BlurView intensity={50} style={[styles.centeredIconsCapsule, isDesktop && styles.centeredIconsCapsuleDesktop]}>
+                      <TouchableOpacity
+                        style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                        onPress={() => router.push('/wallet')}
+                      >
+                        <WalletFilled size={24} color="#1F2937" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                        onPress={() => router.push('/check-in')}
+                      >
+                        <TrophyFilled size={24} color="#1F2937" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                        onPress={() => router.push('/favorites')}
+                      >
+                        <HeartFilled size={24} color="#DC2626" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                        onPress={toggleTheme}
+                      >
+                        {isDarkMode ? (
+                          <SunFilled size={24} color="#F59E0B" />
+                        ) : (
+                          <MoonFilled size={24} color="#1F2937" />
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                        onPress={() => router.push('/settings')}
+                      >
+                        <SettingsFilled size={24} color="#1F2937" />
+                      </TouchableOpacity>
+                      {isAdmin && (
+                        <TouchableOpacity
+                          style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                          onPress={() => router.push('/admin')}
+                        >
+                          <Shield size={24} color="#2196F3" />
+                        </TouchableOpacity>
+                      )}
+                    </BlurView>
+                  </View>
 
-
-
-
-            {isAdjustingPhoto ? (
-              <View style={styles.adjustmentOverlay}>
-                <View style={styles.adjustmentContent}>
-                  <Text style={[styles.adjustmentTitle, { color: isDarkMode ? 'white' : 'black' }]}>
-                    Adjust Photo Position
-                  </Text>
-                  <Text style={[styles.adjustmentSubtitle, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>
-                    Drag to move, pinch to zoom
-                  </Text>
-
-                  <View style={styles.adjustmentButtons}>
+                  <TouchableOpacity
+                    style={[styles.chatButton, { backgroundColor: colors.primary.main }, isDesktop && styles.chatButtonDesktop]}
+                    onPress={() => {
+                      // If viewing own profile, go to messages dashboard
+                      // If viewing someone else's profile, start a chat with them
+                      if (userProfile?.id === user?.id) {
+                        router.push('/messages');
+                      } else {
+                        router.push(`/chat/${userProfile?.id || user?.id}`);
+                      }
+                    }}
+                  >
+                    <Text style={[styles.chatButtonText, { color: colors.text.white }]}>
+                      {userProfile?.id === user?.id ? 'View Chat' : 'Chat to enquire'}
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <View style={[styles.editShareContainer, isDesktop && styles.editShareContainerDesktop]}>
                     <TouchableOpacity
-                      style={[styles.adjustmentButton, styles.cancelButton]}
-                      onPress={handleCancelAdjustment}
+                      style={[styles.actionButton, { backgroundColor: colors.background.secondary }, isDesktop && styles.actionButtonDesktop]}
+                      onPress={() => router.push('/edit-profile')}
                     >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                      <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Edit Profile</Text>
                     </TouchableOpacity>
-
                     <TouchableOpacity
-                      style={[styles.adjustmentButton, styles.saveButton]}
-                      onPress={handleSaveAdjustment}
-                      disabled={uploadingPhoto}
+                      style={[styles.actionButton, { backgroundColor: colors.background.secondary }, isDesktop && styles.actionButtonDesktop]}
+                      onPress={handleShareProfile}
                     >
-                      {uploadingPhoto ? (
-                        <ActivityIndicator size="small" color="white" />
+                      <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Share Profile</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.referralButton, { backgroundColor: colors.background.secondary }, isDesktop && styles.referralButtonDesktop]}
+                    onPress={() => setReferralModalVisible(true)}
+                  >
+                    <View style={styles.referralButtonContent}>
+                      <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Referral Program</Text>
+                      <ReferralStatsInline userId={user?.id} />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Right Column - Content */}
+              <View style={styles.desktopRightColumn}>
+                {/* Tab Navigation */}
+                <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }, isDesktop && styles.tabNavigationDesktop]}>
+                  {['My Services', 'Reviews'].map((tab) => (
+                    <TouchableOpacity
+                      key={tab}
+                      style={[
+                        styles.tab,
+                        activeTab === tab && { borderBottomColor: colors.primary.main },
+                        isDesktop && styles.tabDesktop,
+                      ]}
+                      onPress={() => setActiveTab(tab)}
+                    >
+                      <View style={styles.tabContent}>
+                        <Text
+                          style={[
+                            styles.tabText,
+                            { color: activeTab === tab ? colors.primary.main : colors.text.secondary },
+                            activeTab === tab && styles.activeTabText,
+                            isDesktop && styles.tabTextDesktop,
+                          ]}
+                        >
+                          {tab}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Tab Content */}
+                <View style={[styles.tabContentArea, { backgroundColor: colors.background.primary }, isDesktop && styles.tabContentAreaDesktop]}>
+                  {renderTabContent()}
+                </View>
+              </View>
+            </View>
+          ) : (
+            /* Mobile Layout - Single Column */
+            <>
+              {/* Action Buttons */}
+              <View style={[styles.actionButtons, { backgroundColor: colors.background.primary }, isDesktop && styles.actionButtonsDesktop]}>
+                {/* Centered Icons Capsule */}
+                <View style={[styles.centeredIconsContainer, isDesktop && styles.centeredIconsContainerDesktop]}>
+                  <BlurView intensity={50} style={[styles.centeredIconsCapsule, isDesktop && styles.centeredIconsCapsuleDesktop]}>
+                    <TouchableOpacity
+                      style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                      onPress={() => router.push('/wallet')}
+                    >
+                      <WalletFilled size={24} color="#1F2937" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                      onPress={() => router.push('/check-in')}
+                    >
+                      <TrophyFilled size={24} color="#1F2937" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                      onPress={() => router.push('/favorites')}
+                    >
+                      <HeartFilled size={24} color="#DC2626" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                      onPress={toggleTheme}
+                    >
+                      {isDarkMode ? (
+                        <SunFilled size={24} color="#F59E0B" />
                       ) : (
-                        <Text style={styles.saveButtonText}>Save</Text>
+                        <MoonFilled size={24} color="#1F2937" />
                       )}
                     </TouchableOpacity>
-                  </View>
+                    <TouchableOpacity
+                      style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                      onPress={() => router.push('/settings')}
+                    >
+                      <SettingsFilled size={24} color="#1F2937" />
+                    </TouchableOpacity>
+                    {isAdmin && (
+                      <TouchableOpacity
+                        style={[styles.centeredIcon, isDesktop && styles.centeredIconDesktop]}
+                        onPress={() => router.push('/admin')}
+                      >
+                        <Shield size={24} color="#2196F3" />
+                      </TouchableOpacity>
+                    )}
+                  </BlurView>
                 </View>
-              </View>
-            ) : (
-              <View style={styles.profileContent}>
-                <View style={styles.profileInfo}>
-                  <Text style={[styles.userName, { color: isDarkMode ? 'white' : 'black' }]}>
-                    {userProfile?.full_name || 'User'}
-                  </Text>
-                  {userProfile?.bio && (
-                    <Text style={[styles.userBio, { color: isDarkMode ? 'white' : 'black' }]}>{userProfile.bio}</Text>
-                  )}
-                  <View style={styles.ratingContainer}>
-                    <Text style={[styles.ratingText, { color: isDarkMode ? 'white' : 'black' }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
-                    {averageRating > 0 && renderStars(averageRating)}
-                    <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({reviews.length} reviews)</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
 
-        {/* Action Buttons */}
-        <View style={[styles.actionButtons, { backgroundColor: colors.background.primary }]}>
-          {/* Centered Icons Capsule */}
-          <View style={styles.centeredIconsContainer}>
-            <BlurView intensity={50} style={styles.centeredIconsCapsule}>
-              <TouchableOpacity
-                style={styles.centeredIcon}
-                onPress={() => router.push('/wallet')}
-              >
-                <WalletFilled size={24} color="#1F2937" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.centeredIcon}
-                onPress={() => router.push('/check-in')}
-              >
-                <TrophyFilled size={24} color="#1F2937" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.centeredIcon}
-                onPress={() => router.push('/favorites')}
-              >
-                <HeartFilled size={24} color="#DC2626" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.centeredIcon}
-                onPress={toggleTheme}
-              >
-                {isDarkMode ? (
-                  <SunFilled size={24} color="#F59E0B" />
-                ) : (
-                  <MoonFilled size={24} color="#1F2937" />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.centeredIcon}
-                onPress={() => router.push('/settings')}
-              >
-                <SettingsFilled size={24} color="#1F2937" />
-              </TouchableOpacity>
-              {isAdmin && (
                 <TouchableOpacity
-                  style={styles.centeredIcon}
-                  onPress={() => router.push('/admin')}
+                  style={[styles.chatButton, { backgroundColor: colors.primary.main }, isDesktop && styles.chatButtonDesktop]}
+                  onPress={() => {
+                    // If viewing own profile, go to messages dashboard
+                    // If viewing someone else's profile, start a chat with them
+                    if (userProfile?.id === user?.id) {
+                      router.push('/messages');
+                    } else {
+                      router.push(`/chat/${userProfile?.id || user?.id}`);
+                    }
+                  }}
                 >
-                  <Shield size={24} color="#2196F3" />
+                  <Text style={[styles.chatButtonText, { color: colors.text.white }]}>
+                    {userProfile?.id === user?.id ? 'View Chat' : 'Chat to enquire'}
+                  </Text>
                 </TouchableOpacity>
-              )}
-            </BlurView>
-          </View>
+                
+                <View style={[styles.editShareContainer, isDesktop && styles.editShareContainerDesktop]}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: colors.background.secondary }, isDesktop && styles.actionButtonDesktop]}
+                    onPress={() => router.push('/edit-profile')}
+                  >
+                    <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Edit Profile</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: colors.background.secondary }, isDesktop && styles.actionButtonDesktop]}
+                    onPress={handleShareProfile}
+                  >
+                    <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Share Profile</Text>
+                  </TouchableOpacity>
+                </View>
 
-          <TouchableOpacity
-            style={[styles.chatButton, { backgroundColor: colors.primary.main }]}
-            onPress={() => {
-              // If viewing own profile, go to messages dashboard
-              // If viewing someone else's profile, start a chat with them
-              if (userProfile?.id === user?.id) {
-                router.push('/messages');
-              } else {
-                router.push(`/chat/${userProfile?.id || user?.id}`);
-              }
-            }}
-          >
-            <Text style={[styles.chatButtonText, { color: colors.text.white }]}>
-              {userProfile?.id === user?.id ? 'View Chat' : 'Chat to enquire'}
-            </Text>
-          </TouchableOpacity>
-          
-          <View style={styles.editShareContainer}>
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
-              onPress={() => router.push('/edit-profile')}
-            >
-              <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Edit Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.background.secondary }]}
-              onPress={handleShareProfile}
-            >
-              <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Share Profile</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.referralButton, { backgroundColor: colors.background.secondary }]}
-            onPress={() => setReferralModalVisible(true)}
-          >
-            <View style={styles.referralButtonContent}>
-              <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Referral Program</Text>
-              <ReferralStatsInline userId={user?.id} />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab Navigation */}
-        <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }]}>
-          {['My Services', 'Reviews'].map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[
-                styles.tab,
-                activeTab === tab && { borderBottomColor: colors.primary.main },
-              ]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <View style={styles.tabContent}>
-                <Text
-                  style={[
-                    styles.tabText,
-                    { color: activeTab === tab ? colors.primary.main : colors.text.secondary },
-                    activeTab === tab && styles.activeTabText,
-                  ]}
+                <TouchableOpacity
+                  style={[styles.referralButton, { backgroundColor: colors.background.secondary }, isDesktop && styles.referralButtonDesktop]}
+                  onPress={() => setReferralModalVisible(true)}
                 >
-                  {tab}
-                </Text>
+                  <View style={styles.referralButtonContent}>
+                    <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Referral Program</Text>
+                    <ReferralStatsInline userId={user?.id} />
+                  </View>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
-          ))}
+
+              {/* Tab Navigation */}
+              <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }, isDesktop && styles.tabNavigationDesktop]}>
+                {['My Services', 'Reviews'].map((tab) => (
+                  <TouchableOpacity
+                    key={tab}
+                    style={[
+                      styles.tab,
+                      activeTab === tab && { borderBottomColor: colors.primary.main },
+                      isDesktop && styles.tabDesktop,
+                    ]}
+                    onPress={() => setActiveTab(tab)}
+                  >
+                    <View style={styles.tabContent}>
+                      <Text
+                        style={[
+                          styles.tabText,
+                          { color: activeTab === tab ? colors.primary.main : colors.text.secondary },
+                          activeTab === tab && styles.activeTabText,
+                          isDesktop && styles.tabTextDesktop,
+                        ]}
+                      >
+                        {tab}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Tab Content */}
+              <View style={[styles.tabContentArea, { backgroundColor: colors.background.primary }, isDesktop && styles.tabContentAreaDesktop]}>
+                {renderTabContent()}
+              </View>
+            </>
+          )}
         </View>
-
-        {/* Tab Content */}
-        <View style={[styles.tabContentArea, { backgroundColor: colors.background.primary }]}>
-          {renderTabContent()}
-        </View>
-
-
       </ScrollView>
 
       {/* Profile Share Modal */}
@@ -861,6 +998,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
+  scrollContentDesktop: {
+    paddingBottom: 20,
+  },
+  desktopContainer: {
+    maxWidth: 1000,
+    marginHorizontal: 'auto',
+    width: '100%',
+  },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -878,12 +1024,18 @@ const styles = StyleSheet.create({
   headerIcon: {
     marginHorizontal: 8,
   },
+  headerIconDesktop: {
+    marginHorizontal: 12,
+  },
 
   profileHeader: {
     backgroundColor: 'transparent',
     paddingVertical: 0,
     paddingHorizontal: 0,
     marginTop: 0,
+  },
+  profileHeaderDesktop: {
+    marginTop: 10,
   },
   profileBackgroundContainer: {
     position: 'relative',
@@ -892,6 +1044,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginTop: 60,
     marginLeft: 0,
+  },
+  profileBackgroundContainerDesktop: {
+    height: 200,
   },
   profileBackgroundImage: {
     width: '100%',
@@ -925,9 +1080,19 @@ const styles = StyleSheet.create({
     overflow: 'visible', // Changed from 'hidden' to 'visible' to show the edit button
     zIndex: 10,
   },
+  profilePhotoContainerDesktop: {
+    top: 120,
+    left: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
   profilePhoto: {
     width: '100%',
     height: '100%',
+    borderRadius: 40,
+  },
+  profilePhotoDesktop: {
     borderRadius: 40,
   },
   profilePhotoPlaceholder: {
@@ -936,6 +1101,9 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  profilePhotoPlaceholderDesktop: {
+    borderRadius: 40,
   },
   profilePhotoEditButton: {
     position: 'absolute',
@@ -956,6 +1124,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  profilePhotoEditButtonDesktop: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    bottom: -5,
+    right: -5,
   },
   coverPhotoEditButton: {
     position: 'absolute',
@@ -982,6 +1157,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  centeredIconsContainerDesktop: {
+    marginBottom: 12,
+  },
   centeredIconsCapsule: {
     backgroundColor: 'rgba(255, 255, 255, 0.35)',
     borderRadius: 30,
@@ -1002,9 +1180,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  centeredIconsCapsuleDesktop: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
   centeredIcon: {
     marginHorizontal: 12,
     padding: 8,
+  },
+  centeredIconDesktop: {
+    marginHorizontal: 12,
+    padding: 6,
   },
   profileContent: {
     position: 'absolute',
@@ -1018,7 +1204,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
+  profileContentDesktop: {
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+  },
   profileInfo: {
+    alignItems: 'flex-end',
+    width: '100%',
+  },
+  profileInfoDesktop: {
     alignItems: 'flex-end',
     width: '100%',
   },
@@ -1031,7 +1225,21 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: 'white',
   },
+  userNameDesktop: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'right',
+    color: 'white',
+  },
   userBio: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 8,
+    textAlign: 'right',
+    color: 'white',
+  },
+  userBioDesktop: {
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 8,
@@ -1047,6 +1255,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginRight: 8,
+    color: 'white',
+    textAlign: 'left',
+  },
+  ratingTextDesktop: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginRight: 12,
     color: 'white',
     textAlign: 'left',
   },
@@ -1083,8 +1298,19 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     gap: 8,
   },
+  actionButtonsDesktop: {
+    flexDirection: 'column',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    gap: 8,
+  },
   chatButton: {
     paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  chatButtonDesktop: {
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -1096,9 +1322,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  editShareContainerDesktop: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   actionButton: {
     flex: 1,
     paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  actionButtonDesktop: {
+    flex: 1,
+    paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -1112,6 +1348,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
+  referralButtonDesktop: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
   referralButtonContent: {
     alignItems: 'center',
   },
@@ -1120,6 +1362,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
+  tabNavigationDesktop: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+  },
   tab: {
     flex: 1,
     paddingVertical: 16,
@@ -1127,7 +1374,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
+  tabDesktop: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
   activeTab: {
+  },
+  activeTabText: {
+    fontWeight: '600',
   },
   tabContent: {
     flexDirection: 'row',
@@ -1139,8 +1396,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  activeTabText: {
-    fontWeight: '600',
+  tabTextDesktop: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   notificationBadge: {
     position: 'absolute',
@@ -1161,6 +1419,10 @@ const styles = StyleSheet.create({
   tabContentArea: {
     minHeight: 400,
     paddingBottom: 40,
+  },
+  tabContentAreaDesktop: {
+    minHeight: 300,
+    paddingBottom: 20,
   },
   emptyState: {
     alignItems: 'center',
@@ -1504,6 +1766,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 280,
   },
+  adjustmentContentDesktop: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    alignItems: 'center',
+    minWidth: 300,
+  },
   adjustmentTitle: {
     fontSize: 20,
     fontWeight: '600',
@@ -1580,5 +1850,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  desktopTwoColumnLayout: {
+    flexDirection: 'row',
+    gap: 20,
+    paddingHorizontal: 20,
+  },
+  desktopLeftColumn: {
+    width: 300,
+    flexShrink: 0,
+  },
+  desktopRightColumn: {
+    flex: 1,
   },
 });
