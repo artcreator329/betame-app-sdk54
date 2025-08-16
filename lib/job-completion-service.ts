@@ -5,7 +5,7 @@ import { referralService } from './referral-service';
 export interface JobCompletionPhoto {
   id?: string;
   job_status_id: string;
-  seller_id: string;
+  service_provider_id: string;
   photo_url: string;
   photo_description?: string;
   uploaded_at?: string;
@@ -15,7 +15,7 @@ export interface JobCompletionPhoto {
 
 export interface JobCompletionData {
   job_status_id: string;
-  seller_id: string;
+  service_provider_id: string;
   photos: Array<{
     photo_url: string;
     photo_description?: string;
@@ -29,13 +29,13 @@ export class JobCompletionService {
    */
   static async uploadCompletionPhotos(
     jobStatusId: string,
-    sellerId: string,
+    serviceProviderId: string,
     photos: Array<{ photo_url: string; photo_description?: string }>
   ): Promise<JobCompletionPhoto[] | null> {
     try {
       const photoData = photos.map(photo => ({
         job_status_id: jobStatusId,
-        seller_id: sellerId,
+        service_provider_id: serviceProviderId,
         photo_url: photo.photo_url,
         photo_description: photo.photo_description || null,
       }));
@@ -85,7 +85,7 @@ export class JobCompletionService {
    */
   static async completeJobWithPhotos(
     jobStatusId: string,
-    sellerId: string,
+    serviceProviderId: string,
     photos: Array<{ photo_url: string; photo_description?: string }>,
     completionMessage?: string
   ): Promise<boolean> {
@@ -109,7 +109,7 @@ export class JobCompletionService {
 
       // Upload completion photos
       if (photos.length > 0) {
-        const photoResult = await this.uploadCompletionPhotos(jobStatusId, sellerId, photos);
+        const photoResult = await this.uploadCompletionPhotos(jobStatusId, serviceProviderId, photos);
         if (!photoResult) {
           console.error('Failed to upload completion photos');
           return false;
@@ -122,7 +122,7 @@ export class JobCompletionService {
           .from('job_communications')
           .insert({
             job_status_id: jobStatusId,
-            sender_id: sellerId,
+            sender_id: serviceProviderId,
             message_type: 'completion_notice',
             message: completionMessage,
             attachments: photos.length > 0 ? { photos: photos.map(p => p.photo_url) } : null,
@@ -136,7 +136,7 @@ export class JobCompletionService {
 
       // Track job completion for referral system
       try {
-        await referralService.trackJobCompletion(sellerId);
+        await referralService.trackJobCompletion(serviceProviderId);
       } catch (error) {
         console.error('Error tracking job completion for referrals:', error);
         // Don't fail the entire operation if referral tracking fails

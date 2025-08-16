@@ -196,7 +196,7 @@ export class ChatService {
   async createServiceOffer(
     chatId: string,
     serviceId: string,
-    sellerId: string,
+    serviceProviderId: string,
     buyerId: string,
     serviceData: {
       id: string;
@@ -227,7 +227,7 @@ export class ChatService {
         .from('service_offers')
         .insert({
           service_id: serviceId,
-          seller_id: sellerId,
+          service_provider_id: serviceProviderId,
           buyer_id: buyerId,
           chat_id: chatId,
           original_price: serviceData.price,
@@ -308,7 +308,7 @@ export class ChatService {
       
       const messageData = {
         chat_id: chatId,
-        sender_id: sellerId,
+        sender_id: serviceProviderId,
         sender_name: 'Service Offer',
         sender_image: '',
         message: offerMessage,

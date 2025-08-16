@@ -21,7 +21,7 @@ interface PaymentModalProps {
   offer: ServiceOffer;
   serviceData: ServiceOfferData;
   buyerId: string;
-  sellerId: string;
+  serviceProviderId: string;
   onClose: () => void;
   onPaymentSuccess: (activeJobId: string) => void;
 }
@@ -41,7 +41,7 @@ export function PaymentModal({
   offer,
   serviceData,
   buyerId,
-  sellerId,
+  serviceProviderId,
   onClose,
   onPaymentSuccess,
 }: PaymentModalProps) {
@@ -174,7 +174,7 @@ export function PaymentModal({
         offer,
         serviceData,
         buyerId,
-        sellerId
+        serviceProviderId
       );
 
       if (result.success && result.activeJobId) {

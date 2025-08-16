@@ -25,7 +25,7 @@ interface MalaysianPaymentModalProps {
   offer: ServiceOffer;
   serviceData: ServiceOfferData;
   buyerId: string;
-  sellerId: string;
+  serviceProviderId: string;
   onClose: () => void;
   onPaymentSuccess: (activeJobId: string) => void;
 }
@@ -43,7 +43,7 @@ export function MalaysianPaymentModal({
   offer,
   serviceData,
   buyerId,
-  sellerId,
+  serviceProviderId,
   onClose,
   onPaymentSuccess,
 }: MalaysianPaymentModalProps) {
@@ -164,7 +164,7 @@ export function MalaysianPaymentModal({
       offer,
       serviceData,
       buyerId,
-      sellerId
+      serviceProviderId
     );
 
     if (result.success && result.activeJobId) {
@@ -188,7 +188,7 @@ export function MalaysianPaymentModal({
       orderId: `ORDER_${Date.now()}`,
       description: `Payment for ${serviceData.title}`,
       buyerId,
-      sellerId,
+      serviceProviderId,
       serviceId: serviceData.id,
       paymentMethod: selectedPaymentMethod,
     };
@@ -224,7 +224,7 @@ export function MalaysianPaymentModal({
         offer,
         serviceData,
         buyerId,
-        sellerId
+        serviceProviderId
       );
 
       if (result.success && result.activeJobId) {
@@ -312,16 +312,16 @@ export function MalaysianPaymentModal({
             </View>
           </View>
 
-          {/* Seller Information */}
+          {/* Service Provider Information */}
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>👤 Service Provider:</Text>
-            <Text style={styles.detailValue}>{serviceData?.seller_name || 'Seller'}</Text>
+            <Text style={styles.detailValue}>{serviceData?.service_provider_name || 'Service Provider'}</Text>
           </View>
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>⭐ Rating:</Text>
             <Text style={styles.detailValue}>
-              {serviceData?.seller_rating || '4.5'} ({serviceData?.seller_reviews || '10'} reviews)
+              {serviceData?.service_provider_rating || '4.5'} ({serviceData?.service_provider_reviews || '10'} reviews)
             </Text>
           </View>
 

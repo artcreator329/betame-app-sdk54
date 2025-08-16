@@ -18,7 +18,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const [canDispute, setCanDispute] = useState(false);
 
   const isBuyer = order.buyer_id === currentUserId;
-  const isSeller = order.seller_id === currentUserId;
+  const isServiceProvider = order.service_provider_id === currentUserId;
 
   useEffect(() => {
     if (order.status === 'buyer_reviewing' && isBuyer) {
@@ -106,7 +106,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           onPress: async () => {
             const success = await orderManagementService.confirmWorkCompletion(order.id, currentUserId);
             if (success) {
-              Alert.alert('Success', 'Work confirmed! Payment has been released to the seller.');
+              Alert.alert('Success', 'Work confirmed! Payment has been released to the service provider.');
               onOrderUpdate?.();
             } else {
               Alert.alert('Error', 'Failed to confirm completion. Please try again.');
@@ -151,7 +151,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   };
 
   const renderActionButtons = () => {
-    if (isSeller) {
+    if (isServiceProvider) {
       switch (order.status) {
         case 'payment_received':
           return (
@@ -215,7 +215,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         <View style={styles.detailRow}>
           <Ionicons name="person-outline" size={16} color="#666" />
           <Text style={styles.detailText}>
-            Role: {isBuyer ? 'Buyer' : 'Seller'}
+            Role: {isBuyer ? 'Buyer' : 'Service Provider'}
           </Text>
         </View>
 

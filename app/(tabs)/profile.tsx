@@ -506,13 +506,13 @@ export default function ProfileScreen() {
                             {job.total_proposals === 1 ? 'Proposal' : 'Proposals'}
                           </Text>
                         </View>
-                        {job.unique_sellers && job.unique_sellers > 0 && (
+                        {job.unique_service_providers && job.unique_service_providers > 0 && (
                           <View style={styles.proposalStatItem}>
                             <Text style={[styles.proposalStatNumber, { color: colors.text.primary }]}>
-                              {String(job.unique_sellers)}
+                              {String(job.unique_service_providers)}
                             </Text>
                             <Text style={[styles.proposalStatLabel, { color: colors.text.secondary }]}>
-                              {job.unique_sellers === 1 ? 'Applicant' : 'Applicants'}
+                              {job.unique_service_providers === 1 ? 'Applicant' : 'Applicants'}
                             </Text>
                           </View>
                         )}
@@ -576,20 +576,20 @@ export default function ProfileScreen() {
           <View style={styles.servicesContent}>
             <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Available Listings ({String(services.length)})</Text>
             
-            {/* Show seller status */}
-            {userProfile?.is_seller ? (
-              <View style={[styles.verifiedSellerContainer, { backgroundColor: colors.background.secondary }]}>
-                <Text style={[styles.verifiedSellerText, { color: colors.text.primary }]}>
-                  {userProfile?.full_name || 'User'} is a verified seller
+            {/* Show service provider status */}
+            {userProfile?.is_service_provider ? (
+              <View style={[styles.verifiedServiceProviderContainer, { backgroundColor: colors.background.secondary }]}>
+                <Text style={[styles.verifiedServiceProviderText, { color: colors.text.primary }]}>
+                  {userProfile?.full_name || 'User'} is a verified service provider
                 </Text>
               </View>
             ) : (
               <TouchableOpacity
-                style={[styles.becomeSellerButton, { backgroundColor: colors.primary.main }]}
-                onPress={() => router.push('/become-seller')}
+                style={[styles.becomeServiceProviderButton, { backgroundColor: colors.primary.main }]}
+                onPress={() => router.push('/become-service-provider')}
               >
-                <Text style={[styles.becomeSellerButtonText, { color: colors.text.white }]}>Become a Seller</Text>
-                <Text style={[styles.becomeSellerButtonSubtext, { color: colors.text.white }]}>Start offering your services and earn money</Text>
+                <Text style={[styles.becomeServiceProviderButtonText, { color: colors.text.white }]}>Become a Service Provider</Text>
+                <Text style={[styles.becomeServiceProviderButtonSubtext, { color: colors.text.white }]}>Start offering your services and earn money</Text>
               </TouchableOpacity>
             )}
             
@@ -1212,19 +1212,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: 'rgba(255,255,255,0.8)',
   },
-  sellerBadge: {
+  serviceProviderBadge: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     marginBottom: 16,
     alignItems: 'center',
   },
-  sellerBadgeText: {
+  serviceProviderBadgeText: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 2,
   },
-  sellerBadgeSubtext: {
+  serviceProviderBadgeSubtext: {
     fontSize: 12,
   },
   actionButtons: {
@@ -1692,7 +1692,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  becomeSellerButton: {
+  becomeServiceProviderButton: {
     paddingVertical: 20,
     paddingHorizontal: 24,
     borderRadius: 12,
@@ -1707,17 +1707,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  becomeSellerButtonText: {
+  becomeServiceProviderButtonText: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
   },
-  becomeSellerButtonSubtext: {
+  becomeServiceProviderButtonSubtext: {
     fontSize: 14,
     opacity: 0.9,
     textAlign: 'center',
   },
-  verifiedSellerContainer: {
+  verifiedServiceProviderContainer: {
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -1726,7 +1726,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5E5',
   },
-  verifiedSellerText: {
+  verifiedServiceProviderText: {
     fontSize: 16,
     fontWeight: '500',
     textAlign: 'center',

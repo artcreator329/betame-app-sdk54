@@ -220,7 +220,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen name="edit-profile" />
       <Stack.Screen 
-        name="become-seller" 
+        name="become-service-provider" 
         options={{ 
           animation: 'slide_from_bottom',
           animationDuration: 500,

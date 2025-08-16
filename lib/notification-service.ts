@@ -119,7 +119,12 @@ export class NotificationService {
   }
 
   private generateId(): string {
-    return `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Generate a UUID v4 compatible string
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
   subscribe(listener: (notifications: Notification[]) => void): () => void {
@@ -325,18 +330,9 @@ export class NotificationService {
       type: notification.type,
       title: notification.title,
       message: notification.message.substring(0, 50) + '...',
-      targetUserId
+      targetUserId,
+      currentUserId: this.currentUserId
     });
-    
-    // Temporarily set the target user to save the notification
-    const originalUserId = this.currentUserId;
-    this.setCurrentUser(targetUserId);
-    
-    // Ensure service is initialized for the target user
-    if (!this.isInitialized) {
-      console.log('📝 NotificationService: Service not initialized, initializing...');
-      await this.initializeService(targetUserId);
-    }
     
     const newNotification: Notification = {
       ...notification,
@@ -346,32 +342,9 @@ export class NotificationService {
       isRead: false,
     };
     
-    console.log('📝 NotificationService: Created new notification:', newNotification);
-    
-    this.notifications.unshift(newNotification);
-    console.log('📝 NotificationService: Added to notifications array, total count:', this.notifications.length);
-    
-    // Keep only the last 100 notifications
-    if (this.notifications.length > 100) {
-      this.notifications = this.notifications.slice(0, 100);
-    }
+    console.log('📝 NotificationService: Created new notification for user:', targetUserId);
 
-    await this.saveNotifications();
-    console.log('📝 NotificationService: Saved to storage');
-    
-    this.notifyListeners();
-    console.log('📝 NotificationService: Notified listeners, listener count:', this.listeners.length);
-
-    // Show system notification immediately (don't wait for realtime)
-    try {
-      console.log('📱 NotificationService: Triggering system notification for:', newNotification.title);
-      await showLocalNotification(newNotification);
-      console.log('✅ NotificationService: System notification sent successfully');
-    } catch (error) {
-      console.error('❌ NotificationService: Failed to show system notification:', error);
-    }
-
-    // Write-through to Supabase via secure RPC (best-effort)
+    // Write-through to Supabase via secure RPC (this will trigger realtime for the target user)
     try {
       const { error } = await supabase.rpc('create_notification', {
         p_user_id: targetUserId,
@@ -383,15 +356,37 @@ export class NotificationService {
       });
       if (error) {
         console.error('❌ NotificationService: Failed to insert notification to Supabase:', error);
+      } else {
+        console.log('✅ NotificationService: Notification saved to Supabase for user:', targetUserId);
       }
     } catch (error) {
       console.error('❌ NotificationService: Exception inserting notification to Supabase:', error);
     }
-    
-    // Restore original user if it was different
-    if (originalUserId && originalUserId !== targetUserId) {
-      this.setCurrentUser(originalUserId);
-      await this.initializeService(originalUserId);
+
+    // If the target user is the current user, add to local notifications and show system notification
+    if (targetUserId === this.currentUserId) {
+      console.log('📝 NotificationService: Adding to local notifications for current user');
+      
+      this.notifications.unshift(newNotification);
+      
+      // Keep only the last 100 notifications
+      if (this.notifications.length > 100) {
+        this.notifications = this.notifications.slice(0, 100);
+      }
+
+      await this.saveNotifications();
+      this.notifyListeners();
+
+      // Show system notification
+      try {
+        console.log('📱 NotificationService: Triggering system notification for current user:', newNotification.title);
+        await showLocalNotification(newNotification);
+        console.log('✅ NotificationService: System notification sent successfully');
+      } catch (error) {
+        console.error('❌ NotificationService: Failed to show system notification:', error);
+      }
+    } else {
+      console.log('📝 NotificationService: Notification sent to different user via Supabase realtime');
     }
   }
 
@@ -574,7 +569,8 @@ export class NotificationService {
       message: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
       fullMessage: message,
       chatId,
-      senderId
+      senderId,
+      currentUserId: this.currentUserId
     });
 
     // Validate that we have a senderId for navigation
@@ -587,12 +583,6 @@ export class NotificationService {
     if (senderId === participantId) {
       console.log('ℹ️ NotificationService: Skipping self-notification - sender and recipient are the same:', senderId);
       return;
-    }
-    
-    // Ensure service is initialized
-    if (!this.isInitialized) {
-      console.log('🔔 NotificationService: Service not initialized, initializing...');
-      await this.initializeService();
     }
     
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
@@ -608,7 +598,7 @@ export class NotificationService {
      };
      
      console.log('🔔 NotificationService: Created notification object:', notification);
-     console.log('🔔 NotificationService: Notification will be sent TO:', participantId, 'with navigation TO:', senderId);
+     console.log('🔔 NotificationService: Notification will be sent TO:', participantId, 'FROM:', participantName);
       await this.addNotification(notification, participantId);
      console.log('🔔 NotificationService: addChatNotification completed');
   }
@@ -642,7 +632,8 @@ export class NotificationService {
       participantName,
       offerId,
       serviceTitle,
-      senderId
+      senderId,
+      currentUserId: this.currentUserId
     });
 
     // CRITICAL: Prevent self-notifications - don't notify if sender is the same as recipient

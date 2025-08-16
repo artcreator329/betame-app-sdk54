@@ -20,7 +20,7 @@ export interface JobListing {
   pending_proposals?: number;
   accepted_proposals?: number;
   rejected_proposals?: number;
-  unique_sellers?: number;
+  unique_service_providers?: number;
   last_proposal_date?: string;
   last_activity_date?: string;
 }
@@ -28,7 +28,7 @@ export interface JobListing {
 export interface JobProposal {
   id?: string;
   job_listing_id: string;
-  seller_id: string;
+  service_provider_id: string;
   buyer_id: string;
   
   // Proposal details
@@ -52,7 +52,7 @@ export interface JobProposal {
   
   // Tracking
   is_read_by_buyer?: boolean;
-  is_read_by_seller?: boolean;
+  is_read_by_service_provider?: boolean;
   proposal_count?: number;
   
   // Timestamps
@@ -60,7 +60,7 @@ export interface JobProposal {
   updated_at?: string;
   
   // Populated data
-  seller_profile?: {
+  service_provider_profile?: {
     id: string;
     full_name: string;
     avatar_url?: string;
@@ -73,7 +73,7 @@ export interface JobProposalActivity {
   id?: string;
   job_proposal_id: string;
   job_listing_id: string;
-  activity_type: 'proposal_submitted' | 'proposal_updated' | 'proposal_accepted' | 'proposal_rejected' | 'proposal_withdrawn' | 'buyer_message' | 'seller_message' | 'work_started' | 'work_completed' | 'payment_released';
+  activity_type: 'proposal_submitted' | 'proposal_updated' | 'proposal_accepted' | 'proposal_rejected' | 'proposal_withdrawn' | 'buyer_message' | 'service_provider_message' | 'work_started' | 'work_completed' | 'payment_released';
   actor_id: string;
   target_user_id: string;
   activity_description: string;
@@ -169,7 +169,7 @@ export class JobService {
           pending_proposals: jobStats?.pending_proposals || 0,
           accepted_proposals: jobStats?.accepted_proposals || 0,
           rejected_proposals: jobStats?.rejected_proposals || 0,
-          unique_sellers: jobStats?.unique_sellers || 0,
+          unique_service_providers: jobStats?.unique_service_providers || 0,
           last_proposal_date: jobStats?.last_proposal_date,
           last_activity_date: jobStats?.last_activity_date,
         };
@@ -332,7 +332,7 @@ export class JobService {
         .from('job_proposals')
         .select(`
           *,
-          seller_profile:profiles!job_proposals_seller_id_fkey (
+          service_provider_profile:profiles!job_proposals_service_provider_id_fkey (
             id,
             full_name,
             avatar_url
@@ -354,9 +354,9 @@ export class JobService {
   }
 
   /**
-   * Get proposals submitted by a seller
+   * Get proposals submitted by a service provider
    */
-  static async getSellerProposals(sellerId: string): Promise<JobProposal[]> {
+  static async getServiceProviderProposals(serviceProviderId: string): Promise<JobProposal[]> {
     try {
       const { data, error } = await supabase
         .from('job_proposals')
@@ -373,17 +373,17 @@ export class JobService {
             status
           )
         `)
-        .eq('seller_id', sellerId)
+        .eq('service_provider_id', serviceProviderId)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching seller proposals:', error);
+        console.error('Error fetching service provider proposals:', error);
         return [];
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error in getSellerProposals:', error);
+      console.error('Error in getServiceProviderProposals:', error);
       return [];
     }
   }
@@ -433,7 +433,7 @@ export class JobService {
    */
   static async markProposalAsRead(proposalId: string, isReadByBuyer: boolean): Promise<boolean> {
     try {
-      const updateField = isReadByBuyer ? 'is_read_by_buyer' : 'is_read_by_seller';
+      const updateField = isReadByBuyer ? 'is_read_by_buyer' : 'is_read_by_service_provider';
       
       const { error } = await supabase
         .from('job_proposals')

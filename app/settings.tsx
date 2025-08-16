@@ -127,8 +127,8 @@ export default function SettingsScreen() {
     }, 500);
   };
 
-  const handleBecomeSeller = () => {
-    router.push('/become-seller');
+  const handleBecomeServiceProvider = () => {
+    router.push('/become-service-provider');
   };
 
   const handleMyAccount = () => {
@@ -280,8 +280,8 @@ export default function SettingsScreen() {
           
           <SettingItem
             icon={<Briefcase size={20} color={colors.text.primary} />}
-            title="Become a seller"
-            onPress={handleBecomeSeller}
+            title="Become a service provider"
+            onPress={handleBecomeServiceProvider}
           />
           
           <SettingItem

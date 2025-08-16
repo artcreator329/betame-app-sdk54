@@ -16,7 +16,7 @@ export class PaymentService {
     offer: ServiceOffer,
     serviceData: ServiceOfferData,
     buyerId: string,
-    sellerId: string
+    serviceProviderId: string
   ): Promise<PaymentResult> {
     try {
       // Calculate the final price
@@ -61,36 +61,36 @@ export class PaymentService {
         description: `Payment for service: ${serviceData.title}`
       });
 
-      // Get seller's wallet
-      const sellerWallet = await WalletService.getWallet(sellerId);
-      if (!sellerWallet) {
-        // Rollback buyer transaction if seller wallet fails
+      // Get service provider's wallet
+      const serviceProviderWallet = await WalletService.getWallet(serviceProviderId);
+      if (!serviceProviderWallet) {
+        // Rollback buyer transaction if service provider wallet fails
         await WalletService.updateWallet(buyerWallet);
         return {
           success: false,
-          error: 'Unable to access seller wallet'
+          error: 'Unable to access service provider wallet'
         };
       }
 
-      // Add BetaCoins to seller (escrow - will be released when job is completed)
-      const updatedSellerWallet = {
-        ...sellerWallet,
-        betame_betacoins: sellerWallet.betame_betacoins + finalPrice
+      // Add BetaCoins to service provider (escrow - will be released when job is completed)
+      const updatedServiceProviderWallet = {
+        ...serviceProviderWallet,
+        betame_betacoins: serviceProviderWallet.betame_betacoins + finalPrice
       };
 
-      const sellerUpdateResult = await WalletService.updateWallet(updatedSellerWallet);
-      if (!sellerUpdateResult) {
-        // Rollback buyer transaction if seller update fails
+      const serviceProviderUpdateResult = await WalletService.updateWallet(updatedServiceProviderWallet);
+      if (!serviceProviderUpdateResult) {
+        // Rollback buyer transaction if service provider update fails
         await WalletService.updateWallet(buyerWallet);
         return {
           success: false,
-          error: 'Failed to process payment to seller wallet'
+          error: 'Failed to process payment to service provider wallet'
         };
       }
 
-      // Record transaction for seller (payment received)
+      // Record transaction for service provider (payment received)
       await WalletService.recordTransaction({
-        user_id: sellerId,
+        user_id: serviceProviderId,
         type: 'service_payment_received',
         amount: finalPrice,
         description: `Payment received for service: ${serviceData.title}`
@@ -101,13 +101,13 @@ export class PaymentService {
         offer,
         serviceData,
         buyerId,
-        sellerId
+        serviceProviderId
       );
 
       if (!activeJob) {
         // Rollback both transactions if job creation fails
         await WalletService.updateWallet(buyerWallet);
-        await WalletService.updateWallet(sellerWallet);
+        await WalletService.updateWallet(serviceProviderWallet);
         return {
           success: false,
           error: 'Failed to create job after payment. Payment has been refunded.'

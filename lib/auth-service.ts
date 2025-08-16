@@ -305,7 +305,7 @@ class AuthService {
         return null;
       }
 
-      // Fetch from user_profiles table (seller-specific data)
+      // Fetch from user_profiles table (service provider-specific data)
       const { data: userProfileData, error: userProfileError } = await supabase
         .from('user_profiles')
         .select('*')
@@ -317,15 +317,15 @@ class AuthService {
         console.error('Error fetching user profile data:', userProfileError);
       }
 
-      // Merge the data, but only take seller-specific fields from user_profiles
+      // Merge the data, but only take service provider-specific fields from user_profiles
       // to avoid data inconsistency
       const mergedProfile = {
         ...profileData,
-        // Only take seller-specific fields from user_profiles
-        is_seller: userProfileData?.is_seller || false,
-        seller_badge: userProfileData?.seller_badge,
-        seller_badge_subtitle: userProfileData?.seller_badge_subtitle,
-        seller_description: userProfileData?.seller_description,
+        // Only take service provider-specific fields from user_profiles
+        is_service_provider: userProfileData?.is_service_provider || userProfileData?.is_seller || false,
+        service_provider_badge: userProfileData?.service_provider_badge || userProfileData?.seller_badge,
+        service_provider_badge_subtitle: userProfileData?.service_provider_badge_subtitle || userProfileData?.seller_badge_subtitle,
+        service_provider_description: userProfileData?.service_provider_description || userProfileData?.seller_description,
         rating: userProfileData?.rating || profileData?.rating || 0,
         review_count: userProfileData?.review_count || profileData?.review_count || 0,
         // Ensure we have the user_id for consistency
@@ -377,6 +377,57 @@ class AuthService {
         data: null, 
         error: { 
           message: 'An unexpected error occurred while updating profile. Please try again.',
+          status: 500
+        } 
+      };
+    }
+  }
+
+  // Become a service provider
+  async becomeServiceProvider(): Promise<{ data: any; error: any }> {
+    try {
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return { data: null, error: { message: 'User not authenticated' } };
+      }
+
+      // Try to update existing user_profiles record first
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({ is_service_provider: true })
+        .eq('user_id', user.id);
+
+      if (updateError && updateError.code === 'PGRST116') {
+        // No existing record, create a new one
+        const { data, error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: user.id,
+            is_service_provider: true,
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('❌ AuthService: Error creating service provider profile:', insertError);
+          return { data: null, error: insertError };
+        }
+
+        return { data, error: null };
+      } else if (updateError) {
+        console.error('❌ AuthService: Error updating service provider status:', updateError);
+        return { data: null, error: updateError };
+      }
+
+      // Update was successful, fetch the updated profile
+      const updatedProfile = await this.getUserProfile(user.id);
+      return { data: updatedProfile, error: null };
+    } catch (error) {
+      console.error('❌ AuthService: Exception becoming service provider:', error);
+      return { 
+        data: null, 
+        error: { 
+          message: 'An unexpected error occurred while becoming a service provider. Please try again.',
           status: 500
         } 
       };

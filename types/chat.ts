@@ -17,9 +17,9 @@ export interface ServiceOfferData {
   currency: string;
   image_url?: string;
   category_name?: string;
-  seller_name?: string;
-  seller_rating?: string;
-  seller_reviews?: string;
+  service_provider_name?: string;
+  service_provider_rating?: string;
+  service_provider_reviews?: string;
   service_area?: string;
   customPrice?: number;
   customDescription?: string;
@@ -46,7 +46,7 @@ export interface ServiceOffer {
   id: string;
   chatId: string;
   serviceId: string;
-  sellerId: string;
+  serviceProviderId: string;
   buyerId: string;
   originalPrice: number;
   customPrice?: number;
@@ -75,7 +75,7 @@ export interface JobOffer {
   id: string;
   chatId: string;
   jobId: string;
-  sellerId: string; // The person applying for the job
+  serviceProviderId: string; // The person applying for the job
   buyerId: string;  // The person who posted the job
   originalBudget: number;
   proposedPrice?: number;

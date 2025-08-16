@@ -4,7 +4,7 @@ import { ServiceOffer, ServiceOfferData } from '../types/chat';
 export interface ActiveJob {
   id?: string;
   buyer_id: string;
-  seller_id: string;
+  service_provider_id: string;
   service_offer_id: string;
   title: string;
   description: string;
@@ -37,12 +37,12 @@ export class ActiveJobService {
     offer: ServiceOffer,
     serviceData: ServiceOfferData,
     buyerId: string,
-    sellerId: string
+    serviceProviderId: string
   ): Promise<ActiveJob | null> {
     try {
       const jobData = {
         buyer_id: buyerId,
-        seller_id: sellerId,
+        service_provider_id: serviceProviderId,
         service_offer_id: offer.id,
         title: serviceData.title,
         description: offer.customDescription || serviceData.description,
@@ -78,10 +78,10 @@ export class ActiveJobService {
    */
   static async getUserActiveJobs(userId: string): Promise<{
     asBuyer: ActiveJob[];
-    asSeller: ActiveJob[];
+    asServiceProvider: ActiveJob[];
   }> {
     try {
-      const [buyerJobs, sellerJobs] = await Promise.all([
+      const [buyerJobs, serviceProviderJobs] = await Promise.all([
         supabase
           .from('active_jobs')
           .select('*')
@@ -91,7 +91,7 @@ export class ActiveJobService {
         supabase
           .from('active_jobs')
           .select('*')
-          .eq('seller_id', userId)
+          .eq('service_provider_id', userId)
           .in('status', ['in_progress', 'completed'])
           .order('created_at', { ascending: false })
       ]);
@@ -99,17 +99,17 @@ export class ActiveJobService {
       if (buyerJobs.error) {
         console.error('Error fetching buyer jobs:', buyerJobs.error);
       }
-      if (sellerJobs.error) {
-        console.error('Error fetching seller jobs:', sellerJobs.error);
+      if (serviceProviderJobs.error) {
+        console.error('Error fetching service provider jobs:', serviceProviderJobs.error);
       }
 
       return {
         asBuyer: buyerJobs.data || [],
-        asSeller: sellerJobs.data || []
+        asServiceProvider: serviceProviderJobs.data || []
       };
     } catch (error) {
       console.error('Error in getUserActiveJobs:', error);
-      return { asBuyer: [], asSeller: [] };
+      return { asBuyer: [], asServiceProvider: [] };
     }
   }
 

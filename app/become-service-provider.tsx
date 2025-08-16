@@ -11,19 +11,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { authService } from '@/lib/auth-service';
 
-export default function BecomeSellerScreen() {
+export default function BecomeServiceProviderScreen() {
   const router = useRouter();
   const { user, userProfile, refreshProfile } = useAuth();
-  const [isBecomingSeller, setIsBecomingSeller] = useState(false);
+  const [isBecomingServiceProvider, setIsBecomingServiceProvider] = useState(false);
 
   // Check if user is authenticated
   useEffect(() => {
     if (!user) {
       Alert.alert(
         'Sign In Required',
-        'You need to sign in to become a seller. Would you like to sign in now?',
+        'You need to sign in to become a service provider. Would you like to sign in now?',
         [
           { text: 'Cancel', style: 'cancel', onPress: () => router.back() },
           { text: 'Sign In', onPress: () => router.push('/auth/login') }
@@ -32,41 +32,16 @@ export default function BecomeSellerScreen() {
     }
   }, [user, router]);
 
-  // Function to register user as seller
-  const handleBecomeSeller = async () => {
+  // Function to register user as service provider
+  const handleBecomeServiceProvider = async () => {
     if (!user) return;
 
-    setIsBecomingSeller(true);
+    setIsBecomingServiceProvider(true);
     try {
-      // Check if user_profiles record exists
-      const { data: existingProfile, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        throw fetchError;
-      }
-
-      if (existingProfile) {
-        // Update existing profile
-        const { error: updateError } = await supabase
-          .from('user_profiles')
-          .update({ is_seller: true })
-          .eq('user_id', user.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Create new profile record with only seller-specific data
-        const { error: insertError } = await supabase
-          .from('user_profiles')
-          .insert({
-            user_id: user.id,
-            is_seller: true,
-          });
-
-        if (insertError) throw insertError;
+      const { data, error } = await authService.becomeServiceProvider();
+      
+      if (error) {
+        throw error;
       }
 
       // Refresh the user profile
@@ -74,20 +49,20 @@ export default function BecomeSellerScreen() {
 
       Alert.alert(
         'Success!',
-        'You are now registered as a seller. You can start creating service listings!',
+        'You are now registered as a service provider. You can start creating service listings!',
         [
           { text: 'OK', onPress: () => router.push('/create-service-listing') }
         ]
       );
     } catch (error: any) {
-      console.error('Error becoming seller:', error);
+      console.error('Error becoming service provider:', error);
       Alert.alert(
         'Error',
-        'Failed to register as seller. Please try again.',
+        'Failed to register as service provider. Please try again.',
         [{ text: 'OK' }]
       );
     } finally {
-      setIsBecomingSeller(false);
+      setIsBecomingServiceProvider(false);
     }
   };
 
@@ -102,7 +77,7 @@ export default function BecomeSellerScreen() {
         </View>
         <View style={styles.content}>
           <Text style={styles.title}>Sign In Required</Text>
-          <Text style={styles.subtitle}>Please sign in to become a seller</Text>
+          <Text style={styles.subtitle}>Please sign in to become a service provider</Text>
         </View>
       </SafeAreaView>
     );
@@ -119,9 +94,9 @@ export default function BecomeSellerScreen() {
 
       {/* Content */}
       <View style={styles.content}>
-        {userProfile?.is_seller ? (
+        {userProfile?.is_service_provider ? (
           <>
-            <Text style={styles.title}>You're a verified seller!</Text>
+            <Text style={styles.title}>You're a verified service provider!</Text>
             <Text style={styles.subtitle}>Start listing your services/jobs!</Text>
 
             {/* Action Buttons */}
@@ -149,7 +124,7 @@ export default function BecomeSellerScreen() {
           </>
         ) : (
           <>
-            <Text style={styles.title}>Become a Seller</Text>
+            <Text style={styles.title}>Become a Service Provider</Text>
             <Text style={styles.subtitle}>Start offering your services and earn money on our platform!</Text>
             
             <View style={styles.benefitsList}>
@@ -160,14 +135,14 @@ export default function BecomeSellerScreen() {
             </View>
 
             <TouchableOpacity 
-              style={[styles.becomeSellerButton, isBecomingSeller && styles.disabledButton]}
-              onPress={handleBecomeSeller}
-              disabled={isBecomingSeller}
+              style={[styles.becomeServiceProviderButton, isBecomingServiceProvider && styles.disabledButton]}
+              onPress={handleBecomeServiceProvider}
+              disabled={isBecomingServiceProvider}
             >
-              {isBecomingSeller ? (
+              {isBecomingServiceProvider ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.becomeSellerButtonText}>Become a Seller</Text>
+                <Text style={styles.becomeServiceProviderButtonText}>Become a Service Provider</Text>
               )}
             </TouchableOpacity>
           </>
@@ -244,7 +219,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 22,
   },
-  becomeSellerButton: {
+  becomeServiceProviderButton: {
     backgroundColor: '#007AFF',
     paddingVertical: 16,
     paddingHorizontal: 40,
@@ -254,7 +229,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     minHeight: 56,
   },
-  becomeSellerButtonText: {
+  becomeServiceProviderButtonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: '600',
