@@ -331,7 +331,8 @@ export class NotificationService {
       title: notification.title,
       message: notification.message.substring(0, 50) + '...',
       targetUserId,
-      currentUserId: this.currentUserId
+      currentUserId: this.currentUserId,
+      isForCurrentUser: targetUserId === this.currentUserId
     });
     
     const newNotification: Notification = {
@@ -386,7 +387,7 @@ export class NotificationService {
         console.error('❌ NotificationService: Failed to show system notification:', error);
       }
     } else {
-      console.log('📝 NotificationService: Notification sent to different user via Supabase realtime');
+      console.log('📝 NotificationService: Notification sent to different user via Supabase realtime. Current user:', this.currentUserId, 'Target user:', targetUserId);
     }
   }
 
@@ -583,12 +584,6 @@ export class NotificationService {
       console.log('ℹ️ NotificationService: Skipping self-notification - sender and recipient are the same:', senderId);
       return;
     }
-
-    // Additional check: prevent notifications to the current user if they are the sender
-    if (this.currentUserId && senderId === this.currentUserId) {
-      console.log('ℹ️ NotificationService: Skipping self-notification - sender is current user:', senderId);
-      return;
-    }
     
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
        type: 'structured_inquiry' as const,
@@ -644,12 +639,6 @@ export class NotificationService {
     // CRITICAL: Prevent self-notifications - don't notify if sender is the same as recipient
     if (senderId === participantId) {
       console.log('ℹ️ NotificationService: Skipping self-notification - sender and recipient are the same:', senderId);
-      return;
-    }
-
-    // Additional check: prevent notifications to the current user if they are the sender
-    if (this.currentUserId && senderId === this.currentUserId) {
-      console.log('ℹ️ NotificationService: Skipping self-notification - sender is current user:', senderId);
       return;
     }
     
