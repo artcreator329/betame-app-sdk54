@@ -1,142 +1,83 @@
+// Web-specific version of nearby.tsx with direct map shim import
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Dimensions,
-  ActivityIndicator,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, List, Map as MapIcon, ChevronDown, Grid3X3 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+// Direct import of map shim for web
+import MapView, { Marker, PROVIDER_GOOGLE } from '../metro-shims/react-native-maps.js';
 import { ServiceService, Service as ServiceFromLib } from '@/lib/service-service';
 import { CategoryService } from '@/lib/category-service';
-import { Service } from '@/types/service';
-import { useAuth } from '@/contexts/AuthContext';
 import ServiceCard from '@/components/ServiceCard';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
-
 import { Colors } from '@/constants/Colors';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
-
+interface Service extends ServiceFromLib {
+  provider_name: string;
+  latitude: number;
+  longitude: number;
+}
 
 export default function NearbyScreen() {
-  const [viewMode, setViewMode] = useState<'map' | 'list'>(
-    isWeb && width >= 1024 ? 'map' : 'list'
-  );
-  const [listLayout, setListLayout] = useState<'grid' | 'list'>(
-    isWeb && width >= 1024 ? 'grid' : 'list'
-  );
-  const [nearbyServices, setNearbyServices] = useState<Service[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const router = useRouter();
-  const { user } = useAuth();
   const { category } = useLocalSearchParams<{ category?: string }>();
+  
+  const [services, setServices] = useState<Service[]>([]);
+  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  const [listLayout, setListLayout] = useState<'list' | 'grid'>('grid');
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
+  // Load services on mount
   useEffect(() => {
-    loadNearbyServices();
-  }, [category]);
+    loadServices();
+  }, []);
 
-  // Ensure grid layout on desktop web
+  // Filter services when categories change
   useEffect(() => {
-    if (isWeb && width >= 1024 && listLayout !== 'grid') {
-      setListLayout('grid');
+    if (selectedCategories.length === 0) {
+      setFilteredServices(services);
+    } else {
+      const filtered = services.filter(service => 
+        selectedCategories.includes(service.category)
+      );
+      setFilteredServices(filtered);
     }
-  }, [isWeb, width, listLayout]);
+  }, [services, selectedCategories]);
 
-  const getCategoryDisplayText = () => {
-    if (selectedCategories.includes('all') || selectedCategories.length === 0) {
-      return 'All Categories';
-    }
-    if (selectedCategories.length === 1) {
-      const categoryMap: { [key: string]: string } = {
-        'fitness': 'Fitness',
-        'digital': 'Digital Marketing',
-        'education': 'Education',
-        'sports': 'Sports',
-        'beauty': 'Beauty',
-        'healthcare': 'Healthcare',
-      };
-      return categoryMap[selectedCategories[0]] || selectedCategories[0];
-    }
-    return `${selectedCategories.length} Categories`;
-  };
-
-
-
-  const loadNearbyServices = async () => {
+  const loadServices = async () => {
     try {
       setIsLoading(true);
-      let services;
-      
-      if (category) {
-        // If category is specified, get services by category
-        const categoryServices = await CategoryService.getServicesByCategory(category);
-        services = categoryServices;
-      } else {
-        // Otherwise get all nearby services
-        services = await ServiceService.getNearbyServices();
-      }
-      
-      // Filter out services without coordinates and ensure they have required fields
-      const validServices = services
-        .filter(service => service.id && service.latitude && service.longitude)
-        .map(service => service as Service);
-      setNearbyServices(validServices);
+      const fetchedServices = await ServiceService.getAllServices();
+      setServices(fetchedServices);
+      setFilteredServices(fetchedServices);
     } catch (error) {
-      console.error('Error loading nearby services:', error);
+      console.error('Error loading services:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleListToggle = () => {
-    console.log('List button pressed!');
-    console.log('Current viewMode:', viewMode);
-    console.log('Current listLayout:', listLayout);
-    
     if (viewMode === 'list') {
-      // If already in list mode, toggle between grid and list layout
-      // On desktop web, always use grid view
-      if (isWeb && width >= 1024) {
-        setListLayout('grid');
-        return;
-      }
-      
-      const newLayout = listLayout === 'grid' ? 'list' : 'grid';
-      console.log('Toggling layout to:', newLayout);
-      setListLayout(newLayout);
+      setListLayout(listLayout === 'list' ? 'grid' : 'list');
     } else {
-      // If in map mode, switch to list mode with current layout
-      console.log('Switching to list mode');
       setViewMode('list');
-      // On desktop web, always use grid view
-      if (isWeb && width >= 1024) {
-        setListLayout('grid');
-      }
+      setListLayout('grid');
     }
   };
 
-  // Filter services based on selected categories and industries
-  const filteredServices = nearbyServices.filter((service: Service) => {
-    const matchesCategory = selectedCategories.includes('all') || 
-                           selectedCategories.length === 0 ||
-                           selectedCategories.some((cat: string) => 
-                             service.category_name?.toLowerCase().includes(cat.toLowerCase())
-                           );
-
-    return matchesCategory;
-  });
+  const getCategoryDisplayText = () => {
+    if (selectedCategories.length === 0) return 'All Categories';
+    if (selectedCategories.length === 1) return selectedCategories[0];
+    return `${selectedCategories.length} Categories`;
+  };
 
   // Desktop layout with map and list side by side
   const renderDesktopLayout = () => {
@@ -149,10 +90,9 @@ export default function NearbyScreen() {
       </View>
       
       {/* Right side - Map */}
-      <View style={styles.desktopMapContainer}>
-        <Text style={{color: 'red', fontSize: 20}}>MAP CONTAINER RENDERED</Text>
-        {renderMapView()}
-      </View>
+              <View style={styles.desktopMapContainer}>
+          {renderMapView()}
+        </View>
     </View>
     );
   };
@@ -507,30 +447,6 @@ const styles = StyleSheet.create({
   selectedMarkerTriangle: {
     borderTopColor: '#FF6B35',
   },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    textAlign: 'center',
-  },
   filtersContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -538,23 +454,41 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
-    gap: 12,
   },
   filterDropdown: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: '#F2F2F7',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#F2F2F7',
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
+    gap: 8,
   },
   filterText: {
     fontSize: 14,
-    color: Colors.text.primary,
+    color: '#1D1D1F',
     fontWeight: '500',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#8E8E93',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 });

@@ -19,7 +19,9 @@ interface ServiceCardProps {
   showProfileToggle?: boolean;
   userProfileAvatar?: string;
   onProfileVisibilityChange?: (serviceId: string, isVisible: boolean) => void;
+  onPress?: () => void;
   style?: any;
+  disableFavorites?: boolean; // New prop to disable favorites functionality
 }
 
 interface ServiceVariantCardProps {
@@ -53,7 +55,7 @@ function ServiceVariantCard({ variant, onPress }: ServiceVariantCardProps) {
   );
 }
 
-export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange, style }: ServiceCardProps) {
+export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange, onPress, style, disableFavorites = false }: ServiceCardProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [showVariants, setShowVariants] = useState(false);
@@ -68,20 +70,41 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
   // Check if service is favorited on mount
   useEffect(() => {
     const checkFavoriteStatus = async () => {
-      if (!user || !service.id) return;
+      console.log('🔍 ServiceCard: checkFavoriteStatus called for service:', service.id, 'user:', user?.id, 'disableFavorites:', disableFavorites);
       
+      if (disableFavorites) {
+        console.log('❌ ServiceCard: Favorites disabled, setting isFavorited to false');
+        setIsFavorited(false);
+        return;
+      }
+      
+      if (!user || !service.id) {
+        // For unauthenticated users, set favorite status to false and don't make API calls
+        console.log('❌ ServiceCard: No user or service.id, setting isFavorited to false');
+        setIsFavorited(false);
+        return;
+      }
+      
+      console.log('✅ ServiceCard: User and service.id available, calling isFavorited');
       try {
         const favorited = await FavoritesService.isFavorited(user.id, service.id);
         setIsFavorited(favorited);
       } catch (error) {
-        console.error('Error checking favorite status:', error);
+        console.error('❌ ServiceCard: Error checking favorite status:', error);
+        // Set to false on error to avoid UI issues
+        setIsFavorited(false);
       }
     };
 
     checkFavoriteStatus();
-  }, [user, service.id]);
+  }, [user, service.id, disableFavorites]);
 
   const handleToggleFavorite = async () => {
+    if (disableFavorites) {
+      console.log('❌ ServiceCard: Favorites disabled, ignoring toggle request');
+      return;
+    }
+    
     if (!user) {
       Alert.alert(
         'Sign In Required',
@@ -182,7 +205,12 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     if (hasVariants && !hideVariants) {
       setShowVariants(!showVariants);
     } else {
-      handlePress();
+      // Use custom onPress if provided, otherwise use default navigation
+      if (onPress) {
+        onPress();
+      } else {
+        handlePress();
+      }
     }
   };
 

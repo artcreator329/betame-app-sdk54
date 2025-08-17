@@ -15,6 +15,13 @@ export class FavoritesService {
    */
   static async getUserFavorites(userId: string): Promise<FavoriteService[]> {
     try {
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('User not authenticated, skipping favorites fetch');
+        return [];
+      }
+
       const { data: favorites, error } = await supabase
         .from('favorites')
         .select(`
@@ -41,6 +48,13 @@ export class FavoritesService {
    */
   static async addToFavorites(userId: string, serviceId: string): Promise<{ success: boolean; error?: string }> {
     try {
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('User not authenticated, cannot add to favorites');
+        return { success: false, error: 'User not authenticated' };
+      }
+
       // Check if already favorited
       const { data: existing, error: checkError } = await supabase
         .from('favorites')
@@ -83,6 +97,13 @@ export class FavoritesService {
    */
   static async removeFromFavorites(userId: string, serviceId: string): Promise<{ success: boolean; error?: string }> {
     try {
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('User not authenticated, cannot remove from favorites');
+        return { success: false, error: 'User not authenticated' };
+      }
+
       const { error } = await supabase
         .from('favorites')
         .delete()
@@ -106,6 +127,13 @@ export class FavoritesService {
    */
   static async toggleFavorite(userId: string, serviceId: string): Promise<{ success: boolean; isFavorited: boolean; error?: string }> {
     try {
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('User not authenticated, cannot toggle favorite');
+        return { success: false, isFavorited: false, error: 'User not authenticated' };
+      }
+
       // Check if already favorited
       const { data: existing, error: checkError } = await supabase
         .from('favorites')
@@ -147,6 +175,16 @@ export class FavoritesService {
    */
   static async isFavorited(userId: string, serviceId: string): Promise<boolean> {
     try {
+      console.log('🔍 isFavorited called with userId:', userId, 'serviceId:', serviceId);
+      
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('❌ User not authenticated, skipping favorite check');
+        return false;
+      }
+
+      console.log('✅ User authenticated, making API call');
       const { data, error } = await supabase
         .from('favorites')
         .select('id')
@@ -155,13 +193,14 @@ export class FavoritesService {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error checking if favorited:', error);
+        console.error('❌ Error checking if favorited:', error);
         return false;
       }
 
+      console.log('✅ Favorite check completed, result:', !!data);
       return !!data;
     } catch (error) {
-      console.error('Error in isFavorited:', error);
+      console.error('❌ Error in isFavorited:', error);
       return false;
     }
   }
