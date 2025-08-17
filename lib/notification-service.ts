@@ -547,6 +547,62 @@ export class NotificationService {
     console.log('  - notifications:', this.notifications);
   }
 
+  // Helper method to add structured inquiry notification
+  async addStructuredInquiryNotification({
+    participantId,
+    participantName,
+    participantImage,
+    serviceTitle,
+    chatId,
+    senderId,
+  }: {
+    participantId: string;
+    participantName: string;
+    participantImage: string;
+    serviceTitle: string;
+    chatId: string;
+    senderId: string;
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addStructuredInquiryNotification called with:', {
+      participantId,
+      participantName,
+      serviceTitle,
+      chatId,
+      senderId,
+      currentUserId: this.currentUserId
+    });
+
+    // Validate that we have a senderId for navigation
+    if (!senderId) {
+      console.error('❌ NotificationService: senderId is required for structured inquiry notifications');
+      return;
+    }
+
+    // CRITICAL: Prevent self-notifications - don't notify if sender is the same as recipient
+    if (senderId === participantId) {
+      console.log('ℹ️ NotificationService: Skipping self-notification - sender and recipient are the same:', senderId);
+      return;
+    }
+    
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+       type: 'structured_inquiry' as const,
+       title: `Service inquiry from ${participantName}`,
+       message: `Inquiry about "${serviceTitle}"`,
+       data: {
+         chatId,
+         participantId: senderId, // Always use senderId for navigation (the person who sent the inquiry)
+         participantName,
+         participantImage,
+         serviceTitle,
+       },
+     };
+     
+     console.log('🔔 NotificationService: Created structured inquiry notification object:', notification);
+     console.log('🔔 NotificationService: Structured inquiry notification will be sent TO:', participantId, 'FROM:', participantName);
+     await this.addNotification(notification, participantId);
+     console.log('🔔 NotificationService: addStructuredInquiryNotification completed');
+  }
+
   // Helper method to add chat message notification
   async addChatNotification({
     participantId,

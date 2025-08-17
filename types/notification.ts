@@ -1,7 +1,7 @@
 export interface Notification {
   id: string;
   userId: string; // Add user ID to make notifications user-specific
-  type: 'chat' | 'order' | 'service' | 'system' | 'offer' | 'marketing' | 'check_in';
+  type: 'chat' | 'order' | 'service' | 'system' | 'offer' | 'marketing' | 'check_in' | 'structured_inquiry';
   title: string;
   message: string;
   timestamp: string;
@@ -19,10 +19,7 @@ export interface Notification {
     serviceTitle?: string;
     price?: number;
     currency?: string;
-    category?: string;
-    action?: string;
     canDisable?: boolean;
-    [key: string]: any;
   };
 }
 

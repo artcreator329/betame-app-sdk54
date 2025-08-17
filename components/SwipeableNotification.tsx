@@ -39,6 +39,8 @@ function getNotificationIcon(type: string) {
       return Megaphone;
     case 'check_in':
       return MapPin;
+    case 'structured_inquiry':
+      return Package;
     default:
       return Bell;
   }
@@ -58,6 +60,8 @@ function getNotificationColor(type: string, colors: any) {
       return '#FF6B35';
     case 'check_in':
       return '#4CAF50';
+    case 'structured_inquiry':
+      return '#9333EA'; // Purple color for structured inquiries
     default:
       return colors.text.secondary;
   }
@@ -77,6 +81,8 @@ function getNotificationGradient(type: string) {
       return ['#FFF3E0', '#FFF8F0'];
     case 'check_in':
       return ['#E8F5E8', '#F0F9F0'];
+    case 'structured_inquiry':
+      return ['#F3E8FF', '#FAF0FB']; // Purple gradient for structured inquiries
     default:
       return ['#F5F5F5', '#FAFAFA'];
   }
@@ -368,6 +374,17 @@ export default function SwipeableNotification({
                 {notification.data.price && (
                   <Text style={[styles.priceInfo, { color: readTextColor }]}>
                     💰 {notification.data.currency || 'RM'} {notification.data.price}
+                  </Text>
+                )}
+              </View>
+            )}
+            
+            {/* Additional info for structured inquiries */}
+            {notification.type === 'structured_inquiry' && notification.data && (
+              <View style={styles.offerInfo}>
+                {notification.data.serviceTitle && (
+                  <Text style={[styles.serviceTitle, { color: readIconColor }]} numberOfLines={1}>
+                    🔍 Inquiry about: {notification.data.serviceTitle}
                   </Text>
                 )}
               </View>

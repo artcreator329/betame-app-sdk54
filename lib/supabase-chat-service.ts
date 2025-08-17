@@ -734,11 +734,11 @@ export class SupabaseChatService {
           const otherParticipantId = participants[0].user_id;
           
           // Add notification for incoming structured inquiry
-          await notificationService.addChatNotification({
+          await notificationService.addStructuredInquiryNotification({
             participantId: otherParticipantId,
             participantName: senderName,
             participantImage: senderImage,
-            message: `Sent an inquiry about "${inquiryData.serviceTitle}"`,
+            serviceTitle: inquiryData.serviceTitle,
             chatId: chatId,
             senderId: senderId,
           });
