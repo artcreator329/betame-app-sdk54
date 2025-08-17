@@ -269,33 +269,93 @@ const MapView = React.forwardRef((props, ref) => {
   React.useEffect(() => {
     if (!mapLoaded || !mapInstanceRef.current) return;
 
+    console.log('🔧 Processing markers...');
+    console.log('🔧 Children count:', React.Children.count(props.children));
+    console.log('🔧 Props children:', props.children);
+    console.log('🔧 Props keys:', Object.keys(props));
+
     // Clear existing markers
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
 
     // Add new markers from children
-    React.Children.forEach(props.children, (child) => {
+    React.Children.forEach(props.children, (child, index) => {
+      console.log(`🔧 Processing child ${index}:`, child);
+      console.log(`🔧 Child type:`, child?.type);
+      console.log(`🔧 Child type name:`, child?.type?.name);
+      console.log(`🔧 Is valid element:`, React.isValidElement(child));
+      console.log(`🔧 Is Marker:`, child?.type === Marker);
+      
       if (React.isValidElement(child) && child.type === Marker) {
         const markerProps = child.props;
+        console.log(`🔧 Creating marker for:`, markerProps.title);
+        console.log(`🔧 Position:`, markerProps.coordinate);
+        
+        // Create simple marker with service information
         const marker = new google.maps.Marker({
           position: {
             lat: markerProps.coordinate.latitude,
             lng: markerProps.coordinate.longitude,
           },
           map: mapInstanceRef.current,
-          title: markerProps.title,
-          label: markerProps.description,
+          title: markerProps.title || 'Service',
+          icon: {
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+              <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" fill="#007AFF" stroke="white" stroke-width="2"/>
+                <text x="12" y="16" text-anchor="middle" fill="white" font-size="12" font-weight="bold">S</text>
+              </svg>
+            `),
+            scaledSize: new google.maps.Size(24, 24),
+            anchor: new google.maps.Point(12, 12)
+          }
         });
 
+        // Create info window content
+        const infoContent = `
+          <div style="
+            background: white;
+            border: 2px solid #007AFF;
+            border-radius: 8px;
+            padding: 8px 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            max-width: 200px;
+          ">
+            <div style="font-weight: 600; margin-bottom: 2px; color: #007AFF;">${markerProps.title || 'Service'}</div>
+            <div style="font-size: 11px; color: #666;">${markerProps.description || ''}</div>
+          </div>
+        `;
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: infoContent
+        });
+
+        // Show info window on hover
+        marker.addListener('mouseover', () => {
+          infoWindow.open(mapInstanceRef.current, marker);
+        });
+
+        // Hide info window when mouse leaves
+        marker.addListener('mouseout', () => {
+          infoWindow.close();
+        });
+
+        // Handle click
         if (markerProps.onPress) {
           marker.addListener('click', () => {
+            console.log('🔧 Marker clicked:', markerProps.title);
             markerProps.onPress();
           });
         }
 
         markersRef.current.push(marker);
+        console.log(`✅ Marker created for: ${markerProps.title}`);
       }
     });
+
+    console.log(`✅ Total markers created: ${markersRef.current.length}`);
   }, [mapLoaded, props.children]);
 
   // Always render a div with ref, but show loading content when needed

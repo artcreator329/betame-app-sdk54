@@ -36,6 +36,7 @@ export default function NearbyScreen() {
 
   // Load services on mount
   useEffect(() => {
+    console.log('🔧 useEffect triggered - calling loadServices');
     loadServices();
   }, []);
 
@@ -53,14 +54,19 @@ export default function NearbyScreen() {
 
   const loadServices = async () => {
     try {
+      console.log('🔧 loadServices called - starting to fetch services');
       setIsLoading(true);
       const fetchedServices = await ServiceService.getAllServices();
+      console.log('🔧 ServiceService.getAllServices() returned:', fetchedServices);
+      console.log('🔧 fetchedServices length:', fetchedServices?.length || 0);
       setServices(fetchedServices);
       setFilteredServices(fetchedServices);
+      console.log('🔧 Services state updated');
     } catch (error) {
-      console.error('Error loading services:', error);
+      console.error('❌ Error loading services:', error);
     } finally {
       setIsLoading(false);
+      console.log('🔧 loadServices completed, isLoading set to false');
     }
   };
 
@@ -99,6 +105,9 @@ export default function NearbyScreen() {
 
   const renderMapView = () => {
     console.log('🔧 renderMapView called - rendering map component');
+    console.log('🔧 filteredServices count:', filteredServices.length);
+    console.log('🔧 filteredServices:', filteredServices);
+    
     return (
     <View style={styles.mapContainer}>
       <MapView
@@ -113,47 +122,50 @@ export default function NearbyScreen() {
         showsUserLocation={true}
         showsMyLocationButton={true}
       >
-        {filteredServices.map((service: Service) => (
-          <Marker
-            key={service.id}
-            coordinate={{
-              latitude: service.latitude!,
-              longitude: service.longitude!
-            }}
-            title={service.title}
-            description={`${service.provider_name} - ${service.currency}${service.price}`}
-            onPress={() => {
-              if (isWeb && width >= 1024) {
-                // On desktop, select the service to highlight it in the list
-                setSelectedService(service);
-                // Scroll to the service card
-                const element = document.getElementById(`service-${service.id}`);
-                if (element) {
-                  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        {filteredServices.map((service: Service) => {
+          console.log(`🔧 Rendering marker for service: ${service.title} at ${service.latitude}, ${service.longitude}`);
+          return (
+            <Marker
+              key={service.id}
+              coordinate={{
+                latitude: service.latitude!,
+                longitude: service.longitude!
+              }}
+              title={service.title}
+              description={`${service.provider_name} - ${service.currency}${service.price}`}
+              onPress={() => {
+                if (isWeb && width >= 1024) {
+                  // On desktop, select the service to highlight it in the list
+                  setSelectedService(service);
+                  // Scroll to the service card
+                  const element = document.getElementById(`service-${service.id}`);
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                } else {
+                  // On mobile, navigate to service details
+                  router.push(`/service/${service.id}`);
                 }
-              } else {
-                // On mobile, navigate to service details
-                router.push(`/service/${service.id}`);
-              }
-            }}
-          >
-            <View style={[
-              styles.markerContainer,
-              selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedMarker
-            ]}>
+              }}
+            >
               <View style={[
-                styles.marker,
-                selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedMarkerInner
+                styles.markerContainer,
+                selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedMarker
               ]}>
-                <MapPin size={20} color="white" />
+                <View style={[
+                  styles.marker,
+                  selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedMarkerInner
+                ]}>
+                  <MapPin size={20} color="white" />
+                </View>
+                <View style={[
+                  styles.markerTriangle,
+                  selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedMarkerTriangle
+                ]} />
               </View>
-              <View style={[
-                styles.markerTriangle,
-                selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedMarkerTriangle
-              ]} />
-            </View>
-          </Marker>
-        ))}
+            </Marker>
+          );
+        })}
       </MapView>
     </View>
     );
