@@ -1428,6 +1428,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 60,
     paddingHorizontal: 40,
+    ...(Platform.OS === 'web' && {
+      width: '100%',
+    }),
   },
   emptyStateText: {
     fontSize: 16,
@@ -1472,11 +1475,20 @@ const styles = StyleSheet.create({
   servicesContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
+    ...(Platform.OS === 'web' && {
+      display: 'flex',
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 16,
+    }),
   },
   availableListings: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 16,
+    ...(Platform.OS === 'web' && {
+      width: '100%',
+    }),
   },
   serviceItem: {
     flexDirection: 'row',
@@ -1568,6 +1580,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 20,
     marginBottom: 20,
+    ...(Platform.OS === 'web' && {
+      width: '100%',
+    }),
   },
   addServiceButtonIcon: {
     fontSize: 24,
@@ -1826,6 +1841,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    ...(Platform.OS === 'web' && {
+      width: '100%',
+    }),
   },
   becomeServiceProviderButtonText: {
     fontSize: 18,
@@ -1845,6 +1863,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E5E5E5',
+    ...(Platform.OS === 'web' && {
+      width: '100%',
+    }),
   },
   verifiedServiceProviderText: {
     fontSize: 16,

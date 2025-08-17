@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, ChevronDown, SlidersHorizontal } from 'lucide-react-native';
@@ -296,10 +297,18 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     paddingHorizontal: 20,
     justifyContent: 'space-between',
+    ...(Platform.OS === 'web' && {
+      justifyContent: 'flex-start',
+    }),
   },
   serviceCardContainer: {
     width: '48%',
     marginBottom: 16,
+    ...(Platform.OS === 'web' && {
+      width: '18%',
+      marginBottom: 16,
+      marginRight: '2%',
+    }),
   },
   servicesList: {
     paddingHorizontal: 20,

@@ -328,13 +328,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     position: 'relative',
-    ...(isWeb && width >= 1440 && {
-      minHeight: 280,
-      aspectRatio: 0.85,
-    }),
-    ...(isWeb && width >= 1024 && width < 1440 && {
-      minHeight: 320,
-      aspectRatio: 0.8,
+    ...(isWeb && {
+      maxWidth: 400,
+      alignSelf: 'flex-start',
+      width: '100%',
     }),
   },
   editButton: {
@@ -382,8 +379,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: isWeb && width >= 1440 ? 140 : 
-            isWeb && width >= 1024 ? 160 : 100,
+    height: isWeb ? 100 : 100,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     resizeMode: 'cover',
@@ -392,6 +388,9 @@ const styles = StyleSheet.create({
     padding: 12,
     flex: 1,
     justifyContent: 'space-between',
+    ...(isWeb && {
+      padding: 8,
+    }),
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -414,12 +413,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.text.primary,
     marginBottom: 2,
+    ...(isWeb && {
+      fontSize: 12,
+      marginBottom: 1,
+    }),
   },
   title: {
     fontSize: 12,
     color: Colors.text.secondary,
     marginBottom: 8,
     lineHeight: 16,
+    ...(isWeb && {
+      fontSize: 11,
+      lineHeight: 14,
+      marginBottom: 6,
+    }),
   },
   priceContainer: {
     flexDirection: 'row',
@@ -430,6 +438,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: Colors.text.primary,
+    ...(isWeb && {
+      fontSize: 12,
+    }),
   },
   variantIndicator: {
     flexDirection: 'row',
