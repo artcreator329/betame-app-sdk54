@@ -583,6 +583,12 @@ export class NotificationService {
       console.log('ℹ️ NotificationService: Skipping self-notification - sender and recipient are the same:', senderId);
       return;
     }
+
+    // Additional check: prevent notifications to the current user if they are the sender
+    if (this.currentUserId && senderId === this.currentUserId) {
+      console.log('ℹ️ NotificationService: Skipping self-notification - sender is current user:', senderId);
+      return;
+    }
     
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
        type: 'structured_inquiry' as const,
@@ -638,6 +644,12 @@ export class NotificationService {
     // CRITICAL: Prevent self-notifications - don't notify if sender is the same as recipient
     if (senderId === participantId) {
       console.log('ℹ️ NotificationService: Skipping self-notification - sender and recipient are the same:', senderId);
+      return;
+    }
+
+    // Additional check: prevent notifications to the current user if they are the sender
+    if (this.currentUserId && senderId === this.currentUserId) {
+      console.log('ℹ️ NotificationService: Skipping self-notification - sender is current user:', senderId);
       return;
     }
     
