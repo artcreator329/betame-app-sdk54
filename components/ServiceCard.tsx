@@ -7,10 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
 import { ServiceService } from '@/lib/service-service';
 import { FavoritesService } from '@/lib/favorites-service';
+import { supabase } from '@/lib/supabase';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isDesktop = isWeb && width >= 1024;
 
 interface ServiceCardProps {
   service: Service;
@@ -61,6 +61,7 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
   const [isUpdating, setIsUpdating] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
+  const [userCoverPhoto, setUserCoverPhoto] = useState<string | null>(null);
 
   const hasVariants = service.service_variants && service.service_variants.length > 0;
 
@@ -140,9 +141,35 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     }
   };
 
+  // Fetch user's cover photo when service has no image
+  useEffect(() => {
+    const fetchUserCoverPhoto = async () => {
+      if (!service.image_url && service.user_id) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('cover_photo_url')
+            .eq('id', service.user_id)
+            .single();
+
+          if (!error && data?.cover_photo_url) {
+            setUserCoverPhoto(data.cover_photo_url);
+          }
+        } catch (error) {
+          console.error('Error fetching user cover photo:', error);
+        }
+      }
+    };
+
+    fetchUserCoverPhoto();
+  }, [service.image_url, service.user_id]);
+
   const getServiceImage = () => {
     if (service.image_url) {
       return service.image_url;
+    }
+    if (userCoverPhoto) {
+      return userCoverPhoto;
     }
     if (userProfileAvatar) {
       return userProfileAvatar;
@@ -301,6 +328,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     position: 'relative',
+    ...(isWeb && width >= 1440 && {
+      minHeight: 280,
+      aspectRatio: 0.85,
+    }),
+    ...(isWeb && width >= 1024 && width < 1440 && {
+      minHeight: 320,
+      aspectRatio: 0.8,
+    }),
   },
   editButton: {
     position: 'absolute',
@@ -347,12 +382,16 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: isDesktop ? 120 : 100, // Slightly taller for better aspect ratio on desktop
+    height: isWeb && width >= 1440 ? 140 : 
+            isWeb && width >= 1024 ? 160 : 100,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
+    resizeMode: 'cover',
   },
   content: {
-    padding: isDesktop ? 10 : 12, // Slightly less padding on desktop for more compact cards
+    padding: 12,
+    flex: 1,
+    justifyContent: 'space-between',
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -360,27 +399,27 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   rating: {
-    fontSize: isDesktop ? 12 : 11,
+    fontSize: 11,
     fontWeight: '600',
     color: Colors.text.primary,
     marginLeft: 3,
   },
   reviewCount: {
-    fontSize: isDesktop ? 12 : 11,
+    fontSize: 11,
     color: Colors.text.secondary,
     marginLeft: 2,
   },
   provider: {
-    fontSize: isDesktop ? 14 : 13,
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.text.primary,
     marginBottom: 2,
   },
   title: {
-    fontSize: isDesktop ? 13 : 12,
+    fontSize: 12,
     color: Colors.text.secondary,
-    marginBottom: isDesktop ? 6 : 8, // Less margin on desktop
-    lineHeight: isDesktop ? 18 : 16,
+    marginBottom: 8,
+    lineHeight: 16,
   },
   priceContainer: {
     flexDirection: 'row',
@@ -388,7 +427,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   price: {
-    fontSize: isDesktop ? 14 : 13,
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.text.primary,
   },

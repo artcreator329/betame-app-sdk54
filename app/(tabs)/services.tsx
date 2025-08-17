@@ -27,7 +27,7 @@ const convertToUIService = (dbService: DBService): Service => ({
   price: dbService.price,
   currency: dbService.currency,
   category_name: dbService.category_name || 'General',
-  image_url: dbService.image_url || 'https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=400',
+  image_url: dbService.image_url || undefined, // Remove hardcoded fallback, let ServiceCard handle it
   latitude: dbService.latitude,
   longitude: dbService.longitude,
   location: dbService.location,

@@ -65,7 +65,7 @@ export default function DetailedServiceListingScreen() {
           id: '1',
           title: parsedData.title,
           description: parsedData.description,
-          price: parsedData.price || 0,
+          price: parsedData.price || 0, // Main service doesn't need pricing
           priceType: parsedData.priceType || 'starting',
           priceUnit: parsedData.priceUnit || 'one_time',
         };
@@ -83,7 +83,7 @@ export default function DetailedServiceListingScreen() {
       id: Date.now().toString(),
       title: '',
       description: '',
-      price: 0,
+      price: 50, // Set a default price of 50 RM for new variants
       priceType: 'starting',
       priceUnit: 'per_hour',
     };
@@ -160,8 +160,8 @@ export default function DetailedServiceListingScreen() {
   };
 
   const validateVariants = (): boolean => {
-    // Main service (index 0) doesn't need pricing validation, only additional variants do
-    for (let i = 1; i < serviceVariants.length; i++) {
+    // Check all variants (main service doesn't need pricing, only additional variants do)
+    for (let i = 0; i < serviceVariants.length; i++) {
       const variant = serviceVariants[i];
       if (!variant.title.trim()) {
         Alert.alert('Error', 'Please enter a title for all service variants');
@@ -171,7 +171,8 @@ export default function DetailedServiceListingScreen() {
         Alert.alert('Error', 'Please enter a description for all service variants');
         return false;
       }
-      if (variant.price <= 0) {
+      // Only check price for additional variants (not the main service)
+      if (i > 0 && variant.price <= 0) {
         Alert.alert('Error', 'Please enter a valid price for all service variants');
         return false;
       }
@@ -191,13 +192,18 @@ export default function DetailedServiceListingScreen() {
 
     setIsCreating(true);
     try {
-      // Create the main service without pricing (pricing comes from variants)
+      // Create the main service with the lowest variant price (for "starts from" display)
       const firstVariant = serviceVariants[0];
+      const allVariants = serviceVariants.slice(1); // Get all variants except the main service
+      const lowestPrice = allVariants.length > 0 
+        ? Math.min(...allVariants.map(v => v.price))
+        : firstVariant.price; // If no additional variants, use main service price
+      
       const mainServiceData = {
         user_id: user.id,
         title: firstVariant.title.trim(),
         description: firstVariant.description.trim(),
-        // No pricing data for main service - pricing comes from variants
+        price: lowestPrice, // Set to lowest variant price for "starts from" display
         currency: mainService.currency || 'RM',
         image_url: mainService.imageUri || undefined,
         category_name: mainService.serviceType || 'general',
@@ -238,8 +244,6 @@ export default function DetailedServiceListingScreen() {
           title: `${mainService.title} - ${variant.title.trim()}`,
           description: variant.description.trim(),
           price: variant.price,
-          price_type: variant.priceType,
-          price_unit: variant.priceUnit,
           currency: mainService.currency || 'RM',
           image_url: mainService.imageUri || undefined,
           category_name: mainService.serviceType || 'general',
@@ -513,8 +517,8 @@ export default function DetailedServiceListingScreen() {
           {serviceVariants.length === 1 && (
             <View style={styles.helpMessage}>
               <Text style={styles.helpMessageText}>
-                💡 Add at least one service variant with pricing to complete your listing. 
-                Variants allow you to offer different service options with specific prices.
+                💡 The main service is your service template. Add at least one service variant with pricing to complete your listing. 
+                The main service will display "starts from RMxx" based on the lowest variant price.
               </Text>
             </View>
           )}
@@ -524,8 +528,10 @@ export default function DetailedServiceListingScreen() {
         <TouchableOpacity
           style={[
             styles.createButton,
-            // Require at least one service variant with pricing
-            (serviceVariants.length > 1 && serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0))
+            // Require main service to have title/description, and additional variants to have valid data
+            (serviceVariants.length > 1 && 
+             serviceVariants[0].title.trim() && serviceVariants[0].description.trim() &&
+             serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0))
               ? styles.createButtonActive
               : styles.createButtonDisabled
           ]}
@@ -533,12 +539,15 @@ export default function DetailedServiceListingScreen() {
           disabled={
             isCreating ||
             serviceVariants.length === 1 ||
+            !serviceVariants[0].title.trim() || !serviceVariants[0].description.trim() ||
             !serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0)
           }
         >
           <Text style={[
             styles.createButtonText,
-            (serviceVariants.length > 1 && serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0))
+            (serviceVariants.length > 1 && 
+             serviceVariants[0].title.trim() && serviceVariants[0].description.trim() &&
+             serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0))
               ? styles.createButtonTextActive
               : {}
           ]}>

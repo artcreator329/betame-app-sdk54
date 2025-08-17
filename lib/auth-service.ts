@@ -78,16 +78,27 @@ class AuthService {
 
       if (error) {
         console.error('Supabase auth signup error:', error);
-        // Check if it's a database trigger error
-        if (error.message.includes('trigger') || error.message.includes('function')) {
-          return { 
-            user: null, 
-            error: { 
-              ...error, 
-              message: 'Database error saving new user. Please try again or contact support if the issue persists.' 
-            } as AuthError 
-          };
+        
+        // Provide user-friendly error messages
+        let userFriendlyMessage = error.message;
+        
+        if (error.message.includes('User already registered')) {
+          userFriendlyMessage = 'An account with this email already exists. Please sign in instead.';
+        } else if (error.message.includes('Password should be at least')) {
+          userFriendlyMessage = 'Password must be at least 6 characters long.';
+        } else if (error.message.includes('Invalid email')) {
+          userFriendlyMessage = 'Please enter a valid email address.';
+        } else if (error.message.includes('trigger') || error.message.includes('function')) {
+          userFriendlyMessage = 'Database error saving new user. Please try again or contact support if the issue persists.';
         }
+        
+        return { 
+          user: null, 
+          error: { 
+            ...error, 
+            message: userFriendlyMessage 
+          } as AuthError 
+        };
       }
 
       return { user: data.user, error };
@@ -113,6 +124,27 @@ class AuthService {
 
       if (error) {
         console.error('❌ AuthService: Sign in error:', error);
+        
+        // Provide more user-friendly error messages
+        let userFriendlyMessage = error.message;
+        
+        if (error.message.includes('Invalid login credentials')) {
+          userFriendlyMessage = 'Invalid email or password. Please check your credentials and try again.';
+        } else if (error.message.includes('Email not confirmed')) {
+          userFriendlyMessage = 'Please check your email and click the verification link to activate your account.';
+        } else if (error.message.includes('Too many requests')) {
+          userFriendlyMessage = 'Too many sign-in attempts. Please wait a few minutes before trying again.';
+        } else if (error.message.includes('User not found')) {
+          userFriendlyMessage = 'No account found with this email address. Please check your email or sign up.';
+        }
+        
+        return { 
+          user: null, 
+          error: { 
+            ...error, 
+            message: userFriendlyMessage 
+          } as AuthError 
+        };
       } else if (data.user) {
         console.log('✅ AuthService: User signed in successfully:', data.user.id);
       }

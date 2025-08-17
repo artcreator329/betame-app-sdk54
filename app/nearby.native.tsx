@@ -36,7 +36,7 @@ const convertServiceToLocation = (service: Service): ServiceLocation | null => {
     price: service.price,
     currency: service.currency,
     category: service.category_name || 'General',
-    image: service.image_url || 'https://images.pexels.com/photos/3997991/pexels-photo-3997991.jpeg?auto=compress&cs=tinysrgb&w=400',
+    image: service.image_url || undefined, // Remove hardcoded fallback, let components handle it
     coordinate: {
       latitude: service.latitude,
       longitude: service.longitude,

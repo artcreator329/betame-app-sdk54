@@ -22,6 +22,7 @@ import { referralService } from '@/lib/referral-service';
 import { ReferralInputModal } from '@/components/ReferralInputModal';
 import { AdminSignInChoiceModal } from '@/components/AdminSignInChoiceModal';
 import { adminPreferencesService } from '@/lib/admin-preferences-service';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -34,9 +35,16 @@ export default function LoginScreen() {
   const [showAdminChoice, setShowAdminChoice] = useState(false);
   const [adminUser, setAdminUser] = useState<{ id: string; email: string } | null>(null);
   const [adminFlowCompleted, setAdminFlowCompleted] = useState(false);
-  const adminModalRef = useRef({ shouldShow: false, userData: null });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const adminModalRef = useRef<{ shouldShow: boolean; userData: { id: string; email: string } | null }>({ shouldShow: false, userData: null });
   const router = useRouter();
-  const { signIn, signUp, checkAdminStatus, user } = useAuth();
+  const { signIn, signUp, checkAdminStatus, user, hasSignInError, clearSignInError } = useAuth();
+  
+  // Debug logging for error state changes
+  useEffect(() => {
+    console.log('🔄 Login: Error message changed:', errorMessage);
+  }, [errorMessage]);
   const videoRef = useRef<Video>(null);
 
   // Add video error handling and rotation
@@ -67,60 +75,104 @@ export default function LoginScreen() {
   // Effect to handle admin flow after successful sign-in
   useEffect(() => {
     const handleAdminFlow = async () => {
-      if (user && !adminFlowCompleted) {
-        const isAdmin = await adminService.isAdmin(user.id);
-        
-        if (isAdmin) {
-          const shouldShowModal = await adminPreferencesService.shouldShowChoiceModal(user.id);
-          
-          if (shouldShowModal) {
-            const adminUserData = { 
-              id: user.id, 
-              email: user.email || email.trim() 
-            };
-            
-            adminModalRef.current = { shouldShow: true, userData: adminUserData };
-            setAdminUser(adminUserData);
-            setShowAdminChoice(true);
-            setAdminFlowCompleted(true);
-          } else {
-            // Auto-redirect based on saved preference
-            const destination = await adminPreferencesService.getAutoRedirectDestination(user.id);
-            await checkAdminStatus(user.id);
-            
-            if (destination === 'dashboard') {
-              router.replace('/admin');
-            } else {
-              router.replace('/(tabs)');
-            }
+      // Only proceed if we have a user, we're not in the middle of a sign-in attempt, and there's no sign-in error
+      if (user && !adminFlowCompleted && !isSigningIn && !hasSignInError) {
+        // Double-check that we actually have a valid session
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            return;
           }
-        } else {
-          // Navigate to main app for non-admin users
-          router.replace('/(tabs)');
+          
+          const isAdmin = await adminService.isAdmin(user.id);
+          
+          if (isAdmin) {
+            const shouldShowModal = await adminPreferencesService.shouldShowChoiceModal(user.id);
+            
+            if (shouldShowModal) {
+              const adminUserData = { 
+                id: user.id, 
+                email: user.email || email.trim() 
+              };
+              
+              adminModalRef.current = { shouldShow: true, userData: adminUserData };
+              setAdminUser(adminUserData);
+              setShowAdminChoice(true);
+              setAdminFlowCompleted(true);
+              setIsSigningIn(false); // Clear signing in flag
+              clearSignInError(); // Clear error flag
+            } else {
+              // Auto-redirect based on saved preference
+              const destination = await adminPreferencesService.getAutoRedirectDestination(user.id);
+              await checkAdminStatus(user.id);
+              
+              if (destination === 'dashboard') {
+                router.replace('/admin');
+              } else {
+                router.replace('/(tabs)');
+              }
+              setIsSigningIn(false); // Clear signing in flag
+              clearSignInError(); // Clear error flag
+            }
+          } else {
+            // Navigate to main app for non-admin users
+            router.replace('/(tabs)');
+            setIsSigningIn(false); // Clear signing in flag
+            clearSignInError(); // Clear error flag
+          }
+        } catch (error) {
+          // Silently handle session check errors
         }
       }
     };
 
     handleAdminFlow();
-  }, [user, adminFlowCompleted]);
+  }, [user, adminFlowCompleted, isSigningIn, hasSignInError]);
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setErrorMessage('Please fill in all fields');
       return;
     }
 
     setLoading(true);
+    setErrorMessage(null); // Clear any previous errors
+    setIsSigningIn(true); // Set signing in flag
+    
     try {
       const result = await signIn(email.trim(), password);
       
       if (result.error) {
-        Alert.alert('Error', result.error.message);
+        console.log('🔄 Login: Sign in failed with error:', result.error.message);
+        // Provide user-friendly error messages
+        let errorMessage = 'An error occurred during sign in. Please try again.';
+        
+        if (result.error.message) {
+          // Handle specific Supabase auth errors
+          if (result.error.message.includes('Invalid login credentials')) {
+            errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+          } else if (result.error.message.includes('Email not confirmed')) {
+            errorMessage = 'Please check your email and click the verification link to activate your account.';
+          } else if (result.error.message.includes('Too many requests')) {
+            errorMessage = 'Too many sign-in attempts. Please wait a few minutes before trying again.';
+          } else if (result.error.message.includes('User not found')) {
+            errorMessage = 'No account found with this email address. Please check your email or sign up.';
+          } else {
+            // Use the original error message for other cases
+            errorMessage = result.error.message;
+          }
+        }
+        
+        console.log('🔄 Login: Setting error message:', errorMessage);
+        setErrorMessage(errorMessage);
+        setIsSigningIn(false); // Clear signing in flag on error
       } else if (result.user) {
         // Admin flow will be handled by useEffect when user state updates
+        // Don't clear isSigningIn here - let the useEffect handle it
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
+      setErrorMessage(error.message || 'An unexpected error occurred');
+      setIsSigningIn(false); // Clear signing in flag on error
     } finally {
       setLoading(false);
     }
@@ -138,6 +190,8 @@ export default function LoginScreen() {
     setShowAdminChoice(false);
     setAdminUser(null);
     setAdminFlowCompleted(false);
+    setIsSigningIn(false); // Clear signing in flag
+    clearSignInError(); // Clear error flag
     router.replace('/admin');
   };
 
@@ -153,6 +207,8 @@ export default function LoginScreen() {
     setShowAdminChoice(false);
     setAdminUser(null);
     setAdminFlowCompleted(false);
+    setIsSigningIn(false); // Clear signing in flag
+    clearSignInError(); // Clear error flag
     router.replace('/(tabs)');
   };
 
@@ -170,7 +226,9 @@ export default function LoginScreen() {
             setPassword('');
             setFullName('');
             setIsSignUp(false);
-            setNewUserId(null);
+                            setNewUserId(null);
+            setIsSigningIn(false); // Clear signing in flag
+            clearSignInError(); // Clear error flag
           }
         }
       ]
@@ -179,6 +237,8 @@ export default function LoginScreen() {
 
   const handleReferralSkip = () => {
     setShowReferralModal(false);
+    setIsSigningIn(false); // Clear signing in flag
+    clearSignInError(); // Clear error flag
     handleReferralSuccess();
   };
 
@@ -201,20 +261,44 @@ export default function LoginScreen() {
       }
       
       setLoading(true);
+      setErrorMessage(null); // Clear any previous errors
+      setIsSigningIn(true); // Set signing in flag for sign up too
+      
       try {
         const result = await signUp(email.trim(), password, fullName.trim());
         
         if (result.error) {
-          Alert.alert('Error', result.error.message);
+          // Provide user-friendly error messages for sign up
+          let errorMessage = 'An error occurred during sign up. Please try again.';
+          
+          if (result.error.message) {
+            if (result.error.message.includes('User already registered')) {
+              errorMessage = 'An account with this email already exists. Please sign in instead.';
+            } else if (result.error.message.includes('Password should be at least')) {
+              errorMessage = 'Password must be at least 6 characters long.';
+            } else if (result.error.message.includes('Invalid email')) {
+              errorMessage = 'Please enter a valid email address.';
+            } else if (result.error.message.includes('Database error')) {
+              errorMessage = 'Database error saving new user. Please try again or contact support if the issue persists.';
+            } else {
+              // Use the original error message for other cases
+              errorMessage = result.error.message;
+            }
+          }
+          
+          setErrorMessage(errorMessage);
+          setIsSigningIn(false); // Clear signing in flag on error
         } else if (result.user) {
           console.log('🔍 Login: User signed up:', result.user.id);
           
           // Store the new user ID and show referral modal
           setNewUserId(result.user.id);
           setShowReferralModal(true);
+          // Don't clear isSigningIn here - let the referral flow handle it
         }
       } catch (error: any) {
-        Alert.alert('Error', error.message || 'An unexpected error occurred');
+        setErrorMessage(error.message || 'An unexpected error occurred');
+        setIsSigningIn(false); // Clear signing in flag on error
       } finally {
         setLoading(false);
       }
@@ -309,11 +393,18 @@ export default function LoginScreen() {
               <View style={styles.form}>
                 {isSignUp && (
                   <TextInput
-                   style={styles.input}
+                   style={[
+                     styles.input,
+                     errorMessage && styles.inputError
+                   ]}
                    placeholder="Full Name"
                    placeholderTextColor="#9CA3AF"
                    value={fullName}
-                   onChangeText={setFullName}
+                   onChangeText={(text) => {
+                     setFullName(text);
+                     setErrorMessage(null); // Clear error when user starts typing
+                     clearSignInError(); // Clear error flag when user starts typing
+                   }}
                    autoCapitalize="words"
                    textContentType="name"
                    returnKeyType="next"
@@ -321,11 +412,18 @@ export default function LoginScreen() {
                 )}
                 
                 <TextInput
-                   style={styles.input}
+                   style={[
+                     styles.input,
+                     errorMessage && styles.inputError
+                   ]}
                    placeholder="email@domain.com"
                    placeholderTextColor="#9CA3AF"
                    value={email}
-                   onChangeText={setEmail}
+                   onChangeText={(text) => {
+                     setEmail(text);
+                     setErrorMessage(null); // Clear error when user starts typing
+                     clearSignInError(); // Clear error flag when user starts typing
+                   }}
                    keyboardType="email-address"
                    autoCapitalize="none"
                    autoCorrect={false}
@@ -334,11 +432,18 @@ export default function LoginScreen() {
                  />
                 
                 <TextInput
-                   style={styles.input}
+                   style={[
+                     styles.input,
+                     errorMessage && styles.inputError
+                   ]}
                    placeholder="Password"
                    placeholderTextColor="#9CA3AF"
                    value={password}
-                   onChangeText={setPassword}
+                   onChangeText={(text) => {
+                     setPassword(text);
+                     setErrorMessage(null); // Clear error when user starts typing
+                     clearSignInError(); // Clear error flag when user starts typing
+                   }}
                    secureTextEntry
                    textContentType={isSignUp ? "newPassword" : "password"}
                    returnKeyType="done"
@@ -346,11 +451,23 @@ export default function LoginScreen() {
                  />
 
                 {/* Toggle Sign Up/Sign In */}
+                 {/* Error Message Display */}
+                 {errorMessage && (
+                   <View style={styles.errorContainer}>
+                     <Text style={styles.errorText}>{errorMessage}</Text>
+                   </View>
+                 )}
+
                  <View style={styles.toggleContainer}>
                    <Text style={styles.toggleText}>
                      {isSignUp ? 'Already have an account?' : "Don't have an account?"}
                    </Text>
-                   <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
+                   <TouchableOpacity onPress={() => {
+                     setIsSignUp(!isSignUp);
+                     setErrorMessage(null); // Clear error when switching modes
+                     setIsSigningIn(false); // Clear signing in flag when switching modes
+                     clearSignInError(); // Clear error flag when switching modes
+                   }}>
                      <Text style={styles.toggleLink}>
                        {isSignUp ? ' Sign In' : ' Sign Up'}
                      </Text>
@@ -370,6 +487,8 @@ export default function LoginScreen() {
                      </Text>
                    )}
                  </TouchableOpacity>
+                 
+
               </View>
 
               {/* Terms */}
@@ -555,6 +674,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+  },
+  inputError: {
+    borderColor: 'rgba(255, 59, 48, 0.5)',
+    borderWidth: 2,
   },
 
   bottomSection: {

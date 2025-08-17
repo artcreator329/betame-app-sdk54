@@ -539,7 +539,8 @@ export class SupabaseChatService {
       const offerInsertData = {
         chat_id: chatId,
         service_id: serviceData.id, // Now we know this is not empty
-        seller_id: senderId,
+        service_provider_id: senderId,
+        seller_id: senderId, // Keep for backward compatibility
         buyer_id: buyerId, // Use the determined buyer ID
         original_price: serviceData.price,
         custom_price: serviceData.customPrice || serviceData.price,
@@ -888,7 +889,8 @@ export class SupabaseChatService {
       const offerInsertData = {
         chat_id: chatId,
         service_id: serviceId,
-        seller_id: sellerId,
+        service_provider_id: sellerId,
+        seller_id: sellerId, // Keep for backward compatibility
         buyer_id: buyerId, // Use the provided buyerId
         original_price: serviceData.price,
         custom_price: serviceData.customPrice || serviceData.price,

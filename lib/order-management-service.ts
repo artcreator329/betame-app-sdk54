@@ -4,7 +4,8 @@ export interface Order {
   id: string;
   service_offer_id: string;
   buyer_id: string;
-  seller_id: string;
+  service_provider_id: string;
+  seller_id?: string; // Keep for backward compatibility
   amount: number;
   platform_fee: number;
   total_amount: number;
@@ -68,7 +69,8 @@ export interface OrderTimeline {
 export interface TemporaryPayout {
   id: string;
   order_id: string;
-  seller_id: string;
+  service_provider_id: string;
+  seller_id?: string; // Keep for backward compatibility
   amount: number;
   payout_method: 'betacoin_credit' | 'manual_transfer' | 'bank_transfer' | 'digital_wallet';
   payout_status: 'pending' | 'processing' | 'completed' | 'failed';
@@ -85,7 +87,8 @@ class OrderManagementService {
   async createOrder(orderData: {
     service_offer_id: string;
     buyer_id: string;
-    seller_id: string;
+    service_provider_id: string;
+    seller_id?: string; // Keep for backward compatibility
     amount: number;
     platform_fee?: number;
     service_title: string;
@@ -132,7 +135,7 @@ class OrderManagementService {
           updated_at: new Date().toISOString(),
         })
         .eq('id', orderId)
-        .eq('seller_id', sellerId)
+        .eq('service_provider_id', sellerId)
         .eq('status', 'payment_received');
 
       if (error) throw error;
@@ -156,7 +159,7 @@ class OrderManagementService {
     try {
       const { error } = await supabase.rpc('mark_work_completed', {
         p_order_id: orderId,
-        p_seller_id: sellerId,
+        p_service_provider_id: sellerId,
       });
 
       if (error) throw error;
@@ -252,9 +255,9 @@ class OrderManagementService {
       if (role === 'buyer') {
         query = query.eq('buyer_id', userId);
       } else if (role === 'seller') {
-        query = query.eq('seller_id', userId);
+        query = query.eq('service_provider_id', userId);
       } else {
-        query = query.or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
+        query = query.or(`buyer_id.eq.${userId},service_provider_id.eq.${userId}`);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -339,7 +342,7 @@ class OrderManagementService {
       const { data, error } = await supabase
         .from('temporary_payouts')
         .select('*')
-        .eq('seller_id', sellerId)
+        .eq('service_provider_id', sellerId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

@@ -104,7 +104,7 @@ export class JobNotificationService {
           event: 'UPDATE',
           schema: 'public',
           table: 'job_proposals',
-          filter: `seller_id=eq.${sellerId}`
+          filter: `service_provider_id=eq.${sellerId}`
         },
         async (payload) => {
           console.log('Proposal status updated:', payload);

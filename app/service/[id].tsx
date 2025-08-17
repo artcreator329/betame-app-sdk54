@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/contexts/ThemeContext';
 import { authService } from '@/lib/auth-service';
 import { DirectOrderModal } from '@/components/DirectOrderModal';
+import { supabase } from '@/lib/supabase';
 
 interface SubPlan {
   id: string;
@@ -53,6 +54,7 @@ export default function ServiceDetailsScreen() {
   const [isOrderMode, setIsOrderMode] = useState(false);
   const [serviceInquiryModalVisible, setServiceInquiryModalVisible] = useState(false);
   const [inquiryMode, setInquiryMode] = useState<'text' | 'structured' | null>(null);
+  const [userCoverPhoto, setUserCoverPhoto] = useState<string | null>(null);
 
   console.log('🔍 ServiceDetailsScreen: Component mounted with ID:', id);
   console.log('🔍 ServiceDetailsScreen: ID type:', typeof id);
@@ -132,6 +134,39 @@ export default function ServiceDetailsScreen() {
     } finally {
       setLoadingVariants(false);
     }
+  };
+
+  // Fetch user's cover photo when service has no image
+  useEffect(() => {
+    const fetchUserCoverPhoto = async () => {
+      if (service && !service.image_url && service.user_id) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('cover_photo_url')
+            .eq('id', service.user_id)
+            .single();
+
+          if (!error && data?.cover_photo_url) {
+            setUserCoverPhoto(data.cover_photo_url);
+          }
+        } catch (error) {
+          console.error('Error fetching user cover photo:', error);
+        }
+      }
+    };
+
+    fetchUserCoverPhoto();
+  }, [service?.image_url, service?.user_id]);
+
+  const getServiceImage = () => {
+    if (service?.image_url) {
+      return service.image_url;
+    }
+    if (userCoverPhoto) {
+      return userCoverPhoto;
+    }
+    return null;
   };
 
   if (isLoading) {
@@ -406,12 +441,14 @@ export default function ServiceDetailsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: colors.background.primary }}>
         {/* Hero Image */}
         <View style={styles.heroContainer}>
-          <Image
-            source={{ 
-              uri: service.image_url || 'https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=800'
-            }}
-            style={styles.heroImage}
-          />
+          {getServiceImage() && (
+            <Image
+              source={{ 
+                uri: getServiceImage()!
+              }}
+              style={styles.heroImage}
+            />
+          )}
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => router.back()}

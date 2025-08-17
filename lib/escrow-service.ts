@@ -7,7 +7,8 @@ export interface EscrowTransaction {
   id?: string;
   service_offer_id: string;
   buyer_id: string;
-  seller_id: string;
+  service_provider_id: string;
+  seller_id?: string; // Keep for backward compatibility
   amount: number;
   platform_fee: number;
   total_amount: number;
@@ -29,7 +30,8 @@ export interface JobStatus {
   service_offer_id: string;
   escrow_transaction_id?: string;
   buyer_id: string;
-  seller_id: string;
+  service_provider_id: string;
+  seller_id?: string; // Keep for backward compatibility
   current_status: 'payment_received' | 'acknowledgment_pending' | 'work_in_progress' | 'work_completed' | 'buyer_reviewing' | 'completed' | 'disputed' | 'cancelled';
   work_started_at?: string;
   work_completed_at?: string;
@@ -108,7 +110,8 @@ export class EscrowService {
       const escrowTransaction: EscrowTransaction = {
         service_offer_id: serviceOfferId,
         buyer_id: buyerId,
-        seller_id: sellerId,
+        service_provider_id: sellerId,
+        seller_id: sellerId, // Keep for backward compatibility
         amount: amount,
         platform_fee: sellerPlatformFee,
         total_amount: buyerTotal,
@@ -168,7 +171,8 @@ export class EscrowService {
           service_offer_id: serviceOfferId,
           escrow_transaction_id: escrowData.id,
           buyer_id: buyerId,
-          seller_id: sellerId,
+          service_provider_id: sellerId,
+          seller_id: sellerId, // Keep for backward compatibility
           current_status: 'acknowledgment_pending',
           auto_release_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
         };
@@ -238,7 +242,7 @@ export class EscrowService {
         .from('job_status')
         .update(updateData)
         .eq('id', jobStatusId)
-        .eq('seller_id', sellerId)
+        .eq('service_provider_id', sellerId)
         .select()
         .single();
 
@@ -279,7 +283,7 @@ export class EscrowService {
           updated_at: new Date().toISOString()
         })
         .eq('id', jobStatusId)
-        .eq('seller_id', sellerId)
+        .eq('service_provider_id', sellerId)
         .select()
         .single();
 
@@ -315,7 +319,7 @@ export class EscrowService {
           work_started_at: new Date().toISOString(),
         })
         .eq('id', jobStatusId)
-        .eq('seller_id', sellerId)
+        .eq('service_provider_id', sellerId)
         .select()
         .single();
 
@@ -352,7 +356,7 @@ export class EscrowService {
           notes: completionNotes,
         })
         .eq('id', jobStatusId)
-        .eq('seller_id', sellerId)
+        .eq('service_provider_id', sellerId)
         .select()
         .single();
 
@@ -479,7 +483,7 @@ export class EscrowService {
           *,
           escrow_transactions!inner(*)
         `)
-        .eq('seller_id', sellerId)
+        .eq('service_provider_id', sellerId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -548,12 +552,12 @@ export class EscrowService {
       // Create local in-app notification for the recipient
       const { data: jobStatus } = await supabase
         .from('job_status')
-        .select('buyer_id, seller_id')
+        .select('buyer_id, service_provider_id')
         .eq('id', jobStatusId)
         .single();
 
       if (jobStatus) {
-        const recipientId = jobStatus.buyer_id === senderId ? jobStatus.seller_id : jobStatus.buyer_id;
+        const recipientId = jobStatus.buyer_id === senderId ? jobStatus.service_provider_id : jobStatus.buyer_id;
         if (recipientId) {
           await notificationService.addNotification(
             {
@@ -561,8 +565,7 @@ export class EscrowService {
               title: 'Job update',
               message,
               data: {
-                jobStatusId,
-                messageType,
+                orderId: jobStatusId,
               },
             },
             recipientId

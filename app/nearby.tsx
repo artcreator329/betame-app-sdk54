@@ -7,6 +7,7 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, List, Map as MapIcon, ChevronDown, Grid3X3 } from 'lucide-react-native';
@@ -22,12 +23,15 @@ import CategorySelectionModal from '@/components/CategorySelectionModal';
 import { Colors } from '@/constants/Colors';
 
 const { width, height } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 
 
 
 export default function NearbyScreen() {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
-  const [listLayout, setListLayout] = useState<'grid' | 'list'>('list');
+  const [listLayout, setListLayout] = useState<'grid' | 'list'>(
+    isWeb && width >= 1024 ? 'grid' : 'list'
+  );
   const [nearbyServices, setNearbyServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
@@ -39,6 +43,13 @@ export default function NearbyScreen() {
   useEffect(() => {
     loadNearbyServices();
   }, [category]);
+
+  // Ensure grid layout on desktop web
+  useEffect(() => {
+    if (isWeb && width >= 1024 && listLayout !== 'grid') {
+      setListLayout('grid');
+    }
+  }, [isWeb, width, listLayout]);
 
   const getCategoryDisplayText = () => {
     if (selectedCategories.includes('all') || selectedCategories.length === 0) {
@@ -93,6 +104,12 @@ export default function NearbyScreen() {
     
     if (viewMode === 'list') {
       // If already in list mode, toggle between grid and list layout
+      // On desktop web, always use grid view
+      if (isWeb && width >= 1024) {
+        setListLayout('grid');
+        return;
+      }
+      
       const newLayout = listLayout === 'grid' ? 'list' : 'grid';
       console.log('Toggling layout to:', newLayout);
       setListLayout(newLayout);
@@ -100,6 +117,10 @@ export default function NearbyScreen() {
       // If in map mode, switch to list mode with current layout
       console.log('Switching to list mode');
       setViewMode('list');
+      // On desktop web, always use grid view
+      if (isWeb && width >= 1024) {
+        setListLayout('grid');
+      }
     }
   };
 
@@ -213,7 +234,7 @@ export default function NearbyScreen() {
               activeOpacity={0.7}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              {viewMode === 'list' && listLayout === 'grid' ? (
+              {viewMode === 'list' && (listLayout === 'grid' || (isWeb && width >= 1024)) ? (
                 <Grid3X3 size={20} color={Colors.text.white} />
               ) : (
                 <List size={20} color={viewMode === 'list' ? Colors.text.white : Colors.primary.main} />
@@ -345,18 +366,22 @@ const styles = StyleSheet.create({
   servicesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: isWeb && width >= 1024 ? 'flex-start' : 'space-between',
     width: '100%',
-    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    gap: 16,
   },
   serviceCardContainer: {
-    width: '48%',
+    width: isWeb && width >= 1440 ? 'calc(25% - 12px)' : 
+           isWeb && width >= 1024 ? 'calc(33.333% - 11px)' : '48%',
     marginBottom: 16,
+    maxWidth: isWeb && width >= 1440 ? 280 : 
+              isWeb && width >= 1024 ? 320 : undefined,
+    minWidth: isWeb && width >= 1440 ? 240 : 
+              isWeb && width >= 1024 ? 280 : undefined,
   },
   servicesList: {
     flex: 1,
     width: '100%',
-    backgroundColor: 'rgba(0, 255, 0, 0.1)',
   },
   serviceListItem: {
     marginBottom: 12,

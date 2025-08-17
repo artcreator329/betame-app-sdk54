@@ -14,6 +14,8 @@ interface AuthContextType {
   userProfile: any;
   isAdmin: boolean;
   loading: boolean;
+  hasSignInError: boolean;
+  clearSignInError: () => void;
   signIn: (email: string, password: string) => Promise<{ user: User | null; error: any }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ user: User | null; error: any }>;
   signInWithGoogle: () => Promise<{ error: any }>;
@@ -45,6 +47,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [hasSignInError, setHasSignInError] = useState(false);
   const chatSubscriptionRef = useRef<(() => void) | null>(null);
   const sessionRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -274,12 +277,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Listen for auth changes
     const { data: { subscription } } = authService.onAuthStateChange(
       async (event, session) => {
-        console.log('🔄 AuthContext: Auth state change event:', event, 'Session:', !!session);
+        console.log('🔄 AuthContext: Auth state change event:', event, 'Session:', !!session, 'HasSignInError:', hasSignInError);
         if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
+          // Don't update user state if we have a sign-in error
+          if (hasSignInError) {
+            console.log('🔄 AuthContext: Sign-in error detected, ignoring auth state change');
+            return;
+          }
           
-          if (session?.user) {
+          // Only update user state if we have a valid session
+          if (session && session.user) {
+            console.log('🔄 AuthContext: Valid session found, updating user state');
+            setSession(session);
+            setUser(session.user);
+            
             console.log('🔄 AuthContext: User authenticated, setting up profile and chat');
             // Fetch profile in background, don't block
             fetchUserProfile(session.user.id);
@@ -288,7 +299,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Setup session refresh
             setupSessionRefresh();
           } else {
-            console.log('🔄 AuthContext: User signed out, cleaning up state');
+            console.log('🔄 AuthContext: No valid session, clearing user state');
+            setSession(null);
+            setUser(null);
             setUserProfile(null);
             setIsAdmin(false);
             // Clean up chat subscription when user signs out
@@ -315,7 +328,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
+      console.log('🔄 AuthContext: Starting sign in for:', email);
       const result = await authService.signIn({ email, password });
+      
+      if (result.error) {
+        console.log('🔄 AuthContext: Sign in failed, preventing auth state change');
+        console.log('🔄 AuthContext: Error details:', result.error.message);
+        // Force clear user state immediately to prevent any auth state change from setting it
+        setUser(null);
+        setSession(null);
+        setHasSignInError(true);
+      } else {
+        console.log('🔄 AuthContext: Sign in successful');
+        setHasSignInError(false);
+      }
+      
       return result;
     } finally {
       setLoading(false);
@@ -424,12 +451,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const clearSignInError = () => {
+    setHasSignInError(false);
+  };
+
   const value: AuthContextType = {
     user,
     session,
     userProfile,
     isAdmin,
     loading,
+    hasSignInError,
+    clearSignInError,
     signIn,
     signUp,
     signInWithGoogle,
