@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { ServiceOffer, ServiceOfferData } from '../types/chat';
+import { DirectOrderData } from './payment-service';
 
 export interface ActiveJob {
   id?: string;
@@ -30,6 +31,83 @@ export interface JobProgress {
 }
 
 export class ActiveJobService {
+  /**
+   * Create an active job from a direct order (service listing purchase)
+   */
+  static async createJobFromDirectOrder(
+    orderData: DirectOrderData,
+    buyerId: string,
+    serviceProviderId: string
+  ): Promise<ActiveJob | null> {
+    try {
+      const jobData = {
+        buyer_id: buyerId,
+        service_provider_id: serviceProviderId,
+        service_offer_id: null, // No service offer for direct orders
+        title: orderData.title,
+        description: orderData.customDescription || orderData.description,
+        price: orderData.price,
+        currency: orderData.currency,
+        delivery_time: orderData.customDeliveryTime ? `${orderData.customDeliveryTime} days` : '7 days',
+        status: 'in_progress' as const,
+        progress_percentage: 0,
+        payment_status: 'paid' as const, // Payment is completed before job creation
+        started_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from('active_jobs')
+        .insert(jobData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating active job from direct order:', error);
+        return null;
+      }
+
+      // Send notification to service provider about the new order
+      await this.notifyServiceProviderOfNewOrder(serviceProviderId, orderData.title, data.id);
+
+      return data;
+    } catch (error) {
+      console.error('Error in createJobFromDirectOrder:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Notify service provider about a new order
+   */
+  private static async notifyServiceProviderOfNewOrder(
+    serviceProviderId: string,
+    serviceTitle: string,
+    jobId: string
+  ): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: serviceProviderId,
+          type: 'new_order',
+          title: 'New Order Received',
+          message: `You have received a new order for "${serviceTitle}". Please review and confirm.`,
+          data: {
+            job_id: jobId,
+            service_title: serviceTitle,
+            action_required: true
+          },
+          read: false
+        });
+
+      if (error) {
+        console.error('Error creating notification for service provider:', error);
+      }
+    } catch (error) {
+      console.error('Error notifying service provider:', error);
+    }
+  }
+
   /**
    * Create an active job from an accepted service offer
    */

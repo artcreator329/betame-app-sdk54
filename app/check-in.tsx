@@ -34,7 +34,7 @@ interface CheckInDay {
 
 export default function CheckInScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const isDesktop = screenWidth > 768;
+  const isDesktop = Platform.OS === 'web' && screenWidth > 768;
   const router = useRouter();
   const { user } = useAuth();
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -302,16 +302,16 @@ export default function CheckInScreen() {
         zIndex: index,
       };
     } else {
-      // Mobile layout - original positioning but moved up
-      const centerX = width / 2;
-      const centerY = height * 0.2; // Move up from 0.25 to 0.2
-      const radius = Math.min(width, height) * 0.28; // Reduce radius slightly
+      // Mobile layout - ensure proper positioning
+      const centerX = screenWidth / 2;
+      const centerY = screenHeight * 0.22; // Adjust for mobile
+      const radius = Math.min(screenWidth, screenHeight) * 0.25;
       
       if (index === 6) {
         return {
           left: centerX - 60,
           top: centerY - 60,
-          scale: 1.3,
+          scale: 1.2,
           zIndex: 10,
         };
       }
@@ -321,12 +321,12 @@ export default function CheckInScreen() {
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
       
-      const scale = 0.5 + (index * 0.15);
+      const scale = 0.6 + (index * 0.1);
       
       return {
         left: x - 60,
         top: y - 60,
-        scale: Math.min(scale, 1.1),
+        scale: Math.min(scale, 1.0),
         zIndex: index,
       };
     }
@@ -493,8 +493,8 @@ export default function CheckInScreen() {
         </View>
       )}
 
-      {/* Desktop Container */}
-      <View style={[isDesktop && styles.desktopContainer]}>
+      {/* Main Container */}
+      <View style={[!isDesktop && styles.mobileContainer, isDesktop && styles.desktopContainer]}>
         {/* Header */}
         <View style={[styles.header, isDesktop && styles.headerDesktop]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -504,8 +504,12 @@ export default function CheckInScreen() {
           <View style={styles.headerRight} />
         </View>
 
-        <View style={[styles.content, isDesktop && styles.contentDesktop]}>
-          {/* Ferris Wheel - Compact on desktop */}
+        <ScrollView 
+          style={[styles.content, isDesktop && styles.contentDesktop]}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Ferris Wheel */}
           <View style={[styles.ferrisWheelContainer, isDesktop && styles.ferrisWheelContainerDesktop]}>
             <View style={[styles.ferrisWheel, isDesktop && styles.ferrisWheelDesktop]}>
               {checkInDays.map((dayData, index) => renderFerrisWheelCard(dayData, index))}
@@ -513,7 +517,11 @@ export default function CheckInScreen() {
           </View>
 
           {/* Diamonds Counter */}
-          <View style={[styles.diamondsHeader, isDesktop && styles.diamondsHeaderDesktop]}>
+          <View style={[
+            styles.diamondsHeader, 
+            !isDesktop && styles.mobileDiamondsHeader,
+            isDesktop && styles.diamondsHeaderDesktop
+          ]}>
             <LinearGradient
               colors={['#007AFF', '#0056CC']}
               style={[styles.diamondsGradient, isDesktop && styles.diamondsGradientDesktop]}
@@ -534,6 +542,7 @@ export default function CheckInScreen() {
             <TouchableOpacity 
               style={[
                 styles.checkInButton,
+                !isDesktop && styles.mobileCheckInButton,
                 !canCheckIn && styles.disabledButton,
                 isDesktop && styles.checkInButtonDesktop
               ]}
@@ -552,7 +561,11 @@ export default function CheckInScreen() {
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.historyButton, isDesktop && styles.historyButtonDesktop]} 
+              style={[
+                styles.historyButton,
+                !isDesktop && styles.mobileHistoryButton,
+                isDesktop && styles.historyButtonDesktop
+              ]} 
               onPress={handleHistory}
               activeOpacity={0.7}
             >
@@ -560,7 +573,7 @@ export default function CheckInScreen() {
               <Text style={styles.historyButtonText}>View History</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </View>
     </SafeAreaView>
   );
@@ -631,12 +644,16 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
   ferrisWheelContainer: {
-    height: height * 0.45,
+    height: height * 0.4,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    marginTop: 0,
-    paddingTop: 10,
+    marginTop: 10,
+    paddingTop: 20,
   },
   ferrisWheel: {
     width: width,
@@ -843,11 +860,19 @@ const styles = StyleSheet.create({
   diamondsHeader: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    marginTop: 20,
+    marginTop: 10,
   },
   diamondsGradient: {
     borderRadius: 20,
     padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   diamondsContent: {
     flexDirection: 'row',
@@ -873,8 +898,8 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     paddingHorizontal: 20,
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: 20,
+    marginBottom: 30,
   },
   checkInButton: {
     borderRadius: 16,
@@ -916,6 +941,10 @@ const styles = StyleSheet.create({
     color: Colors.primary.main,
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Mobile-specific overrides
+  mobileContainer: {
+    flex: 1,
   },
   // New styles for desktop layout
   desktopContainer: {
@@ -1037,5 +1066,15 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
     paddingVertical: 20,
+  },
+  // Additional mobile-specific styles
+  mobileCheckInButton: {
+    minHeight: 56,
+  },
+  mobileHistoryButton: {
+    minHeight: 44,
+  },
+  mobileDiamondsHeader: {
+    marginVertical: 15,
   },
 });

@@ -5,7 +5,7 @@ import { Package } from 'lucide-react-native';
 interface QuotedMessageProps {
   content: string;
   senderName: string;
-  messageType: 'text' | 'service' | 'offer' | 'job_offer';
+  messageType: 'text' | 'service' | 'offer' | 'job_offer' | 'structured_inquiry';
   isMyMessage: boolean;
   quotedMessageId?: string;
   onPress?: () => void;
@@ -26,6 +26,8 @@ export function QuotedMessage({
       return 'Service/Offer';
     } else if (messageType === 'job_offer') {
       return 'Job Application';
+    } else if (messageType === 'structured_inquiry') {
+      return 'Service Inquiry';
     }
     return content;
   };
@@ -36,7 +38,7 @@ export function QuotedMessage({
       isMyMessage ? styles.myQuotedContainer : styles.theirQuotedContainer
     ]}>
       <View style={styles.quotedHeader}>
-        {messageType === 'service' || messageType === 'offer' ? (
+        {(messageType === 'service' || messageType === 'offer' || messageType === 'structured_inquiry') ? (
           <Package size={12} color={isMyMessage ? '#FFFFFF' : '#007AFF'} />
         ) : null}
         <Text style={[

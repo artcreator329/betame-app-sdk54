@@ -104,7 +104,7 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   isRead: boolean;
-  messageType?: 'text' | 'service' | 'offer' | 'job_offer';
+  messageType?: 'text' | 'service' | 'offer' | 'job_offer' | 'structured_inquiry';
   serviceData?: ServiceOfferData;
   jobData?: JobData;
   offerId?: string;
@@ -115,7 +115,7 @@ export interface ChatMessage {
   quotedMessageId?: string;
   quotedMessageContent?: string;
   quotedMessageSenderName?: string;
-  quotedMessageType?: 'text' | 'service' | 'offer' | 'job_offer';
+  quotedMessageType?: 'text' | 'service' | 'offer' | 'job_offer' | 'structured_inquiry';
 }
 
 export interface LiveChatMessage {
@@ -127,7 +127,7 @@ export interface LiveChatMessage {
   content: string;
   timestamp: Date;
   isRead: boolean;
-  messageType?: 'text' | 'service' | 'offer' | 'job_offer';
+  messageType?: 'text' | 'service' | 'offer' | 'job_offer' | 'structured_inquiry';
   serviceData?: ServiceOfferData;
   jobData?: JobData;
   offerId?: string;
@@ -138,7 +138,7 @@ export interface LiveChatMessage {
   quotedMessageId?: string;
   quotedMessageContent?: string;
   quotedMessageSenderName?: string;
-  quotedMessageType?: 'text' | 'service' | 'offer' | 'job_offer';
+  quotedMessageType?: 'text' | 'service' | 'offer' | 'job_offer' | 'structured_inquiry';
 }
 
 export interface ChatParticipant {

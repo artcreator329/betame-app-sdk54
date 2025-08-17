@@ -30,6 +30,9 @@ import { supabase } from '@/lib/supabase';
 import { ServiceService, Service } from '@/lib/service-service';
 import { ServiceOfferMessage } from '../../components/ServiceOfferMessage';
 import { ServiceOfferModal } from '../../components/ServiceOfferModal';
+import { ServiceVariantSelectionModal } from '../../components/ServiceVariantSelectionModal';
+import { StructuredInquiryMessage } from '../../components/StructuredInquiryMessage';
+import { StructuredInquiryDraft } from '../../components/StructuredInquiryDraft';
 import { MalaysianPaymentModal } from '../../components/MalaysianPaymentModal';
 import { JobProgressMonitor } from '../../components/JobProgressMonitor';
 import { QuotedMessage } from '../../components/QuotedMessage';
@@ -59,6 +62,7 @@ export default function ChatScreen() {
     jobTitle,
     prefilledMessage,
     isJobApplication,
+    structuredInquiry,
   } = useLocalSearchParams();
   const { user, userProfile } = useAuth();
   const [message, setMessage] = useState('');
@@ -105,6 +109,12 @@ export default function ChatScreen() {
   } | null>(null);
   const [showJobProgress, setShowJobProgress] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [structuredInquiryDraft, setStructuredInquiryDraft] = useState<any>(null);
+  const [serviceVariantSelectionModalVisible, setServiceVariantSelectionModalVisible] = useState(false);
+  const [inquiryServiceData, setInquiryServiceData] = useState<{
+    serviceId: string;
+    serviceTitle: string;
+  } | null>(null);
   const [participantInfo, setParticipantInfo] = useState<{
     name: string;
     image: string;
@@ -230,7 +240,9 @@ export default function ChatScreen() {
   
   // Handle pre-selected service variant from service detail page
   useEffect(() => {
-    if (selectedServiceId && selectedServiceTitle && selectedServicePrice && selectedServiceCurrency) {
+    // Only show service selection modal if it's NOT a text message inquiry or structured inquiry
+    // For text messages and structured inquiries, we don't want to show service sharing options
+    if (selectedServiceId && selectedServiceTitle && selectedServicePrice && selectedServiceCurrency && !prefilledMessage && structuredInquiry !== 'true') {
       const preSelectedService: Service = {
         id: Array.isArray(selectedServiceId) ? selectedServiceId[0] : selectedServiceId,
         title: Array.isArray(selectedServiceTitle) ? selectedServiceTitle[0] : selectedServiceTitle,
@@ -249,17 +261,166 @@ export default function ChatScreen() {
       setSelectedService(preSelectedService);
       setServiceSelectionModalVisible(true);
     }
-  }, [selectedServiceId, selectedServiceTitle, selectedServicePrice, selectedServiceCurrency, selectedServiceDescription, selectedServiceImage, selectedServiceCategory]);
+  }, [selectedServiceId, selectedServiceTitle, selectedServicePrice, selectedServiceCurrency, selectedServiceDescription, selectedServiceImage, selectedServiceCategory, prefilledMessage, structuredInquiry]);
   
-  // Handle prefilled message for job applications
+  // Handle prefilled message for job applications and service inquiries
   useEffect(() => {
-    if (prefilledMessage && isJobApplication === 'true') {
+    if (prefilledMessage) {
       const messageText = Array.isArray(prefilledMessage) ? prefilledMessage[0] : prefilledMessage;
       setMessage(messageText);
     }
-  }, [prefilledMessage, isJobApplication]);
+  }, [prefilledMessage]);
+
+  // Handle structured inquiry - create draft directly with selected service data
+  useEffect(() => {
+    if (structuredInquiry === 'true' && selectedServiceId && selectedServiceTitle && selectedServicePrice && selectedServiceCurrency) {
+      // Create structured inquiry draft directly with the selected service data
+      const inquiryMessage = {
+        type: 'structured_inquiry' as const,
+        serviceId: Array.isArray(selectedServiceId) ? selectedServiceId[0] : selectedServiceId,
+        serviceTitle: Array.isArray(selectedServiceTitle) ? selectedServiceTitle[0] : selectedServiceTitle,
+        servicePrice: Array.isArray(selectedServicePrice) ? selectedServicePrice[0] : selectedServicePrice,
+        serviceCurrency: Array.isArray(selectedServiceCurrency) ? selectedServiceCurrency[0] : selectedServiceCurrency,
+        serviceDescription: Array.isArray(selectedServiceDescription) ? selectedServiceDescription[0] : selectedServiceDescription || '',
+        serviceImage: Array.isArray(selectedServiceImage) ? selectedServiceImage[0] : selectedServiceImage || '',
+        serviceCategory: Array.isArray(selectedServiceCategory) ? selectedServiceCategory[0] : selectedServiceCategory || '',
+      };
+      
+      setStructuredInquiryDraft(inquiryMessage);
+    }
+  }, [structuredInquiry, selectedServiceId, selectedServiceTitle, selectedServicePrice, selectedServiceCurrency, selectedServiceDescription, selectedServiceImage, selectedServiceCategory]);
 
   // Note: Job offer sending is now handled directly from the job page for better reliability
+  
+  const sendStructuredInquiry = async (inquiryData: any) => {
+    try {
+      if (!chatId || !user?.id || !userProfile) return;
+      
+      console.log('🔍 Sending structured inquiry:', inquiryData);
+      
+      // Use the chat service to send the structured inquiry message
+      const success = await supabaseChatService.sendStructuredInquiryMessage(
+        chatId,
+        user.id,
+        userProfile.full_name || user.email?.split('@')[0] || 'User',
+        userProfile.avatar_url || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
+        inquiryData
+      );
+      
+      if (success) {
+        console.log('✅ Structured inquiry sent successfully');
+        // Clear the draft after successful send
+        setStructuredInquiryDraft(null);
+        
+        // Scroll to bottom after sending
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } else {
+        console.error('❌ Failed to send structured inquiry');
+        Alert.alert('Error', 'Failed to send inquiry. Please try again.');
+      }
+    } catch (error) {
+      console.error('❌ Error in sendStructuredInquiry:', error);
+      Alert.alert('Error', 'Failed to send inquiry. Please try again.');
+    }
+  };
+
+  const handleSendStructuredInquiry = (customMessage?: string) => {
+    if (structuredInquiryDraft) {
+      // Add the custom message to the inquiry data
+      const inquiryWithMessage = {
+        ...structuredInquiryDraft,
+        customMessage: customMessage || 'Hi! I\'m interested in this service. Could you tell me more about it and what\'s included?'
+      };
+      sendStructuredInquiry(inquiryWithMessage);
+    }
+  };
+
+  const handleCancelStructuredInquiry = () => {
+    setStructuredInquiryDraft(null);
+  };
+
+  const handleServiceVariantSelected = (variant: Service) => {
+    // Create a structured inquiry message draft with the selected variant
+    const inquiryMessage = {
+      type: 'structured_inquiry' as const,
+      serviceId: variant.id,
+      serviceTitle: variant.title,
+      servicePrice: variant.price.toString(),
+      serviceCurrency: variant.currency,
+      serviceDescription: variant.description,
+      serviceImage: variant.image_url,
+      serviceCategory: variant.category_name,
+    };
+    
+    // Set the inquiry as a draft message that user can review and send
+    setStructuredInquiryDraft(inquiryMessage);
+    setServiceVariantSelectionModalVisible(false);
+  };
+
+  const handleServiceVariantSelectionCancel = () => {
+    setServiceVariantSelectionModalVisible(false);
+    setInquiryServiceData(null);
+    // Navigate back since user cancelled the inquiry
+    router.back();
+  };
+
+  const editServiceOffer = async (offerId: string) => {
+    try {
+      // Find the offer message to get current offer data
+      const offerMessage = messages.find(msg => msg.offerId === offerId);
+      if (!offerMessage || !offerMessage.serviceData) {
+        Alert.alert('Error', 'Could not find offer details');
+        return;
+      }
+
+      const serviceData = offerMessage.serviceData;
+      
+      // Set up editing state
+      setEditingOffer({
+        offerId: offerId,
+        currentPrice: serviceData.customPrice || serviceData.price,
+        currentDescription: serviceData.customDescription || serviceData.description,
+        currentDeliveryTime: serviceData.customDeliveryTime || 7,
+        serviceTitle: serviceData.title,
+        // Hustle job details
+        currentStartDate: serviceData.startDate,
+        currentEndDate: serviceData.endDate,
+        currentPreferredStartTime: serviceData.preferredStartTime,
+        currentPreferredEndTime: serviceData.preferredEndTime,
+        currentLocationAddress: serviceData.locationAddress,
+        currentUrgencyLevel: serviceData.urgencyLevel,
+        currentWorkType: serviceData.workType,
+        currentEstimatedHours: serviceData.estimatedHours,
+        currentRequirements: serviceData.requirements,
+      });
+
+      // Set the selected service for the modal
+      setSelectedService({
+        id: serviceData.id,
+        title: serviceData.title,
+        description: serviceData.description,
+        price: serviceData.price,
+        currency: serviceData.currency,
+        image_url: serviceData.image_url,
+        category_name: serviceData.category_name,
+        user_id: user?.id || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        parent_service_id: undefined,
+        service_variants: []
+      });
+
+      // Show the service offer modal in edit mode
+      setServiceOfferModalVisible(true);
+    } catch (error) {
+      console.error('Error setting up offer edit:', error);
+      Alert.alert('Error', 'Failed to edit offer');
+    }
+  };
+
+
   
   const fetchUserServices = async () => {
     if (!user?.id) return;
@@ -1263,6 +1424,16 @@ export default function ChatScreen() {
             onCancelOffer={cancelServiceOffer}
             onViewService={(serviceId) => router.push(`/service/${serviceId}`)}
           />
+        ) : msg.messageType === 'structured_inquiry' ? (
+          <StructuredInquiryMessage
+            message={msg}
+            isOwnMessage={msg.senderId === user?.id}
+            onViewService={(serviceData) => {
+              if (serviceData.serviceId) {
+                router.push(`/service/${serviceData.serviceId}`);
+              }
+            }}
+          />
         ) : (
           <TouchableOpacity
             onLongPress={() => handleMessageLongPress(msg.id, msg.senderId === user?.id)}
@@ -1293,7 +1464,15 @@ export default function ChatScreen() {
                     onPress={() => scrollToMessage(msg.quotedMessageId!)}
                   />
                 )}
-                {msg.messageType === 'service' && msg.serviceData ? (
+                {msg.messageType === 'structured_inquiry' ? (
+                  <StructuredInquiryMessage
+                    message={msg}
+                    isOwnMessage={msg.senderId === user?.id}
+                    onViewService={(serviceData) => {
+                      console.log('View service from structured inquiry:', serviceData);
+                    }}
+                  />
+                ) : msg.messageType === 'service' && msg.serviceData ? (
                 <View style={styles.serviceMessageContent}>
                   <View style={styles.serviceHeader}>
                     <Package size={16} color={(msg.senderId === user?.id) ? '#FFFFFF' : '#007AFF'} />
@@ -1396,6 +1575,8 @@ export default function ChatScreen() {
     );
   };
 
+
+
   // Don't render chat if user is not authenticated
   if (!user) {
     return (
@@ -1494,6 +1675,17 @@ export default function ChatScreen() {
           )}
         </ScrollView>
 
+        {/* Structured Inquiry Draft */}
+        {structuredInquiryDraft && (
+          <StructuredInquiryDraft
+            inquiryData={structuredInquiryDraft}
+            onSend={handleSendStructuredInquiry}
+            onCancel={handleCancelStructuredInquiry}
+          />
+        )}
+
+
+        
         {/* Quoted Message Display */}
         {quotedMessage && (
           <View style={styles.quotedMessageInputContainer}>
@@ -1838,6 +2030,15 @@ export default function ChatScreen() {
           onLocationShare={handleLocationShare}
           serviceTitle={locationShareData?.serviceTitle || ''}
           buyerName={locationShareData?.buyerName || ''}
+        />
+
+        {/* Service Variant Selection Modal for Structured Inquiry */}
+        <ServiceVariantSelectionModal
+          visible={serviceVariantSelectionModalVisible}
+          onClose={handleServiceVariantSelectionCancel}
+          onVariantSelect={handleServiceVariantSelected}
+          serviceId={inquiryServiceData?.serviceId || ''}
+          serviceTitle={inquiryServiceData?.serviceTitle || ''}
         />
 
       </SafeAreaView>
@@ -2789,6 +2990,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  // Message bubble styles
+  messageBubble: {
+    maxWidth: '80%',
+    marginVertical: 4,
+    marginHorizontal: 16,
+    padding: 12,
+    borderRadius: 16,
+  },
+  myMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#007AFF',
+  },
+  theirMessage: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E5E5EA',
+  },
+  messageText: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  myMessageText: {
+    color: 'white',
+  },
+  theirMessageText: {
+    color: '#1C1C1E',
+  },
+  messageTime: {
+    fontSize: 12,
+    marginTop: 4,
+    opacity: 0.7,
+  },
+
   // Location message styles
   locationMessageContent: {
     backgroundColor: '#E3F2FD',
@@ -2825,5 +3058,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginLeft: 4,
   },
-
 });
+
+export default ChatScreen;

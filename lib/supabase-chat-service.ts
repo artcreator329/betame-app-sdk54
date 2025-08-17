@@ -671,6 +671,91 @@ export class SupabaseChatService {
     }
   }
 
+  async sendStructuredInquiryMessage(
+    chatId: string,
+    senderId: string,
+    senderName: string,
+    senderImage: string,
+    inquiryData: {
+      type: string;
+      serviceId: string;
+      serviceTitle: string;
+      servicePrice: string;
+      serviceCurrency: string;
+      serviceDescription: string;
+      serviceImage?: string;
+      serviceCategory?: string;
+      customMessage?: string;
+    }
+  ): Promise<boolean> {
+    try {
+      console.log('🔍 Sending structured inquiry message:', inquiryData);
+
+      const messageData = {
+        chat_id: chatId,
+        sender_id: senderId,
+        sender_name: senderName,
+        sender_image: senderImage,
+        message: JSON.stringify(inquiryData),
+        message_type: 'structured_inquiry',
+        is_hidden: false,
+        moderation_reason: null,
+        is_reported: false,
+      };
+
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert(messageData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error inserting structured inquiry message:', error);
+        throw error;
+      }
+
+      // Update chat's last message timestamp
+      await supabase
+        .from('chats')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', chatId);
+
+      // Add notification for the other participant
+      try {
+        // Get the other participant in the chat
+        const { data: participants } = await supabase
+          .from('chat_participants')
+          .select('user_id')
+          .eq('chat_id', chatId)
+          .neq('user_id', senderId);
+
+        if (participants && participants.length > 0) {
+          const otherParticipantId = participants[0].user_id;
+          
+          // Add notification for incoming structured inquiry
+          await notificationService.addChatNotification({
+            participantId: otherParticipantId,
+            participantName: senderName,
+            participantImage: senderImage,
+            message: `Sent an inquiry about "${inquiryData.serviceTitle}"`,
+            chatId: chatId,
+            senderId: senderId,
+          });
+        }
+      } catch (notificationError) {
+        console.error('❌ Error adding structured inquiry notification:', notificationError);
+        // Don't fail the message sending if notification fails
+      }
+
+      console.log('✅ Structured inquiry message sent successfully:', data.id);
+      return true;
+    } catch (error) {
+      console.error('❌ Error sending structured inquiry message:', error);
+      return false;
+    }
+  }
+
   async sendLocationMessage(
     chatId: string,
     senderId: string,
