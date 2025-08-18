@@ -199,7 +199,6 @@ export default function LoginScreen() {
       {/* Background Video Player with Random Selection and Fading Transitions */}
       <BackgroundVideoPlayer
         videos={videos}
-        fadeDuration={500}
         onVideoError={handleVideoError}
       />
       
@@ -367,12 +366,36 @@ export default function LoginScreen() {
               {/* Terms */}
               <View style={styles.termsContainer}>
                 <Text style={styles.termsText}>
-                  By clicking continue, you agree to our{' '}
-                  <Text style={styles.termsLink} onPress={() => router.push('/terms-of-service')}>
+                  By clicking continue, you agree to our
+                </Text>
+                <Text style={styles.termsText}>
+                  <Text 
+                    style={styles.termsLink} 
+                    onPress={() => {
+                      try {
+                        console.log('Navigating to Terms of Service');
+                        router.push('/terms-of-service');
+                      } catch (error) {
+                        console.error('Error navigating to Terms of Service:', error);
+                        Alert.alert('Error', 'Unable to open Terms of Service');
+                      }
+                    }}
+                  >
                     Terms of Service
                   </Text>
                   {' '}and{' '}
-                  <Text style={styles.termsLink} onPress={() => router.push('/privacy-policy')}>
+                  <Text 
+                    style={styles.termsLink} 
+                    onPress={() => {
+                      try {
+                        console.log('Navigating to Privacy Policy');
+                        router.push('/privacy-policy');
+                      } catch (error) {
+                        console.error('Error navigating to Privacy Policy:', error);
+                        Alert.alert('Error', 'Unable to open Privacy Policy');
+                      }
+                    }}
+                  >
                     Privacy Policy
                   </Text>
                 </Text>
@@ -557,8 +580,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   termsLink: {
-    color: '#FFFFFF',
+    color: '#007AFF',
     fontWeight: '600',
+    textDecorationLine: 'underline',
     textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,

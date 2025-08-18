@@ -1,30 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
-import { audioSessionManager } from '@/lib/audio-session-manager';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { Video, AVPlaybackStatus, ResizeMode } from 'expo-av';
+import { audioSessionManager } from '../lib/audio-session-manager';
 
 interface BackgroundVideoPlayerProps {
   videos: any[];
-  fadeDuration?: number;
-  onVideoError?: (error: any) => void;
+  onVideoError?: (error: string) => void;
 }
 
-export function BackgroundVideoPlayer({ 
-  videos, 
-  fadeDuration = 1000,
-  onVideoError 
+export function BackgroundVideoPlayer({
+  videos,
+  onVideoError,
 }: BackgroundVideoPlayerProps) {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  
-  const fadeAnim = useRef(new Animated.Value(1)).current;
   const videoRef = useRef<Video>(null);
 
-  // Initialize with a random video and configure audio session
+  // Initialize and configure audio session
   useEffect(() => {
-    const randomIndex = Math.floor(Math.random() * videos.length);
-    setCurrentVideoIndex(randomIndex);
-
     // Configure audio session for silent video playback
     audioSessionManager.configureForSilentPlayback();
   }, []);
@@ -33,55 +25,33 @@ export function BackgroundVideoPlayer({
 
 
 
-  const handleVideoLoad = () => {
-    // Video loaded successfully
-  };
-
-  // Simple playback status update
-  const handlePlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded && status.didJustFinish) {
-      handleVideoEnd();
+  const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
+    if (status.isLoaded) {
+      console.log('Video status:', {
+        didJustFinish: status.didJustFinish,
+        positionMillis: status.positionMillis,
+        durationMillis: status.durationMillis,
+        currentIndex: currentVideoIndex
+      });
+      
+      if (status.didJustFinish) {
+        // Move to next video when current video ends
+        const nextIndex = (currentVideoIndex + 1) % videos.length;
+        console.log('Transitioning to next video:', nextIndex);
+        setCurrentVideoIndex(nextIndex);
+      }
     }
   };
 
-  const transitionToNextVideo = () => {
-    if (isTransitioning) return;
-
-    setIsTransitioning(true);
+  const handleVideoError = (error: string) => {
+    console.warn('Video error:', error);
+    // Move to next video on error
+    const nextIndex = (currentVideoIndex + 1) % videos.length;
+    setCurrentVideoIndex(nextIndex);
     
-    // Simple: just go to the next video in sequence
-    const newIndex = (currentVideoIndex + 1) % videos.length;
-    
-    // Fade out current video
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: fadeDuration / 2,
-      useNativeDriver: true,
-    }).start(() => {
-      // Update video index
-      setCurrentVideoIndex(newIndex);
-      
-      // Fade in new video immediately
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: fadeDuration / 2,
-        useNativeDriver: true,
-      }).start(() => {
-        setIsTransitioning(false);
-      });
-    });
-  };
-
-  const handleVideoEnd = () => {
-    // Always transition to next video when current one ends
-    transitionToNextVideo();
-  };
-
-  const handleVideoError = (error: any) => {
-    onVideoError?.(error);
-    
-    // Immediately transition to next video on error
-    transitionToNextVideo();
+    if (onVideoError) {
+      onVideoError(error);
+    }
   };
 
 
@@ -89,28 +59,30 @@ export function BackgroundVideoPlayer({
 
 
 
+
+  if (!videos || videos.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.fallbackBackground} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.videoContainer, { opacity: fadeAnim }]}>
-        <Video
-          ref={videoRef}
-          source={videos[currentVideoIndex]}
-          style={styles.video}
-          resizeMode={ResizeMode.COVER}
-          shouldPlay
-          isLooping={false}
-          isMuted
-          volume={0}
-          onError={handleVideoError}
-          onLoad={handleVideoLoad}
-          onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-          useNativeControls={false}
-          posterStyle={{ resizeMode: 'cover' }}
-        />
-      </Animated.View>
-      
-      {/* Overlay for better text readability */}
+      <Video
+         key={currentVideoIndex}
+         ref={videoRef}
+         source={videos[currentVideoIndex]}
+         style={styles.video}
+         shouldPlay
+         isLooping={false}
+         isMuted
+         resizeMode={ResizeMode.COVER}
+         onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+         onError={(error) => handleVideoError(error)}
+         onLoad={() => console.log('Video loaded:', currentVideoIndex)}
+       />
       <View style={styles.videoOverlay} />
     </View>
   );
@@ -124,9 +96,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: -1,
-  },
-  videoContainer: {
-    flex: 1,
   },
   video: {
     flex: 1,

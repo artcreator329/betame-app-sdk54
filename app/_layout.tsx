@@ -260,6 +260,18 @@ function RootLayoutNav() {
           animationDuration: 500,
         }}
       />
+      <Stack.Screen name="terms-of-service" />
+      <Stack.Screen name="privacy-policy" />
+      <Stack.Screen name="legal" />
+      <Stack.Screen name="faq" />
+      <Stack.Screen name="about-us" />
+      <Stack.Screen name="contact-us" />
+      <Stack.Screen name="support" />
+      <Stack.Screen name="user-guide" />
+      <Stack.Screen name="safety-security" />
+      <Stack.Screen name="payment-help" />
+      <Stack.Screen name="my-account" />
+      <Stack.Screen name="orders" />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

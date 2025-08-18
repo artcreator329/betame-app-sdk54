@@ -351,41 +351,43 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Footer Links */}
-        <View style={[styles.footerSection, { backgroundColor: colors.background.tertiary }]}>
-          <View style={styles.footerLinks}>
-            <TouchableOpacity 
-              style={styles.footerLink}
-              onPress={() => router.push('/terms-of-service')}
-            >
-              <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>Terms of Use</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.footerLink}
-              onPress={() => router.push('/legal')}
-            >
-              <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>Legal</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.footerLink}
-              onPress={() => router.push('/faq')}
-            >
-              <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>FAQ</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.footerLink}
-              onPress={() => router.push('/about-us')}
-            >
-              <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>About Us</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.footerLink}
-              onPress={() => router.push('/contact-us')}
-            >
-              <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>Contact</Text>
-            </TouchableOpacity>
+        {/* Footer Links - Desktop Only */}
+        {isDesktop && (
+          <View style={[styles.footerSection, { backgroundColor: colors.background.tertiary }]}>
+            <View style={styles.footerLinks}>
+              <TouchableOpacity 
+                style={styles.footerLink}
+                onPress={() => router.push('/terms-of-service')}
+              >
+                <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>Terms of Use</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.footerLink}
+                onPress={() => router.push('/legal')}
+              >
+                <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>Legal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.footerLink}
+                onPress={() => router.push('/faq')}
+              >
+                <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>FAQ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.footerLink}
+                onPress={() => router.push('/about-us')}
+              >
+                <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>About Us</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.footerLink}
+                onPress={() => router.push('/contact-us')}
+              >
+                <Text style={[styles.footerLinkText, { color: colors.text.secondary }]}>Contact</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
 
 
       </ScrollView>
