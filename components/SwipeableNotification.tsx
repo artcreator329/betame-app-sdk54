@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Bell, MessageCircle, Package, Settings, CheckCheck, Clock, Gift, Trash2, Megaphone, MapPin, BellOff } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useColors } from '@/contexts/ThemeContext';
 import { Notification } from '@/types/notification';
 import { notificationScheduler } from '@/lib/notification-scheduler';
@@ -72,7 +73,8 @@ function getNotificationGradient(type: string) {
     case 'chat':
       return ['#E8F5E8', '#F0F9F0'];
     case 'order':
-      return ['#E3F2FD', '#F0F8FF'];
+      // Prominent gradient for order notifications - blue to purple
+      return ['#6B46C1', '#4338CA', '#3B82F6'];
     case 'service':
       return ['#FFF3E0', '#FFF8F0'];
     case 'offer':
@@ -82,10 +84,16 @@ function getNotificationGradient(type: string) {
     case 'check_in':
       return ['#E8F5E8', '#F0F9F0'];
     case 'structured_inquiry':
-      return ['#F3E8FF', '#FAF0FB']; // Purple gradient for structured inquiries
+      // Also highlight structured inquiries as they're order-related
+      return ['#8B5CF6', '#7C3AED', '#6D28D9'];
     default:
       return ['#F5F5F5', '#FAFAFA'];
   }
+}
+
+// Check if notification should have gradient background
+function shouldShowGradient(type: string): boolean {
+  return type === 'order' || type === 'structured_inquiry';
 }
 
 function formatNotificationTime(timestamp: string): string {
@@ -305,33 +313,56 @@ export default function SwipeableNotification({
         ]}
         {...panResponder.panHandlers}
       >
-        <TouchableOpacity
-          style={[
-            styles.notificationItem,
-            { 
-              backgroundColor: readBackgroundColor,
-              borderColor: readBorderColor,
-              shadowColor: colors.shadow.medium,
-              opacity: readOpacity
-            }
-          ]}
-          onPress={handlePress}
-          activeOpacity={0.7}
-        >
+        {shouldShowGradient(notification.type) && !notification.isRead ? (
+          <LinearGradient
+            colors={gradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              styles.notificationItem,
+              styles.gradientNotification,
+              { 
+                borderColor: 'transparent',
+                shadowColor: colors.shadow.medium,
+              }
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.gradientTouchable}
+              onPress={handlePress}
+              activeOpacity={0.7}
+            >
           {/* Left side: Icon and indicator */}
           <View style={styles.leftSection}>
             <View style={[
               styles.iconContainer, 
               { 
-                backgroundColor: readIconColor + '15',
+                backgroundColor: shouldShowGradient(notification.type) && !notification.isRead 
+                  ? 'rgba(255, 255, 255, 0.25)'
+                  : readIconColor + '15',
                 borderWidth: 2,
-                borderColor: readIconColor + '30'
+                borderColor: shouldShowGradient(notification.type) && !notification.isRead
+                  ? 'rgba(255, 255, 255, 0.4)'
+                  : readIconColor + '30'
               }
             ]}>
-              <IconComponent size={22} color={readIconColor} />
+              <IconComponent 
+                size={22} 
+                color={shouldShowGradient(notification.type) && !notification.isRead 
+                  ? '#FFFFFF' 
+                  : readIconColor
+                } 
+              />
             </View>
             {!notification.isRead && (
-              <View style={[styles.unreadIndicator, { backgroundColor: iconColor }]} />
+              <View style={[
+                styles.unreadIndicator, 
+                { 
+                  backgroundColor: shouldShowGradient(notification.type) 
+                    ? '#FFFFFF' 
+                    : iconColor 
+                }
+              ]} />
             )}
           </View>
           
@@ -341,14 +372,31 @@ export default function SwipeableNotification({
             <View style={styles.contentHeader}>
               <Text style={[
                 styles.notificationTitle,
-                { color: readTextColor },
+                { 
+                  color: shouldShowGradient(notification.type) && !notification.isRead 
+                    ? '#FFFFFF' 
+                    : readTextColor 
+                },
                 !notification.isRead && styles.unreadTitle
               ]} numberOfLines={1}>
                 {notification.title}
               </Text>
               <View style={styles.timeContainer}>
-                <Clock size={12} color={colors.text.secondary} />
-                <Text style={[styles.notificationTime, { color: colors.text.secondary }]}>
+                <Clock 
+                  size={12} 
+                  color={shouldShowGradient(notification.type) && !notification.isRead 
+                    ? 'rgba(255, 255, 255, 0.8)' 
+                    : colors.text.secondary
+                  } 
+                />
+                <Text style={[
+                  styles.notificationTime, 
+                  { 
+                    color: shouldShowGradient(notification.type) && !notification.isRead 
+                      ? 'rgba(255, 255, 255, 0.8)' 
+                      : colors.text.secondary 
+                  }
+                ]}>
                   {formatNotificationTime(notification.timestamp)}
                 </Text>
               </View>
@@ -357,22 +405,45 @@ export default function SwipeableNotification({
             {/* Message content */}
             <Text style={[
               styles.notificationMessage, 
-              { color: readTextColor },
-              !notification.isRead && { color: colors.text.primary }
+              { 
+                color: shouldShowGradient(notification.type) && !notification.isRead 
+                  ? 'rgba(255, 255, 255, 0.95)' 
+                  : readTextColor 
+              },
+              !notification.isRead && !shouldShowGradient(notification.type) && { color: colors.text.primary }
             ]} numberOfLines={2}>
               {notification.message}
             </Text>
             
             {/* Additional info for offers */}
             {notification.type === 'offer' && notification.data && (
-              <View style={styles.offerInfo}>
+              <View style={[
+                styles.offerInfo,
+                shouldShowGradient(notification.type) && !notification.isRead && {
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)'
+                }
+              ]}>
                 {notification.data.serviceTitle && (
-                  <Text style={[styles.serviceTitle, { color: readIconColor }]} numberOfLines={1}>
+                  <Text style={[
+                    styles.serviceTitle, 
+                    { 
+                      color: shouldShowGradient(notification.type) && !notification.isRead
+                        ? '#FFFFFF'
+                        : readIconColor 
+                    }
+                  ]} numberOfLines={1}>
                     📋 {notification.data.serviceTitle}
                   </Text>
                 )}
                 {notification.data.price && (
-                  <Text style={[styles.priceInfo, { color: readTextColor }]}>
+                  <Text style={[
+                    styles.priceInfo, 
+                    { 
+                      color: shouldShowGradient(notification.type) && !notification.isRead
+                        ? '#FFFFFF'
+                        : readTextColor 
+                    }
+                  ]}>
                     💰 {notification.data.currency || 'RM'} {notification.data.price}
                   </Text>
                 )}
@@ -381,9 +452,21 @@ export default function SwipeableNotification({
             
             {/* Additional info for structured inquiries */}
             {notification.type === 'structured_inquiry' && notification.data && (
-              <View style={styles.offerInfo}>
+              <View style={[
+                styles.offerInfo,
+                shouldShowGradient(notification.type) && !notification.isRead && {
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)'
+                }
+              ]}>
                 {notification.data.serviceTitle && (
-                  <Text style={[styles.serviceTitle, { color: readIconColor }]} numberOfLines={1}>
+                  <Text style={[
+                    styles.serviceTitle, 
+                    { 
+                      color: shouldShowGradient(notification.type) && !notification.isRead
+                        ? '#FFFFFF'
+                        : readIconColor 
+                    }
+                  ]} numberOfLines={1}>
                     🔍 Inquiry about: {notification.data.serviceTitle}
                   </Text>
                 )}
@@ -429,7 +512,14 @@ export default function SwipeableNotification({
           <View style={styles.rightSection}>
             {!notification.isRead && (
               <TouchableOpacity
-                style={[styles.markReadButton, { backgroundColor: iconColor }]}
+                style={[
+                  styles.markReadButton, 
+                  { 
+                    backgroundColor: shouldShowGradient(notification.type) 
+                      ? 'rgba(255, 255, 255, 0.25)' 
+                      : iconColor 
+                  }
+                ]}
                 onPress={(event) => {
                   event.stopPropagation();
                   onMarkAsRead(notification.id);
@@ -440,7 +530,146 @@ export default function SwipeableNotification({
               </TouchableOpacity>
             )}
           </View>
-        </TouchableOpacity>
+            </TouchableOpacity>
+          </LinearGradient>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.notificationItem,
+              { 
+                backgroundColor: readBackgroundColor,
+                borderColor: readBorderColor,
+                shadowColor: colors.shadow.medium,
+                opacity: readOpacity
+              }
+            ]}
+            onPress={handlePress}
+            activeOpacity={0.7}
+          >
+            {/* Left side: Icon and indicator */}
+            <View style={styles.leftSection}>
+              <View style={[
+                styles.iconContainer, 
+                { 
+                  backgroundColor: readIconColor + '15',
+                  borderWidth: 2,
+                  borderColor: readIconColor + '30'
+                }
+              ]}>
+                <IconComponent size={22} color={readIconColor} />
+              </View>
+              {!notification.isRead && (
+                <View style={[styles.unreadIndicator, { backgroundColor: iconColor }]} />
+              )}
+            </View>
+            
+            {/* Main content */}
+            <View style={styles.mainContent}>
+              {/* Header with title and time */}
+              <View style={styles.contentHeader}>
+                <Text style={[
+                  styles.notificationTitle,
+                  { color: readTextColor },
+                  !notification.isRead && styles.unreadTitle
+                ]} numberOfLines={1}>
+                  {notification.title}
+                </Text>
+                <View style={styles.timeContainer}>
+                  <Clock size={12} color={colors.text.secondary} />
+                  <Text style={[styles.notificationTime, { color: colors.text.secondary }]}>
+                    {formatNotificationTime(notification.timestamp)}
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Message content */}
+              <Text style={[
+                styles.notificationMessage, 
+                { color: readTextColor },
+                !notification.isRead && { color: colors.text.primary }
+              ]} numberOfLines={2}>
+                {notification.message}
+              </Text>
+              
+              {/* Additional info for offers */}
+              {notification.type === 'offer' && notification.data && (
+                <View style={styles.offerInfo}>
+                  {notification.data.serviceTitle && (
+                    <Text style={[styles.serviceTitle, { color: readIconColor }]} numberOfLines={1}>
+                      📋 {notification.data.serviceTitle}
+                    </Text>
+                  )}
+                  {notification.data.price && (
+                    <Text style={[styles.priceInfo, { color: readTextColor }]}>
+                      💰 {notification.data.currency || 'RM'} {notification.data.price}
+                    </Text>
+                  )}
+                </View>
+              )}
+              
+              {/* Additional info for structured inquiries */}
+              {notification.type === 'structured_inquiry' && notification.data && (
+                <View style={styles.offerInfo}>
+                  {notification.data.serviceTitle && (
+                    <Text style={[styles.serviceTitle, { color: readIconColor }]} numberOfLines={1}>
+                      🔍 Inquiry about: {notification.data.serviceTitle}
+                    </Text>
+                  )}
+                </View>
+              )}
+              
+              {/* Participant image for chat notifications */}
+              {notification.data?.participantImage && notification.type === 'chat' && (
+                <View style={styles.participantSection}>
+                  <Image 
+                    source={{ uri: notification.data.participantImage }} 
+                    style={[styles.participantImage, { opacity: readOpacity }]} 
+                  />
+                  <Text style={[styles.participantName, { color: colors.text.secondary }]}>
+                    {notification.data.participantName}
+                  </Text>
+                </View>
+              )}
+              
+              {/* Marketing notification disable option */}
+              {notification.type === 'marketing' && notification.data?.canDisable && (
+                <TouchableOpacity
+                  style={[styles.disableButton, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}
+                  onPress={async (event) => {
+                    event.stopPropagation();
+                    try {
+                      await notificationScheduler.setMarketingNotificationsEnabled(false);
+                      onDelete(notification.id);
+                    } catch (error) {
+                      console.error('Error disabling marketing notifications:', error);
+                    }
+                  }}
+                >
+                  <BellOff size={14} color={colors.text.secondary} />
+                  <Text style={[styles.disableButtonText, { color: colors.text.secondary }]}>
+                    Turn off marketing notifications
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {/* Right side: Mark as read button only */}
+            <View style={styles.rightSection}>
+              {!notification.isRead && (
+                <TouchableOpacity
+                  style={[styles.markReadButton, { backgroundColor: iconColor }]}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    onMarkAsRead(notification.id);
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <CheckCheck size={14} color="white" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
       </Animated.View>
     </View>
   );
@@ -612,5 +841,17 @@ const styles = StyleSheet.create({
   disableButtonText: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  gradientNotification: {
+    overflow: 'hidden',
+    borderWidth: 0,
+    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  gradientTouchable: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 14,
   },
 });
