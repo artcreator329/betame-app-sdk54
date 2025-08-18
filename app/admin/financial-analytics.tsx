@@ -196,7 +196,7 @@ export default function FinancialAnalytics() {
         revenueGrowth: 18.5,
         totalTransactions: analyticsData.overview.totalJobs + analyticsData.overview.totalServices,
         averageTransactionValue: analyticsData.overview.totalRevenue / Math.max(1, analyticsData.overview.totalJobs + analyticsData.overview.totalServices),
-        platformFees: analyticsData.overview.totalRevenue * 0.05, // 5% platform fee
+        platformFees: analyticsData.overview.totalRevenue * 0.11, // 11% platform fee (or RM 4.90 minimum)
         escrowBalance: analyticsData.overview.totalRevenue * 0.12, // 12% in escrow
         pendingPayouts: analyticsData.overview.totalRevenue * 0.08, // 8% pending payouts
         revenueByMonth: [
@@ -303,7 +303,7 @@ export default function FinancialAnalytics() {
             <MetricCard
               title="Platform Fees"
               value={`RM ${financialData.platformFees.toLocaleString()}`}
-              subtitle="5% commission"
+              subtitle="11% commission"
               icon={<PieChart size={20} color="#F59E0B" />}
               color="#F59E0B"
               trend={{ value: 8.2, isPositive: true }}

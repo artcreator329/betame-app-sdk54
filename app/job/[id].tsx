@@ -241,7 +241,7 @@ export default function JobDetailScreen() {
       return 'Negotiable';
     }
     const amount = parseFloat(job.budget_amount || '0');
-    const platformFee = Math.round((amount * 0.07) * 100) / 100; // 7% platform fee
+    const platformFee = Math.max(Math.round((amount * 0.11) * 100) / 100, 4.90); // 11% or RM 4.90, whichever higher
     const sellerReceives = amount - platformFee;
     
     return {
@@ -249,7 +249,7 @@ export default function JobDetailScreen() {
       amount,
       platformFee,
       sellerReceives,
-      breakdown: `Seller receives ${job.currency}${sellerReceives.toFixed(2)} after 7% platform fee`
+      breakdown: `Seller receives ${job.currency}${sellerReceives.toFixed(2)} after platform fee (11% or RM 4.90, whichever higher)`
     };
   };
 

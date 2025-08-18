@@ -21,7 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 export default function OrdersScreen() {
   const colors = useColors();
   const { user } = useAuth();
-  const [orders, setOrders] = useState<JobStatus[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<JobStatus | null>(null);
@@ -110,26 +110,55 @@ export default function OrdersScreen() {
     if (!user?.id) return;
     
     try {
-      // Fetch both buyer and seller orders
-      const [buyerOrders, sellerOrders] = await Promise.all([
+      // Import ActiveJobService dynamically
+      const { ActiveJobService } = await import('@/lib/active-job-service');
+      
+      // Fetch both escrow-based and direct orders
+      const [buyerEscrowOrders, sellerEscrowOrders, activeJobs] = await Promise.all([
         EscrowService.getBuyerJobs(user.id),
-        EscrowService.getSellerJobs(user.id)
+        EscrowService.getSellerJobs(user.id),
+        ActiveJobService.getUserActiveJobs(user.id)
       ]);
 
-      // Add perspective flag to each order
-      const buyerOrdersWithPerspective = buyerOrders.map(order => ({
+      // Add perspective flag to escrow orders
+      const buyerEscrowOrdersWithPerspective = buyerEscrowOrders.map(order => ({
         ...order,
-        perspective: 'buyer' as const
+        perspective: 'buyer' as const,
+        orderType: 'escrow' as const
       }));
 
-      const sellerOrdersWithPerspective = sellerOrders.map(order => ({
+      const sellerEscrowOrdersWithPerspective = sellerEscrowOrders.map(order => ({
         ...order,
-        perspective: 'seller' as const
+        perspective: 'seller' as const,
+        orderType: 'escrow' as const
       }));
 
-      // Combine and sort by creation date
-      const allOrders = [...buyerOrdersWithPerspective, ...sellerOrdersWithPerspective]
-        .sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime());
+      // Add perspective flag to active jobs
+      const buyerActiveJobsWithPerspective = activeJobs.asBuyer.map(job => ({
+        ...job,
+        perspective: 'buyer' as const,
+        orderType: 'direct' as const,
+        current_status: job.status === 'pending_confirmation' ? 'payment_received' :
+                       job.status === 'in_progress' ? 'work_in_progress' : 
+                       job.status === 'completed' ? 'completed' : 'payment_received'
+      }));
+
+      const sellerActiveJobsWithPerspective = activeJobs.asServiceProvider.map(job => ({
+        ...job,
+        perspective: 'seller' as const,
+        orderType: 'direct' as const,
+        current_status: job.status === 'pending_confirmation' ? 'payment_received' :
+                       job.status === 'in_progress' ? 'work_in_progress' : 
+                       job.status === 'completed' ? 'completed' : 'payment_received'
+      }));
+
+      // Combine all orders and sort by creation date
+      const allOrders = [
+        ...buyerEscrowOrdersWithPerspective, 
+        ...sellerEscrowOrdersWithPerspective,
+        ...buyerActiveJobsWithPerspective,
+        ...sellerActiveJobsWithPerspective
+      ].sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime());
 
       setOrders(allOrders);
     } catch (error) {
@@ -149,6 +178,38 @@ export default function OrdersScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchOrders();
+  };
+
+  const handleConfirmOrder = async (order: JobStatus & { orderType?: string }) => {
+    if (!order.id) return;
+
+    try {
+      // Check if this is a direct order (active job) or escrow order
+      if (order.orderType === 'direct') {
+        // Import ActiveJobService dynamically
+        const { ActiveJobService } = await import('@/lib/active-job-service');
+        const success = await ActiveJobService.confirmJob(order.id, user!.id);
+        
+        if (success) {
+          Alert.alert('Order Confirmed!', 'You have confirmed the order and can now start working. The buyer has been notified.');
+          fetchOrders();
+        } else {
+          Alert.alert('Error', 'Failed to confirm order. Please try again.');
+        }
+      } else {
+        // Handle escrow orders (existing logic)
+        const result = await EscrowService.startWork(order.id, user!.id);
+        if (result.success) {
+          Alert.alert('Success', 'Work started! The buyer has been notified.');
+          fetchOrders();
+        } else {
+          Alert.alert('Error', result.error || 'Failed to start work');
+        }
+      }
+    } catch (error) {
+      console.error('Error confirming order:', error);
+      Alert.alert('Error', 'Failed to confirm order');
+    }
   };
 
   const handleStartWork = async (order: JobStatus) => {
@@ -286,7 +347,7 @@ export default function OrdersScreen() {
   const getStatusText = (status: string, perspective: 'buyer' | 'seller') => {
     switch (status) {
       case 'payment_received': 
-        return perspective === 'buyer' ? 'Payment Sent' : 'Payment Received';
+        return perspective === 'buyer' ? 'Waiting for service provider to confirm' : 'Payment Received - Please Confirm';
       case 'acknowledgment_pending':
         return perspective === 'buyer' ? 'Waiting for seller' : 'Acceptance Acknowledged';
       case 'work_in_progress': 
@@ -330,10 +391,10 @@ export default function OrdersScreen() {
           return (
             <TouchableOpacity
               style={[styles.quickActionButton, { backgroundColor: '#007AFF' }]}
-              onPress={() => handleStartWork(order)}
+              onPress={() => handleConfirmOrder(order)}
             >
-              <Ionicons name="play" size={14} color="#fff" />
-              <Text style={styles.quickActionText}>Start</Text>
+              <Ionicons name="checkmark" size={14} color="#fff" />
+              <Text style={styles.quickActionText}>Confirm</Text>
             </TouchableOpacity>
           );
         
@@ -401,9 +462,9 @@ export default function OrdersScreen() {
           return (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: '#007AFF' }]}
-              onPress={() => handleStartWork(order)}
+              onPress={() => handleConfirmOrder(order)}
             >
-              <Text style={styles.actionButtonText}>Start Work</Text>
+              <Text style={styles.actionButtonText}>Confirm Order</Text>
             </TouchableOpacity>
           );
         
@@ -432,7 +493,8 @@ export default function OrdersScreen() {
           return (
             <View style={[styles.actionButton, { backgroundColor: '#228B22' }]}>
               <Text style={styles.actionButtonText}>
-                Earned: {escrowTransaction?.amount || 0} credits
+                Earned: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
+                         `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
               </Text>
             </View>
           );
@@ -453,14 +515,14 @@ export default function OrdersScreen() {
         case 'payment_received':
           return (
             <View style={[styles.actionButton, { backgroundColor: '#FFA500' }]}>
-              <Text style={styles.actionButtonText}>Waiting for seller</Text>
+              <Text style={styles.actionButtonText}>Waiting for service provider to confirm</Text>
             </View>
           );
         
         case 'work_in_progress':
           return (
             <View style={[styles.actionButton, { backgroundColor: '#007AFF' }]}>
-              <Text style={styles.actionButtonText}>Seller is working</Text>
+              <Text style={styles.actionButtonText}>Service provider is working</Text>
             </View>
           );
         
@@ -482,7 +544,8 @@ export default function OrdersScreen() {
           return (
             <View style={[styles.actionButton, { backgroundColor: '#228B22' }]}>
               <Text style={styles.actionButtonText}>
-                Paid: {escrowTransaction?.amount || 0} credits
+                Paid: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
+                       `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
               </Text>
             </View>
           );
@@ -841,7 +904,7 @@ export default function OrdersScreen() {
                   <View style={styles.orderTitleContainer}>
                     <View style={styles.titleRow}>
                       <Text style={[styles.orderTitle, { color: colors.text.primary }]} numberOfLines={expandedOrders.has(orderId) ? 2 : 1}>
-                        {escrowTransaction?.service_title}
+                        {escrowTransaction?.service_title || (order as any).title}
                       </Text>
                       <View style={[styles.perspectiveBadge, { backgroundColor: colors.primary.light + '20' }]}>
                         <Text style={[styles.perspectiveText, { color: colors.primary.main }]}>
@@ -867,9 +930,9 @@ export default function OrdersScreen() {
                     </View>
                     {!expandedOrders.has(orderId) && (
                       <View style={styles.collapsedInfo}>
-                        {escrowTransaction?.service_description && (
+                        {(escrowTransaction?.service_description || (order as any).description) && (
                           <Text style={[styles.collapsedDescription, { color: colors.text.secondary }]} numberOfLines={1}>
-                            {escrowTransaction.service_description}
+                            {escrowTransaction?.service_description || (order as any).description}
                           </Text>
                         )}
                         <View style={styles.collapsedMeta}>
@@ -887,7 +950,8 @@ export default function OrdersScreen() {
                   </View>
                   <View style={styles.orderAmountContainer}>
                     <Text style={[styles.orderAmount, { color: colors.primary.main }]}>
-                      {escrowTransaction?.amount} credits
+                      {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
+                       `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
                     </Text>
                     {perspective === 'buyer' && escrowTransaction?.platform_fee > 0 && (
                       <Text style={[styles.platformFee, { color: colors.text.secondary }]}>
@@ -906,9 +970,9 @@ export default function OrdersScreen() {
 
                 {expandedOrders.has(orderId) && (
                   <>
-                    {escrowTransaction?.service_description && (
+                    {(escrowTransaction?.service_description || (order as any).description) && (
                       <Text style={[styles.orderDescription, { color: colors.text.secondary }]} numberOfLines={2}>
-                        {escrowTransaction.service_description}
+                        {escrowTransaction?.service_description || (order as any).description}
                       </Text>
                     )}
 
@@ -953,6 +1017,45 @@ export default function OrdersScreen() {
 
                       <View style={styles.detailsSection}>
                         <Text style={[styles.detailsSectionTitle, { color: colors.text.primary }]}>Job Info</Text>
+                        
+                        {/* Service Price and Details */}
+                        <View style={styles.detailRow}>
+                          <Ionicons name="pricetag-outline" size={16} color={colors.text.secondary} />
+                          <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                            Price: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
+                                   `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
+                          </Text>
+                        </View>
+
+                        {/* Delivery Time */}
+                        {((order as any).delivery_time || escrowTransaction?.delivery_time) && (
+                          <View style={styles.detailRow}>
+                            <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
+                            <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                              Delivery: {(order as any).delivery_time || escrowTransaction?.delivery_time}
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Payment Status */}
+                        {(order as any).payment_status && (
+                          <View style={styles.detailRow}>
+                            <Ionicons name="card-outline" size={16} color={colors.text.secondary} />
+                            <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                              Payment: {(order as any).payment_status === 'paid' ? 'Paid' : 
+                                        (order as any).payment_status === 'pending' ? 'Pending' : 
+                                        (order as any).payment_status}
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Order Type */}
+                        <View style={styles.detailRow}>
+                          <Ionicons name="layers-outline" size={16} color={colors.text.secondary} />
+                          <Text style={[styles.detailText, { color: colors.text.secondary }]}>
+                            Order Type: {(order as any).orderType === 'direct' ? 'Direct Order' : 'Escrow Order'}
+                          </Text>
+                        </View>
                         
                         {/* Job Date and Countdown */}
                         {escrowTransaction?.work_start_date && (
@@ -1099,10 +1202,12 @@ export default function OrdersScreen() {
                 <View style={[styles.orderSummary, { backgroundColor: colors.background.secondary }]}>
                   <Text style={[styles.summaryTitle, { color: colors.text.primary }]}>Order Summary</Text>
                   <Text style={[styles.summaryService, { color: colors.text.primary }]}>
-                    {((selectedOrder as any).escrow_transactions)?.service_title}
+                    {((selectedOrder as any).escrow_transactions)?.service_title || (selectedOrder as any).title}
                   </Text>
                   <Text style={[styles.summaryAmount, { color: colors.primary.main }]}>
-                    {((selectedOrder as any).escrow_transactions)?.amount} credits will be released to the seller
+                    {((selectedOrder as any).escrow_transactions)?.amount ? 
+                      `${((selectedOrder as any).escrow_transactions).amount} credits will be released to the seller` :
+                      `${(selectedOrder as any).currency || 'RM'} ${(selectedOrder as any).price || 0} was paid for this service`}
                   </Text>
                 </View>
 
@@ -1175,10 +1280,12 @@ export default function OrdersScreen() {
                 <View style={[styles.orderSummary, { backgroundColor: colors.background.secondary }]}>
                   <Text style={[styles.summaryTitle, { color: colors.text.primary }]}>Order Details</Text>
                   <Text style={[styles.summaryService, { color: colors.text.primary }]}>
-                    {((selectedOrder as any).escrow_transactions)?.service_title}
+                    {((selectedOrder as any).escrow_transactions)?.service_title || (selectedOrder as any).title}
                   </Text>
                   <Text style={[styles.summaryAmount, { color: colors.primary.main }]}>
-                    {((selectedOrder as any).escrow_transactions)?.amount} credits
+                    {((selectedOrder as any).escrow_transactions)?.amount ? 
+                      `${((selectedOrder as any).escrow_transactions).amount} credits` :
+                      `${(selectedOrder as any).currency || 'RM'} ${(selectedOrder as any).price || 0}`}
                   </Text>
                 </View>
 

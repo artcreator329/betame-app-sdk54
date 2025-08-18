@@ -810,6 +810,56 @@ export class NotificationService {
     await this.addNotification(notification, participantId);
   }
 
+  // Helper method to add order notification
+  async addOrderNotification({
+    serviceProviderId,
+    buyerName,
+    buyerImage,
+    serviceTitle,
+    price,
+    currency,
+    orderId,
+    orderType
+  }: {
+    serviceProviderId: string;
+    buyerName: string;
+    buyerImage?: string;
+    serviceTitle: string;
+    price: number;
+    currency: string;
+    orderId: string;
+    orderType: 'direct' | 'offer';
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addOrderNotification called with:', {
+      serviceProviderId,
+      buyerName,
+      serviceTitle,
+      price,
+      currency,
+      orderId,
+      orderType
+    });
+
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'order' as const,
+      title: 'New Order Received!',
+      message: `${buyerName} placed a new order for "${serviceTitle}" (${currency} ${price}). Please review and confirm.`,
+      data: {
+        orderId,
+        serviceTitle,
+        buyerName,
+        buyerImage,
+        price,
+        currency,
+        orderType,
+        action_required: true
+      }
+    };
+
+    await this.addNotification(notification, serviceProviderId);
+    console.log('🔔 NotificationService: addOrderNotification completed');
+  }
+
   // Helper method to add marketing notification
   async addMarketingNotification({
     userId,

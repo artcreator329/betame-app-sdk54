@@ -48,61 +48,46 @@ export function PaymentModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [walletData, setWalletData] = useState<any>(null);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('betacoins');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('fpx');
 
   const malaysianPaymentGateways: MalaysianPaymentGateway[] = [
-    {
-      id: 'betacoins',
-      name: 'BetaCoins',
-      icon: '💳',
-      description: 'Use your existing BetaCoins',
-      processingFee: 0,
-    },
     {
       id: 'fpx',
       name: 'FPX Online Banking',
       icon: '🏦',
       description: 'Direct bank transfer via FPX',
-      processingFee: 1.50,
+      processingFee: 0,
     },
     {
       id: 'tng',
       name: 'Touch \'n Go eWallet',
       icon: '📱',
       description: 'Pay with TnG eWallet',
-      processingFee: 0.50,
+      processingFee: 0,
     },
     {
       id: 'grabpay',
       name: 'GrabPay',
       icon: '🚗',
       description: 'Pay with GrabPay wallet',
-      processingFee: 0.50,
+      processingFee: 0,
     },
     {
       id: 'boost',
       name: 'Boost',
       icon: '🚀',
       description: 'Pay with Boost wallet',
-      processingFee: 0.50,
+      processingFee: 0,
     },
   ];
 
   useEffect(() => {
     if (visible) {
-      loadWalletData();
       loadPaymentSummary();
     }
   }, [visible]);
 
-  const loadWalletData = async () => {
-    try {
-      const wallet = await WalletService.getWallet(buyerId);
-      setWalletData(wallet);
-    } catch (error) {
-      console.error('Error loading wallet data:', error);
-    }
-  };
+
 
   const loadPaymentSummary = () => {
     if (!serviceData) {
@@ -119,34 +104,17 @@ export function PaymentModal({
 
   const getTotalWithProcessingFee = () => {
     if (!paymentSummary) return 0;
-    const gateway = getSelectedGateway();
-    return paymentSummary.totalAmount + gateway.processingFee;
+    return paymentSummary.totalAmount;
   };
 
   const handlePayment = async () => {
-    if (!walletData || !paymentSummary) {
+    if (!paymentSummary) {
       Alert.alert('Error', 'Unable to process payment. Please try again.');
       return;
     }
 
     const totalAmount = getTotalWithProcessingFee();
     const gateway = getSelectedGateway();
-
-    // For BetaCoins payment, check balance
-    if (selectedPaymentMethod === 'betacoins' && walletData.betame_betacoins < totalAmount) {
-      Alert.alert(
-        'Insufficient BetaCoins',
-        `You need ${totalAmount} BetaCoins but only have ${walletData.betame_betacoins} BetaCoins. Please purchase more BetaCoins to continue.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Purchase BetaCoins', onPress: () => {
-            onClose();
-            // Navigate to wallet/BetaCoins purchase screen
-          }}
-        ]
-      );
-      return;
-    }
 
     // For other payment methods, show processing message
     if (selectedPaymentMethod !== 'betacoins') {
@@ -294,7 +262,7 @@ export function PaymentModal({
                   </Text>
                 </View>
                 <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Service Fee (5%)</Text>
+                  <Text style={styles.paymentLabel}>Processing Fee (2.2%)</Text>
                   <Text style={styles.paymentValue}>
                     RM {paymentSummary.serviceFee}
                   </Text>
@@ -305,86 +273,42 @@ export function PaymentModal({
                     RM {paymentSummary.totalAmount}
                   </Text>
                 </View>
-                {getSelectedGateway().processingFee > 0 && (
-                  <View style={styles.paymentRow}>
-                    <Text style={styles.paymentLabel}>
-                      {getSelectedGateway().name} Processing Fee
-                    </Text>
-                    <Text style={styles.paymentValue}>
-                      RM {getSelectedGateway().processingFee.toFixed(2)}
-                    </Text>
-                  </View>
-                )}
+
                 <View style={[styles.paymentRow, styles.totalRow]}>  
                   <Text style={styles.totalLabel}>Total Amount</Text>
                   <Text style={styles.totalValue}>
-                    {selectedPaymentMethod === 'betacoins' 
-                      ? `${getTotalWithProcessingFee()} BetaCoins`
-                      : `RM ${getTotalWithProcessingFee().toFixed(2)}`
-                    }
+                    RM {getTotalWithProcessingFee().toFixed(2)}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* Wallet Balance */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Your Wallet</Text>
-              <View style={styles.walletInfo}>
-                <View style={styles.walletRow}>
-                  <Wallet size={20} color={Colors.primary.main} />
-                  <Text style={styles.walletLabel}>Available BetaCoins</Text>
-                  <Text style={[styles.walletValue, hasInsufficientFunds && styles.insufficientFunds]}>
-                    {walletData.betame_betacoins} BetaCoins
-                  </Text>
-                </View>
-                {hasInsufficientFunds && (
-                  <Text style={styles.insufficientText}>
-                    You need {paymentSummary.finalPrice - walletData.betame_betacoins} more BetaCoins
-                  </Text>
-                )}
-              </View>
-            </View>
+
 
             {/* Payment Method Selection */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Choose Payment Method</Text>
               {malaysianPaymentGateways.map((gateway) => {
                 const isSelected = selectedPaymentMethod === gateway.id;
-                const isBetaCoinsInsufficient = gateway.id === 'betacoins' && walletData && walletData.betame_betacoins < getTotalWithProcessingFee();
                 
                 return (
                   <TouchableOpacity
                     key={gateway.id}
                     style={[
                       styles.paymentMethodOption,
-                      isSelected && styles.paymentMethodSelected,
-                      isBetaCoinsInsufficient && styles.paymentMethodDisabled
+                      isSelected && styles.paymentMethodSelected
                     ]}
-                    onPress={() => !isBetaCoinsInsufficient && setSelectedPaymentMethod(gateway.id)}
-                    disabled={isBetaCoinsInsufficient}
+                    onPress={() => setSelectedPaymentMethod(gateway.id)}
                   >
                     <View style={styles.paymentMethodLeft}>
                       <Text style={styles.paymentMethodIcon}>{gateway.icon}</Text>
                       <View style={styles.paymentMethodInfo}>
-                        <Text style={[
-                          styles.paymentMethodName,
-                          isBetaCoinsInsufficient && styles.paymentMethodNameDisabled
-                        ]}>
+                        <Text style={styles.paymentMethodName}>
                           {gateway.name}
                         </Text>
-                        <Text style={[
-                          styles.paymentMethodDescription,
-                          isBetaCoinsInsufficient && styles.paymentMethodDescriptionDisabled
-                        ]}>
+                        <Text style={styles.paymentMethodDescription}>
                           {gateway.description}
-                          {gateway.processingFee > 0 && ` (+RM ${gateway.processingFee.toFixed(2)} fee)`}
                         </Text>
-                        {isBetaCoinsInsufficient && (
-                          <Text style={styles.insufficientBetaCoinsText}>
-                            Insufficient BetaCoins
-                          </Text>
-                        )}
                       </View>
                     </View>
                     <View style={[
@@ -409,22 +333,16 @@ export function PaymentModal({
             <TouchableOpacity
               style={[
                 styles.payButton,
-                (selectedPaymentMethod === 'betacoins' && walletData.betame_betacoins < getTotalWithProcessingFee()) && styles.payButtonDisabled,
                 isProcessing && styles.payButtonDisabled
               ]}
               onPress={handlePayment}
-              disabled={isProcessing || (selectedPaymentMethod === 'betacoins' && walletData.betame_betacoins < getTotalWithProcessingFee())}
+              disabled={isProcessing}
             >
               {isProcessing ? (
                 <ActivityIndicator size="small" color={Colors.text.white} />
               ) : (
                 <Text style={styles.payButtonText}>
-                  {selectedPaymentMethod === 'betacoins' && walletData.betame_betacoins < getTotalWithProcessingFee()
-                    ? 'Insufficient BetaCoins'
-                    : selectedPaymentMethod === 'betacoins' 
-                      ? `Pay ${getTotalWithProcessingFee()} BetaCoins`
-                      : `Pay RM ${getTotalWithProcessingFee().toFixed(2)}`
-                  }
+                  Pay RM {getTotalWithProcessingFee().toFixed(2)}
                 </Text>
               )}
             </TouchableOpacity>

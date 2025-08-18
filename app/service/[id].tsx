@@ -416,9 +416,9 @@ export default function ServiceDetailsScreen() {
     setSelectedServiceForOrder(null);
     Alert.alert(
       'Order Successful!',
-      'Your order has been placed successfully. You can track the progress in your profile.',
+      'Your order has been placed successfully. The service provider will be notified to confirm your order.',
       [
-        { text: 'View Orders', onPress: () => router.push('/orders') },
+        { text: 'View Orders', onPress: () => router.push('/(tabs)/orders') },
         { text: 'OK', onPress: () => router.back() }
       ]
     );

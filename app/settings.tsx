@@ -315,6 +315,12 @@ export default function SettingsScreen() {
           />
 
           <SettingItem
+            icon={<CreditCard size={20} color={colors.text.primary} />}
+            title="Test Payment Gateway"
+            onPress={() => router.push('/malaysian-payment-gateway')}
+          />
+
+          <SettingItem
             icon={<Globe size={20} color={colors.text.primary} />}
             title="Language & Region"
             onPress={handleLanguageRegion}

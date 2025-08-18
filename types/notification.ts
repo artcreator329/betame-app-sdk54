@@ -20,6 +20,15 @@ export interface Notification {
     price?: number;
     currency?: string;
     canDisable?: boolean;
+    // Order notification fields
+    buyerName?: string;
+    buyerImage?: string;
+    orderType?: 'direct' | 'offer';
+    action_required?: boolean;
+    // Marketing notification fields
+    category?: string;
+    // Check-in notification fields
+    action?: string;
   };
 }
 

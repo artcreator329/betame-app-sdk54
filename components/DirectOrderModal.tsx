@@ -47,45 +47,39 @@ export function DirectOrderModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [walletData, setWalletData] = useState<any>(null);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('betacoins');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('fpx');
   const [customDescription, setCustomDescription] = useState('');
   const [customDeliveryTime, setCustomDeliveryTime] = useState('7');
 
   const malaysianPaymentGateways: MalaysianPaymentGateway[] = [
-    {
-      id: 'betacoins',
-      name: 'BetaCoins',
-      icon: '💳',
-      description: 'Use your existing BetaCoins',
-      processingFee: 0,
-    },
+
     {
       id: 'fpx',
       name: 'FPX Online Banking',
       icon: '🏦',
       description: 'Direct bank transfer via FPX',
-      processingFee: 1.50,
+      processingFee: 0,
     },
     {
       id: 'tng',
       name: 'Touch \'n Go eWallet',
       icon: '📱',
       description: 'Pay with TnG eWallet',
-      processingFee: 0.50,
+      processingFee: 0,
     },
     {
       id: 'grabpay',
       name: 'GrabPay',
       icon: '🚗',
       description: 'Pay with GrabPay wallet',
-      processingFee: 0.50,
+      processingFee: 0,
     },
     {
       id: 'boost',
       name: 'Boost',
       icon: '🚀',
       description: 'Pay with Boost wallet',
-      processingFee: 0.50,
+      processingFee: 0,
     },
   ];
 
@@ -116,8 +110,7 @@ export function DirectOrderModal({
 
   const getTotalWithProcessingFee = () => {
     if (!paymentSummary) return 0;
-    const gateway = getSelectedGateway();
-    return paymentSummary.totalAmount + gateway.processingFee;
+    return paymentSummary.totalAmount;
   };
 
   const handlePayment = async () => {
@@ -162,7 +155,7 @@ export function DirectOrderModal({
   };
 
   const processPayment = async () => {
-    if (!walletData || !paymentSummary) return;
+    if (!paymentSummary) return;
 
     setIsProcessing(true);
 
@@ -174,35 +167,39 @@ export function DirectOrderModal({
         customDeliveryTime: customDeliveryTime ? parseInt(customDeliveryTime) : undefined,
       };
 
-      const result = await PaymentService.processDirectOrderPayment(
+      // Import ActiveJobService dynamically
+      const { ActiveJobService } = await import('@/lib/active-job-service');
+      
+      // Create the job record for external payment
+      const activeJob = await ActiveJobService.createJobFromDirectOrder(
         enhancedOrderData,
         buyerId,
         serviceProviderId
       );
 
-      if (result.success && result.activeJobId) {
+      if (activeJob) {
         Alert.alert(
           'Order Successful!',
-          'Your order has been placed successfully. The service provider will be notified and can start working on your request.',
+          'Your order has been placed successfully. The service provider will be notified to confirm your order.',
           [
             {
               text: 'View Orders',
               onPress: () => {
                 onClose();
-                onPaymentSuccess(result.activeJobId || '');
+                onPaymentSuccess(activeJob.id || '');
               }
             },
             {
               text: 'OK',
               onPress: () => {
                 onClose();
-                onPaymentSuccess(result.activeJobId || '');
+                onPaymentSuccess(activeJob.id || '');
               }
             }
           ]
         );
       } else {
-        Alert.alert('Payment Failed', result.error || 'An unexpected error occurred.');
+        Alert.alert('Order Creation Failed', 'Failed to create order. Please try again.');
       }
     } catch (error) {
       console.error('Error processing payment:', error);
@@ -212,7 +209,7 @@ export function DirectOrderModal({
     }
   };
 
-  if (!paymentSummary || !walletData) {
+  if (!paymentSummary) {
     return (
       <Modal visible={visible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -224,8 +221,6 @@ export function DirectOrderModal({
       </Modal>
     );
   }
-
-  const hasInsufficientFunds = walletData.betame_betacoins < paymentSummary.finalPrice;
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -325,17 +320,12 @@ export function DirectOrderModal({
                   </Text>
                 </View>
                 <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Service Fee (5%)</Text>
+                  <Text style={styles.paymentLabel}>Processing Fee (2.2%)</Text>
                   <Text style={styles.paymentValue}>
                     RM {paymentSummary.serviceFee}
                   </Text>
                 </View>
-                <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Processing Fee</Text>
-                  <Text style={styles.paymentValue}>
-                    RM {getSelectedGateway().processingFee}
-                  </Text>
-                </View>
+
                 <View style={[styles.paymentRow, styles.totalRow]}>
                   <Text style={styles.totalLabel}>Total</Text>
                   <Text style={styles.totalValue}>
@@ -375,35 +365,19 @@ export function DirectOrderModal({
               </View>
             </View>
 
-            {/* Wallet Balance (for BetaCoins) */}
-            {selectedPaymentMethod === 'betacoins' && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>BetaCoins Balance</Text>
-                <View style={styles.walletInfo}>
-                  <Wallet size={20} color={Colors.primary.main} />
-                  <Text style={styles.walletBalance}>
-                    {walletData.betame_betacoins} BetaCoins
-                  </Text>
-                  {hasInsufficientFunds && (
-                    <Text style={styles.insufficientFunds}>
-                      Insufficient balance. You need {paymentSummary.finalPrice} BetaCoins.
-                    </Text>
-                  )}
-                </View>
-              </View>
-            )}
+
           </ScrollView>
 
           {/* Action Buttons */}
           <View style={styles.footer}>
-            <TouchableOpacity
-              style={[
-                styles.payButton,
-                (isProcessing || (selectedPaymentMethod === 'betacoins' && hasInsufficientFunds)) && styles.payButtonDisabled
-              ]}
-              onPress={handlePayment}
-              disabled={isProcessing || (selectedPaymentMethod === 'betacoins' && hasInsufficientFunds)}
-            >
+                          <TouchableOpacity
+                style={[
+                  styles.payButton,
+                  isProcessing && styles.payButtonDisabled
+                ]}
+                onPress={handlePayment}
+                disabled={isProcessing}
+              >
               {isProcessing ? (
                 <ActivityIndicator size="small" color="white" />
               ) : (

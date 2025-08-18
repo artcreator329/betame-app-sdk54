@@ -136,13 +136,13 @@ export default function BecomeServiceProviderScreen() {
 
             <TouchableOpacity 
               style={[styles.becomeServiceProviderButton, isBecomingServiceProvider && styles.disabledButton]}
-              onPress={handleBecomeServiceProvider}
+              onPress={() => router.push('/ekyc-verification')}
               disabled={isBecomingServiceProvider}
             >
               {isBecomingServiceProvider ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.becomeServiceProviderButtonText}>Become a Service Provider</Text>
+                <Text style={styles.becomeServiceProviderButtonText}>Start eKYC Verification</Text>
               )}
             </TouchableOpacity>
           </>

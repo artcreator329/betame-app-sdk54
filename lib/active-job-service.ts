@@ -6,13 +6,13 @@ export interface ActiveJob {
   id?: string;
   buyer_id: string;
   service_provider_id: string;
-  service_offer_id: string;
+  service_offer_id?: string;
   title: string;
   description: string;
   price: number;
   currency: string;
   delivery_time: string;
-  status: 'in_progress' | 'completed' | 'cancelled' | 'disputed';
+  status: 'pending_confirmation' | 'in_progress' | 'completed' | 'cancelled' | 'disputed';
   progress_percentage: number;
   payment_status: 'pending' | 'paid' | 'released' | 'refunded';
   started_at?: string;
@@ -43,13 +43,13 @@ export class ActiveJobService {
       const jobData = {
         buyer_id: buyerId,
         service_provider_id: serviceProviderId,
-        service_offer_id: null, // No service offer for direct orders
+        // service_offer_id: null, // Commented out - might be causing constraint issues
         title: orderData.title,
         description: orderData.customDescription || orderData.description,
         price: orderData.price,
         currency: orderData.currency,
         delivery_time: orderData.customDeliveryTime ? `${orderData.customDeliveryTime} days` : '7 days',
-        status: 'in_progress' as const,
+        status: 'pending_confirmation' as const,
         progress_percentage: 0,
         payment_status: 'paid' as const, // Payment is completed before job creation
         started_at: new Date().toISOString(),
@@ -63,11 +63,12 @@ export class ActiveJobService {
 
       if (error) {
         console.error('Error creating active job from direct order:', error);
+        console.error('Job data that failed to insert:', jobData);
         return null;
       }
 
       // Send notification to service provider about the new order
-      await this.notifyServiceProviderOfNewOrder(serviceProviderId, orderData.title, data.id);
+      await this.notifyServiceProviderOfNewOrder(serviceProviderId, buyerId, orderData.title, orderData.price, orderData.currency, data.id, 'direct');
 
       return data;
     } catch (error) {
@@ -81,28 +82,40 @@ export class ActiveJobService {
    */
   private static async notifyServiceProviderOfNewOrder(
     serviceProviderId: string,
+    buyerId: string,
     serviceTitle: string,
-    jobId: string
+    price: number,
+    currency: string,
+    jobId: string,
+    orderType: 'direct' | 'offer'
   ): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: serviceProviderId,
-          type: 'new_order',
-          title: 'New Order Received',
-          message: `You have received a new order for "${serviceTitle}". Please review and confirm.`,
-          data: {
-            job_id: jobId,
-            service_title: serviceTitle,
-            action_required: true
-          },
-          read: false
-        });
+      // Get buyer profile for notification
+      const { data: buyerProfile } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', buyerId)
+        .single();
 
-      if (error) {
-        console.error('Error creating notification for service provider:', error);
-      }
+      const buyerName = buyerProfile?.full_name || 'A customer';
+      const buyerImage = buyerProfile?.avatar_url || '';
+
+      // Import notification service dynamically to avoid circular dependencies
+      const { notificationService } = await import('./notification-service');
+      
+      // Send order notification using the proper notification service
+      await notificationService.addOrderNotification({
+        serviceProviderId,
+        buyerName,
+        buyerImage,
+        serviceTitle,
+        price,
+        currency,
+        orderId: jobId,
+        orderType
+      });
+
+      console.log('✅ Order notification sent to service provider:', serviceProviderId);
     } catch (error) {
       console.error('Error notifying service provider:', error);
     }
@@ -127,7 +140,7 @@ export class ActiveJobService {
         price: offer.customPrice || serviceData.customPrice || serviceData.price,
         currency: serviceData.currency || 'RM',
         delivery_time: offer.customDeliveryTime ? `${offer.customDeliveryTime} days` : '7 days',
-        status: 'in_progress' as const,
+        status: 'pending_confirmation' as const,
         progress_percentage: 0,
         payment_status: 'paid' as const, // Assuming payment is completed before job creation
         started_at: new Date().toISOString(),
@@ -143,6 +156,17 @@ export class ActiveJobService {
         console.error('Error creating active job:', error);
         return null;
       }
+
+      // Send notification to service provider about the new order from accepted offer
+      await this.notifyServiceProviderOfNewOrder(
+        serviceProviderId, 
+        buyerId, 
+        serviceData.title, 
+        offer.customPrice || serviceData.customPrice || serviceData.price, 
+        serviceData.currency || 'RM', 
+        data.id, 
+        'offer'
+      );
 
       return data;
     } catch (error) {
@@ -164,13 +188,13 @@ export class ActiveJobService {
           .from('active_jobs')
           .select('*')
           .eq('buyer_id', userId)
-          .in('status', ['in_progress', 'completed'])
+          .in('status', ['pending_confirmation', 'in_progress', 'completed'])
           .order('created_at', { ascending: false }),
         supabase
           .from('active_jobs')
           .select('*')
           .eq('service_provider_id', userId)
-          .in('status', ['in_progress', 'completed'])
+          .in('status', ['pending_confirmation', 'in_progress', 'completed'])
           .order('created_at', { ascending: false })
       ]);
 
@@ -306,6 +330,32 @@ export class ActiveJobService {
       return true;
     } catch (error) {
       console.error('Error in completeJob:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Confirm a job (service provider confirms they will start working)
+   */
+  static async confirmJob(jobId: string, serviceProviderId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('active_jobs')
+        .update({
+          status: 'in_progress',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId)
+        .eq('service_provider_id', serviceProviderId);
+
+      if (error) {
+        console.error('Error confirming job:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in confirmJob:', error);
       return false;
     }
   }

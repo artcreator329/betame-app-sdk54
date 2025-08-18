@@ -269,13 +269,13 @@ export class PaymentService {
     totalAmount: number;
   } {
     const finalPrice = orderData.price;
-    const serviceFee = Math.round(finalPrice * 0.05); // 5% service fee
-    const totalAmount = finalPrice + serviceFee;
+    const buyerFee = Math.round((finalPrice * 0.022) * 100) / 100; // 2.2% processing fee
+    const totalAmount = finalPrice + buyerFee;
 
     return {
       finalPrice,
       currency: orderData.currency || 'RM',
-      serviceFee,
+      serviceFee: buyerFee,
       totalAmount
     };
   }
@@ -293,13 +293,13 @@ export class PaymentService {
     totalAmount: number;
   } {
     const finalPrice = offer.customPrice || serviceData.customPrice || serviceData.price;
-    const serviceFee = Math.round(finalPrice * 0.05); // 5% service fee
-    const totalAmount = finalPrice + serviceFee;
+    const buyerFee = Math.round((finalPrice * 0.022) * 100) / 100; // 2.2% processing fee
+    const totalAmount = finalPrice + buyerFee;
 
     return {
       finalPrice,
       currency: serviceData.currency || 'RM',
-      serviceFee,
+      serviceFee: buyerFee,
       totalAmount
     };
   }

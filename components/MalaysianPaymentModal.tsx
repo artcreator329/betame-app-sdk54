@@ -103,8 +103,7 @@ export function MalaysianPaymentModal({
 
   const getTotalWithProcessingFee = () => {
     if (!paymentSummary) return 0;
-    const gateway = getSelectedGateway();
-    return paymentSummary.totalAmount + gateway.processingFee;
+    return paymentSummary.totalAmount;
   };
 
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
@@ -405,7 +404,7 @@ export function MalaysianPaymentModal({
             </Text>
           </View>
           <View style={styles.paymentRow}>
-            <Text style={styles.paymentLabel}>Service Fee (5%)</Text>
+            <Text style={styles.paymentLabel}>Processing Fee (2.2%)</Text>
             <Text style={styles.paymentValue}>
               RM {paymentSummary?.serviceFee || 0}
             </Text>
@@ -486,7 +485,6 @@ export function MalaysianPaymentModal({
                 <Text style={styles.paymentMethodName}>{gateway.name}</Text>
                 <Text style={styles.paymentMethodDescription}>
                   {gateway.description}
-                  {gateway.processingFee > 0 && ` (+RM ${gateway.processingFee.toFixed(2)} fee)`}
                 </Text>
               </View>
             </View>

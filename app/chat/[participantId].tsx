@@ -761,6 +761,15 @@ export default function ChatScreen() {
       if (selectedOfferForPayment) {
         await supabaseChatService.acceptServiceOffer(selectedOfferForPayment.offer.id);
         
+        // Create job record for the service offer
+        const { ActiveJobService } = await import('@/lib/active-job-service');
+        const activeJob = await ActiveJobService.createJobFromOffer(
+          selectedOfferForPayment.offer,
+          selectedOfferForPayment.serviceData,
+          user!.id,
+          selectedOfferForPayment.sellerId
+        );
+        
         // Add notification for offer acceptance (to the seller)
         await notificationService.addOfferAcceptedNotification({
           participantId: selectedOfferForPayment.sellerId,
@@ -1163,8 +1172,8 @@ export default function ChatScreen() {
 
       const serviceData = offerMessage.serviceData;
       const amount = serviceData.customPrice || serviceData.price || 0;
-      const platformFee = Math.floor(amount * 0.05);
-      const totalAmount = amount + platformFee;
+      const buyerFee = Math.round((amount * 0.022) * 100) / 100; // 2.2% processing fee
+      const totalAmount = amount + buyerFee;
       const sellerId = offerMessage.senderId;
       
       if (!user?.id || !sellerId) {
@@ -1175,15 +1184,11 @@ export default function ChatScreen() {
       // Show payment options to the buyer
       Alert.alert(
         'Choose Payment Method',
-        `Service: ${serviceData.title}\nAmount: ${amount} credits\nPlatform Fee: ${platformFee} credits\nTotal: ${totalAmount} credits\n\nHow would you like to pay?`,
+        `Service: ${serviceData.title}\nAmount: RM ${amount}\nProcessing Fee: RM ${buyerFee}\nTotal: RM ${totalAmount}\n\nHow would you like to pay?`,
         [
           {
             text: 'Cancel',
             style: 'cancel'
-          },
-          {
-            text: 'Pay with Credits',
-            onPress: () => processCreditsPayment(offerId, offerMessage, serviceData, amount, sellerId)
           },
           {
             text: 'Pay with Card/Bank',
@@ -1197,64 +1202,7 @@ export default function ChatScreen() {
     }
   };
 
-  // Process payment using credits (escrow system)
-  const processCreditsPayment = async (offerId: string, offerMessage: any, serviceData: any, amount: number, sellerId: string) => {
-    try {
-      // Import EscrowService dynamically
-      const { EscrowService } = await import('@/lib/escrow-service');
-      
-      // Process payment to escrow
-      const result = await EscrowService.processPaymentToEscrow(
-        offerId,
-        user!.id,
-        sellerId,
-        amount,
-        serviceData.title || 'Service',
-        serviceData.customDescription || serviceData.description,
-        serviceData.startDate,
-        serviceData.endDate
-      );
 
-      if (result.success) {
-        Alert.alert(
-          'Payment Successful!', 
-          `Your payment of ${amount} credits has been held in escrow. The seller will be notified and can start working. Payment will be released when you confirm completion.`,
-          [
-            {
-              text: 'View Orders',
-              onPress: () => router.push('/(tabs)/orders')
-            },
-            { text: 'OK' }
-          ]
-        );
-
-        // Update offer status to in_progress after successful payment
-        await supabase
-          .from('service_offers')
-          .update({ status: 'in_progress' })
-          .eq('id', offerId);
-
-        // Send notification to seller
-        await notificationService.addOfferAcceptedNotification({
-          participantId: sellerId,
-          participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
-          participantImage: userProfile?.avatar_url || '',
-          chatId: chatId || '',
-          offerId: offerId,
-          serviceTitle: serviceData.title,
-          price: amount,
-          currency: 'USD',
-          isAcceptedByMe: false
-        });
-
-      } else {
-        Alert.alert('Payment Failed', result.error || 'Unable to process payment');
-      }
-    } catch (error) {
-      console.error('Error processing credits payment:', error);
-      Alert.alert('Error', 'Failed to process payment. Please try again.');
-    }
-  };
 
   // Process payment using external payment methods
   const processExternalPayment = async (offerId: string, offerMessage: any, serviceData: any, amount: number, sellerId: string) => {
