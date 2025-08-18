@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "betame",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "linking": {
       "prefixes": [
         "betame://",
@@ -32,7 +32,9 @@
           "apiKey": "<REDACTED_GOOGLE_API_KEY>"
         }
       },
-      "package": "com.artcreator329.boltexponativewind"
+      "package": "com.artcreator329.boltexponativewind",
+      "enableProguardInReleaseBuilds": false,
+      "enableSeparateBuildPerCPUArchitecture": false
     },
     "web": {
       "bundler": "metro",

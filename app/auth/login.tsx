@@ -12,7 +12,6 @@ import {
   Image,
   ScrollView,
   Keyboard,
-  Animated,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,8 +20,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { adminService } from '@/lib/admin-service';
 import { referralService } from '@/lib/referral-service';
 import { ReferralInputModal } from '@/components/ReferralInputModal';
-import { AdminSignInChoiceModal } from '@/components/AdminSignInChoiceModal';
-import { adminPreferencesService } from '@/lib/admin-preferences-service';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
@@ -33,25 +30,13 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [newUserId, setNewUserId] = useState<string | null>(null);
-  const [showAdminChoice, setShowAdminChoice] = useState(false);
-  const [adminUser, setAdminUser] = useState<{ id: string; email: string } | null>(null);
-  const [adminFlowCompleted, setAdminFlowCompleted] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const adminModalRef = useRef<{ shouldShow: boolean; userData: { id: string; email: string } | null }>({ shouldShow: false, userData: null });
   const router = useRouter();
-  const { signIn, signUp, checkAdminStatus, user, hasSignInError, clearSignInError } = useAuth();
-  
-  // Debug logging for error state changes
-  useEffect(() => {
-    console.log('🔄 Login: Error message changed:', errorMessage);
-  }, [errorMessage]);
+  const { signIn, signUp } = useAuth();
   const videoRef = useRef<Video>(null);
 
-  // Add video error handling and rotation with fade effect
+  // Add video error handling and rotation
   const [videoError, setVideoError] = useState(false);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const videos = [
     require('../../assets/images/sign_up_page_video.mp4'),
@@ -59,182 +44,50 @@ export default function LoginScreen() {
     require('../../assets/images/sign_up_page_video_3.mp4'),
   ];
 
-  // Initialize with a random video index
-  useEffect(() => {
-    const randomIndex = Math.floor(Math.random() * videos.length);
-    setCurrentVideoIndex(randomIndex);
-  }, []);
-
   const handleVideoError = (error: any) => {
     console.log('Video error:', error);
     setVideoError(true);
-    // Try to move to next video on error
-    setTimeout(() => {
-      setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
-      setVideoError(false);
-    }, 1000);
   };
 
   const handleVideoLoad = () => {
+    console.log('Video loaded successfully');
     setVideoError(false);
-    // Fade in the new video
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
   };
 
   const handleVideoEnd = () => {
-    // Fade out current video
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 500,
-      useNativeDriver: true,
-    }).start(() => {
-      // Cycle to next video after fade out
-      setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
-    });
+    // Cycle to next video when current one ends
+    setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
   };
-
-  // Effect to handle admin flow after successful sign-in
-  useEffect(() => {
-    const handleAdminFlow = async () => {
-      // Only proceed if we have a user, we're not in the middle of a sign-in attempt, there's no sign-in error, and no error message
-      if (user && !adminFlowCompleted && !isSigningIn && !hasSignInError && !errorMessage) {
-        // Double-check that we actually have a valid session
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            return;
-          }
-          
-          const isAdmin = await adminService.isAdmin(user.id);
-          
-          if (isAdmin) {
-            const shouldShowModal = await adminPreferencesService.shouldShowChoiceModal(user.id);
-            
-            if (shouldShowModal) {
-              const adminUserData = { 
-                id: user.id, 
-                email: user.email || email.trim() 
-              };
-              
-              adminModalRef.current = { shouldShow: true, userData: adminUserData };
-              setAdminUser(adminUserData);
-              setShowAdminChoice(true);
-              setAdminFlowCompleted(true);
-              setIsSigningIn(false); // Clear signing in flag
-              clearSignInError(); // Clear error flag
-            } else {
-              // Auto-redirect based on saved preference
-              const destination = await adminPreferencesService.getAutoRedirectDestination(user.id);
-              await checkAdminStatus(user.id);
-              
-              if (destination === 'dashboard') {
-                router.replace('/admin');
-              } else {
-                router.replace('/(tabs)');
-              }
-              setIsSigningIn(false); // Clear signing in flag
-              clearSignInError(); // Clear error flag
-            }
-          } else {
-            // Navigate to main app for non-admin users
-            router.replace('/(tabs)');
-            setIsSigningIn(false); // Clear signing in flag
-            clearSignInError(); // Clear error flag
-          }
-        } catch (error) {
-          // Silently handle session check errors
-        }
-      }
-    };
-
-    handleAdminFlow();
-  }, [user, adminFlowCompleted, isSigningIn, hasSignInError, errorMessage]);
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
-      setErrorMessage('Please fill in all fields');
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     setLoading(true);
-    setErrorMessage(null); // Clear any previous errors
-    setIsSigningIn(true); // Set signing in flag
-    
     try {
       const result = await signIn(email.trim(), password);
       
       if (result.error) {
-        console.log('🔄 Login: Sign in failed with error:', result.error.message);
-        // Provide user-friendly error messages
-        let errorMessage = 'An error occurred during sign in. Please try again.';
-        
-        if (result.error.message) {
-          // Handle specific Supabase auth errors
-          if (result.error.message.includes('Invalid login credentials')) {
-            errorMessage = 'Invalid email or password. Please check your credentials and try again.';
-          } else if (result.error.message.includes('Email not confirmed')) {
-            errorMessage = 'Please check your email and click the verification link to activate your account.';
-          } else if (result.error.message.includes('Too many requests')) {
-            errorMessage = 'Too many sign-in attempts. Please wait a few minutes before trying again.';
-          } else if (result.error.message.includes('User not found')) {
-            errorMessage = 'No account found with this email address. Please check your email or sign up.';
-          } else {
-            // Use the original error message for other cases
-            errorMessage = result.error.message;
-          }
-        }
-        
-        console.log('🔄 Login: Setting error message:', errorMessage);
-        setErrorMessage(errorMessage);
-        setIsSigningIn(false); // Clear signing in flag on error
+        Alert.alert('Error', result.error.message);
       } else if (result.user) {
-        // Admin flow will be handled by useEffect when user state updates
-        // Don't clear isSigningIn here - let the useEffect handle it
+        // Check if user is admin
+        const isAdmin = await adminService.isAdmin(result.user.id);
+        
+        if (isAdmin) {
+          // Navigate to admin dashboard
+          router.replace('/admin');
+        } else {
+          // Navigate to main app
+          router.replace('/(tabs)');
+        }
       }
     } catch (error: any) {
-      setErrorMessage(error.message || 'An unexpected error occurred');
-      setIsSigningIn(false); // Clear signing in flag on error
+      Alert.alert('Error', error.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleAdminChoiceToDashboard = async (rememberChoice?: boolean) => {
-    if (adminUser && rememberChoice) {
-      await adminPreferencesService.saveSignInChoice(adminUser.id, 'dashboard', true);
-    }
-    
-    // Set admin status in context now that user has made their choice
-    await checkAdminStatus(adminUser?.id);
-    
-    adminModalRef.current = { shouldShow: false, userData: null };
-    setShowAdminChoice(false);
-    setAdminUser(null);
-    setAdminFlowCompleted(false);
-    setIsSigningIn(false); // Clear signing in flag
-    clearSignInError(); // Clear error flag
-    router.replace('/admin');
-  };
-
-  const handleAdminChoiceToApp = async (rememberChoice?: boolean) => {
-    if (adminUser && rememberChoice) {
-      await adminPreferencesService.saveSignInChoice(adminUser.id, 'app', true);
-    }
-    
-    // Set admin status in context now that user has made their choice
-    await checkAdminStatus(adminUser?.id);
-    
-    adminModalRef.current = { shouldShow: false, userData: null };
-    setShowAdminChoice(false);
-    setAdminUser(null);
-    setAdminFlowCompleted(false);
-    setIsSigningIn(false); // Clear signing in flag
-    clearSignInError(); // Clear error flag
-    router.replace('/(tabs)');
   };
 
   const handleReferralSuccess = () => {
@@ -251,9 +104,7 @@ export default function LoginScreen() {
             setPassword('');
             setFullName('');
             setIsSignUp(false);
-                            setNewUserId(null);
-            setIsSigningIn(false); // Clear signing in flag
-            clearSignInError(); // Clear error flag
+            setNewUserId(null);
           }
         }
       ]
@@ -262,8 +113,6 @@ export default function LoginScreen() {
 
   const handleReferralSkip = () => {
     setShowReferralModal(false);
-    setIsSigningIn(false); // Clear signing in flag
-    clearSignInError(); // Clear error flag
     handleReferralSuccess();
   };
 
@@ -286,44 +135,32 @@ export default function LoginScreen() {
       }
       
       setLoading(true);
-      setErrorMessage(null); // Clear any previous errors
-      setIsSigningIn(true); // Set signing in flag for sign up too
-      
       try {
         const result = await signUp(email.trim(), password, fullName.trim());
         
         if (result.error) {
-          // Provide user-friendly error messages for sign up
-          let errorMessage = 'An error occurred during sign up. Please try again.';
-          
-          if (result.error.message) {
-            if (result.error.message.includes('User already registered')) {
-              errorMessage = 'An account with this email already exists. Please sign in instead.';
-            } else if (result.error.message.includes('Password should be at least')) {
-              errorMessage = 'Password must be at least 6 characters long.';
-            } else if (result.error.message.includes('Invalid email')) {
-              errorMessage = 'Please enter a valid email address.';
-            } else if (result.error.message.includes('Database error')) {
-              errorMessage = 'Database error saving new user. Please try again or contact support if the issue persists.';
-            } else {
-              // Use the original error message for other cases
-              errorMessage = result.error.message;
-            }
-          }
-          
-          setErrorMessage(errorMessage);
-          setIsSigningIn(false); // Clear signing in flag on error
+          Alert.alert('Error', result.error.message);
         } else if (result.user) {
           console.log('🔍 Login: User signed up:', result.user.id);
           
-          // Store the new user ID and show referral modal
-          setNewUserId(result.user.id);
-          setShowReferralModal(true);
-          // Don't clear isSigningIn here - let the referral flow handle it
+          // Show email verification alert first
+          Alert.alert(
+            'Account Created Successfully! 🎉',
+            'We\'ve sent a verification link to your email. Please check your inbox and click the verification link to activate your account.\n\nIf you don\'t see the email, check your spam folder.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  // After user acknowledges email verification, show referral modal
+                  setNewUserId(result.user!.id);
+                  setShowReferralModal(true);
+                }
+              }
+            ]
+          );
         }
       } catch (error: any) {
-        setErrorMessage(error.message || 'An unexpected error occurred');
-        setIsSigningIn(false); // Clear signing in flag on error
+        Alert.alert('Error', error.message || 'An unexpected error occurred');
       } finally {
         setLoading(false);
       }
@@ -333,64 +170,62 @@ export default function LoginScreen() {
     }
   };
 
-  const handleForgotPassword = async () => {
+  const handleResendVerificationEmail = async () => {
     if (!email.trim()) {
-      setErrorMessage('Please enter your email address first');
+      Alert.alert('Error', 'Please enter your email address first');
       return;
     }
 
     setLoading(true);
-    setErrorMessage('');
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: 'betame://auth/reset-password',
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: {
+          emailRedirectTo: 'betame://auth/verify-email',
+        },
       });
 
       if (error) {
-        setErrorMessage(error.message);
+        Alert.alert('Error', error.message);
       } else {
         Alert.alert(
-          'Reset Link Sent',
-          'We\'ve sent a password reset link to your email. Please check your email and follow the instructions to reset your password.',
+          'Verification Email Resent',
+          'We\'ve sent a new verification link to your email. Please check your inbox and spam folder.',
           [{ text: 'OK' }]
         );
       }
     } catch (error: any) {
-      setErrorMessage(error.message || 'An unexpected error occurred');
+      Alert.alert('Error', error.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
-
-
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Video Background */}
       <View style={styles.videoContainer}>
         {!videoError ? (
-          <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-            <Video
-              ref={videoRef}
-              source={videos[currentVideoIndex]}
-              style={styles.video}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay={true}
-              isLooping={false}
-              isMuted={true}
-              onError={handleVideoError}
-              onLoad={handleVideoLoad}
-              onPlaybackStatusUpdate={(status) => {
-                if (status.isLoaded && status.didJustFinish) {
-                  handleVideoEnd();
-                }
-              }}
-              useNativeControls={false}
-              posterStyle={{ resizeMode: 'cover' }}
-              key={`video-${currentVideoIndex}`} // Force re-render when video changes
-            />
-          </Animated.View>
+          <Video
+            ref={videoRef}
+            source={videos[currentVideoIndex]}
+            style={styles.video}
+            resizeMode={ResizeMode.COVER}
+            shouldPlay
+            isLooping={false}
+            isMuted
+            onError={handleVideoError}
+            onLoad={handleVideoLoad}
+            onPlaybackStatusUpdate={(status) => {
+              if (status.isLoaded && status.didJustFinish) {
+                handleVideoEnd();
+              }
+            }}
+            useNativeControls={false}
+            posterStyle={{ resizeMode: 'cover' }}
+          />
         ) : (
           <View style={styles.fallbackBackground} />
         )}
@@ -451,18 +286,11 @@ export default function LoginScreen() {
               <View style={styles.form}>
                 {isSignUp && (
                   <TextInput
-                   style={[
-                     styles.input,
-                     errorMessage && styles.inputError
-                   ]}
+                   style={styles.input}
                    placeholder="Full Name"
                    placeholderTextColor="#9CA3AF"
                    value={fullName}
-                   onChangeText={(text) => {
-                     setFullName(text);
-                     setErrorMessage(null); // Clear error when user starts typing
-                     clearSignInError(); // Clear error flag when user starts typing
-                   }}
+                   onChangeText={setFullName}
                    autoCapitalize="words"
                    textContentType="name"
                    returnKeyType="next"
@@ -470,18 +298,11 @@ export default function LoginScreen() {
                 )}
                 
                 <TextInput
-                   style={[
-                     styles.input,
-                     errorMessage && styles.inputError
-                   ]}
+                   style={styles.input}
                    placeholder="email@domain.com"
                    placeholderTextColor="#9CA3AF"
                    value={email}
-                   onChangeText={(text) => {
-                     setEmail(text);
-                     setErrorMessage(null); // Clear error when user starts typing
-                     clearSignInError(); // Clear error flag when user starts typing
-                   }}
+                   onChangeText={setEmail}
                    keyboardType="email-address"
                    autoCapitalize="none"
                    autoCorrect={false}
@@ -489,43 +310,33 @@ export default function LoginScreen() {
                    returnKeyType="next"
                  />
                 
-                <TextInput
-                   style={[
-                     styles.input,
-                     errorMessage && styles.inputError
-                   ]}
+                                 <TextInput
+                   style={styles.input}
                    placeholder="Password"
                    placeholderTextColor="#9CA3AF"
                    value={password}
-                   onChangeText={(text) => {
-                     setPassword(text);
-                     setErrorMessage(null); // Clear error when user starts typing
-                     clearSignInError(); // Clear error flag when user starts typing
-                   }}
+                   onChangeText={setPassword}
                    secureTextEntry
                    textContentType={isSignUp ? "newPassword" : "password"}
                    returnKeyType="done"
                    onSubmitEditing={handleEmailAuth}
                  />
 
-                {/* Toggle Sign Up/Sign In */}
-                 {/* Error Message Display */}
-                 {errorMessage && (
-                   <View style={styles.errorContainer}>
-                     <Text style={styles.errorText}>{errorMessage}</Text>
-                   </View>
-                 )}
+                {/* Email Verification Note for Sign Up */}
+                {isSignUp && (
+                  <View style={styles.verificationNoteContainer}>
+                    <Text style={styles.verificationNoteText}>
+                      📧 We'll send a verification link to your email
+                    </Text>
+                  </View>
+                )}
 
+                {/* Toggle Sign Up/Sign In */}
                  <View style={styles.toggleContainer}>
                    <Text style={styles.toggleText}>
                      {isSignUp ? 'Already have an account?' : "Don't have an account?"}
                    </Text>
-                   <TouchableOpacity onPress={() => {
-                     setIsSignUp(!isSignUp);
-                     setErrorMessage(null); // Clear error when switching modes
-                     setIsSigningIn(false); // Clear signing in flag when switching modes
-                     clearSignInError(); // Clear error flag when switching modes
-                   }}>
+                   <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
                      <Text style={styles.toggleLink}>
                        {isSignUp ? ' Sign In' : ' Sign Up'}
                      </Text>
@@ -546,39 +357,25 @@ export default function LoginScreen() {
                    )}
                  </TouchableOpacity>
 
-                 {!isSignUp && (
+                 {isSignUp && (
                    <TouchableOpacity
-                     style={styles.forgotPasswordButton}
-                     onPress={handleForgotPassword}
+                     style={styles.resendVerificationButton}
+                     onPress={handleResendVerificationEmail}
                      disabled={loading}
                    >
-                     <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                     <Text style={styles.resendVerificationText}>Resend Verification Email</Text>
                    </TouchableOpacity>
                  )}
-                 
-
               </View>
 
               {/* Terms */}
               <View style={styles.termsContainer}>
                 <Text style={styles.termsText}>
-                  By clicking continue, you agree to our
+                  By clicking continue, you agree to our{' '}
+                  <Text style={styles.termsLink}>Terms of Service</Text>
+                  {' '}and{' '}
+                  <Text style={styles.termsLink}>Privacy Policy</Text>
                 </Text>
-                <View style={styles.termsLinksContainer}>
-                  <Text 
-                    style={styles.termsLinkBold}
-                    onPress={() => router.push('/terms-of-service')}
-                  >
-                    Terms of Service
-                  </Text>
-                  <Text style={styles.termsText}> and </Text>
-                  <Text 
-                    style={styles.termsLinkBold}
-                    onPress={() => router.push('/privacy-policy')}
-                  >
-                    Privacy Policy
-                  </Text>
-                </View>
               </View>
             </View>
 
@@ -595,16 +392,6 @@ export default function LoginScreen() {
           onClose={handleReferralSkip}
           onSuccess={handleReferralSuccess}
           userId={newUserId}
-        />
-      )}
-
-      {/* Admin Sign In Choice Modal */}
-      {(showAdminChoice || adminModalRef.current.shouldShow) && (
-        <AdminSignInChoiceModal
-          visible={showAdminChoice || adminModalRef.current.shouldShow}
-          onContinueToApp={handleAdminChoiceToApp}
-          onGoToDashboard={handleAdminChoiceToDashboard}
-          userEmail={adminUser?.email || adminModalRef.current.userData?.email}
         />
       )}
     </SafeAreaView>
@@ -635,7 +422,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   fallbackBackground: {
     flex: 1,
@@ -698,12 +485,12 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
     fontWeight: '400',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
   },
@@ -755,29 +542,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
   },
-  errorContainer: {
-    backgroundColor: 'rgba(255, 59, 48, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 59, 48, 0.3)',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    fontWeight: '500',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
-  },
-  inputError: {
-    borderColor: 'rgba(255, 59, 48, 0.5)',
-    borderWidth: 2,
-  },
 
   bottomSection: {
     alignItems: 'center',
@@ -789,10 +553,10 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 15,
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   toggleLink: {
     fontSize: 15,
@@ -800,7 +564,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
+    textShadowRadius: 2,
   },
   termsContainer: {
     alignItems: 'center',
@@ -809,38 +573,21 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
     lineHeight: 16,
     paddingHorizontal: 32,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
+    textShadowRadius: 2,
   },
   termsLink: {
     color: '#FFFFFF',
-    fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
+    textShadowRadius: 2,
   },
-  termsLinkBold: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 13,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
-    letterSpacing: 0.5,
-  },
-  termsLinksContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    marginTop: 4,
-  },
-
   skipContainer: {
     alignItems: 'flex-end',
     paddingHorizontal: 24,
@@ -858,13 +605,38 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  forgotPasswordButton: {
+  verificationNoteContainer: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  verificationNoteText: {
+    color: '#3B82F6',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+  },
+  resendVerificationButton: {
     alignItems: 'center',
     marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.4)',
   },
-  forgotPasswordText: {
+  resendVerificationText: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#3B82F6',
     fontWeight: '500',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },

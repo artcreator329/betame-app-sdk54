@@ -810,6 +810,40 @@ export class NotificationService {
     await this.addNotification(notification, participantId);
   }
 
+  // Helper method to add location request notification
+  async addLocationRequestNotification({
+    serviceProviderId,
+    buyerName,
+    buyerImage,
+    serviceTitle,
+    chatId,
+    offerId,
+  }: {
+    serviceProviderId: string;
+    buyerName: string;
+    buyerImage: string;
+    serviceTitle: string;
+    chatId: string;
+    offerId: string;
+  }): Promise<void> {
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'system' as const,
+      title: 'Location Request Required',
+      message: `${buyerName} is waiting for your location for "${serviceTitle}"`,
+      data: {
+        chatId,
+        participantId: serviceProviderId,
+        participantName: buyerName,
+        participantImage: buyerImage,
+        offerId,
+        serviceTitle,
+        actionType: 'location_request',
+      },
+    };
+    
+    await this.addNotification(notification, serviceProviderId);
+  }
+
   // Helper method to add order notification
   async addOrderNotification({
     serviceProviderId,

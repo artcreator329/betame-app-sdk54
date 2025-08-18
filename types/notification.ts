@@ -29,6 +29,8 @@ export interface Notification {
     category?: string;
     // Check-in notification fields
     action?: string;
+    // Location request notification fields
+    actionType?: string;
   };
 }
 

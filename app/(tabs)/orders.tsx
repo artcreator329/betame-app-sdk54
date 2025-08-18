@@ -17,10 +17,12 @@ import { useColors } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { EscrowService, JobStatus } from '@/lib/escrow-service';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 
 export default function OrdersScreen() {
   const colors = useColors();
   const { user } = useAuth();
+  const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -330,6 +332,46 @@ export default function OrdersScreen() {
     }
   };
 
+  const handleContactBuyer = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
+    // Get the buyer ID from the order
+    const buyerId = order.buyer_id;
+    
+    if (!buyerId) {
+      Alert.alert('Error', 'Buyer information not available');
+      return;
+    }
+
+    // Navigate to chat with the buyer
+    router.push({
+      pathname: '/chat/[participantId]',
+      params: { 
+        participantId: buyerId,
+        chatId: '',
+        prefilledMessage: `Hi! I'm contacting you about our order: ${(order as any).escrow_transactions?.service_title || 'Service Order'}`
+      }
+    });
+  };
+
+  const handleContactServiceProvider = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
+    // Get the service provider ID from the order
+    const serviceProviderId = order.service_provider_id;
+    
+    if (!serviceProviderId) {
+      Alert.alert('Error', 'Service provider information not available');
+      return;
+    }
+
+    // Navigate to chat with the service provider
+    router.push({
+      pathname: '/chat/[participantId]',
+      params: { 
+        participantId: serviceProviderId,
+        chatId: '',
+        prefilledMessage: `Hi! I'm contacting you about our order: ${(order as any).escrow_transactions?.service_title || 'Service Order'}`
+      }
+    });
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'payment_received': return '#FFA500';
@@ -447,55 +489,100 @@ export default function OrdersScreen() {
       switch (order.current_status) {
         case 'acknowledgment_pending':
           return (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#FF6B35' }]}
-              onPress={() => {
-                setSelectedOrder(order);
-                setShowAcknowledgmentModal(true);
-              }}
-            >
-              <Text style={styles.actionButtonText}>Acceptance Acknowledged</Text>
-            </TouchableOpacity>
+            <View style={styles.actionButtonContainer}>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#FF6B35' }]}
+                onPress={() => {
+                  setSelectedOrder(order);
+                  setShowAcknowledgmentModal(true);
+                }}
+              >
+                <Text style={styles.actionButtonText}>Acceptance Acknowledged</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactBuyer(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+              </TouchableOpacity>
+            </View>
           );
         
         case 'payment_received':
           return (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#007AFF' }]}
-              onPress={() => handleConfirmOrder(order)}
-            >
-              <Text style={styles.actionButtonText}>Confirm Order</Text>
-            </TouchableOpacity>
+            <View style={styles.actionButtonContainer}>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleConfirmOrder(order)}
+              >
+                <Text style={styles.actionButtonText}>Confirm Order</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#28a745' }]}
+                onPress={() => handleContactBuyer(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+              </TouchableOpacity>
+            </View>
           );
         
         case 'work_in_progress':
           return (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#32CD32' }]}
-              onPress={() => {
-                setSelectedOrder(order);
-                setShowCompletionModal(true);
-              }}
-            >
-              <Text style={styles.actionButtonText}>Mark Complete</Text>
-            </TouchableOpacity>
+            <View style={styles.actionButtonContainer}>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#32CD32' }]}
+                onPress={() => {
+                  setSelectedOrder(order);
+                  setShowCompletionModal(true);
+                }}
+              >
+                <Text style={styles.actionButtonText}>Mark Complete</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactBuyer(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+              </TouchableOpacity>
+            </View>
           );
         
         case 'work_completed':
         case 'buyer_reviewing':
           return (
-            <View style={[styles.actionButton, { backgroundColor: '#9932CC' }]}>
-              <Text style={styles.actionButtonText}>Awaiting Review</Text>
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.actionButton, { backgroundColor: '#9932CC' }]}>
+                <Text style={styles.actionButtonText}>Awaiting Review</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactBuyer(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+              </TouchableOpacity>
             </View>
           );
         
         case 'completed':
           return (
-            <View style={[styles.actionButton, { backgroundColor: '#228B22' }]}>
-              <Text style={styles.actionButtonText}>
-                Earned: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
-                         `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
-              </Text>
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.actionButton, { backgroundColor: '#228B22' }]}>
+                <Text style={styles.actionButtonText}>
+                  Earned: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
+                           `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactBuyer(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+              </TouchableOpacity>
             </View>
           );
         
@@ -507,46 +594,91 @@ export default function OrdersScreen() {
       switch (order.current_status) {
         case 'acknowledgment_pending':
           return (
-            <View style={[styles.actionButton, { backgroundColor: '#FF6B35' }]}>
-              <Text style={styles.actionButtonText}>Waiting for seller acknowledgment</Text>
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.actionButton, { backgroundColor: '#FF6B35' }]}>
+                <Text style={styles.actionButtonText}>Waiting for seller acknowledgment</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactServiceProvider(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Provider</Text>
+              </TouchableOpacity>
             </View>
           );
         
         case 'payment_received':
           return (
-            <View style={[styles.actionButton, { backgroundColor: '#FFA500' }]}>
-              <Text style={styles.actionButtonText}>Waiting for service provider to confirm</Text>
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.actionButton, { backgroundColor: '#FFA500' }]}>
+                <Text style={styles.actionButtonText}>Waiting for service provider to confirm</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactServiceProvider(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Provider</Text>
+              </TouchableOpacity>
             </View>
           );
         
         case 'work_in_progress':
           return (
-            <View style={[styles.actionButton, { backgroundColor: '#007AFF' }]}>
-              <Text style={styles.actionButtonText}>Service provider is working</Text>
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.actionButton, { backgroundColor: '#007AFF' }]}>
+                <Text style={styles.actionButtonText}>Service provider is working</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#28a745' }]}
+                onPress={() => handleContactServiceProvider(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Provider</Text>
+              </TouchableOpacity>
             </View>
           );
         
         case 'work_completed':
         case 'buyer_reviewing':
           return (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#32CD32' }]}
-              onPress={() => {
-                setSelectedOrder(order);
-                setShowReviewModal(true);
-              }}
-            >
-              <Text style={styles.actionButtonText}>Review & Release Payment</Text>
-            </TouchableOpacity>
+            <View style={styles.actionButtonContainer}>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#32CD32' }]}
+                onPress={() => {
+                  setSelectedOrder(order);
+                  setShowReviewModal(true);
+                }}
+              >
+                <Text style={styles.actionButtonText}>Review & Release Payment</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactServiceProvider(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Provider</Text>
+              </TouchableOpacity>
+            </View>
           );
         
         case 'completed':
           return (
-            <View style={[styles.actionButton, { backgroundColor: '#228B22' }]}>
-              <Text style={styles.actionButtonText}>
-                Paid: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
-                       `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
-              </Text>
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.actionButton, { backgroundColor: '#228B22' }]}>
+                <Text style={styles.actionButtonText}>
+                  Paid: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
+                         `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactServiceProvider(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Provider</Text>
+              </TouchableOpacity>
             </View>
           );
         
@@ -1457,6 +1589,7 @@ const styles = StyleSheet.create({
   ordersList: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingBottom: 100, // Add bottom padding to prevent cropping
   },
   emptyState: {
     alignItems: 'center',
@@ -1494,6 +1627,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
+    marginHorizontal: 2, // Add small horizontal margin for better visual separation
   },
   orderHeader: {
     flexDirection: 'row',
@@ -1574,11 +1708,12 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   orderDetails: {
-    marginBottom: 4,
+    marginBottom: 8,
+    marginTop: 8,
   },
   detailsSection: {
-    paddingBottom: 8,
-    marginBottom: 8,
+    paddingBottom: 12,
+    marginBottom: 12,
   },
   detailsSectionTitle: {
     fontSize: 14,
@@ -1589,8 +1724,8 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 3,
-    gap: 8,
+    marginBottom: 6,
+    gap: 10,
   },
   detailText: {
     fontSize: 13,
@@ -1603,12 +1738,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
     marginTop: 2,
+    minHeight: 44, // Ensure minimum touch target size
+    flex: 1, // Make it take equal space with contact button
   },
   actionButtonText: {
     color: '#fff',
@@ -1788,8 +1926,28 @@ const styles = StyleSheet.create({
   collapsedDescription: {
     fontSize: 13,
     marginTop: 4,
-    opacity: 0.7,
-    lineHeight: 16,
+  },
+  actionButtonContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    alignItems: 'stretch', // Ensure buttons have same height
+  },
+  contactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flex: 1,
+    minHeight: 44, // Ensure minimum touch target size
+  },
+  contactButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+    color: '#fff',
   },
   expandIndicator: {
     marginTop: 4,

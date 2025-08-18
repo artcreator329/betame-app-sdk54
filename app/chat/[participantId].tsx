@@ -37,6 +37,7 @@ import { MalaysianPaymentModal } from '../../components/MalaysianPaymentModal';
 import { JobProgressMonitor } from '../../components/JobProgressMonitor';
 import { QuotedMessage } from '../../components/QuotedMessage';
 import { LocationShareModal } from '../../components/LocationShareModal';
+import { LocationRequestModal } from '../../components/LocationRequestModal';
 import { notificationService } from '@/lib/notification-service';
 
 interface ModeratedMessage extends ChatMessage {
@@ -107,6 +108,12 @@ export default function ChatScreen() {
     serviceTitle: string;
     buyerName: string;
   } | null>(null);
+  const [locationRequestModalVisible, setLocationRequestModalVisible] = useState(false);
+  const [locationRequestData, setLocationRequestData] = useState<{
+    serviceTitle: string;
+    buyerName: string;
+    offerId: string;
+  } | null>(null);
   const [showJobProgress, setShowJobProgress] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [structuredInquiryDraft, setStructuredInquiryDraft] = useState<any>(null);
@@ -138,6 +145,43 @@ export default function ChatScreen() {
   const safeChatId = chatId || undefined;
   const { markChatAsRead } = useUserChats(safeUserId, safeChatId);
   
+  // Check for pending location requests
+  const checkPendingLocationRequests = async () => {
+    if (!user?.id || !chatId) return;
+    
+    try {
+      // Check if there are any accepted offers in this chat where the service provider hasn't shared location yet
+      const { data: acceptedOffers } = await supabase
+        .from('service_offers')
+        .select('id, service_title, buyer_id, seller_id, status')
+        .eq('status', 'in_progress')
+        .or(`and(seller_id.eq.${user.id},buyer_id.eq.${participantId}),and(seller_id.eq.${participantId},buyer_id.eq.${user.id})`);
+      
+      if (acceptedOffers && acceptedOffers.length > 0) {
+        // Check if location has been shared for any of these offers
+        const { data: locationMessages } = await supabase
+          .from('chat_messages')
+          .select('id, message_type, offer_id')
+          .eq('chat_id', chatId)
+          .eq('message_type', 'location')
+          .in('offer_id', acceptedOffers.map(offer => offer.id));
+        
+        // If there are accepted offers but no location messages, show the modal
+        if (locationMessages && locationMessages.length === 0) {
+          const pendingOffer = acceptedOffers[0]; // Use the first pending offer
+          setLocationRequestData({
+            serviceTitle: pendingOffer.service_title || 'Service',
+            buyerName: participantInfo?.name || 'the buyer',
+            offerId: pendingOffer.id,
+          });
+          setLocationRequestModalVisible(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking pending location requests:', error);
+    }
+  };
+
   // Initialize chat
   useEffect(() => {
     const initializeChat = async () => {
@@ -236,7 +280,15 @@ export default function ChatScreen() {
 
     initializeChat();
     fetchUserServices();
+    fetchUserServices();
   }, [user?.id, participantId, supabaseChatService, router, routeChatId]);
+  
+  // Check for pending location requests after chat is loaded
+  useEffect(() => {
+    if (chatId && user?.id && !chatLoading) {
+      checkPendingLocationRequests();
+    }
+  }, [chatId, user?.id, chatLoading]);
   
   // Handle pre-selected service variant from service detail page
   useEffect(() => {
@@ -782,13 +834,36 @@ export default function ChatScreen() {
           currency: selectedOfferForPayment.serviceData.currency,
           isAcceptedByMe: false,
         });
+
+        // Add location request notification to the service provider
+        await notificationService.addLocationRequestNotification({
+          serviceProviderId: selectedOfferForPayment.sellerId,
+          buyerName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
+          buyerImage: userProfile?.avatar_url || '',
+          serviceTitle: selectedOfferForPayment.serviceData.title,
+          chatId: chatId || '',
+          offerId: selectedOfferForPayment.offer.id,
+        });
+
+        // Show location request modal for the service provider (seller)
+        // Only show if the current user is the service provider
+        if (user?.id === selectedOfferForPayment.sellerId) {
+          setLocationRequestData({
+            serviceTitle: selectedOfferForPayment.serviceData.title,
+            buyerName: participantInfo?.name || 'the buyer',
+            offerId: selectedOfferForPayment.offer.id,
+          });
+          setLocationRequestModalVisible(true);
+        }
       }
       
       setPaymentModalVisible(false);
       setSelectedOfferForPayment(null);
       
-      // Navigate to orders to track the job
-      router.push('/(tabs)/orders');
+      // Navigate to orders to track the job (only for buyer)
+      if (user?.id !== selectedOfferForPayment?.sellerId) {
+        router.push('/(tabs)/orders');
+      }
     } catch (error) {
       console.error('Error handling payment success:', error);
       Alert.alert('Error', 'Payment was successful but there was an issue updating the offer status.');
@@ -896,6 +971,29 @@ export default function ChatScreen() {
   const handleLocationShareCancel = () => {
     setLocationShareModalVisible(false);
     setLocationShareData(null);
+  };
+
+  const handleLocationRequestSendLocation = () => {
+    if (locationRequestData) {
+      // Trigger the location share modal
+      setLocationShareData({
+        offerId: locationRequestData.offerId,
+        serviceTitle: locationRequestData.serviceTitle,
+        buyerName: locationRequestData.buyerName,
+      });
+      setLocationShareModalVisible(true);
+    }
+  };
+
+  const handleLocationRequestSendMessage = () => {
+    // Focus on the message input to encourage sending a message
+    // The user can then type a message about location or coordination
+    setMessage('Hi! I\'m ready to share my location for our meeting. ');
+  };
+
+  const handleLocationRequestClose = () => {
+    setLocationRequestModalVisible(false);
+    setLocationRequestData(null);
   };
 
   // Effect to populate edit form when editing offer is set
@@ -1978,6 +2076,16 @@ export default function ChatScreen() {
           onLocationShare={handleLocationShare}
           serviceTitle={locationShareData?.serviceTitle || ''}
           buyerName={locationShareData?.buyerName || ''}
+        />
+
+        {/* Location Request Modal */}
+        <LocationRequestModal
+          visible={locationRequestModalVisible}
+          onClose={handleLocationRequestClose}
+          onSendLocation={handleLocationRequestSendLocation}
+          onSendMessage={handleLocationRequestSendMessage}
+          serviceTitle={locationRequestData?.serviceTitle || ''}
+          buyerName={locationRequestData?.buyerName || ''}
         />
 
         {/* Service Variant Selection Modal for Structured Inquiry */}
