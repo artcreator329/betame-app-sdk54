@@ -37,16 +37,6 @@ interface Feature {
 // Move availableFeatures inside component to access colors
 const getAvailableFeatures = (colors: any): Feature[] => [
   {
-    id: 'feature_2x',
-    type: 'feature_2x',
-    title: 'Feature (2x visibility)',
-    description: 'Feature your listing in the homepage & dedicated section! Valid for 2 weeks when people search related/relevant services.',
-    cost: 100,
-    icon: <Eye size={20} color="white" />,
-    color: colors.status.success,
-    validity: '2 weeks'
-  },
-  {
     id: 'boost_instant',
     type: 'boost_instant',
     title: 'Boost (instant visibility)',
@@ -64,6 +54,16 @@ const getAvailableFeatures = (colors: any): Feature[] => [
     cost: 50,
     icon: <Target size={20} color="white" />,
     color: colors.primary.main,
+    validity: '2 weeks'
+  },
+  {
+    id: 'feature_2x',
+    type: 'feature_2x',
+    title: 'Feature (2x visibility)',
+    description: 'Feature your listing in the homepage & dedicated section! Valid for 2 weeks when people search related/relevant services.',
+    cost: 100,
+    icon: <Eye size={20} color="white" />,
+    color: colors.status.success,
     validity: '2 weeks'
   },
   {
@@ -416,23 +416,9 @@ export default function WalletScreen() {
           <Text style={[styles.conversionTitle, { color: colors.text.primary }]}>Convert your diamonds to BetaCoins!</Text>
           <Text style={[styles.conversionSubtitle, { color: colors.text.secondary }]}>Convert 10 premium diamonds into 1 BetaCoin</Text>
           
-          {/* Current Diamond Count Display */}
-          <View style={[styles.currentDiamondDisplay, { backgroundColor: colors.background.secondary }]}>
-            <View style={styles.diamondCountContainer}>
-              <Text style={styles.diamondEmoji}>💎</Text>
-              <Text style={[styles.currentDiamondText, { color: colors.text.primary }]}>
-                You currently have{' '}
-                <Text style={[styles.diamondCount, { color: colors.primary.main }]}>
-                  {walletData?.betame_diamonds || 0} diamonds
-                </Text>
-                {' '}available for conversion
-              </Text>
-            </View>
-          </View>
-          
           <View style={[styles.conversionCard, { backgroundColor: colors.background.tertiary }]}>
             <View style={styles.conversionRow}>
-              <View style={[styles.conversionInput, { backgroundColor: colors.background.primary, borderColor: colors.border.medium }]}>
+              <View style={[styles.conversionInput, { backgroundColor: colors.background.primary, borderColor: colors.border.main }]}>
                 <View style={styles.inputContainer}>
                   <TouchableOpacity 
                     style={styles.incrementButton}
@@ -466,7 +452,21 @@ export default function WalletScreen() {
               </View>
               <View style={[styles.conversionOutput, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
                 <Text style={[styles.outputValue, { color: colors.text.primary }]}>{Math.floor(parseInt(convertAmount || '0') / 10)}</Text>
-                <Text style={styles.outputLabel}>B</Text>
+                <Text style={styles.outputLabel}>💰</Text>
+              </View>
+            </View>
+            
+            {/* Current Diamond Count Display - moved above Convert button */}
+            <View style={[styles.currentDiamondDisplaySmall, { backgroundColor: colors.background.secondary }]}>
+              <View style={styles.diamondCountContainerSmall}>
+                <Text style={styles.diamondEmojiSmall}>💎</Text>
+                <Text style={[styles.currentDiamondTextSmall, { color: colors.text.primary }]}>
+                  You currently have{' '}
+                  <Text style={[styles.diamondCountSmall, { color: colors.primary.main }]}>
+                    {walletData?.betame_diamonds || 0} diamonds
+                  </Text>
+                  {' '}available for conversion
+                </Text>
               </View>
             </View>
             
@@ -577,9 +577,9 @@ export default function WalletScreen() {
           
           {availableFeatures.map((feature, index) => {
             const bannerImages = [
-              require('../assets/images/boost-banner/1-Feature.png'),
               require('../assets/images/boost-banner/2-Boost.png'),
               require('../assets/images/boost-banner/3-Showcase.png'),
+              require('../assets/images/boost-banner/1-Feature.png'),
               require('../assets/images/boost-banner/4-Boost Feature.png'),
             ];
             
@@ -795,9 +795,6 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     resizeMode: 'contain',
-  },
-  diamondEmoji: {
-    fontSize: 16,
   },
   creditIcon: {
     width: 32,
@@ -1562,5 +1559,39 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  // Small diamond display styles (moved above Convert button)
+  currentDiamondDisplaySmall: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  diamondCountContainerSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  diamondEmojiSmall: {
+    fontSize: 16,
+  },
+  currentDiamondTextSmall: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+    flex: 1,
+  },
+  diamondCountSmall: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
