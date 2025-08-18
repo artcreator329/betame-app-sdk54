@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { X, CreditCard, Wallet, Clock, MapPin, FileText, Star, Shield } from 'lucide-react-native';
-import { Colors } from '../constants/Colors';
+import { useColors } from '../contexts/ThemeContext';
 import { ServiceOffer, ServiceOfferData } from '../types/chat';
 import { PaymentService } from '../lib/payment-service';
 import { WalletService } from '../lib/wallet-service';
@@ -45,6 +45,7 @@ export function PaymentModal({
   onClose,
   onPaymentSuccess,
 }: PaymentModalProps) {
+  const colors = useColors();
   const [isProcessing, setIsProcessing] = useState(false);
   const [walletData, setWalletData] = useState<any>(null);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
@@ -175,7 +176,7 @@ export function PaymentModal({
       <Modal visible={visible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <ActivityIndicator size="large" color={Colors.primary.main} />
+            <ActivityIndicator size="large" color={colors.primary.main} />
             <Text style={styles.loadingText}>Loading payment details...</Text>
           </View>
         </View>
@@ -193,7 +194,7 @@ export function PaymentModal({
           <View style={styles.header}>
             <Text style={styles.title}>Payment Confirmation</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <X size={24} color={Colors.text.secondary} />
+              <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
 
@@ -208,7 +209,7 @@ export function PaymentModal({
                     <Image source={{ uri: serviceData.image_url }} style={styles.serviceImage} />
                   ) : (
                     <View style={styles.placeholderImage}>
-                      <FileText size={24} color={Colors.text.secondary} />
+                      <FileText size={24} color={colors.text.secondary} />
                     </View>
                   )}
                   <View style={styles.serviceHeaderText}>
@@ -238,13 +239,13 @@ export function PaymentModal({
                 {/* Timeline and Delivery */}
                 <View style={styles.timelineContainer}>
                   <View style={styles.timelineItem}>
-                    <Clock size={16} color={Colors.primary.main} />
+                    <Clock size={16} color={colors.primary.main} />
                     <Text style={styles.timelineText}>
                       Delivery: {offer.customDeliveryTime || 7} days
                     </Text>
                   </View>
                   <View style={styles.timelineItem}>
-                    <Shield size={16} color={Colors.status.success} />
+                    <Shield size={16} color={'#10B981'} />
                     <Text style={styles.timelineText}>Protected by BetaMe Guarantee</Text>
                   </View>
                 </View>
@@ -385,7 +386,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: '#000000',
   },
   closeButton: {
     padding: 4,
@@ -400,7 +401,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
     marginBottom: 10,
   },
   serviceInfo: {
@@ -411,18 +412,18 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
     marginBottom: 5,
   },
   serviceDescription: {
     fontSize: 14,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     marginBottom: 5,
     fontStyle: 'italic',
   },
   deliveryTime: {
     fontSize: 12,
-    color: Colors.text.secondary,
+    color: '#6B7280',
   },
   paymentDetails: {
     backgroundColor: Colors.background.secondary,
@@ -437,12 +438,12 @@ const styles = StyleSheet.create({
   },
   paymentLabel: {
     fontSize: 14,
-    color: Colors.text.secondary,
+    color: '#6B7280',
   },
   paymentValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.text.primary,
+    color: '#000000',
   },
   totalRow: {
     borderTopWidth: 1,
@@ -454,12 +455,12 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
   },
   totalValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.primary.main,
+    color: '#007AFF',
   },
   walletInfo: {
     backgroundColor: Colors.background.secondary,
@@ -474,12 +475,12 @@ const styles = StyleSheet.create({
   walletLabel: {
     flex: 1,
     fontSize: 14,
-    color: Colors.text.secondary,
+    color: '#6B7280',
   },
   walletValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
   },
   insufficientFunds: {
     color: Colors.status.error,
@@ -501,7 +502,7 @@ const styles = StyleSheet.create({
   paymentMethodText: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.text.primary,
+    color: '#000000',
   },
   footer: {
     flexDirection: 'row',
@@ -523,13 +524,13 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.secondary,
+    color: '#6B7280',
   },
   payButton: {
     flex: 2,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: Colors.primary.main,
+    backgroundColor: '#007AFF',
     alignItems: 'center',
   },
   payButtonDisabled: {
@@ -543,7 +544,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     marginTop: 10,
     textAlign: 'center',
   },
@@ -573,7 +574,7 @@ const styles = StyleSheet.create({
   },
   categoryBadge: {
     fontSize: 12,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     marginTop: 4,
   },
   descriptionContainer: {
@@ -582,7 +583,7 @@ const styles = StyleSheet.create({
   descriptionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.text.secondary,
+    color: '#6B7280',
     marginBottom: 4,
   },
   customContainer: {
@@ -594,12 +595,12 @@ const styles = StyleSheet.create({
   customLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.primary.main,
+    color: '#007AFF',
     marginBottom: 4,
   },
   customDescription: {
     fontSize: 14,
-    color: Colors.text.primary,
+    color: '#000000',
     fontStyle: 'italic',
   },
   timelineContainer: {
@@ -612,7 +613,7 @@ const styles = StyleSheet.create({
   },
   timelineText: {
     fontSize: 12,
-    color: Colors.text.secondary,
+    color: '#6B7280',
   },
   // Payment method selection styles
   paymentMethodOption: {
@@ -627,7 +628,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   paymentMethodSelected: {
-    borderColor: Colors.primary.main,
+    borderColor: '#007AFF',
     backgroundColor: Colors.primary.light,
   },
   paymentMethodDisabled: {
@@ -649,15 +650,15 @@ const styles = StyleSheet.create({
   paymentMethodName: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
     marginBottom: 2,
   },
   paymentMethodNameDisabled: {
-    color: Colors.text.secondary,
+    color: '#6B7280',
   },
   paymentMethodDescription: {
     fontSize: 12,
-    color: Colors.text.secondary,
+    color: '#6B7280',
   },
   paymentMethodDescriptionDisabled: {
     color: Colors.text.tertiary,
@@ -677,7 +678,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   radioButtonSelected: {
-    borderColor: Colors.primary.main,
-    backgroundColor: Colors.primary.main,
+    borderColor: '#007AFF',
+    backgroundColor: '#007AFF',
   },
 });

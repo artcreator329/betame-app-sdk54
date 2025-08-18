@@ -4,7 +4,7 @@ import { Star, ChevronDown, ChevronUp, Edit3, Eye, EyeOff, Heart } from 'lucide-
 import { useRouter } from 'expo-router';
 import { Service } from '@/types/service';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/contexts/ThemeContext';
 import { ServiceService } from '@/lib/service-service';
 import { FavoritesService } from '@/lib/favorites-service';
 import { supabase } from '@/lib/supabase';
@@ -58,6 +58,7 @@ function ServiceVariantCard({ variant, onPress }: ServiceVariantCardProps) {
 export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange, onPress, style, disableFavorites = false }: ServiceCardProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const colors = useColors();
   const [showVariants, setShowVariants] = useState(false);
   const [isProfileVisible, setIsProfileVisible] = useState(service.show_on_profile ?? true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -234,7 +235,7 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
       <TouchableOpacity style={styles.card} onPress={handleMainCardPress}>
         {showEditButton && (
         <TouchableOpacity style={styles.editButton} onPress={handleEditPress}>
-          <Edit3 size={16} color={Colors.background.primary} />
+          <Edit3 size={16} color={colors.background.primary} />
         </TouchableOpacity>
       )}
       
@@ -246,8 +247,8 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
       >
         <Heart 
           size={16} 
-          color={isFavorited ? Colors.text.white : Colors.text.secondary}
-          fill={isFavorited ? Colors.text.white : "transparent"}
+          color={isFavorited ? '#FFFFFF' : colors.text.secondary}
+          fill={isFavorited ? '#FFFFFF' : "transparent"}
         />
       </TouchableOpacity>
       
@@ -255,9 +256,9 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
         <View style={styles.profileToggleContainer}>
           <View style={styles.profileToggleContent}>
             {isProfileVisible ? (
-              <Eye size={14} color={Colors.text.secondary} />
+              <Eye size={14} color={colors.text.secondary} />
             ) : (
-              <EyeOff size={14} color={Colors.text.secondary} />
+              <EyeOff size={14} color={colors.text.secondary} />
             )}
             <Text style={styles.profileToggleLabel}>
               {isProfileVisible ? 'Visible on profile' : 'Hidden from profile'}
@@ -267,9 +268,9 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
             value={isProfileVisible}
             onValueChange={handleProfileVisibilityToggle}
             disabled={isUpdating}
-            trackColor={{ false: Colors.border.light, true: Colors.primary.light }}
-            thumbColor={isProfileVisible ? Colors.primary.main : Colors.background.tertiary}
-            ios_backgroundColor={Colors.border.light}
+            trackColor={{ false: colors.border.light, true: colors.primary.light }}
+            thumbColor={isProfileVisible ? colors.primary.main : colors.background.secondary}
+            ios_backgroundColor={colors.border.light}
           />
         </View>
       )}
@@ -307,9 +308,9 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
                     {service.service_variants?.length || 0} option{(service.service_variants?.length || 0) !== 1 ? 's' : ''}
                   </Text>
                   {showVariants ? (
-                    <ChevronUp size={16} color={Colors.primary.main} />
+                    <ChevronUp size={16} color={colors.primary.main} />
                   ) : (
-                    <ChevronDown size={16} color={Colors.primary.main} />
+                    <ChevronDown size={16} color={colors.primary.main} />
                   )}
                 </View>
               )}
@@ -345,9 +346,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   card: {
-    backgroundColor: Colors.background.tertiary,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    shadowColor: Colors.text.primary,
+    shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -366,14 +367,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: Colors.primary.main,
+    backgroundColor: '#007AFF',
     borderRadius: 20,
     width: 32,
     height: 32,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
-    shadowColor: Colors.text.primary,
+    shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -386,14 +387,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: Colors.background.tertiary,
+    backgroundColor: '#F8F9FA',
     borderRadius: 20,
     width: 32,
     height: 32,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
-    shadowColor: Colors.text.primary,
+    shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -403,7 +404,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   favoriteButtonActive: {
-    backgroundColor: Colors.status.error,
+    backgroundColor: '#FF3B30',
   },
   image: {
     width: '100%',
@@ -428,18 +429,18 @@ const styles = StyleSheet.create({
   rating: {
     fontSize: 11,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
     marginLeft: 3,
   },
   reviewCount: {
     fontSize: 11,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     marginLeft: 2,
   },
   provider: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
     marginBottom: 2,
     ...(isWeb && {
       fontSize: 12,
@@ -448,7 +449,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 12,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     marginBottom: 8,
     lineHeight: 16,
     ...(isWeb && {
@@ -465,7 +466,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
     ...(isWeb && {
       fontSize: 12,
     }),
@@ -477,11 +478,11 @@ const styles = StyleSheet.create({
   },
   variantCount: {
     fontSize: 11,
-    color: Colors.primary.main,
+    color: '#007AFF',
     fontWeight: '500',
   },
   variantsContainer: {
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: '#F1F5F9',
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
     paddingHorizontal: 12,
@@ -489,11 +490,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   variantCard: {
-    backgroundColor: Colors.background.tertiary,
+    backgroundColor: '#F8F9FA',
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: Colors.border.light,
+    borderColor: '#E5E7EB',
   },
   variantContent: {
     flex: 1,
@@ -501,24 +502,24 @@ const styles = StyleSheet.create({
   variantTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
     marginBottom: 4,
   },
   variantDescription: {
     fontSize: 12,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     lineHeight: 16,
     marginBottom: 6,
   },
   variantPrice: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.primary.main,
+    color: '#007AFF',
   },
   variantMainService: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.text.secondary,
+    color: '#6B7280',
     fontStyle: 'italic',
   },
   detailsContainer: {
@@ -527,17 +528,17 @@ const styles = StyleSheet.create({
   detailsLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.primary.main,
+    color: '#007AFF',
     marginBottom: 2,
   },
   categoryText: {
     fontSize: 11,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     fontStyle: 'italic',
   },
   expandedDescription: {
     fontSize: 12,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     lineHeight: 16,
     marginBottom: 8,
     marginTop: 4,
@@ -546,7 +547,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: Colors.background.primary,
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -555,7 +556,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minWidth: 140,
     zIndex: 1,
-    shadowColor: Colors.text.primary,
+    shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -572,7 +573,7 @@ const styles = StyleSheet.create({
   },
   profileToggleLabel: {
     fontSize: 11,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     fontWeight: '500',
   },
 });

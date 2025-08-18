@@ -110,9 +110,7 @@ export default function ServicesScreen() {
       return 'All Service Types';
     }
     if (selectedCategories.length === 1) {
-      // Import the helper function to get proper service type names
-      const { getServiceTypeName } = require('@/lib/service-type-migration');
-      return getServiceTypeName(selectedCategories[0]);
+      return selectedCategories[0];
     }
     return `${selectedCategories.length} Service Types`;
   };
@@ -120,11 +118,15 @@ export default function ServicesScreen() {
   const filteredServices = services.filter((service: Service) => {
     const matchesCategory = selectedCategories.includes('all') || 
                            selectedCategories.length === 0 ||
-                           selectedCategories.some(cat => 
-                             service.category_name?.toLowerCase().includes(cat.toLowerCase())
-                           );
+                           selectedCategories.some(cat => {
+                             if (cat === 'all') return true;
+                             // Exact match or partial match for service category
+                             return service.category_name === cat || 
+                                    service.category_name?.toLowerCase().includes(cat.toLowerCase());
+                           });
     const matchesSearch = service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (service.provider_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+                         (service.provider_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (service.category_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 

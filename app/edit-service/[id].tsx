@@ -20,7 +20,7 @@ import { ServiceService, Service } from '@/lib/service-service';
 import { ImageService } from '@/lib/image-service';
 import { Colors } from '@/constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
-import CategorySelectionModal from '@/components/CategorySelectionModal';
+import AIServiceTypeSelector from '@/components/AIServiceTypeSelector';
 import ServiceAreaPicker from '@/components/ServiceAreaPicker';
 import AIDescriptionModal from '@/components/AIDescriptionModal';
 import AIPricingSuggestions from '@/components/AIPricingSuggestions';
@@ -39,7 +39,7 @@ interface ServiceVariant {
 export default function EditServiceScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedServiceType, setSelectedServiceType] = useState<string>('');
   const [serviceArea, setServiceArea] = useState<{
     latitude: number;
     longitude: number;
@@ -53,7 +53,7 @@ export default function EditServiceScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [service, setService] = useState<Service | null>(null);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showServiceTypeModal, setShowServiceTypeModal] = useState(false);
   const [showServiceAreaPicker, setShowServiceAreaPicker] = useState(false);
   const [showPriceUnitModal, setShowPriceUnitModal] = useState(false);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -94,7 +94,7 @@ export default function EditServiceScreen() {
         setService(serviceData);
         setTitle(serviceData.title);
         setDescription(serviceData.description);
-        setSelectedCategories(serviceData.category_name ? [serviceData.category_name] : []);
+        setSelectedServiceType(serviceData.category_name || '');
         if (serviceData.latitude && serviceData.longitude) {
           setServiceArea({
             latitude: serviceData.latitude,
@@ -270,14 +270,12 @@ export default function EditServiceScreen() {
     return variant?.title || '';
   };
 
-  const getCategoryDisplayText = (): string => {
-    if (selectedCategories.length === 0) {
-      return 'Select Category';
-    }
-    if (selectedCategories.length === 1) {
-      return selectedCategories[0];
-    }
-    return `${selectedCategories.length} Categories`;
+  const getServiceTypeDisplayText = (): string => {
+    return selectedServiceType || 'Select Service Type';
+  };
+
+  const handleServiceTypeSelect = (serviceType: string) => {
+    setSelectedServiceType(serviceType);
   };
 
   const getServiceAreaDisplayText = (): string => {
@@ -498,7 +496,7 @@ export default function EditServiceScreen() {
   const handleUpdate = async () => {
     if (!service || !user?.id) return;
     
-    if (!title.trim() || !description.trim() || selectedCategories.length === 0 || !serviceArea) {
+    if (!title.trim() || !description.trim() || !selectedServiceType.trim() || !serviceArea) {
       Alert.alert('Error', 'Please fill in all required fields including category and service area');
       return;
     }
@@ -513,7 +511,7 @@ export default function EditServiceScreen() {
       const updateData = {
         title: title.trim(),
         description: description.trim(),
-        category_name: selectedCategories[0], // Use first selected category
+        category_name: selectedServiceType,
         latitude: serviceArea.latitude,
         longitude: serviceArea.longitude,
         location: serviceArea.address,
@@ -556,7 +554,7 @@ export default function EditServiceScreen() {
             title: variant.title.trim(),
             description: variant.description.trim(),
             price: variant.price,
-            category_name: selectedCategories[0],
+            category_name: selectedServiceType,
             latitude: serviceArea?.latitude,
             longitude: serviceArea?.longitude,
             location: serviceArea?.address,
@@ -572,7 +570,7 @@ export default function EditServiceScreen() {
             description: variant.description.trim(),
             price: variant.price,
             currency: 'RM',
-            category_name: selectedCategories[0],
+            category_name: selectedServiceType,
             location: serviceArea?.address,
             latitude: serviceArea?.latitude,
             longitude: serviceArea?.longitude,
@@ -730,21 +728,18 @@ export default function EditServiceScreen() {
             />
           </View>
 
-          {/* Categories */}
+          {/* Service Type */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Categories</Text>
+            <Text style={styles.fieldLabel}>Service Type</Text>
             <TouchableOpacity 
               style={styles.categoryButton}
-              onPress={() => setShowCategoryModal(true)}
+              onPress={() => setShowServiceTypeModal(true)}
             >
               <Text style={[
                 styles.categoryButtonText,
-                selectedCategories.length === 0 && styles.categoryButtonPlaceholder
+                !selectedServiceType && styles.categoryButtonPlaceholder
               ]}>
-                {selectedCategories.length > 0 
-                  ? `${selectedCategories.length} categor${selectedCategories.length === 1 ? 'y' : 'ies'} selected`
-                  : 'Select Categories'
-                }
+                {getServiceTypeDisplayText()}
               </Text>
               <Text style={styles.categoryButtonArrow}>▼</Text>
             </TouchableOpacity>
@@ -881,7 +876,7 @@ export default function EditServiceScreen() {
                             serviceTitle={variant.title}
                             serviceDescription={variant.description}
                             priceUnit={variant.priceUnit}
-                            industry={selectedCategories[0]}
+                            industry={selectedServiceType}
                             currentPrice={variant.price}
                             onPriceSelect={(price) => updateServiceVariant(variant.id, 'price', price)}
                           />
@@ -911,16 +906,16 @@ export default function EditServiceScreen() {
           <TouchableOpacity 
             style={[
               styles.updateButton, 
-              (title.trim() && description.trim() && selectedCategories.length > 0 && serviceArea && !isUpdating) 
+              (title.trim() && description.trim() && selectedServiceType.trim() && serviceArea && !isUpdating) 
                 ? styles.updateButtonActive 
                 : styles.updateButtonDisabled
             ]} 
             onPress={handleUpdate}
-            disabled={isUpdating || !title.trim() || !description.trim() || selectedCategories.length === 0 || !serviceArea}
+            disabled={isUpdating || !title.trim() || !description.trim() || !selectedServiceType.trim() || !serviceArea}
           >
             <Text style={[
               styles.updateButtonText,
-              (title.trim() && description.trim() && selectedCategories.length > 0 && serviceArea && !isUpdating) 
+              (title.trim() && description.trim() && selectedServiceType.trim() && serviceArea && !isUpdating) 
                 ? styles.updateButtonTextActive 
                 : {}
             ]}>
@@ -930,12 +925,14 @@ export default function EditServiceScreen() {
         </View>
       </ScrollView>
 
-      {/* Category Selection Modal */}
-      <CategorySelectionModal
-        visible={showCategoryModal}
-        onClose={() => setShowCategoryModal(false)}
-        selectedCategories={selectedCategories}
-        onCategoriesChange={setSelectedCategories}
+      {/* Service Type Selection Modal */}
+      <AIServiceTypeSelector
+        visible={showServiceTypeModal}
+        onClose={() => setShowServiceTypeModal(false)}
+        selectedServiceType={selectedServiceType}
+        onServiceTypeChange={handleServiceTypeSelect}
+        serviceTitle={title}
+        serviceDescription={description}
       />
 
       {/* Service Area Picker Modal */}
@@ -997,14 +994,6 @@ export default function EditServiceScreen() {
           </View>
         </View>
       )}
-
-      {/* Category Selection Modal */}
-      <CategorySelectionModal
-        visible={showCategoryModal}
-        onClose={() => setShowCategoryModal(false)}
-        selectedCategories={selectedCategories}
-        onCategoriesChange={setSelectedCategories}
-      />
 
       {/* AI Description Modal */}
       <AIDescriptionModal

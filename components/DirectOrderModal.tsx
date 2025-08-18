@@ -12,7 +12,7 @@ import {
   TextInput,
 } from 'react-native';
 import { X, CreditCard, Wallet, Clock, FileText, Shield } from 'lucide-react-native';
-import { Colors } from '../constants/Colors';
+import { useColors } from '../contexts/ThemeContext';
 import { DirectOrderData } from '../lib/payment-service';
 import { PaymentService } from '../lib/payment-service';
 import { WalletService } from '../lib/wallet-service';
@@ -44,6 +44,7 @@ export function DirectOrderModal({
   onClose,
   onPaymentSuccess,
 }: DirectOrderModalProps) {
+  const colors = useColors();
   const [isProcessing, setIsProcessing] = useState(false);
   const [walletData, setWalletData] = useState<any>(null);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
@@ -214,7 +215,7 @@ export function DirectOrderModal({
       <Modal visible={visible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <ActivityIndicator size="large" color={Colors.primary.main} />
+            <ActivityIndicator size="large" color={colors.primary.main} />
             <Text style={styles.loadingText}>Loading payment details...</Text>
           </View>
         </View>
@@ -230,7 +231,7 @@ export function DirectOrderModal({
           <View style={styles.header}>
             <Text style={styles.title}>Place Order</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <X size={24} color={Colors.text.secondary} />
+              <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
 
@@ -245,7 +246,7 @@ export function DirectOrderModal({
                     <Image source={{ uri: orderData.image_url }} style={styles.serviceImage} />
                   ) : (
                     <View style={styles.placeholderImage}>
-                      <FileText size={24} color={Colors.text.secondary} />
+                      <FileText size={24} color={colors.text.secondary} />
                     </View>
                   )}
                   <View style={styles.serviceHeaderText}>
@@ -272,7 +273,7 @@ export function DirectOrderModal({
                     value={customDescription}
                     onChangeText={setCustomDescription}
                     placeholder="Add any specific requirements or notes..."
-                    placeholderTextColor={Colors.text.secondary}
+                    placeholderTextColor={colors.text.secondary}
                     multiline
                     numberOfLines={3}
                     maxLength={500}
@@ -287,7 +288,7 @@ export function DirectOrderModal({
                     value={customDeliveryTime}
                     onChangeText={setCustomDeliveryTime}
                     placeholder="7"
-                    placeholderTextColor={Colors.text.secondary}
+                    placeholderTextColor={colors.text.secondary}
                     keyboardType="numeric"
                     maxLength={2}
                   />
@@ -296,13 +297,13 @@ export function DirectOrderModal({
                 {/* Timeline and Protection */}
                 <View style={styles.timelineContainer}>
                   <View style={styles.timelineItem}>
-                    <Clock size={16} color={Colors.primary.main} />
+                    <Clock size={16} color={'#007AFF'} />
                     <Text style={styles.timelineText}>
                       Delivery: {customDeliveryTime || 7} days
                     </Text>
                   </View>
                   <View style={styles.timelineItem}>
-                    <Shield size={16} color={Colors.status.success} />
+                    <Shield size={16} color={'#10B981'} />
                     <Text style={styles.timelineText}>Protected by BetaMe Guarantee</Text>
                   </View>
                 </View>
@@ -418,7 +419,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
   },
   closeButton: {
     padding: 4,
@@ -432,7 +433,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
     marginBottom: 12,
   },
   serviceInfo: {
@@ -465,13 +466,13 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
     marginBottom: 4,
   },
   categoryBadge: {
     fontSize: 12,
-    color: Colors.primary.main,
-    backgroundColor: Colors.primary.light,
+    color: '#007AFF',
+    backgroundColor: '#E3F2FD',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -483,12 +484,12 @@ const styles = StyleSheet.create({
   descriptionLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.text.primary,
+    color: '#000000',
     marginBottom: 4,
   },
   serviceDescription: {
     fontSize: 14,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     lineHeight: 20,
   },
   customContainer: {
@@ -497,7 +498,7 @@ const styles = StyleSheet.create({
   customLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.text.primary,
+    color: '#000000',
     marginBottom: 8,
   },
   customInput: {
@@ -506,7 +507,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
-    color: Colors.text.primary,
+    color: '#000000',
     minHeight: 80,
     textAlignVertical: 'top',
   },
@@ -516,7 +517,7 @@ const styles = StyleSheet.create({
   deliveryLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.text.primary,
+    color: '#000000',
     marginBottom: 8,
   },
   deliveryInput: {
@@ -525,7 +526,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
-    color: Colors.text.primary,
+    color: '#000000',
     width: 80,
   },
   timelineContainer: {
@@ -538,7 +539,7 @@ const styles = StyleSheet.create({
   },
   timelineText: {
     fontSize: 14,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     marginLeft: 8,
   },
   paymentDetails: {
@@ -554,12 +555,12 @@ const styles = StyleSheet.create({
   },
   paymentLabel: {
     fontSize: 14,
-    color: Colors.text.secondary,
+    color: '#6B7280',
   },
   paymentValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.text.primary,
+    color: '#000000',
   },
   totalRow: {
     borderTopWidth: 1,
@@ -570,12 +571,12 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#000000',
   },
   totalValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.primary.main,
+    color: '#007AFF',
   },
   paymentMethods: {
     gap: 8,
@@ -591,8 +592,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   selectedPaymentMethod: {
-    borderColor: Colors.primary.main,
-    backgroundColor: Colors.primary.light,
+    borderColor: '#007AFF',
+    backgroundColor: '#E3F2FD',
   },
   paymentMethodInfo: {
     flexDirection: 'row',
@@ -609,18 +610,18 @@ const styles = StyleSheet.create({
   paymentMethodName: {
     fontSize: 16,
     fontWeight: '500',
-    color: Colors.text.primary,
+    color: '#000000',
   },
   paymentMethodDescription: {
     fontSize: 14,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     marginTop: 2,
   },
   selectedIndicator: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: Colors.primary.main,
+    backgroundColor: '#007AFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -639,12 +640,12 @@ const styles = StyleSheet.create({
   walletBalance: {
     fontSize: 16,
     fontWeight: '500',
-    color: Colors.text.primary,
+    color: '#000000',
     marginLeft: 8,
   },
   insufficientFunds: {
     fontSize: 14,
-    color: Colors.status.error,
+    color: '#EF4444',
     marginLeft: 8,
   },
   footer: {
@@ -657,7 +658,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.primary.main,
+    backgroundColor: '#007AFF',
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
@@ -672,7 +673,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: Colors.text.secondary,
+    color: '#6B7280',
     marginTop: 16,
   },
 });

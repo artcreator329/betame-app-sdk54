@@ -16,7 +16,7 @@ import { ArrowLeft, Gift, Clock } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { Colors } from '../constants/Colors';
+import { useColors } from '../contexts/ThemeContext';
 import { WalletService } from '../lib/wallet-service';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationScheduler } from '../lib/notification-scheduler';
@@ -37,6 +37,7 @@ export default function CheckInScreen() {
   const isDesktop = Platform.OS === 'web' && screenWidth > 768;
   const router = useRouter();
   const { user } = useAuth();
+  const colors = useColors();
   const [currentStreak, setCurrentStreak] = useState(0);
   const [totalDiamonds, setTotalDiamonds] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -569,7 +570,7 @@ export default function CheckInScreen() {
               onPress={handleHistory}
               activeOpacity={0.7}
             >
-              <Clock size={20} color={Colors.primary.main} />
+              <Clock size={20} color={colors.primary.main} />
               <Text style={styles.historyButtonText}>View History</Text>
             </TouchableOpacity>
           </View>
@@ -838,7 +839,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     overflow: 'hidden',
-    shadowColor: Colors.shadow.medium,
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 6,
@@ -905,7 +906,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
-    shadowColor: Colors.shadow.medium,
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -938,7 +939,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   historyButtonText: {
-    color: Colors.primary.main,
+    color: '#007AFF', // Static primary color for now
     fontSize: 16,
     fontWeight: '600',
   },
