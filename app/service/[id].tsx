@@ -46,12 +46,10 @@ export default function ServiceDetailsScreen() {
   const [serviceOwnerProfile, setServiceOwnerProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [serviceVariantModalVisible, setServiceVariantModalVisible] = useState(false);
   const [serviceVariants, setServiceVariants] = useState<Service[]>([]);
   const [loadingVariants, setLoadingVariants] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedServiceForOrder, setSelectedServiceForOrder] = useState<Service | null>(null);
-  const [isOrderMode, setIsOrderMode] = useState(false);
   const [serviceInquiryModalVisible, setServiceInquiryModalVisible] = useState(false);
   const [inquiryMode, setInquiryMode] = useState<'text' | 'structured' | null>(null);
   const [userCoverPhoto, setUserCoverPhoto] = useState<string | null>(null);
@@ -223,7 +221,7 @@ export default function ServiceDetailsScreen() {
     setServiceInquiryModalVisible(true);
   };
 
-  const handleChatWithSeller = () => {
+  const handleChatWithSeller = (selectedService?: Service) => {
     // Check if user is authenticated
     if (!user) {
       Alert.alert(
@@ -237,34 +235,27 @@ export default function ServiceDetailsScreen() {
       return;
     }
 
-    // If service has variants, show selection modal in chat mode
-    if (serviceVariants.length > 1) {
-      setIsOrderMode(false);
-      setServiceVariantModalVisible(true);
-    } else {
-      // If no variants, proceed directly to chat with default message
-      const participantId = getParticipantId();
-      const defaultMessage = `Hi! I'm interested in your "${service.title}" service (${service.currency} ${service.price})${service.category_name ? ` in the ${service.category_name} category` : ''}. Could you tell me more about it and what's included?`;
-      router.push({
-        pathname: '/chat/[participantId]' as any,
-        params: {
-          participantId,
-          prefilledMessage: defaultMessage,
-          selectedServiceId: service.id,
-          selectedServiceTitle: service.title,
-          selectedServicePrice: service.price.toString(),
-          selectedServiceCurrency: service.currency,
-          selectedServiceDescription: service.description,
-          selectedServiceImage: service.image_url || '',
-          selectedServiceCategory: service.category_name || ''
-        }
-      });
-    }
+    // Use selected service or default to main service
+    const serviceToUse = selectedService || service;
+    const participantId = getParticipantId();
+    const defaultMessage = `Hi! I'm interested in your "${serviceToUse.title}" service (${serviceToUse.currency} ${serviceToUse.price})${serviceToUse.category_name ? ` in the ${serviceToUse.category_name} category` : ''}. Could you tell me more about it and what's included?`;
+    router.push({
+      pathname: '/chat/[participantId]' as any,
+      params: {
+        participantId,
+        prefilledMessage: defaultMessage,
+        selectedServiceId: serviceToUse.id,
+        selectedServiceTitle: serviceToUse.title,
+        selectedServicePrice: serviceToUse.price.toString(),
+        selectedServiceCurrency: serviceToUse.currency,
+        selectedServiceDescription: serviceToUse.description,
+        selectedServiceImage: serviceToUse.image_url || '',
+        selectedServiceCategory: serviceToUse.category_name || ''
+      }
+    });
   };
 
   const handleVariantSelection = (selectedVariant: Service) => {
-    setServiceVariantModalVisible(false);
-    setIsOrderMode(false);
     const participantId = getParticipantId();
     
     // Handle different inquiry modes
@@ -324,59 +315,51 @@ export default function ServiceDetailsScreen() {
     setInquiryMode(null);
   };
 
-  const handleTextInquiry = () => {
+  const handleTextInquiry = (selectedService?: Service) => {
     setServiceInquiryModalVisible(false);
-    // If service has variants, show selection modal in text inquiry mode
-    if (serviceVariants.length > 1) {
-      setIsOrderMode(false);
-      setInquiryMode('text');
-      setServiceVariantModalVisible(true);
-    } else {
-      // If no variants, proceed directly to chat with default message
-      const participantId = getParticipantId();
-      const defaultMessage = `Hi! I'm interested in your "${service.title}" service (${service.currency} ${service.price})${service.category_name ? ` in the ${service.category_name} category` : ''}. Could you tell me more about it and what's included?`;
-      router.push({
-        pathname: '/chat/[participantId]' as any,
-        params: {
-          participantId,
-          prefilledMessage: defaultMessage,
-          selectedServiceId: service.id,
-          selectedServiceTitle: service.title,
-          selectedServicePrice: service.price.toString(),
-          selectedServiceCurrency: service.currency,
-          selectedServiceDescription: service.description,
-          selectedServiceImage: service.image_url || '',
-          selectedServiceCategory: service.category_name || ''
-        }
-      });
-    }
+    setInquiryMode('text');
+    
+    // Use selected service or default to main service
+    const serviceToUse = selectedService || service;
+    const participantId = getParticipantId();
+    const defaultMessage = `Hi! I'm interested in your "${serviceToUse.title}" service (${serviceToUse.currency} ${serviceToUse.price})${serviceToUse.category_name ? ` in the ${serviceToUse.category_name} category` : ''}. Could you tell me more about it and what's included?`;
+    router.push({
+      pathname: '/chat/[participantId]' as any,
+      params: {
+        participantId,
+        prefilledMessage: defaultMessage,
+        selectedServiceId: serviceToUse.id,
+        selectedServiceTitle: serviceToUse.title,
+        selectedServicePrice: serviceToUse.price.toString(),
+        selectedServiceCurrency: serviceToUse.currency,
+        selectedServiceDescription: serviceToUse.description,
+        selectedServiceImage: serviceToUse.image_url || '',
+        selectedServiceCategory: serviceToUse.category_name || ''
+      }
+    });
   };
 
-  const handleStructuredInquiry = () => {
+  const handleStructuredInquiry = (selectedService?: Service) => {
     setServiceInquiryModalVisible(false);
-    // If service has variants, show selection modal in structured inquiry mode
-    if (serviceVariants.length > 1) {
-      setIsOrderMode(false);
-      setInquiryMode('structured');
-      setServiceVariantModalVisible(true);
-    } else {
-      // If no variants, proceed directly to chat with structured inquiry
-      const participantId = getParticipantId();
-      router.push({
-        pathname: '/chat/[participantId]' as any,
-        params: {
-          participantId,
-          structuredInquiry: 'true',
-          selectedServiceId: service.id,
-          selectedServiceTitle: service.title,
-          selectedServicePrice: service.price.toString(),
-          selectedServiceCurrency: service.currency,
-          selectedServiceDescription: service.description,
-          selectedServiceImage: service.image_url || '',
-          selectedServiceCategory: service.category_name || ''
-        }
-      });
-    }
+    setInquiryMode('structured');
+    
+    // Use selected service or default to main service
+    const serviceToUse = selectedService || service;
+    const participantId = getParticipantId();
+    router.push({
+      pathname: '/chat/[participantId]' as any,
+      params: {
+        participantId,
+        structuredInquiry: 'true',
+        selectedServiceId: serviceToUse.id,
+        selectedServiceTitle: serviceToUse.title,
+        selectedServicePrice: serviceToUse.price.toString(),
+        selectedServiceCurrency: serviceToUse.currency,
+        selectedServiceDescription: serviceToUse.description,
+        selectedServiceImage: serviceToUse.image_url || '',
+        selectedServiceCategory: serviceToUse.category_name || ''
+      }
+    });
   };
 
   const handleOrderNow = () => {
@@ -393,20 +376,12 @@ export default function ServiceDetailsScreen() {
       return;
     }
 
-    // If service has variants, show selection modal in order mode
-    if (serviceVariants.length > 1) {
-      setIsOrderMode(true);
-      setServiceVariantModalVisible(true);
-    } else {
-      // If no variants, proceed directly to direct order
-      setSelectedServiceForOrder(service);
-      setPaymentModalVisible(true);
-    }
+    // Proceed directly to direct order
+    setSelectedServiceForOrder(service);
+    setPaymentModalVisible(true);
   };
 
   const handleVariantSelectionForOrder = (selectedVariant: Service) => {
-    setServiceVariantModalVisible(false);
-    setIsOrderMode(false);
     setSelectedServiceForOrder(selectedVariant);
     setPaymentModalVisible(true);
   };
@@ -548,40 +523,72 @@ export default function ServiceDetailsScreen() {
             </View>
           )}
 
-          {/* Action Buttons - Chat/Edit/Order based on ownership */}
-          <View style={styles.actionButtonsSection}>
-            {!isOwnService ? (
-              <View style={styles.actionButtonsContainer}>
-                {/* Order Now Button - Prominent */}
-                <TouchableOpacity 
-                  style={[styles.orderButton, { backgroundColor: colors.status.success }]} 
-                  onPress={handleOrderNow}
+          {/* Service Variants Section */}
+          {serviceVariants.length > 1 && (
+            <View style={styles.variantsSection}>
+              <Text style={[styles.variantsSectionTitle, { color: colors.text.primary }]}>Available Options</Text>
+              <Text style={[styles.variantsSectionSubtitle, { color: colors.text.secondary }]}>Choose from the following service options:</Text>
+              
+              {serviceVariants.filter((_, index) => index !== 0).map((variant, index) => (
+                <View
+                  key={variant.id || `variant-${index + 1}`}
+                  style={[
+                    styles.variantCard,
+                    { backgroundColor: colors.background.secondary, borderColor: colors.border.light }
+                  ]}
                 >
-                  <ShoppingCart size={24} color={colors.text.white} />
-                  <Text style={[styles.orderButtonText, { color: colors.text.white }]}>Order Now</Text>
-                </TouchableOpacity>
-                
-                {/* Service Inquiry Section with Helper Text */}
-                <View style={styles.chatSection}>
-                  <Text style={[styles.chatHelperText, { color: colors.text.secondary }]}>
-                    Need help? Ask questions first
+                  <View style={styles.variantCardHeader}>
+                    <View style={styles.variantCardTitleRow}>
+                      <Package size={20} color={colors.text.secondary} />
+                      <Text style={[
+                        styles.variantCardTitle,
+                        { color: colors.text.primary }
+                      ]}>
+                        {variant.title}
+                      </Text>
+                    </View>
+                    <Text style={[
+                      styles.variantCardPrice,
+                      { color: colors.text.primary }
+                    ]}>
+                      {variant.currency} {variant.price}
+                    </Text>
+                  </View>
+                  
+                  <Text style={[
+                    styles.variantCardDescription,
+                    { color: colors.text.secondary }
+                  ]}>
+                    {variant.description}
                   </Text>
-                  <TouchableOpacity 
-                    style={[styles.chatButton, { backgroundColor: colors.primary.main }]} 
-                    onPress={handleServiceInquiry}
-                  >
-                    <MessageCircle size={20} color={colors.text.white} />
-                    <Text style={[styles.chatButtonText, { color: colors.text.white }]}>Service Inquiry</Text>
-                    <Image
-                      source={{ 
-                        uri: serviceOwnerProfile?.avatar_url || 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=100' 
-                      }}
-                      style={styles.chatProviderImage}
-                    />
-                  </TouchableOpacity>
+                  
+                  {!isOwnService && (
+                    <View style={styles.variantCardActions}>
+                      <TouchableOpacity
+                        style={[styles.variantActionButton, { backgroundColor: colors.status.success }]}
+                        onPress={() => handleVariantSelectionForOrder(variant)}
+                      >
+                        <ShoppingCart size={16} color={colors.text.white} />
+                        <Text style={[styles.variantActionButtonText, { color: colors.text.white }]}>Order</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[styles.variantActionButton, { backgroundColor: colors.primary.main }]}
+                        onPress={() => handleChatWithSeller(variant)}
+                      >
+                        <MessageCircle size={16} color={colors.text.white} />
+                        <Text style={[styles.variantActionButtonText, { color: colors.text.white }]}>Chat</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
-              </View>
-            ) : (
+              ))}
+            </View>
+          )}
+
+          {/* Action Buttons - Only show Edit button for own services */}
+          {isOwnService && (
+            <View style={styles.actionButtonsSection}>
               <TouchableOpacity 
                 style={[styles.editButton, { backgroundColor: colors.primary.main }]} 
                 onPress={() => router.push(`/edit-service/${id}`)}
@@ -589,92 +596,21 @@ export default function ServiceDetailsScreen() {
                 <Ionicons name="pencil" size={20} color={colors.text.white} />
                 <Text style={[styles.editButtonText, { color: colors.text.white }]}>Edit Service</Text>
               </TouchableOpacity>
-            )}
-          </View>
+            </View>
+          )}
+          
+          {/* Helper text for non-owners */}
+          {!isOwnService && (
+            <View style={styles.helperTextSection}>
+              <Text style={[styles.helperText, { color: colors.text.secondary }]}>
+                Choose a service option above to order or chat with the provider
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
       
-      {/* Service Variant Selection Modal */}
-      <Modal
-        visible={serviceVariantModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setServiceVariantModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.variantModalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {isOrderMode ? 'Select Service to Order' : 
-                 inquiryMode === 'text' ? 'Select Service for Text Inquiry' :
-                 inquiryMode === 'structured' ? 'Select Service for Structured Inquiry' :
-                 'Select Service to Chat About'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setServiceVariantModalVisible(false);
-                  setIsOrderMode(false);
-                  setInquiryMode(null);
-                }}
-                style={styles.closeButton}
-              >
-                <X size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-            
-            {loadingVariants ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary.main} />
-                <Text style={styles.loadingText}>Loading options...</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={serviceVariants}
-                keyExtractor={(item) => item.id || `variant-${Math.random()}`}
-                renderItem={({ item, index }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.variantItem,
-                      index === 0 && styles.mainVariantItem
-                    ]}
-                    onPress={() => {
-                      // Check if this is for order or inquiry
-                      if (isOrderMode) {
-                        handleVariantSelectionForOrder(item);
-                      } else if (inquiryMode === 'text') {
-                        // For text inquiry, go directly to chat without service sharing
-                        handleVariantSelection(item);
-                      } else if (inquiryMode === 'structured') {
-                        // For structured inquiry, go directly to chat without service sharing
-                        handleVariantSelection(item);
-                      } else {
-                        // Default behavior (for backward compatibility)
-                        handleVariantSelection(item);
-                      }
-                    }}
-                  >
-                    <View style={styles.variantContent}>
-                      <View style={styles.variantHeader}>
-                        <Package size={20} color={colors.primary.main} />
-                        <Text style={styles.variantTitle}>
-                          {index === 0 ? `${item.title} (Main)` : item.title}
-                        </Text>
-                      </View>
-                      <Text style={styles.variantDescription} numberOfLines={2}>
-                        {item.description}
-                      </Text>
-                      <Text style={styles.variantPrice}>
-                        {item.currency} {item.price}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-                showsVerticalScrollIndicator={false}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
+
 
       {/* Direct Order Modal */}
       {selectedServiceForOrder && (
@@ -721,7 +657,7 @@ export default function ServiceDetailsScreen() {
             <View style={styles.inquiryOptions}>
               <TouchableOpacity
                 style={styles.inquiryOption}
-                onPress={handleTextInquiry}
+                onPress={() => handleTextInquiry()}
               >
                 <View style={styles.inquiryOptionIcon}>
                   <MessageCircle size={24} color={colors.primary.main} />
@@ -736,7 +672,7 @@ export default function ServiceDetailsScreen() {
 
               <TouchableOpacity
                 style={styles.inquiryOption}
-                onPress={handleStructuredInquiry}
+                onPress={() => handleStructuredInquiry()}
               >
                 <View style={styles.inquiryOptionIcon}>
                   <FileText size={24} color={colors.primary.main} />
@@ -1115,5 +1051,78 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  variantsSection: {
+    marginBottom: 24,
+  },
+  variantsSectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  variantsSectionSubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  variantCard: {
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  variantCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  variantCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  variantCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+    flex: 1,
+  },
+  variantCardPrice: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  variantCardDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  variantCardActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  variantActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  variantActionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  helperTextSection: {
+    marginTop: 16,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  helperText: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

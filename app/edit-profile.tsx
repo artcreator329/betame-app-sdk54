@@ -23,7 +23,9 @@ export default function EditProfileScreen() {
   // Load user data when component mounts
   useEffect(() => {
     if (userProfile) {
-      setUsername(userProfile.full_name || '');
+      // Pre-fill username with full_name, or fallback to email username part if no full_name exists
+      const defaultUsername = userProfile.full_name || userProfile.email?.split('@')[0] || '';
+      setUsername(defaultUsername);
       setBio(userProfile.bio || '');
     }
   }, [userProfile]);
@@ -79,12 +81,12 @@ export default function EditProfileScreen() {
         <View style={styles.content}>
           {/* Username Field */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Username</Text>
+            <Text style={styles.fieldLabel}>Display Name</Text>
             <TextInput
               style={styles.usernameInput}
               value={username}
               onChangeText={setUsername}
-              placeholder="Enter username"
+              placeholder="Enter your display name"
               placeholderTextColor="#8E8E93"
             />
           </View>

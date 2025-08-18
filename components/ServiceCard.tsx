@@ -196,15 +196,11 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
   };
 
   const handleMainCardPress = () => {
-    if (hasVariants && !hideVariants) {
-      setShowVariants(!showVariants);
+    // Always navigate to service detail page
+    if (onPress) {
+      onPress();
     } else {
-      // Use custom onPress if provided, otherwise use default navigation
-      if (onPress) {
-        onPress();
-      } else {
-        handlePress();
-      }
+      handlePress();
     }
   };
 
@@ -295,18 +291,7 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
               <Text style={styles.price}>
                 From {service.currency}{getLowestPrice()}
               </Text>
-              {hasVariants && !hideVariants && (
-                <View style={styles.variantIndicator}>
-                  <Text style={styles.variantCount}>
-                    {service.service_variants?.length || 0} option{(service.service_variants?.length || 0) !== 1 ? 's' : ''}
-                  </Text>
-                  {showVariants ? (
-                    <ChevronUp size={16} color={colors.primary.main} />
-                  ) : (
-                    <ChevronDown size={16} color={colors.primary.main} />
-                  )}
-                </View>
-              )}
+
             </View>
           ) : (
             <View style={styles.detailsContainer}>
@@ -317,19 +302,7 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
         </View>
       </TouchableOpacity>
 
-      {/* Service Variants */}
-      {hasVariants && showVariants && !hideVariants && (
-        <View style={styles.variantsContainer}>
-          {/* Only show actual service variants, not the main service */}
-          {service.service_variants?.map((variant, index) => (
-            <ServiceVariantCard
-              key={variant.id}
-              variant={variant}
-              onPress={() => handlePress(variant.id)}
-            />
-          )) || []}
-        </View>
-      )}
+
     </View>
   );
 }
