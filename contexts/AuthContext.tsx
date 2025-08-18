@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { notificationService } from '@/lib/notification-service';
 import { adminService } from '@/lib/admin-service';
 import { WalletService } from '@/lib/wallet-service';
+import { Linking } from 'react-native';
 
 
 interface AuthContextType {
@@ -16,7 +17,7 @@ interface AuthContextType {
   loading: boolean;
   hasSignInError: boolean;
   clearSignInError: () => void;
-  signIn: (email: string, password: string) => Promise<{ user: User | null; error: any }>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ user: User | null; error: any }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ user: User | null; error: any }>;
   signInWithGoogle: () => Promise<{ error: any }>;
   signInWithApple: () => Promise<{ error: any }>;
@@ -279,6 +280,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       async (event, session) => {
         console.log('🔄 AuthContext: Auth state change event:', event, 'Session:', !!session);
         if (mounted) {
+          // Handle password recovery deep link
+          if (event === 'PASSWORD_RECOVERY') {
+            console.log('🔄 AuthContext: PASSWORD_RECOVERY detected, opening reset screen');
+            Linking.openURL('betame://auth/reset-password?type=recovery');
+            return;
+          }
+
           // For failed sign-in attempts, don't update user state
           if (event === 'SIGNED_IN' && !session) {
             console.log('🔄 AuthContext: Sign-in event without session, likely an error');
@@ -325,11 +333,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []); // Empty dependency array to ensure this only runs once
 
   // Sign in function
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
     setLoading(true);
     try {
-      console.log('🔄 AuthContext: Starting sign in for:', email);
-      const result = await authService.signIn({ email, password });
+      console.log('🔄 AuthContext: Starting sign in for:', email, 'rememberMe:', rememberMe);
+      const result = await authService.signIn({ email, password, rememberMe });
       
       if (result.error) {
         console.log('🔄 AuthContext: Sign in failed, preventing auth state change');

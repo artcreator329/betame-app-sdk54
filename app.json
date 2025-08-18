@@ -15,7 +15,8 @@
       ],
       "config": {
         "screens": {
-          "profile/[userId]": "profile/:userId"
+          "profile/[userId]": "profile/:userId",
+          "auth/reset-password": "auth/reset-password"
         }
       }
     },

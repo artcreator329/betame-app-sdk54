@@ -18,6 +18,7 @@ export interface SignUpData {
 export interface SignInData {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 class AuthService {
@@ -115,12 +116,23 @@ class AuthService {
   }
 
   // Sign in with email and password
-  async signIn({ email, password }: SignInData): Promise<{ user: User | null; error: AuthError | null }> {
+  async signIn({ email, password, rememberMe }: SignInData): Promise<{ user: User | null; error: AuthError | null }> {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      // If rememberMe is true and sign in is successful, store credentials securely
+      if (rememberMe && data.user && !error) {
+        try {
+          // Store credentials in secure storage (this would need to be implemented)
+          // For now, we'll just log that remember me was requested
+          console.log('🔐 AuthService: Remember me requested for user:', data.user.id);
+        } catch (storageError) {
+          console.error('❌ AuthService: Error storing remember me credentials:', storageError);
+        }
+      }
 
       if (error) {
         console.error('❌ AuthService: Sign in error:', error);
@@ -208,6 +220,48 @@ class AuthService {
       return { 
         error: { 
           message: 'An unexpected error occurred during Apple sign in. Please try again.',
+          status: 500
+        } as AuthError 
+      };
+    }
+  }
+
+  // Request password reset
+  async requestPasswordReset(email: string): Promise<{ error: AuthError | null }> {
+    try {
+      console.log('🔄 AuthService: Requesting password reset for:', email);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'betame://auth/callback',
+      });
+
+      if (error) {
+        console.error('❌ AuthService: Password reset request error:', error);
+        
+        // Provide user-friendly error messages
+        let userFriendlyMessage = error.message;
+        
+        if (error.message.includes('User not found')) {
+          userFriendlyMessage = 'No account found with this email address. Please check your email or sign up.';
+        } else if (error.message.includes('Too many requests')) {
+          userFriendlyMessage = 'Too many reset requests. Please wait a few minutes before trying again.';
+        }
+        
+        return { 
+          error: { 
+            ...error, 
+            message: userFriendlyMessage 
+          } as AuthError 
+        };
+      }
+
+      console.log('✅ AuthService: Password reset email sent successfully');
+      return { error: null };
+    } catch (error) {
+      console.error('❌ AuthService: Password reset request exception:', error);
+      return { 
+        error: { 
+          message: 'An unexpected error occurred while requesting password reset. Please try again.',
           status: 500
         } as AuthError 
       };

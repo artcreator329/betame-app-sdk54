@@ -1,48 +1,75 @@
 import React, { useEffect } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 export default function AuthCallback() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    // Handle auth callback and redirect
     const handleCallback = async () => {
       try {
-        // Wait a moment for auth state to settle
-        setTimeout(() => {
-          if (user) {
-            // User is authenticated, redirect to main app
-            router.replace('/(tabs)');
+        // Example deep link: betame://auth/callback#access_token=...&refresh_token=...&type=recovery
+        const url = await Linking.getInitialURL();
+        let accessToken: string | null = null;
+        let refreshToken: string | null = null;
+        let type: string | null = null;
+
+        if (url) {
+          const hashIndex = url.indexOf('#');
+          if (hashIndex !== -1) {
+            const hashParams = new URLSearchParams(url.substring(hashIndex + 1));
+            accessToken = hashParams.get('access_token');
+            refreshToken = hashParams.get('refresh_token');
+            type = hashParams.get('type');
           } else {
-            // No user, redirect to login
-            router.replace('/auth/login');
+            const queryIndex = url.indexOf('?');
+            if (queryIndex !== -1) {
+              const queryParams = new URLSearchParams(url.substring(queryIndex + 1));
+              accessToken = queryParams.get('access_token');
+              refreshToken = queryParams.get('refresh_token');
+              type = queryParams.get('type');
+            }
           }
-        }, 1000);
+        }
+
+        if (type === 'recovery' && accessToken) {
+          // Set session so updateUser calls succeed
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken ?? ''
+          });
+          if (error) {
+            console.error('❌ AuthCallback: setSession error:', error);
+          }
+
+          router.replace({
+            pathname: '/auth/reset-password',
+            params: { type: 'recovery', token: accessToken }
+          });
+          return;
+        }
+
+        // Fallback: proceed to app or login
+        setTimeout(() => {
+          if (user) router.replace('/(tabs)');
+          else router.replace('/auth/login');
+        }, 500);
       } catch (error) {
         console.error('Auth callback error:', error);
         router.replace('/auth/login');
       }
     };
 
-    if (!loading) {
-      handleCallback();
-    }
+    if (!loading) handleCallback();
   }, [user, loading, router]);
 
   return (
-    <View style={{ 
-      flex: 1, 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      backgroundColor: '#ffffff'
-    }}>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' }}>
       <ActivityIndicator size="large" color="#007AFF" />
-      <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
-        Completing sign in...
-      </Text>
+      <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>Completing sign in...</Text>
     </View>
   );
 }

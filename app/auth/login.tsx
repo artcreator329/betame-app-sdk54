@@ -13,13 +13,14 @@ import {
   ScrollView,
   Keyboard,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminService } from '@/lib/admin-service';
 import { referralService } from '@/lib/referral-service';
 import { ReferralInputModal } from '@/components/ReferralInputModal';
+import { BackgroundVideoPlayer } from '@/components/BackgroundVideoPlayer';
+import { audioSessionManager } from '@/lib/audio-session-manager';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
@@ -30,13 +31,9 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [newUserId, setNewUserId] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
   const { signIn, signUp } = useAuth();
-  const videoRef = useRef<Video>(null);
-
-  // Add video error handling and rotation
-  const [videoError, setVideoError] = useState(false);
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
 
   const videos = [
     require('../../assets/images/sign_up_page_video.mp4'),
@@ -44,19 +41,13 @@ export default function LoginScreen() {
     require('../../assets/images/sign_up_page_video_3.mp4'),
   ];
 
+  // Configure audio session for silent video playback
+  useEffect(() => {
+    audioSessionManager.configureForSilentPlayback();
+  }, []);
+
   const handleVideoError = (error: any) => {
     console.log('Video error:', error);
-    setVideoError(true);
-  };
-
-  const handleVideoLoad = () => {
-    console.log('Video loaded successfully');
-    setVideoError(false);
-  };
-
-  const handleVideoEnd = () => {
-    // Cycle to next video when current one ends
-    setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
   };
 
   const handleSignIn = async () => {
@@ -67,7 +58,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const result = await signIn(email.trim(), password);
+      const result = await signIn(email.trim(), password, rememberMe);
       
       if (result.error) {
         Alert.alert('Error', result.error.message);
@@ -205,33 +196,12 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Video Background */}
-      <View style={styles.videoContainer}>
-        {!videoError ? (
-          <Video
-            ref={videoRef}
-            source={videos[currentVideoIndex]}
-            style={styles.video}
-            resizeMode={ResizeMode.COVER}
-            shouldPlay
-            isLooping={false}
-            isMuted
-            onError={handleVideoError}
-            onLoad={handleVideoLoad}
-            onPlaybackStatusUpdate={(status) => {
-              if (status.isLoaded && status.didJustFinish) {
-                handleVideoEnd();
-              }
-            }}
-            useNativeControls={false}
-            posterStyle={{ resizeMode: 'cover' }}
-          />
-        ) : (
-          <View style={styles.fallbackBackground} />
-        )}
-        {/* Overlay for better text readability */}
-        <View style={styles.videoOverlay} />
-      </View>
+      {/* Background Video Player with Random Selection and Fading Transitions */}
+      <BackgroundVideoPlayer
+        videos={videos}
+        fadeDuration={500}
+        onVideoError={handleVideoError}
+      />
       
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -287,7 +257,7 @@ export default function LoginScreen() {
                 {isSignUp && (
                   <TextInput
                    style={styles.input}
-                   placeholder="Full Name"
+                   placeholder="username"
                    placeholderTextColor="#9CA3AF"
                    value={fullName}
                    onChangeText={setFullName}
@@ -321,6 +291,32 @@ export default function LoginScreen() {
                    returnKeyType="done"
                    onSubmitEditing={handleEmailAuth}
                  />
+
+                {/* Remember Me and Reset Password - Only show for sign in */}
+                {!isSignUp && (
+                  <View style={styles.rememberMeContainer}>
+                    <View style={styles.rememberMeRow}>
+                      <TouchableOpacity
+                        style={styles.checkboxContainer}
+                        onPress={() => setRememberMe(!rememberMe)}
+                      >
+                        <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                          {rememberMe && (
+                            <Text style={styles.checkmark}>✓</Text>
+                          )}
+                        </View>
+                        <Text style={styles.rememberMeText}>Remember Me</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={styles.resetPasswordButton}
+                        onPress={() => router.push('/auth/reset-password')}
+                      >
+                        <Text style={styles.resetPasswordText}>Reset Password</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
 
                 {/* Email Verification Note for Sign Up */}
                 {isSignUp && (
@@ -372,9 +368,13 @@ export default function LoginScreen() {
               <View style={styles.termsContainer}>
                 <Text style={styles.termsText}>
                   By clicking continue, you agree to our{' '}
-                  <Text style={styles.termsLink}>Terms of Service</Text>
+                  <Text style={styles.termsLink} onPress={() => router.push('/terms-of-service')}>
+                    Terms of Service
+                  </Text>
                   {' '}and{' '}
-                  <Text style={styles.termsLink}>Privacy Policy</Text>
+                  <Text style={styles.termsLink} onPress={() => router.push('/privacy-policy')}>
+                    Privacy Policy
+                  </Text>
                 </Text>
               </View>
             </View>
@@ -401,32 +401,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
-  },
-  videoContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: -1,
-  },
-  video: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  videoOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  fallbackBackground: {
-    flex: 1,
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#000000',
   },
   keyboardView: {
     flex: 1,
@@ -637,6 +612,58 @@ const styles = StyleSheet.create({
   resendVerificationText: {
     fontSize: 14,
     color: '#3B82F6',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+  },
+  rememberMeContainer: {
+    marginBottom: 16,
+  },
+  rememberMeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkboxChecked: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  checkmark: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  rememberMeText: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+  },
+  resetPasswordButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  resetPasswordText: {
+    fontSize: 15,
+    color: '#007AFF',
     fontWeight: '500',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },

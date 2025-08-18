@@ -20,6 +20,9 @@ if (__DEV__) {
     'componentWillReceiveProps has been renamed',
     'componentWillMount has been renamed',
     'componentWillUpdate has been renamed',
+    'AudioSession',
+    'SessionAPIUtilities',
+    'kMXSessionProperty_HasEchoCancelledInput',
   ]);
   
   // Optionally disable all warnings (uncomment if you want to suppress all)
@@ -42,6 +45,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { useEffect } from 'react';
 import { configureLocalNotifications } from '@/lib/local-notifications';
 import { useDeepLinking } from '@/hooks/useDeepLinking';
+import { audioSessionManager } from '@/lib/audio-session-manager';
 
 function LoadingScreen() {
   return (
@@ -66,6 +70,11 @@ function RootLayoutNav() {
   
   // Initialize deep linking
   useDeepLinking();
+
+  // Configure audio session globally to prevent AudioSession logs
+  useEffect(() => {
+    audioSessionManager.configureForSilentPlayback();
+  }, []);
 
   console.log('🔄 RootLayoutNav: Rendering with user:', !!user, 'isAdmin:', isAdmin, 'loading:', loading, 'segments:', segments);
 
