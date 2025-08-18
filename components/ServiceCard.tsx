@@ -71,27 +71,22 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
   // Check if service is favorited on mount
   useEffect(() => {
     const checkFavoriteStatus = async () => {
-      console.log('🔍 ServiceCard: checkFavoriteStatus called for service:', service.id, 'user:', user?.id, 'disableFavorites:', disableFavorites);
-      
       if (disableFavorites) {
-        console.log('❌ ServiceCard: Favorites disabled, setting isFavorited to false');
         setIsFavorited(false);
         return;
       }
       
       if (!user || !service.id) {
         // For unauthenticated users, set favorite status to false and don't make API calls
-        console.log('❌ ServiceCard: No user or service.id, setting isFavorited to false');
         setIsFavorited(false);
         return;
       }
       
-      console.log('✅ ServiceCard: User and service.id available, calling isFavorited');
       try {
         const favorited = await FavoritesService.isFavorited(user.id, service.id);
         setIsFavorited(favorited);
       } catch (error) {
-        console.error('❌ ServiceCard: Error checking favorite status:', error);
+        console.error('ServiceCard: Error checking favorite status:', error);
         // Set to false on error to avoid UI issues
         setIsFavorited(false);
       }
@@ -102,7 +97,6 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
 
   const handleToggleFavorite = async () => {
     if (disableFavorites) {
-      console.log('❌ ServiceCard: Favorites disabled, ignoring toggle request');
       return;
     }
     
@@ -137,7 +131,6 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
   };
 
   const handlePress = (serviceId: string = service.id) => {
-    console.log('🔗 ServiceCard: Navigating to service with ID:', serviceId);
     router.push(`/service/${serviceId}`);
   };
 

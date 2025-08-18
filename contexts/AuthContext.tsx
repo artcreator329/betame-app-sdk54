@@ -277,11 +277,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Listen for auth changes
     const { data: { subscription } } = authService.onAuthStateChange(
       async (event, session) => {
-        console.log('🔄 AuthContext: Auth state change event:', event, 'Session:', !!session, 'HasSignInError:', hasSignInError);
+        console.log('🔄 AuthContext: Auth state change event:', event, 'Session:', !!session);
         if (mounted) {
-          // Don't update user state if we have a sign-in error
-          if (hasSignInError) {
-            console.log('🔄 AuthContext: Sign-in error detected, ignoring auth state change');
+          // For failed sign-in attempts, don't update user state
+          if (event === 'SIGNED_IN' && !session) {
+            console.log('🔄 AuthContext: Sign-in event without session, likely an error');
             return;
           }
           

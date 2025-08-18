@@ -100,8 +100,8 @@ export default function LoginScreen() {
   // Effect to handle admin flow after successful sign-in
   useEffect(() => {
     const handleAdminFlow = async () => {
-      // Only proceed if we have a user, we're not in the middle of a sign-in attempt, and there's no sign-in error
-      if (user && !adminFlowCompleted && !isSigningIn && !hasSignInError) {
+      // Only proceed if we have a user, we're not in the middle of a sign-in attempt, there's no sign-in error, and no error message
+      if (user && !adminFlowCompleted && !isSigningIn && !hasSignInError && !errorMessage) {
         // Double-check that we actually have a valid session
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -152,7 +152,7 @@ export default function LoginScreen() {
     };
 
     handleAdminFlow();
-  }, [user, adminFlowCompleted, isSigningIn, hasSignInError]);
+  }, [user, adminFlowCompleted, isSigningIn, hasSignInError, errorMessage]);
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -330,6 +330,36 @@ export default function LoginScreen() {
     } else {
       // Handle sign in using the existing handleSignIn function
       await handleSignIn();
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setErrorMessage('Please enter your email address first');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage('');
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: 'betame://auth/reset-password',
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+      } else {
+        Alert.alert(
+          'Reset Link Sent',
+          'We\'ve sent a password reset link to your email. Please check your email and follow the instructions to reset your password.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error: any) {
+      setErrorMessage(error.message || 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -515,6 +545,16 @@ export default function LoginScreen() {
                      </Text>
                    )}
                  </TouchableOpacity>
+
+                 {!isSignUp && (
+                   <TouchableOpacity
+                     style={styles.forgotPasswordButton}
+                     onPress={handleForgotPassword}
+                     disabled={loading}
+                   >
+                     <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                   </TouchableOpacity>
+                 )}
                  
 
               </View>
@@ -817,5 +857,17 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  forgotPasswordButton: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
 });
