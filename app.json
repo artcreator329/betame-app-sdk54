@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "linking": {
-      "prefixes": ["betame://", "https://betame.com.my"],
+      "prefixes": [
+        "betame://",
+        "https://betame.com.my"
+      ],
       "config": {
         "screens": {
           "profile/[userId]": "profile/:userId"
@@ -20,7 +23,8 @@
       "supportsTablet": true,
       "config": {
         "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}"
-      }
+      },
+      "bundleIdentifier": "com.artcreator329.boltexponativewind"
     },
     "android": {
       "config": {

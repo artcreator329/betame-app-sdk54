@@ -12,6 +12,7 @@ import {
   Image,
   ScrollView,
   Keyboard,
+  Animated,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -47,9 +48,10 @@ export default function LoginScreen() {
   }, [errorMessage]);
   const videoRef = useRef<Video>(null);
 
-  // Add video error handling and rotation
+  // Add video error handling and rotation with fade effect
   const [videoError, setVideoError] = useState(false);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const videos = [
     require('../../assets/images/sign_up_page_video.mp4'),
@@ -57,19 +59,42 @@ export default function LoginScreen() {
     require('../../assets/images/sign_up_page_video_3.mp4'),
   ];
 
+  // Initialize with a random video index
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * videos.length);
+    setCurrentVideoIndex(randomIndex);
+  }, []);
+
   const handleVideoError = (error: any) => {
     console.log('Video error:', error);
     setVideoError(true);
+    // Try to move to next video on error
+    setTimeout(() => {
+      setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
+      setVideoError(false);
+    }, 1000);
   };
 
   const handleVideoLoad = () => {
-    console.log('Video loaded successfully');
     setVideoError(false);
+    // Fade in the new video
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleVideoEnd = () => {
-    // Cycle to next video when current one ends
-    setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
+    // Fade out current video
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => {
+      // Cycle to next video after fade out
+      setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
+    });
   };
 
   // Effect to handle admin flow after successful sign-in
@@ -315,24 +340,27 @@ export default function LoginScreen() {
       {/* Video Background */}
       <View style={styles.videoContainer}>
         {!videoError ? (
-          <Video
-            ref={videoRef}
-            source={videos[currentVideoIndex]}
-            style={styles.video}
-            resizeMode={ResizeMode.COVER}
-            shouldPlay
-            isLooping={false}
-            isMuted
-            onError={handleVideoError}
-            onLoad={handleVideoLoad}
-            onPlaybackStatusUpdate={(status) => {
-              if (status.isLoaded && status.didJustFinish) {
-                handleVideoEnd();
-              }
-            }}
-            useNativeControls={false}
-            posterStyle={{ resizeMode: 'cover' }}
-          />
+          <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+            <Video
+              ref={videoRef}
+              source={videos[currentVideoIndex]}
+              style={styles.video}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay={true}
+              isLooping={false}
+              isMuted={true}
+              onError={handleVideoError}
+              onLoad={handleVideoLoad}
+              onPlaybackStatusUpdate={(status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                  handleVideoEnd();
+                }
+              }}
+              useNativeControls={false}
+              posterStyle={{ resizeMode: 'cover' }}
+              key={`video-${currentVideoIndex}`} // Force re-render when video changes
+            />
+          </Animated.View>
         ) : (
           <View style={styles.fallbackBackground} />
         )}
@@ -494,11 +522,23 @@ export default function LoginScreen() {
               {/* Terms */}
               <View style={styles.termsContainer}>
                 <Text style={styles.termsText}>
-                  By clicking continue, you agree to our{' '}
-                  <Text style={styles.termsLink}>Terms of Service</Text>
-                  {' '}and{' '}
-                  <Text style={styles.termsLink}>Privacy Policy</Text>
+                  By clicking continue, you agree to our
                 </Text>
+                <View style={styles.termsLinksContainer}>
+                  <Text 
+                    style={styles.termsLinkBold}
+                    onPress={() => router.push('/terms-of-service')}
+                  >
+                    Terms of Service
+                  </Text>
+                  <Text style={styles.termsText}> and </Text>
+                  <Text 
+                    style={styles.termsLinkBold}
+                    onPress={() => router.push('/privacy-policy')}
+                  >
+                    Privacy Policy
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -555,7 +595,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   fallbackBackground: {
     flex: 1,
@@ -618,12 +658,12 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
     fontWeight: '400',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
   },
@@ -709,10 +749,10 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   toggleLink: {
     fontSize: 15,
@@ -720,7 +760,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 1,
   },
   termsContainer: {
     alignItems: 'center',
@@ -729,21 +769,38 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#FFFFFF',
     textAlign: 'center',
     lineHeight: 16,
     paddingHorizontal: 32,
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 1,
   },
   termsLink: {
     color: '#FFFFFF',
-    fontWeight: '600',
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 1,
   },
+  termsLinkBold: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 13,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+    letterSpacing: 0.5,
+  },
+  termsLinksContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginTop: 4,
+  },
+
   skipContainer: {
     alignItems: 'flex-end',
     paddingHorizontal: 24,

@@ -1,8 +1,12 @@
 import Expo
 import React
 import ReactAppDependencyProvider
-import GoogleMaps
 
+// @generated begin react-native-maps-import - expo prebuild (DO NOT MODIFY) sync-bee50fec513f89284e0fa3f5d935afdde33af98f
+#if canImport(GoogleMaps)
+import GoogleMaps
+#endif
+// @generated end react-native-maps-import
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
   var window: UIWindow?
@@ -14,9 +18,6 @@ public class AppDelegate: ExpoAppDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
-    // Initialize Google Maps SDK
-    GMSServices.provideAPIKey("<REDACTED_GOOGLE_API_KEY>")
-    
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
@@ -33,6 +34,11 @@ public class AppDelegate: ExpoAppDelegate {
       launchOptions: launchOptions)
 #endif
 
+// @generated begin react-native-maps-init - expo prebuild (DO NOT MODIFY) sync-d90a6c8899054b746ef26cb2bbe10f66be55cdd2
+#if canImport(GoogleMaps)
+GMSServices.provideAPIKey("${EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}")
+#endif
+// @generated end react-native-maps-init
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
