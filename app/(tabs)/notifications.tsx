@@ -108,6 +108,12 @@ export default function NotificationsScreen() {
   const unreadCount = filteredNotifications.filter(n => !n.isRead).length;
   const totalFilteredCount = filteredNotifications.length;
 
+  // Debug logging for filtered notifications
+  React.useEffect(() => {
+    console.log('📱 NotificationsScreen: Filtered notifications count:', filteredNotifications.length);
+    console.log('📱 NotificationsScreen: Selected notifications count:', selectedNotifications.size);
+  }, [filteredNotifications, selectedNotifications]);
+
   const handleNotificationPress = async (notification: Notification) => {
     console.log('🔔 Notification pressed:', notification);
     console.log('🔔 Full notification object:', JSON.stringify(notification, null, 2));

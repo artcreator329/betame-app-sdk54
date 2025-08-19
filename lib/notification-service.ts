@@ -116,9 +116,11 @@ export class NotificationService {
 
   private notifyListeners(): void {
     console.log('🔔 NotificationService: Notifying', this.listeners.length, 'listeners with', this.notifications.length, 'notifications');
+    // Create a new array reference to ensure React detects the change
+    const notificationsCopy = [...this.notifications];
     this.listeners.forEach((listener, index) => {
       try {
-        listener(this.notifications);
+        listener(notificationsCopy);
         console.log('🔔 NotificationService: Listener', index, 'notified successfully');
       } catch (error) {
         console.error('❌ NotificationService: Error notifying listener', index, ':', error);
@@ -141,11 +143,11 @@ export class NotificationService {
     // Use setTimeout to avoid calling listener during render
     setTimeout(async () => {
       if (this.isInitialized) {
-        listener(this.notifications);
+        listener([...this.notifications]);
       } else {
         // Wait for initialization to complete, then call listener
         await this.initializeService();
-        listener(this.notifications);
+        listener([...this.notifications]);
       }
     }, 0);
     
