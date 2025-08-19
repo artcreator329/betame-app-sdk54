@@ -73,14 +73,25 @@ export default function EKYCManagement() {
   }, [user]);
 
   const checkAdminAccess = async () => {
+    console.log('🔍 EKYC Management: Checking admin access...');
+    console.log('🔍 EKYC Management: Current user:', user);
+    
     if (!user) {
+      console.log('❌ EKYC Management: No user found, redirecting to login');
       router.replace('/auth/login');
       return;
     }
 
+    console.log('🔍 EKYC Management: User ID:', user.id);
+    console.log('🔍 EKYC Management: User email:', user.email);
+
     try {
+      console.log('🔍 EKYC Management: Checking admin status...');
       const adminStatus = await adminService.isAdmin(user.id);
+      console.log('🔍 EKYC Management: Admin status result:', adminStatus);
+      
       if (!adminStatus) {
+        console.log('❌ EKYC Management: User is not admin');
         Alert.alert(
           'Access Denied',
           'You do not have permission to access eKYC management.',
@@ -89,9 +100,10 @@ export default function EKYCManagement() {
         return;
       }
 
+      console.log('✅ EKYC Management: Admin access confirmed, loading data...');
       await loadEKYCData();
     } catch (error) {
-      console.error('Error checking admin access:', error);
+      console.error('❌ EKYC Management: Error checking admin access:', error);
       Alert.alert('Error', 'Failed to verify admin access');
       router.back();
     }
@@ -99,10 +111,14 @@ export default function EKYCManagement() {
 
   const loadEKYCData = async () => {
     try {
-      console.log('🔍 Admin Dashboard: Loading eKYC data...');
+      console.log('🔍 EKYC Management: Loading eKYC data...');
       setIsLoading(true);
+      
+      console.log('🔍 EKYC Management: Calling EKYCService.getAllEKYCSubmissions()...');
       const data = await EKYCService.getAllEKYCSubmissions();
-      console.log('✅ Admin Dashboard: Received data:', data);
+      console.log('✅ EKYC Management: Received data:', data);
+      console.log('✅ EKYC Management: Data length:', data?.length || 0);
+      
       setSubmissions(data);
       
       // Calculate stats
@@ -112,10 +128,11 @@ export default function EKYCManagement() {
         approved: data.filter(s => s.status === 'approved').length,
         rejected: data.filter(s => s.status === 'rejected').length,
       };
-      console.log('📊 Admin Dashboard: Stats:', newStats);
+      console.log('📊 EKYC Management: Calculated stats:', newStats);
       setStats(newStats);
     } catch (error) {
-      console.error('❌ Admin Dashboard: Error loading eKYC data:', error);
+      console.error('❌ EKYC Management: Error loading eKYC data:', error);
+      console.error('❌ EKYC Management: Error details:', error);
       Alert.alert('Error', 'Failed to load eKYC submissions');
     } finally {
       setIsLoading(false);

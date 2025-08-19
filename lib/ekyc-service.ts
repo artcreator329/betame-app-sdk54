@@ -209,12 +209,34 @@ export class EKYCService {
     try {
       console.log('🔍 EKYCService: Fetching all eKYC submissions...');
       
+      // Check if current user is authenticated
+      const user = await authService.getCurrentUser();
+      if (!user) {
+        console.error('❌ EKYCService: User not authenticated');
+        throw new Error('User not authenticated');
+      }
+      
+      console.log('🔍 EKYCService: User authenticated:', user.id);
+      
+      // Check if user is admin
+      const { data: adminCheck, error: adminError } = await supabase
+        .rpc('is_user_admin', { user_id: user.id });
+      
+      if (adminError) {
+        console.error('❌ EKYCService: Error checking admin status:', adminError);
+        throw new Error('Failed to verify admin access');
+      }
+      
+      if (!adminCheck) {
+        console.error('❌ EKYCService: User is not admin');
+        throw new Error('Access denied: Admin privileges required');
+      }
+      
+      console.log('✅ EKYCService: Admin access verified');
+      
       const { data, error } = await supabase
         .from('ekyc_submissions')
-        .select(`
-          *,
-          user_profiles(full_name, avatar_url)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -245,6 +267,22 @@ export class EKYCService {
       if (!user) {
         throw new Error('User not authenticated');
       }
+
+      // Check if user is admin
+      const { data: adminCheck, error: adminError } = await supabase
+        .rpc('is_user_admin', { user_id: user.id });
+      
+      if (adminError) {
+        console.error('❌ EKYCService: Error checking admin status:', adminError);
+        throw new Error('Failed to verify admin access');
+      }
+      
+      if (!adminCheck) {
+        console.error('❌ EKYCService: User is not admin');
+        throw new Error('Access denied: Admin privileges required');
+      }
+      
+      console.log('✅ EKYCService: Admin access verified for status update');
 
       const updateData = {
         status,
