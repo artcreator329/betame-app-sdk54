@@ -103,7 +103,7 @@ export class JobCompletionService {
         return false;
       }
 
-      // Update job status
+      // Update job status to work completed first
       const { error: jobError } = await supabase
         .from('job_status')
         .update({
@@ -118,11 +118,26 @@ export class JobCompletionService {
         return false;
       }
 
-      // Update the corresponding order status
+      // Update to buyer reviewing status to await confirmation
+      const { error: reviewError } = await supabase
+        .from('job_status')
+        .update({
+          current_status: 'buyer_reviewing',
+          buyer_review_started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', jobStatusId);
+
+      if (reviewError) {
+        console.error('Error updating to buyer reviewing status:', reviewError);
+        return false;
+      }
+
+      // Update the corresponding order status to buyer reviewing
       const { error: orderError } = await supabase
         .from('orders')
         .update({
-          status: 'work_completed',
+          status: 'buyer_reviewing',
           work_completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

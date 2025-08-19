@@ -35,6 +35,7 @@ export default function OrdersScreen() {
   const [showAcknowledgmentModal, setShowAcknowledgmentModal] = useState(false);
   const [completionNotes, setCompletionNotes] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [revisionReason, setRevisionReason] = useState('');
   const [rating, setRating] = useState(5);
   const [scheduledStartDate, setScheduledStartDate] = useState('');
   const [completionPhotos, setCompletionPhotos] = useState<Array<{ photo_url: string; photo_description?: string }>>([]);
@@ -43,6 +44,7 @@ export default function OrdersScreen() {
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [animationValues] = useState<{ [key: string]: Animated.Value }>({});
   const [expandAll, setExpandAll] = useState(false);
+  const [reviewAction, setReviewAction] = useState<'confirm' | 'request-changes' | null>(null);
 
   // Initialize animation values for each order
   const initializeAnimation = (orderId: string) => {
@@ -126,6 +128,18 @@ export default function OrdersScreen() {
         ActiveJobService.getUserActiveJobs(user.id)
       ]);
 
+      console.log('🔍 Orders Debug:', {
+        userId: user.id,
+        buyerEscrowOrders: buyerEscrowOrders.length,
+        sellerEscrowOrders: sellerEscrowOrders.length,
+        activeJobsBuyer: activeJobs.asBuyer.length,
+        activeJobsSeller: activeJobs.asServiceProvider.length,
+        buyerEscrowDetails: buyerEscrowOrders.map(o => ({ id: o.id, status: o.current_status })),
+        sellerEscrowDetails: sellerEscrowOrders.map(o => ({ id: o.id, status: o.current_status })),
+        activeJobsBuyerDetails: activeJobs.asBuyer.map(j => ({ id: j.id, status: j.status })),
+        activeJobsSellerDetails: activeJobs.asServiceProvider.map(j => ({ id: j.id, status: j.status }))
+      });
+
       // Add perspective flag to escrow orders
       const buyerEscrowOrdersWithPerspective = buyerEscrowOrders.map(order => ({
         ...order,
@@ -146,7 +160,11 @@ export default function OrdersScreen() {
         orderType: 'direct' as const,
         current_status: job.status === 'pending_confirmation' ? 'payment_received' :
                        job.status === 'in_progress' ? 'work_in_progress' : 
-                       job.status === 'completed' ? 'completed' : 'payment_received'
+                       job.status === 'completed' ? 'buyer_reviewing' :
+                       job.status === 'completed_confirmed' ? 'completed' :
+                       job.status === 'revision_requested' ? 'revision_requested' :
+                       job.status === 'revision_in_progress' ? 'revision_in_progress' :
+                       job.status === 'revision_completed' ? 'revision_completed' : 'payment_received'
       }));
 
       const sellerActiveJobsWithPerspective = activeJobs.asServiceProvider.map(job => ({
@@ -155,7 +173,11 @@ export default function OrdersScreen() {
         orderType: 'direct' as const,
         current_status: job.status === 'pending_confirmation' ? 'payment_received' :
                        job.status === 'in_progress' ? 'work_in_progress' : 
-                       job.status === 'completed' ? 'completed' : 'payment_received'
+                       job.status === 'completed' ? 'buyer_reviewing' :
+                       job.status === 'completed_confirmed' ? 'completed' :
+                       job.status === 'revision_requested' ? 'revision_requested' :
+                       job.status === 'revision_in_progress' ? 'revision_in_progress' :
+                       job.status === 'revision_completed' ? 'revision_completed' : 'payment_received'
       }));
 
       // Combine all orders and sort by creation date
@@ -348,32 +370,111 @@ export default function OrdersScreen() {
     }
   };
 
+  const handleRequestChanges = async () => {
+    if (!selectedOrder?.id || !revisionReason.trim()) {
+      Alert.alert('Required Field', 'Please provide a reason for requesting changes.');
+      return;
+    }
+
+    try {
+      // Check if this is a direct order or escrow order
+      if ((selectedOrder as any).orderType === 'direct') {
+        // Handle direct orders
+        const { ActiveJobService } = await import('@/lib/active-job-service');
+        const result = await ActiveJobService.requestRevision(
+          selectedOrder.id,
+          user!.id,
+          revisionReason.trim()
+        );
+        
+        if (result.success) {
+          Alert.alert(
+            'Revision Requested', 
+            'Your revision request has been sent to the service provider. They will respond within the deadline.'
+          );
+          setShowReviewModal(false);
+          setRevisionReason('');
+          setReviewAction(null);
+          setSelectedOrder(null);
+          fetchOrders();
+        } else {
+          Alert.alert('Error', result.error || 'Failed to request revision');
+        }
+      } else {
+        // Handle escrow orders
+        const result = await EscrowService.requestRevision(
+          selectedOrder.id,
+          user!.id,
+          revisionReason.trim()
+        );
+        
+        if (result.success) {
+          Alert.alert(
+            'Revision Requested', 
+            'Your revision request has been sent to the service provider. They will respond within the deadline.'
+          );
+          setShowReviewModal(false);
+          setRevisionReason('');
+          setReviewAction(null);
+          setSelectedOrder(null);
+          fetchOrders();
+        } else {
+          Alert.alert('Error', result.error || 'Failed to request revision');
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to request revision');
+    }
+  };
+
   const handleConfirmCompletion = async () => {
     if (!selectedOrder?.id) return;
 
     try {
-      const result = await EscrowService.confirmCompletionAndReleasePayment(
-        selectedOrder.id,
-        user!.id,
-        rating,
-        feedback
-      );
-      
-      if (result.success) {
-        Alert.alert(
-          'Payment Released!', 
-          'The seller has been paid and the job is now complete. Thank you for your business!'
-        );
-        setShowReviewModal(false);
-        setFeedback('');
-        setRating(5);
-        setSelectedOrder(null);
-        fetchOrders();
+      // Check if this is a direct order or escrow order
+      if ((selectedOrder as any).orderType === 'direct') {
+        // Import ActiveJobService dynamically
+        const { ActiveJobService } = await import('@/lib/active-job-service');
+        const success = await ActiveJobService.confirmJobCompletion(selectedOrder.id, user!.id);
+        
+        if (success) {
+          Alert.alert(
+            'Job Confirmed!', 
+            'You have confirmed the job completion. The service provider has been notified and payment has been released.'
+          );
+          setShowReviewModal(false);
+          setFeedback('');
+          setRating(5);
+          setSelectedOrder(null);
+          fetchOrders();
+        } else {
+          Alert.alert('Error', 'Failed to confirm job completion. Please try again.');
+        }
       } else {
-        Alert.alert('Error', result.error || 'Failed to release payment');
+        // Handle escrow orders
+        const result = await EscrowService.confirmCompletionAndReleasePayment(
+          selectedOrder.id,
+          user!.id,
+          rating,
+          feedback
+        );
+        
+        if (result.success) {
+          Alert.alert(
+            'Payment Released!', 
+            'The seller has been paid and the job is now complete. Thank you for your business!'
+          );
+          setShowReviewModal(false);
+          setFeedback('');
+          setRating(5);
+          setSelectedOrder(null);
+          fetchOrders();
+        } else {
+          Alert.alert('Error', result.error || 'Failed to release payment');
+        }
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to release payment');
+      Alert.alert('Error', 'Failed to confirm completion');
     }
   };
 
@@ -470,6 +571,9 @@ export default function OrdersScreen() {
       case 'work_in_progress': return '#007AFF';
       case 'work_completed': return '#32CD32';
       case 'buyer_reviewing': return '#9932CC';
+      case 'revision_requested': return '#FF6B35';
+      case 'revision_in_progress': return '#007AFF';
+      case 'revision_completed': return '#9932CC';
       case 'completed': return '#228B22';
       case 'disputed': return '#DC143C';
       case 'cancelled': return '#808080';
@@ -489,6 +593,12 @@ export default function OrdersScreen() {
         return perspective === 'buyer' ? 'Work Completed' : 'Work Submitted';
       case 'buyer_reviewing': 
         return perspective === 'buyer' ? 'Review & Confirm' : 'Under Review';
+      case 'revision_requested':
+        return perspective === 'buyer' ? 'Revision Requested' : 'Revision Required';
+      case 'revision_in_progress':
+        return perspective === 'buyer' ? 'Revision in Progress' : 'Working on Revision';
+      case 'revision_completed':
+        return perspective === 'buyer' ? 'Revision Complete - Review' : 'Revision Submitted';
       case 'completed': 
         return 'Completed';
       case 'disputed': 
@@ -582,13 +692,13 @@ export default function OrdersScreen() {
           return (
             <View style={styles.actionButtonContainer}>
               <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#FF6B35' }]}
+                style={[styles.orderCardActionButton, { backgroundColor: '#FF6B35' }]}
                 onPress={() => {
                   setSelectedOrder(order);
                   setShowAcknowledgmentModal(true);
                 }}
               >
-                <Text style={styles.actionButtonText}>Acceptance Acknowledged</Text>
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Acceptance Acknowledged</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
@@ -604,10 +714,10 @@ export default function OrdersScreen() {
           return (
             <View style={styles.actionButtonContainer}>
               <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}
                 onPress={() => handleConfirmOrder(order)}
               >
-                <Text style={styles.actionButtonText}>Confirm Order</Text>
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Confirm Order</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.contactButton, { backgroundColor: '#28a745' }]}
@@ -623,13 +733,13 @@ export default function OrdersScreen() {
           return (
             <View style={styles.actionButtonContainer}>
               <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#32CD32' }]}
+                style={[styles.orderCardActionButton, { backgroundColor: '#32CD32' }]}
                 onPress={() => {
                   setSelectedOrder(order);
                   setShowCompletionModal(true);
                 }}
               >
-                <Text style={styles.actionButtonText}>Mark Complete</Text>
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Mark Complete</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
@@ -645,8 +755,8 @@ export default function OrdersScreen() {
         case 'buyer_reviewing':
           return (
             <View style={styles.actionButtonContainer}>
-              <View style={[styles.actionButton, { backgroundColor: '#9932CC' }]}>
-                <Text style={styles.actionButtonText}>Awaiting Review</Text>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#9932CC' }]}>
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Awaiting Review</Text>
               </View>
               <TouchableOpacity
                 style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
@@ -661,8 +771,8 @@ export default function OrdersScreen() {
         case 'completed':
           return (
             <View style={styles.actionButtonContainer}>
-              <View style={[styles.actionButton, { backgroundColor: '#228B22' }]}>
-                <Text style={styles.actionButtonText}>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#228B22' }]}>
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>
                   Earned: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
                            `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
                 </Text>
@@ -686,15 +796,16 @@ export default function OrdersScreen() {
         case 'acknowledgment_pending':
           return (
             <View style={styles.actionButtonContainer}>
-              <View style={[styles.actionButton, { backgroundColor: '#FF6B35' }]}>
-                <Text style={styles.actionButtonText}>Waiting for seller acknowledgment</Text>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#FF6B35' }]}>
+                <Ionicons name="time-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Waiting for seller acknowledgment</Text>
               </View>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}
                 onPress={() => handleContactServiceProvider(order)}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Provider</Text>
+                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Contact Provider</Text>
               </TouchableOpacity>
             </View>
           );
@@ -702,15 +813,16 @@ export default function OrdersScreen() {
         case 'payment_received':
           return (
             <View style={styles.actionButtonContainer}>
-              <View style={[styles.actionButton, { backgroundColor: '#FFA500' }]}>
-                <Text style={styles.actionButtonText}>Waiting for service provider to confirm</Text>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#FFA500' }]}>
+                <Ionicons name="time-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Waiting for service provider to confirm</Text>
               </View>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}
                 onPress={() => handleContactServiceProvider(order)}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Provider</Text>
+                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Contact Provider</Text>
               </TouchableOpacity>
             </View>
           );
@@ -718,15 +830,16 @@ export default function OrdersScreen() {
         case 'work_in_progress':
           return (
             <View style={styles.actionButtonContainer}>
-              <View style={[styles.actionButton, { backgroundColor: '#007AFF' }]}>
-                <Text style={styles.actionButtonText}>Service provider is working</Text>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}>
+                <Ionicons name="construct-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Service provider is working</Text>
               </View>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#28a745' }]}
+                style={[styles.orderCardActionButton, { backgroundColor: '#28a745' }]}
                 onPress={() => handleContactServiceProvider(order)}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Provider</Text>
+                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Contact Provider</Text>
               </TouchableOpacity>
             </View>
           );
@@ -736,20 +849,21 @@ export default function OrdersScreen() {
           return (
             <View style={styles.actionButtonContainer}>
               <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#32CD32' }]}
+                style={[styles.orderCardActionButton, { backgroundColor: '#32CD32' }]}
                 onPress={() => {
                   setSelectedOrder(order);
                   setShowReviewModal(true);
                 }}
               >
-                <Text style={styles.actionButtonText}>Review & Release Payment</Text>
+                <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Review & Release Payment</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}
                 onPress={() => handleContactServiceProvider(order)}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Provider</Text>
+                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Contact Provider</Text>
               </TouchableOpacity>
             </View>
           );
@@ -757,18 +871,76 @@ export default function OrdersScreen() {
         case 'completed':
           return (
             <View style={styles.actionButtonContainer}>
-              <View style={[styles.actionButton, { backgroundColor: '#228B22' }]}>
-                <Text style={styles.actionButtonText}>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#228B22' }]}>
+                <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>
                   Paid: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
                          `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
                 </Text>
               </View>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}
                 onPress={() => handleContactServiceProvider(order)}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Provider</Text>
+                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Contact Provider</Text>
+              </TouchableOpacity>
+            </View>
+          );
+
+        case 'revision_requested':
+          return (
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#FF6B35' }]}>
+                <Ionicons name="refresh-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Revision Requested</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactServiceProvider(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Contact Provider</Text>
+              </TouchableOpacity>
+            </View>
+          );
+
+        case 'revision_in_progress':
+          return (
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}>
+                <Ionicons name="construct-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Revision in Progress</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.orderCardActionButton, { backgroundColor: '#28a745' }]}
+                onPress={() => handleContactServiceProvider(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Contact Provider</Text>
+              </TouchableOpacity>
+            </View>
+          );
+
+        case 'revision_completed':
+          return (
+            <View style={styles.actionButtonContainer}>
+              <TouchableOpacity
+                style={[styles.orderCardActionButton, { backgroundColor: '#32CD32' }]}
+                onPress={() => {
+                  setSelectedOrder(order);
+                  setShowReviewModal(true);
+                }}
+              >
+                <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Review Revision</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactServiceProvider(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Contact Provider</Text>
               </TouchableOpacity>
             </View>
           );
@@ -786,7 +958,7 @@ export default function OrdersScreen() {
     
     // Filter by status
     if (statusFilter === 'active') {
-      return ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing'].includes(order.current_status);
+      return ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing', 'revision_requested', 'revision_in_progress', 'revision_completed'].includes(order.current_status);
     }
     if (statusFilter === 'completed') {
       return order.current_status === 'completed';
@@ -799,7 +971,7 @@ export default function OrdersScreen() {
     const buying = orders.filter(o => (o as any).perspective === 'buyer').length;
     const selling = orders.filter(o => (o as any).perspective === 'seller').length;
     const active = orders.filter(o => 
-      ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing'].includes(o.current_status)
+      ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing', 'revision_requested', 'revision_in_progress', 'revision_completed'].includes(o.current_status)
     ).length;
     const completed = orders.filter(o => o.current_status === 'completed').length;
     
@@ -1437,13 +1609,15 @@ export default function OrdersScreen() {
       >
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background.primary }]}>
           <View style={[styles.modalHeader, { backgroundColor: colors.background.secondary, borderBottomColor: colors.border.main }]}>
-            <TouchableOpacity onPress={() => setShowReviewModal(false)}>
+            <TouchableOpacity onPress={() => {
+              setShowReviewModal(false);
+              setReviewAction(null);
+              setRevisionReason('');
+            }}>
               <Text style={[styles.modalCancel, { color: colors.text.secondary }]}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Confirm & Release Payment</Text>
-            <TouchableOpacity onPress={handleConfirmCompletion}>
-              <Text style={[styles.modalDone, { color: colors.primary.main }]}>Release</Text>
-            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Review Completed Work</Text>
+            <View style={{ width: 50 }} />
           </View>
 
           <View style={styles.modalContent}>
@@ -1461,48 +1635,122 @@ export default function OrdersScreen() {
                   </Text>
                 </View>
 
-                <View style={styles.ratingSection}>
-                  <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Rate this service</Text>
-                  <View style={styles.starsContainer}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <TouchableOpacity
-                        key={star}
-                        onPress={() => setRating(star)}
-                      >
-                        <Ionicons
-                          name={star <= rating ? "star" : "star-outline"}
-                          size={32}
-                          color={star <= rating ? "#FFD700" : colors.text.secondary}
-                        />
-                      </TouchableOpacity>
-                    ))}
+                {/* Action Selection */}
+                {!reviewAction && (
+                  <View style={styles.actionSelectionSection}>
+                    <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Choose an action:</Text>
+                    
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: colors.primary.main }]}
+                      onPress={() => setReviewAction('confirm')}
+                    >
+                      <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                      <Text style={styles.actionButtonText}>Confirm & Release Payment</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: colors.background.secondary, borderColor: colors.border.main }]}
+                      onPress={() => setReviewAction('request-changes')}
+                    >
+                      <Ionicons name="refresh" size={20} color={colors.primary.main} />
+                      <Text style={[styles.actionButtonText, { color: colors.primary.main }]}>Request Changes</Text>
+                    </TouchableOpacity>
                   </View>
-                </View>
+                )}
 
-                <View style={styles.feedbackSection}>
-                  <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Feedback (Optional)</Text>
-                  <TextInput
-                    style={[styles.feedbackInput, { 
-                      backgroundColor: colors.background.secondary, 
-                      borderColor: colors.border.main,
-                      color: colors.text.primary 
-                    }]}
-                    placeholder="Share your experience with this service..."
-                    placeholderTextColor={colors.text.secondary}
-                    value={feedback}
-                    onChangeText={setFeedback}
-                    multiline
-                    numberOfLines={4}
-                    textAlignVertical="top"
-                  />
-                </View>
+                {/* Confirm & Release Payment Section */}
+                {reviewAction === 'confirm' && (
+                  <>
+                    <View style={styles.ratingSection}>
+                      <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Rate this service</Text>
+                      <View style={styles.starsContainer}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <TouchableOpacity
+                            key={star}
+                            onPress={() => setRating(star)}
+                          >
+                            <Ionicons
+                              name={star <= rating ? "star" : "star-outline"}
+                              size={32}
+                              color={star <= rating ? "#FFD700" : colors.text.secondary}
+                            />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
 
-                <View style={[styles.modalWarning, { backgroundColor: '#fff3cd', borderLeftColor: '#FFA500' }]}>
-                  <Ionicons name="warning-outline" size={20} color="#856404" />
-                  <Text style={[styles.modalWarningText, { color: '#856404' }]}>
-                    Once you confirm, the payment will be released to the seller and cannot be reversed.
-                  </Text>
-                </View>
+                    <View style={styles.feedbackSection}>
+                      <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Feedback (Optional)</Text>
+                      <TextInput
+                        style={[styles.feedbackInput, { 
+                          backgroundColor: colors.background.secondary, 
+                          borderColor: colors.border.main,
+                          color: colors.text.primary 
+                        }]}
+                        placeholder="Share your experience with this service..."
+                        placeholderTextColor={colors.text.secondary}
+                        value={feedback}
+                        onChangeText={setFeedback}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                      />
+                    </View>
+
+                    <View style={[styles.modalWarning, { backgroundColor: '#fff3cd', borderLeftColor: '#FFA500' }]}>
+                      <Ionicons name="warning-outline" size={20} color="#856404" />
+                      <Text style={[styles.modalWarningText, { color: '#856404' }]}>
+                        Once you confirm, the payment will be released to the seller and cannot be reversed.
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: colors.primary.main }]}
+                      onPress={handleConfirmCompletion}
+                    >
+                      <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                      <Text style={styles.actionButtonText}>Confirm & Release Payment</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+
+                {/* Request Changes Section */}
+                {reviewAction === 'request-changes' && (
+                  <>
+                    <View style={styles.feedbackSection}>
+                      <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Reason for Changes (Required)</Text>
+                      <TextInput
+                        style={[styles.feedbackInput, { 
+                          backgroundColor: colors.background.secondary, 
+                          borderColor: colors.border.main,
+                          color: colors.text.primary 
+                        }]}
+                        placeholder="Describe what changes or improvements you need..."
+                        placeholderTextColor={colors.text.secondary}
+                        value={revisionReason}
+                        onChangeText={setRevisionReason}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                      />
+                    </View>
+
+                    <View style={[styles.modalWarning, { backgroundColor: '#ffe6e6', borderLeftColor: '#dc3545' }]}>
+                      <Ionicons name="information-circle-outline" size={20} color="#dc3545" />
+                      <Text style={[styles.modalWarningText, { color: '#dc3545' }]}>
+                        The service provider will review your request and can either acknowledge the changes or dispute the request.
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: colors.primary.main }]}
+                      onPress={handleRequestChanges}
+                    >
+                      <Ionicons name="refresh" size={20} color="#fff" />
+                      <Text style={styles.actionButtonText}>Submit Revision Request</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </>
             )}
           </View>
@@ -1853,27 +2101,7 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
-  actionButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginTop: 2,
-    minHeight: 44, // Ensure minimum touch target size
-    flex: 1, // Make it take equal space with contact button
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
+
   modalContainer: {
     flex: 1,
   },
@@ -2052,19 +2280,29 @@ const styles = StyleSheet.create({
   },
   actionButtonContainer: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
+    gap: 12,
+    marginTop: 16,
     alignItems: 'stretch', // Ensure buttons have same height
   },
   contactButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 8,
     flex: 1,
-    minHeight: 44, // Ensure minimum touch target size
+    minHeight: 48, // Ensure minimum touch target size
+  },
+  orderCardActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flex: 1,
+    minHeight: 48, // Ensure minimum touch target size
   },
   contactButtonText: {
     fontSize: 14,
@@ -2111,6 +2349,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginLeft: 6,
     letterSpacing: 0.2,
+  },
+  actionSelectionSection: {
+    marginBottom: 24,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   quickActionContainer: {
     marginTop: 8,

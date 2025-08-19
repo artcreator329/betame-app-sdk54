@@ -13,13 +13,18 @@ export interface ActiveJob {
   price: number;
   currency: string;
   delivery_time: string;
-  status: 'pending_confirmation' | 'in_progress' | 'completed' | 'cancelled' | 'disputed';
+  status: 'pending_confirmation' | 'in_progress' | 'completed' | 'completed_confirmed' | 'cancelled' | 'disputed' | 'revision_requested' | 'revision_in_progress' | 'revision_completed';
   progress_percentage: number;
   payment_status: 'pending' | 'paid' | 'released' | 'refunded';
   started_at?: string;
   completed_at?: string;
   created_at?: string;
   updated_at?: string;
+  revision_requested_at?: string;
+  revision_request_reason?: string;
+  revision_deadline?: string;
+  revision_acknowledged_at?: string;
+  revision_completed_at?: string;
 }
 
 export interface JobProgress {
@@ -189,13 +194,13 @@ export class ActiveJobService {
           .from('active_jobs')
           .select('*')
           .eq('buyer_id', userId)
-          .in('status', ['pending_confirmation', 'in_progress', 'completed'])
+          .in('status', ['pending_confirmation', 'in_progress', 'completed', 'revision_requested', 'revision_in_progress', 'revision_completed'])
           .order('created_at', { ascending: false }),
         supabase
           .from('active_jobs')
           .select('*')
           .eq('service_provider_id', userId)
-          .in('status', ['pending_confirmation', 'in_progress', 'completed'])
+          .in('status', ['pending_confirmation', 'in_progress', 'completed', 'revision_requested', 'revision_in_progress', 'revision_completed'])
           .order('created_at', { ascending: false })
       ]);
 
@@ -309,7 +314,7 @@ export class ActiveJobService {
   }
 
   /**
-   * Complete a job
+   * Complete a job (service provider marks as complete, buyer needs to confirm)
    */
   static async completeJob(jobId: string): Promise<boolean> {
     try {
@@ -369,6 +374,150 @@ export class ActiveJobService {
       return true;
     } catch (error) {
       console.error('Error in completeJob:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Request revision for a completed direct job
+   */
+  static async requestRevision(
+    jobId: string,
+    buyerId: string,
+    revisionReason: string,
+    revisionDeadline?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // First verify this is a completed job that needs buyer confirmation
+      const { data: job, error: fetchError } = await supabase
+        .from('active_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .eq('buyer_id', buyerId)
+        .eq('status', 'completed') // Expecting 'completed' as the status after SP marks it done
+        .single();
+
+      if (fetchError || !job) {
+        console.error('Error fetching job for revision request:', fetchError);
+        return { success: false, error: 'Job not found or not eligible for revision' };
+      }
+
+      // Calculate deadline (default 7 days from now)
+      const deadline = revisionDeadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      // Update job status to revision requested
+      const { error: updateError } = await supabase
+        .from('active_jobs')
+        .update({
+          status: 'revision_requested',
+          revision_requested_at: new Date().toISOString(),
+          revision_request_reason: revisionReason,
+          revision_deadline: deadline,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+
+      if (updateError) {
+        console.error('Error requesting revision:', updateError);
+        return { success: false, error: 'Failed to request revision' };
+      }
+
+      // Send notification to service provider about revision request
+      try {
+        const { data: buyerProfile } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', buyerId)
+          .single();
+
+        const buyerName = buyerProfile?.full_name || 'Buyer';
+        const buyerImage = buyerProfile?.avatar_url;
+
+        await notificationService.addRevisionRequestNotification({
+          serviceProviderId: job.service_provider_id,
+          buyerName,
+          buyerImage,
+          serviceTitle: job.title,
+          jobId: jobId,
+          revisionReason,
+          revisionDeadline: deadline,
+        });
+
+        console.log('✅ Direct job revision request notification sent to service provider:', job.service_provider_id);
+      } catch (error) {
+        console.error('Error sending revision request notification:', error);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error in requestRevision:', error);
+      return { success: false, error: 'Failed to request revision' };
+    }
+  }
+
+  /**
+   * Confirm job completion (buyer confirms the job is complete)
+   */
+  static async confirmJobCompletion(jobId: string, buyerId: string): Promise<boolean> {
+    try {
+      // First verify this is a completed job that needs buyer confirmation
+      const { data: job, error: fetchError } = await supabase
+        .from('active_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .eq('buyer_id', buyerId)
+        .eq('status', 'completed')
+        .single();
+
+      if (fetchError || !job) {
+        console.error('Error fetching job for confirmation:', fetchError);
+        return false;
+      }
+
+      // Update job status to confirmed completion
+      const { error: updateError } = await supabase
+        .from('active_jobs')
+        .update({
+          status: 'completed_confirmed',
+          payment_status: 'released',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+
+      if (updateError) {
+        console.error('Error confirming job completion:', updateError);
+        return false;
+      }
+
+      // Send notification to service provider about payment release
+      try {
+        const { data: providerProfile } = await supabase
+          .from('user_profiles')
+          .select('full_name, avatar_url')
+          .eq('user_id', job.service_provider_id)
+          .single();
+
+        const providerName = providerProfile?.full_name || 'Service Provider';
+        const providerImage = providerProfile?.avatar_url;
+
+        await notificationService.addJobCompletionConfirmationNotification({
+          serviceProviderId: job.service_provider_id,
+          buyerName: 'Buyer', // We could fetch buyer name if needed
+          buyerImage: undefined,
+          serviceTitle: job.title,
+          jobId: jobId,
+          rating: 5, // Default rating, could be made configurable
+          feedback: 'Job completed successfully', // Default feedback
+        });
+
+        console.log('✅ Direct job completion confirmation notification sent to service provider:', job.service_provider_id);
+      } catch (error) {
+        console.error('Error sending completion confirmation notification:', error);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in confirmJobCompletion:', error);
       return false;
     }
   }
