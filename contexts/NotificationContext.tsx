@@ -41,6 +41,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       });
 
       unsubscribe = notificationService.subscribe((updatedNotifications) => {
+        console.log('🔔 NotificationContext: Received notification update, count:', updatedNotifications.length);
         setNotifications(updatedNotifications);
         setUnreadCount(updatedNotifications.filter(n => !n.isRead).length);
       });
@@ -68,7 +69,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   };
 
   const clearNotification = async (notificationId: string) => {
+    console.log('🔔 NotificationContext: clearNotification called for:', notificationId);
     await notificationService.clearNotification(notificationId);
+    console.log('🔔 NotificationContext: clearNotification completed for:', notificationId);
   };
 
   const clearAllNotifications = async () => {

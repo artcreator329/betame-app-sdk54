@@ -149,7 +149,12 @@ export default function NotificationsScreen() {
   };
 
   const handleClearNotification = async (notificationId: string) => {
-    await clearNotification(notificationId);
+    try {
+      await clearNotification(notificationId);
+      console.log('✅ Successfully deleted notification:', notificationId);
+    } catch (error) {
+      console.error('❌ Error deleting notification:', notificationId, error);
+    }
   };
 
   const handleMarkAsRead = async (notificationId: string) => {
@@ -187,11 +192,24 @@ export default function NotificationsScreen() {
   };
 
   const handleDeleteSelected = async () => {
-    for (const notificationId of selectedNotifications) {
-      await clearNotification(notificationId);
-    }
+    console.log('🔔 NotificationsScreen: Starting bulk deletion of', selectedNotifications.size, 'notifications');
+    
+    // Clear selection state immediately for better UX
+    const selectedIds = Array.from(selectedNotifications);
     setSelectedNotifications(new Set());
     setSelectionMode(false);
+    
+    // Delete all selected notifications in parallel for better performance
+    const deletePromises = selectedIds.map(notificationId => 
+      clearNotification(notificationId)
+    );
+    
+    try {
+      await Promise.all(deletePromises);
+      console.log('✅ Successfully deleted', selectedIds.length, 'notifications');
+    } catch (error) {
+      console.error('❌ Error deleting notifications:', error);
+    }
   };
 
   // Filter management functions
@@ -221,6 +239,16 @@ export default function NotificationsScreen() {
   };
 
   const hasActiveFilters = filters.category !== 'all' || filters.readStatus !== 'all' || filters.dateRange !== 'all';
+
+  // Debug function to test notification deletion
+  const testNotificationDeletion = async () => {
+    if (filteredNotifications.length > 0) {
+      const testNotification = filteredNotifications[0];
+      console.log('🧪 Testing notification deletion for:', testNotification.id);
+      await clearNotification(testNotification.id);
+      console.log('🧪 Test deletion completed');
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
@@ -284,6 +312,14 @@ export default function NotificationsScreen() {
                   >
                     <CheckSquare size={18} color={colors.text.primary} />
                   </TouchableOpacity>
+                  {__DEV__ && filteredNotifications.length > 0 && (
+                    <TouchableOpacity 
+                      onPress={testNotificationDeletion}
+                      style={[styles.iconButton, { backgroundColor: colors.status.warning, borderWidth: 1, borderColor: colors.border.light }]}
+                    >
+                      <Text style={{ color: colors.text.white, fontSize: 12, fontWeight: 'bold' }}>T</Text>
+                    </TouchableOpacity>
+                  )}
                 </>
               )}
             </>
