@@ -153,8 +153,6 @@ export default function SelectableNotification({
   };
 
   const handleDelete = () => {
-    console.log('🔔 SelectableNotification: Delete button pressed for:', notification.id);
-    // Call onDelete immediately
     onDelete(notification.id);
   };
 

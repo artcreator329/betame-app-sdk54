@@ -115,15 +115,13 @@ export class NotificationService {
   }
 
   private notifyListeners(): void {
-    console.log('🔔 NotificationService: Notifying', this.listeners.length, 'listeners with', this.notifications.length, 'notifications');
     // Create a new array reference to ensure React detects the change
     const notificationsCopy = [...this.notifications];
-    this.listeners.forEach((listener, index) => {
+    this.listeners.forEach((listener) => {
       try {
         listener(notificationsCopy);
-        console.log('🔔 NotificationService: Listener', index, 'notified successfully');
       } catch (error) {
-        console.error('❌ NotificationService: Error notifying listener', index, ':', error);
+        console.error('Error notifying listener:', error);
       }
     });
   }
@@ -224,23 +222,18 @@ export class NotificationService {
           'postgres_changes',
           { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload: any) => {
-            console.log('🔔 NotificationService: DELETE event received:', payload);
             const row = payload.old as any;
             const index = this.notifications.findIndex(n => n.id === row.id);
             if (index !== -1) {
-              console.log('🔔 NotificationService: Removing notification from local cache:', row.id);
               this.notifications.splice(index, 1);
               this.saveNotifications();
               this.notifyListeners();
-            } else {
-              console.log('🔔 NotificationService: Notification not found in local cache:', row.id);
             }
           }
         )
         .subscribe((status) => {
-          console.log('🔔 NotificationService: Realtime subscription status:', status);
           if (status === 'SUBSCRIBED') {
-            console.log('✅ NotificationService: Realtime subscription established successfully');
+            // Subscription established successfully
           }
         });
 
@@ -445,40 +438,32 @@ export class NotificationService {
   }
 
   async clearNotification(notificationId: string): Promise<void> {
-    console.log('🔔 NotificationService: clearNotification called for:', notificationId);
     const index = this.notifications.findIndex(n => n.id === notificationId);
     if (index > -1) {
-      console.log('🔔 NotificationService: Removing notification from local cache:', notificationId);
-      
       // Update local state immediately
       this.notifications.splice(index, 1);
       this.notifyListeners(); // Notify listeners immediately
       
       // Save to storage and sync with Supabase in background
       this.saveNotifications().catch(error => {
-        console.error('❌ NotificationService: Error saving notifications:', error);
+        console.error('Error saving notifications:', error);
       });
 
       // Mirror deletion to Supabase
       try {
         if (this.currentUserId) {
-          console.log('🔔 NotificationService: Deleting from Supabase:', notificationId);
           const { error } = await supabase
             .from('notifications')
             .delete()
             .eq('id', notificationId)
             .eq('user_id', this.currentUserId);
           if (error) {
-            console.error('❌ NotificationService: Failed to delete notification in Supabase:', error);
-          } else {
-            console.log('✅ NotificationService: Successfully deleted from Supabase:', notificationId);
+            console.error('Failed to delete notification in Supabase:', error);
           }
         }
       } catch (error) {
-        console.error('❌ NotificationService: Exception deleting notification in Supabase:', error);
+        console.error('Exception deleting notification in Supabase:', error);
       }
-    } else {
-      console.log('🔔 NotificationService: Notification not found in local cache:', notificationId);
     }
   }
 

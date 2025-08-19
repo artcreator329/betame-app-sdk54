@@ -41,12 +41,7 @@ export default function NotificationsScreen() {
   const [selectionMode, setSelectionMode] = React.useState(false);
   const [selectedNotifications, setSelectedNotifications] = React.useState<Set<string>>(new Set());
 
-  // Debug logging
-  React.useEffect(() => {
-    console.log('📱 NotificationsScreen: Current notifications:', notifications);
-    console.log('📱 NotificationsScreen: Notifications count:', notifications.length);
-    console.log('📱 NotificationsScreen: Active filters:', filters);
-  }, [notifications, filters]);
+
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -108,11 +103,7 @@ export default function NotificationsScreen() {
   const unreadCount = filteredNotifications.filter(n => !n.isRead).length;
   const totalFilteredCount = filteredNotifications.length;
 
-  // Debug logging for filtered notifications
-  React.useEffect(() => {
-    console.log('📱 NotificationsScreen: Filtered notifications count:', filteredNotifications.length);
-    console.log('📱 NotificationsScreen: Selected notifications count:', selectedNotifications.size);
-  }, [filteredNotifications, selectedNotifications]);
+
 
   const handleNotificationPress = async (notification: Notification) => {
     console.log('🔔 Notification pressed:', notification);
@@ -157,9 +148,8 @@ export default function NotificationsScreen() {
   const handleClearNotification = async (notificationId: string) => {
     try {
       await clearNotification(notificationId);
-      console.log('✅ Successfully deleted notification:', notificationId);
     } catch (error) {
-      console.error('❌ Error deleting notification:', notificationId, error);
+      console.error('Error deleting notification:', notificationId, error);
     }
   };
 
@@ -198,8 +188,6 @@ export default function NotificationsScreen() {
   };
 
   const handleDeleteSelected = async () => {
-    console.log('🔔 NotificationsScreen: Starting bulk deletion of', selectedNotifications.size, 'notifications');
-    
     // Clear selection state immediately for better UX
     const selectedIds = Array.from(selectedNotifications);
     setSelectedNotifications(new Set());
@@ -212,9 +200,8 @@ export default function NotificationsScreen() {
     
     try {
       await Promise.all(deletePromises);
-      console.log('✅ Successfully deleted', selectedIds.length, 'notifications');
     } catch (error) {
-      console.error('❌ Error deleting notifications:', error);
+      console.error('Error deleting notifications:', error);
     }
   };
 
@@ -246,15 +233,7 @@ export default function NotificationsScreen() {
 
   const hasActiveFilters = filters.category !== 'all' || filters.readStatus !== 'all' || filters.dateRange !== 'all';
 
-  // Debug function to test notification deletion
-  const testNotificationDeletion = async () => {
-    if (filteredNotifications.length > 0) {
-      const testNotification = filteredNotifications[0];
-      console.log('🧪 Testing notification deletion for:', testNotification.id);
-      await clearNotification(testNotification.id);
-      console.log('🧪 Test deletion completed');
-    }
-  };
+
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
@@ -318,14 +297,6 @@ export default function NotificationsScreen() {
                   >
                     <CheckSquare size={18} color={colors.text.primary} />
                   </TouchableOpacity>
-                  {__DEV__ && filteredNotifications.length > 0 && (
-                    <TouchableOpacity 
-                      onPress={testNotificationDeletion}
-                      style={[styles.iconButton, { backgroundColor: colors.status.warning, borderWidth: 1, borderColor: colors.border.light }]}
-                    >
-                      <Text style={{ color: colors.text.white, fontSize: 12, fontWeight: 'bold' }}>T</Text>
-                    </TouchableOpacity>
-                  )}
                 </>
               )}
             </>

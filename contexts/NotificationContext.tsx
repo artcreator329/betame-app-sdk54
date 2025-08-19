@@ -41,7 +41,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       });
 
       unsubscribe = notificationService.subscribe((updatedNotifications) => {
-        console.log('🔔 NotificationContext: Received notification update, count:', updatedNotifications.length);
         // Force React to detect the change by creating a new array reference
         setNotifications([...updatedNotifications]);
         setUnreadCount(updatedNotifications.filter(n => !n.isRead).length);
@@ -70,9 +69,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   };
 
   const clearNotification = async (notificationId: string) => {
-    console.log('🔔 NotificationContext: clearNotification called for:', notificationId);
     await notificationService.clearNotification(notificationId);
-    console.log('🔔 NotificationContext: clearNotification completed for:', notificationId);
     
     // Force a re-render by updating the state with a new reference
     setNotifications(prev => [...prev]);
