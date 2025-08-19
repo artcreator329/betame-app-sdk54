@@ -940,7 +940,10 @@ export default function ProfileScreen() {
                 <View style={[styles.profileContent, isDesktop && styles.profileContentDesktop]}>
                   <View style={[styles.profileInfo, isDesktop && styles.profileInfoDesktop]}>
                     <View style={styles.userNameContainer}>
-                      <Text style={[styles.userName, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userNameDesktop]}>
+                      <Text 
+                        style={[styles.userName, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userNameDesktop]}
+                        numberOfLines={2}
+                      >
                         {userProfile?.full_name || 'User'}
                       </Text>
                       {renderVerificationTick()}
@@ -1510,15 +1513,18 @@ const styles = StyleSheet.create({
 
   userNameContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'flex-end',
     marginBottom: 8,
+    flexWrap: 'wrap',
   },
   userName: {
     fontSize: 28,
     fontWeight: '700',
     textAlign: 'right',
     color: 'white',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   userNameDesktop: {
     fontSize: 28,
@@ -1526,6 +1532,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'right',
     color: 'white',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   userBio: {
     fontSize: 16,
