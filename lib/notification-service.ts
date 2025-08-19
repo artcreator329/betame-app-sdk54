@@ -206,9 +206,11 @@ export class NotificationService {
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload: any) => {
+            console.log('UPDATE event received:', payload);
             const row = payload.new as any;
             const index = this.notifications.findIndex(n => n.id === row.id);
             if (index !== -1) {
+              console.log('Updating notification:', row.id, 'isRead:', row.is_read);
               this.notifications[index].isRead = !!row.is_read;
               this.notifications[index].title = row.title ?? this.notifications[index].title;
               this.notifications[index].message = row.message ?? this.notifications[index].message;
@@ -434,6 +436,24 @@ export class NotificationService {
     if (hasChanges) {
       await this.saveNotifications();
       this.notifyListeners();
+
+      // Mirror to Supabase
+      try {
+        if (this.currentUserId) {
+          const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('user_id', this.currentUserId)
+            .eq('is_read', false);
+          if (error) {
+            console.error('Failed to mark all as read in Supabase:', error);
+          } else {
+            console.log('Successfully marked all notifications as read in Supabase');
+          }
+        }
+      } catch (error) {
+        console.error('Exception marking all as read in Supabase:', error);
+      }
     }
   }
 

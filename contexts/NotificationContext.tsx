@@ -66,6 +66,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   const markAllAsRead = async () => {
     await notificationService.markAllAsRead();
+    
+    // Force a re-render by updating the state with a new reference
+    setNotifications(prev => [...prev]);
   };
 
   const clearNotification = async (notificationId: string) => {
