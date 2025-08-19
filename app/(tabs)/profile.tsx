@@ -1504,37 +1504,42 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   profileInfo: {
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
     width: '100%',
+    paddingRight: 20, // Add padding to avoid overlap with profile picture
   },
   profileInfoDesktop: {
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
     width: '100%',
+    paddingRight: 20,
   },
 
 
   userNameContainer: {
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
     marginBottom: 8,
     width: '100%',
+    maxWidth: '70%', // Limit width to avoid overlap with profile picture
   },
   userNameTextContainer: {
     width: '100%',
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
   },
   userName: {
     fontSize: 28,
     fontWeight: '700',
-    textAlign: 'left',
+    textAlign: 'right',
     color: 'white',
+    flexWrap: 'wrap',
   },
   userNameDesktop: {
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 8,
-    textAlign: 'left',
+    textAlign: 'right',
     color: 'white',
+    flexWrap: 'wrap',
   },
   userBio: {
     fontSize: 16,
@@ -1542,6 +1547,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'right',
     color: 'white',
+    maxWidth: '70%', // Limit width to avoid overlap
   },
   userBioDesktop: {
     fontSize: 16,
@@ -1549,11 +1555,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'right',
     color: 'white',
+    maxWidth: '70%',
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+    justifyContent: 'flex-end',
+    maxWidth: '70%', // Limit width to avoid overlap
   },
   ratingText: {
     fontSize: 16,
