@@ -13,8 +13,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { CanvasWatermarkService } from '../lib/canvas-watermark';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AIDocumentAnalysisService } from '@/lib/ai-document-analysis';
 import { 
   ArrowLeft, 
   Camera, 
@@ -66,13 +67,14 @@ export default function EKYCVerificationScreen() {
   const router = useRouter();
   const colors = useColors();
   const { user, refreshProfile } = useAuth();
-  const [currentStep, setCurrentStep] = useState<'personal' | 'documents' | 'terms' | 'verification' | 'review' | 'complete'>('personal');
+  const [currentStep, setCurrentStep] = useState<'identity_document' | 'personal' | 'documents' | 'terms' | 'verification' | 'review' | 'complete'>('identity_document');
   const [tosAccepted, setTosAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showStateDropdown, setShowStateDropdown] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<any>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
+  const [isAnalyzingDocument, setIsAnalyzingDocument] = useState(false);
 
   // Malaysian States and Federal Territories
   const malaysianStates = [
@@ -133,7 +135,7 @@ export default function EKYCVerificationScreen() {
               setCurrentStep('complete');
             } else if (existingSubmission.status === 'rejected') {
               // Allow user to resubmit
-              setCurrentStep('personal');
+              setCurrentStep('identity_document');
             } else {
               // Pending review
               setCurrentStep('verification');
@@ -141,16 +143,16 @@ export default function EKYCVerificationScreen() {
           } else {
             // No submission yet, start from beginning
             console.log('🆕 No existing submission, starting from beginning');
-            setCurrentStep('personal');
+            setCurrentStep('identity_document');
           }
         } else {
           console.log('⚠️ No user profile found, starting from beginning');
-          setCurrentStep('personal');
+          setCurrentStep('identity_document');
         }
       } catch (error) {
         console.error('❌ Error checking verification status:', error);
         // If error, start from beginning
-        setCurrentStep('personal');
+        setCurrentStep('identity_document');
       } finally {
         setLoadingStatus(false);
       }
@@ -241,8 +243,8 @@ export default function EKYCVerificationScreen() {
 
 
 
-  // Document uploads
-  const [documents, setDocuments] = useState<DocumentType[]>([
+  // Identity documents (IC/Passport)
+  const [identityDocuments, setIdentityDocuments] = useState<DocumentType[]>([
     {
       id: 'ic_front',
       name: 'IC Front (MyKad)',
@@ -251,6 +253,18 @@ export default function EKYCVerificationScreen() {
       uploaded: false,
       verified: false
     },
+    {
+      id: 'passport_front',
+      name: 'Passport Front',
+      description: 'Front page of your passport',
+      required: false,
+      uploaded: false,
+      verified: false
+    }
+  ]);
+
+  // Additional documents
+  const [additionalDocuments, setAdditionalDocuments] = useState<DocumentType[]>([
     {
       id: 'ic_back',
       name: 'IC Back (MyKad)',
@@ -277,39 +291,49 @@ export default function EKYCVerificationScreen() {
     }
   ]);
 
+  // Combined documents for backward compatibility
+  const documents = [...identityDocuments, ...additionalDocuments];
+
   const verificationSteps: VerificationStep[] = [
     {
+      id: 'identity_document',
+      title: '',
+      description: 'Upload document',
+      status: currentStep === 'identity_document' ? 'in_progress' : ['personal', 'documents', 'terms', 'verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
+      icon: <CreditCard size={20} />
+    },
+    {
       id: 'personal',
-      title: 'Personal Information',
-      description: 'Enter your personal details',
+      title: '',
+      description: 'Review details',
       status: currentStep === 'personal' ? 'in_progress' : ['documents', 'terms', 'verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
       icon: <User size={20} />
     },
     {
       id: 'documents',
-      title: 'Document Upload',
-      description: 'Upload required documents',
+      title: '',
+      description: 'Upload documents',
       status: currentStep === 'documents' ? 'in_progress' : ['terms', 'verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
       icon: <FileText size={20} />
     },
     {
       id: 'terms',
-      title: 'Terms of Service',
-      description: 'Accept service provider terms',
+      title: '',
+      description: 'Accept terms',
       status: currentStep === 'terms' ? 'in_progress' : ['verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
       icon: <Scale size={20} />
     },
     {
       id: 'verification',
-      title: 'Identity Verification',
-      description: 'Verification in progress',
+      title: '',
+      description: 'In progress',
       status: currentStep === 'verification' ? 'in_progress' : ['review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
       icon: <Shield size={20} />
     },
     {
       id: 'review',
-      title: 'Review & Approval',
-      description: 'Final review process',
+      title: '',
+      description: 'Final review',
       status: currentStep === 'review' ? 'in_progress' : currentStep === 'complete' ? 'completed' : 'pending',
       icon: <CheckCircle size={20} />
     }
@@ -340,64 +364,201 @@ export default function EKYCVerificationScreen() {
     }
   };
 
-  const handleDocumentUpload = async (documentId: string) => {
+  const handleAIAutoFill = async () => {
     try {
-      const result = await CanvasWatermarkService.showImagePickerWithWatermark({
-        text: 'BetaMe',
-        opacity: 0.3,
-        fontSize: 32,
-        color: '#FFFFFF'
+      setIsAnalyzingDocument(true);
+      
+      // Find the identity document (IC front or passport)
+      const identityDoc = identityDocuments.find(doc => 
+        doc.id === 'ic_front' || doc.id === 'passport_front'
+      );
+      
+      if (!identityDoc || !identityDoc.uploaded || !identityDoc.uri) {
+        Alert.alert(
+          'Document Required',
+          'Please upload your IC front or passport first before using AI auto-fill.'
+        );
+        return;
+      }
+
+      console.log('🤖 Starting AI analysis for document:', identityDoc.id);
+      
+      const documentType = personalInfo.nationality === 'malaysian' ? 'IC' : 'Passport';
+      
+      const result = await AIDocumentAnalysisService.analyzeIdentityDocument(
+        identityDoc.uri,
+        documentType
+      );
+
+      if (!result.success || !result.extractedInfo) {
+        Alert.alert(
+          'Analysis Failed',
+          result.error || 'Failed to analyze document. Please check the image quality and try again.'
+        );
+        return;
+      }
+
+      const extracted = result.extractedInfo;
+      console.log('✅ AI extracted information:', extracted);
+
+      // Validate the extracted information
+      const validation = AIDocumentAnalysisService.validateExtractedInfo(extracted);
+      if (!validation.isValid) {
+        Alert.alert(
+          'Incomplete Information',
+          `The AI couldn't extract all required information:\n${validation.errors.join('\n')}\n\nPlease verify and complete the missing fields manually.`
+        );
+      }
+
+      // Auto-fill the form with extracted information
+      const updatedInfo = { ...personalInfo };
+      
+      if (extracted.fullName) {
+        updatedInfo.fullName = extracted.fullName;
+      }
+      
+      if (documentType === 'IC' && extracted.icNumber) {
+        updatedInfo.icNumber = extracted.icNumber;
+      } else if (documentType === 'Passport' && extracted.passportNumber) {
+        updatedInfo.passportNumber = extracted.passportNumber;
+      }
+      
+      if (extracted.dateOfBirth) {
+        updatedInfo.dateOfBirth = extracted.dateOfBirth;
+      }
+      
+      if (extracted.nationality) {
+        updatedInfo.nationality = extracted.nationality.toLowerCase() === 'malaysian' ? 'malaysian' : 'foreigner';
+      }
+
+      setPersonalInfo(updatedInfo);
+
+      // Show a toast-like message instead of alert for automatic fill
+      console.log(`✅ AI auto-fill completed with ${Math.round((extracted.confidence || 0) * 100)}% confidence`);
+
+    } catch (error) {
+      console.error('❌ AI auto-fill error:', error);
+      Alert.alert(
+        'Auto-fill Error',
+        'An error occurred while analyzing your document. Please try again or fill in the information manually.'
+      );
+    } finally {
+      setIsAnalyzingDocument(false);
+    }
+  };
+
+  const handleDocumentUpload = async (documentId: string, documentType: 'identity' | 'additional' = 'additional') => {
+    try {
+      // Use basic image picker without watermark for now to test upload
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant media library access to upload documents.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: false,
       });
 
-      if (result) {
-        // First, update the document with the local URI for immediate preview
-        setDocuments(prev => 
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      console.log('📸 Selected image URI:', asset.uri);
+      console.log('📸 Image size:', asset.fileSize);
+      console.log('📸 Image type:', asset.type);
+
+      // First, update the appropriate document array with the local URI for immediate preview
+      if (documentType === 'identity') {
+        setIdentityDocuments(prev => 
           prev.map(doc => 
             doc.id === documentId 
-              ? { ...doc, uploaded: true, verified: false, uri: result.uri }
+              ? { ...doc, uploaded: true, verified: false, uri: asset.uri }
               : doc
           )
         );
+      } else {
+        setAdditionalDocuments(prev => 
+          prev.map(doc => 
+            doc.id === documentId 
+              ? { ...doc, uploaded: true, verified: false, uri: asset.uri }
+              : doc
+          )
+        );
+      }
 
-        // Then upload to Supabase storage in the background
-        try {
-          const fileName = `${documentId}_${Date.now()}.jpg`;
-          const uploadedUrl = await EKYCService.uploadDocument(result.uri, fileName, user?.id || '');
-          
-          // Update document with the uploaded URL
-          setDocuments(prev => 
+      // Then upload to Supabase storage in the background
+      try {
+        console.log('🚀 Starting upload for document:', documentId);
+        const fileName = `${documentId}_${Date.now()}.jpg`;
+        const uploadedUrl = await EKYCService.uploadDocument(asset.uri, fileName, user?.id || '');
+        console.log('✅ Upload successful, URL:', uploadedUrl);
+        
+        // Update the appropriate document array with the uploaded URL
+        if (documentType === 'identity') {
+          setIdentityDocuments(prev => 
             prev.map(doc => 
               doc.id === documentId 
                 ? { ...doc, uploaded: true, verified: true, uri: uploadedUrl }
                 : doc
             )
           );
-          
-          Alert.alert(
-            'Success',
-            'Document uploaded successfully with BetaMe watermark',
-            [{ text: 'OK' }]
-          );
-        } catch (uploadError) {
-          console.error('Upload to storage failed:', uploadError);
-          // Keep the local image but mark as not verified
-          setDocuments(prev => 
+        } else {
+          setAdditionalDocuments(prev => 
             prev.map(doc => 
               doc.id === documentId 
-                ? { ...doc, uploaded: true, verified: false, uri: result.uri }
+                ? { ...doc, uploaded: true, verified: true, uri: uploadedUrl }
                 : doc
             )
           );
-          
-          Alert.alert(
-            'Upload Warning',
-            'Document selected but upload to server failed. You can continue, but please try uploading again later.',
-            [{ text: 'OK' }]
+        }
+        
+        Alert.alert(
+          'Success',
+          'Document uploaded successfully',
+          [{ text: 'OK' }]
+        );
+      } catch (uploadError) {
+        console.error('❌ Upload to storage failed:', uploadError);
+        console.error('❌ Upload error details:', {
+          message: uploadError.message,
+          stack: uploadError.stack,
+          documentId,
+          fileName: `${documentId}_${Date.now()}.jpg`
+        });
+        
+        // Keep the local image but mark as not verified
+        if (documentType === 'identity') {
+          setIdentityDocuments(prev => 
+            prev.map(doc => 
+              doc.id === documentId 
+                ? { ...doc, uploaded: true, verified: false, uri: asset.uri }
+                : doc
+            )
+          );
+        } else {
+          setAdditionalDocuments(prev => 
+            prev.map(doc => 
+              doc.id === documentId 
+                ? { ...doc, uploaded: true, verified: false, uri: asset.uri }
+                : doc
+            )
           );
         }
+        
+        Alert.alert(
+          'Upload Warning',
+          'Document selected but upload to server failed. You can continue, but please try uploading again later.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
-      console.error('Document upload error:', error);
+      console.error('❌ Document upload error:', error);
       Alert.alert(
         'Upload Failed',
         'Failed to select document. Please try again.',
@@ -407,7 +568,21 @@ export default function EKYCVerificationScreen() {
   };
 
   const handleNextStep = () => {
-    if (currentStep === 'personal') {
+    if (currentStep === 'identity_document') {
+      // Check if identity document is uploaded
+      const requiredIdentityDoc = personalInfo.nationality === 'malaysian' ? 'ic_front' : 'passport_front';
+      const identityDoc = identityDocuments.find(doc => doc.id === requiredIdentityDoc);
+      
+      if (!identityDoc || !identityDoc.uploaded) {
+        Alert.alert('Identity Document Required', `Please upload your ${personalInfo.nationality === 'malaysian' ? 'IC front' : 'passport front'} first.`);
+        return;
+      }
+      
+      // Auto-fill personal information with AI after document upload
+      handleAIAutoFill();
+      
+      setCurrentStep('personal');
+    } else if (currentStep === 'personal') {
       // Validate personal information based on nationality
       let requiredFields = ['fullName', 'dateOfBirth', 'phoneNumber', 'email', 'address', 'city', 'postcode', 'state'];
       
@@ -425,12 +600,12 @@ export default function EKYCVerificationScreen() {
       }
       setCurrentStep('documents');
     } else if (currentStep === 'documents') {
-      // Check if required documents are uploaded
-      const requiredDocuments = documents.filter(doc => doc.required);
+      // Check if required additional documents are uploaded
+      const requiredDocuments = additionalDocuments.filter(doc => doc.required);
       const uploadedRequired = requiredDocuments.every(doc => doc.uploaded);
       
       if (!uploadedRequired) {
-        Alert.alert('Missing Documents', 'Please upload all required documents.');
+        Alert.alert('Missing Documents', 'Please upload all required additional documents.');
         return;
       }
       setCurrentStep('terms');
@@ -453,7 +628,9 @@ export default function EKYCVerificationScreen() {
   };
 
   const handleBackStep = () => {
-    if (currentStep === 'documents') {
+    if (currentStep === 'personal') {
+      setCurrentStep('identity_document');
+    } else if (currentStep === 'documents') {
       setCurrentStep('personal');
     } else if (currentStep === 'terms') {
       setCurrentStep('documents');
@@ -482,7 +659,8 @@ export default function EKYCVerificationScreen() {
 
       // Prepare document URLs from uploaded documents
       const documentUrls: Record<string, string> = {};
-      documents.forEach(doc => {
+      const allDocuments = [...identityDocuments, ...additionalDocuments];
+      allDocuments.forEach(doc => {
         if (doc.uploaded && doc.uri) {
           documentUrls[doc.id] = doc.uri;
           console.log(`📎 Document ${doc.id}:`, doc.uri);
@@ -575,15 +753,7 @@ export default function EKYCVerificationScreen() {
                 step.icon
               )}
             </View>
-            {index < verificationSteps.length - 1 && (
-              <View style={[
-                styles.stepLine,
-                { 
-                  backgroundColor: step.status === 'completed' ? colors.status.success : 
-                                 colors.border.light 
-                }
-              ]} />
-            )}
+
           </View>
           <View style={styles.stepInfo}>
             <Text style={[styles.stepTitle, { color: colors.text.primary }]}>{step.title}</Text>
@@ -594,12 +764,94 @@ export default function EKYCVerificationScreen() {
     </View>
   );
 
+  const renderIdentityDocumentStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Identity Document Upload</Text>
+      <Text style={[styles.sectionSubtitle, { color: colors.text.secondary }]}>
+        Please upload your {personalInfo.nationality === 'malaysian' ? 'Malaysian IC' : 'Passport'} for verification. 
+        AI will automatically extract your information in the next step.
+      </Text>
+
+      {/* Identity Documents */}
+      <View style={styles.documentsContainer}>
+        {identityDocuments.map((document) => (
+          <View key={document.id} style={[styles.documentCard, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
+            <View style={styles.documentHeader}>
+              <View style={styles.documentInfo}>
+                <Text style={[styles.documentName, { color: colors.text.primary }]}>{document.name}</Text>
+                <Text style={[styles.documentDescription, { color: colors.text.secondary }]}>{document.description}</Text>
+                {document.required && (
+                  <Text style={[styles.requiredBadge, { color: colors.status.error }]}>Required</Text>
+                )}
+                <Text style={[styles.aiAnalysisBadge, { color: colors.primary.main }]}>🤖 AI Analysis Available</Text>
+              </View>
+              {document.uploaded && (
+                document.verified ? (
+                  <CheckCircle size={24} color={colors.status.success} />
+                ) : (
+                  <Clock size={24} color={colors.status.warning} />
+                )
+              )}
+            </View>
+
+            {document.uploaded && document.uri && (
+              <View style={styles.documentPreview}>
+                <Image source={{ uri: document.uri }} style={styles.previewImage} resizeMode="cover" />
+                <TouchableOpacity
+                  style={[styles.reuploadButton, { backgroundColor: colors.background.secondary }]}
+                  onPress={() => handleDocumentUpload(document.id, 'identity')}
+                >
+                  <Upload size={16} color={colors.text.secondary} />
+                  <Text style={[styles.reuploadButtonText, { color: colors.text.secondary }]}>Re-upload</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {!document.uploaded && (
+              <TouchableOpacity
+                style={[styles.uploadButton, { backgroundColor: colors.primary.main }]}
+                onPress={() => handleDocumentUpload(document.id, 'identity')}
+              >
+                <Camera size={20} color={colors.text.white} />
+                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Upload {document.name}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ))}
+      </View>
+
+      {/* Info Box */}
+      <View style={[styles.infoBox, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
+        <AlertCircle size={20} color={colors.status.warning} />
+        <View style={styles.infoContent}>
+          <Text style={[styles.infoTitle, { color: colors.text.primary }]}>Important Notes</Text>
+          <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+            • Ensure your document is clearly visible and well-lit{'\n'}
+            • All text should be readable and not blurry{'\n'}
+            • Upload the front side of your {personalInfo.nationality === 'malaysian' ? 'IC' : 'Passport'}{'\n'}
+            • The AI will help extract information from your document
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+
   const renderPersonalInfoStep = () => (
     <View style={styles.stepContent}>
       <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Personal Information</Text>
       <Text style={[styles.sectionSubtitle, { color: colors.text.secondary }]}>
-        Please provide your accurate personal information for verification
+        Review and edit the information extracted from your document
       </Text>
+
+      {/* AI Analysis Status */}
+      {isAnalyzingDocument && (
+        <View style={[styles.aiAnalysisStatus, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
+          <ActivityIndicator size="small" color={colors.primary.main} />
+          <Text style={[styles.aiAnalysisStatusText, { color: colors.text.primary }]}>
+            AI is analyzing your document and extracting information...
+          </Text>
+        </View>
+      )}
 
       {/* Nationality Selection */}
       <View style={styles.inputGroup}>
@@ -865,13 +1117,13 @@ export default function EKYCVerificationScreen() {
 
   const renderDocumentsStep = () => (
     <View style={styles.stepContent}>
-      <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Document Upload</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Additional Documents</Text>
       <Text style={[styles.sectionSubtitle, { color: colors.text.secondary }]}>
-        Please upload clear photos of your documents for verification
+        Please upload the remaining required documents for verification
       </Text>
 
       <View style={styles.documentsContainer}>
-        {documents.map((document) => (
+        {additionalDocuments.map((document) => (
           <View key={document.id} style={[styles.documentCard, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
             <View style={styles.documentHeader}>
               <View style={styles.documentInfo}>
@@ -880,6 +1132,7 @@ export default function EKYCVerificationScreen() {
                 {document.required && (
                   <Text style={[styles.requiredBadge, { color: colors.status.error }]}>Required</Text>
                 )}
+
               </View>
               {document.uploaded && (
                 document.verified ? (
@@ -907,7 +1160,7 @@ export default function EKYCVerificationScreen() {
                 </View>
                 <TouchableOpacity
                   style={[styles.reuploadButton, { backgroundColor: colors.background.secondary }]}
-                  onPress={() => handleDocumentUpload(document.id)}
+                  onPress={() => handleDocumentUpload(document.id, 'additional')}
                 >
                   <Upload size={16} color={colors.text.secondary} />
                   <Text style={[styles.reuploadButtonText, { color: colors.text.secondary }]}>Replace</Text>
@@ -916,7 +1169,7 @@ export default function EKYCVerificationScreen() {
             ) : (
               <TouchableOpacity
                 style={[styles.uploadButton, { backgroundColor: colors.primary.main }]}
-                onPress={() => handleDocumentUpload(document.id)}
+                onPress={() => handleDocumentUpload(document.id, 'additional')}
               >
                 <Upload size={20} color="white" />
                 <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Upload Document</Text>
@@ -1303,8 +1556,9 @@ export default function EKYCVerificationScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          {currentStep === 'personal' && renderPersonalInfoStep()}
-          {currentStep === 'documents' && renderDocumentsStep()}
+            {currentStep === 'identity_document' && renderIdentityDocumentStep()}
+            {currentStep === 'personal' && renderPersonalInfoStep()}
+            {currentStep === 'documents' && renderDocumentsStep()}
           {currentStep === 'terms' && renderTermsStep()}
           {currentStep === 'verification' && renderVerificationStep()}
           {currentStep === 'review' && renderReviewStep()}
@@ -1385,7 +1639,7 @@ const styles = StyleSheet.create({
   },
   stepIndicator: {
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   stepIcon: {
     width: 32,
@@ -1394,14 +1648,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
+    marginBottom: 2,
   },
   stepLine: {
     width: 2,
-    height: 20,
-    marginVertical: 4,
+    height: 12,
+    marginVertical: 1,
   },
   stepInfo: {
     alignItems: 'center',
+    marginTop: 2,
   },
   stepTitle: {
     fontSize: 12,
@@ -1808,5 +2064,54 @@ const styles = StyleSheet.create({
   completeButtonContainer: {
     flexDirection: 'row',
     marginTop: 20,
+  },
+  aiAutoFillContainer: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 24,
+  },
+  aiAutoFillHeader: {
+    marginBottom: 12,
+  },
+  aiAutoFillTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  aiAutoFillSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  aiAutoFillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  aiAutoFillButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  aiAnalysisBadge: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  aiAnalysisStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 24,
+    gap: 12,
+  },
+  aiAnalysisStatusText: {
+    fontSize: 14,
+    flex: 1,
   },
 });

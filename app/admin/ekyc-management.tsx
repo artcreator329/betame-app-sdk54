@@ -12,6 +12,7 @@ import {
   TextInput,
   Image,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -62,11 +63,12 @@ export default function EKYCManagement() {
   });
   const [selectedSubmission, setSelectedSubmission] = useState<EKYCSubmission | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
+  const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | 'view' | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [imageErrors, setImageErrors] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     checkAdminAccess();
@@ -149,6 +151,7 @@ export default function EKYCManagement() {
     setSelectedSubmission(submission);
     setReviewAction(action);
     setAdminNotes('');
+    setImageErrors({});
     setShowReviewModal(true);
   };
 
@@ -344,7 +347,9 @@ export default function EKYCManagement() {
           style={[styles.actionButton, styles.viewButton, { borderColor: colors.primary.main }]}
           onPress={() => {
             setSelectedSubmission(submission);
-            // TODO: Implement detailed view modal
+            setReviewAction('view');
+            setImageErrors({});
+            setShowReviewModal(true);
           }}
         >
           <Eye size={16} color={colors.primary.main} />
@@ -387,33 +392,234 @@ export default function EKYCManagement() {
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <Text style={[styles.modalTitle, { color: colors.text.primary }]}>
-            {reviewAction === 'approve' ? 'Approve' : 'Reject'} eKYC
+            {reviewAction === 'view' ? 'View eKYC Details' : `${reviewAction === 'approve' ? 'Approve' : 'Reject'} eKYC`}
           </Text>
           <View style={{ width: 24 }} />
         </View>
 
         <ScrollView style={styles.modalContent}>
           {selectedSubmission && (
-            <View style={[styles.reviewCard, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
-              <Text style={[styles.reviewCardTitle, { color: colors.text.primary }]}>Submission Details</Text>
-              <Text style={[styles.reviewCardSubtitle, { color: colors.text.secondary }]}>{selectedSubmission.full_name}</Text>
-              <Text style={[styles.reviewCardSubtitle, { color: colors.text.secondary }]}>{selectedSubmission.email}</Text>
-            </View>
+            <>
+              <View style={[styles.reviewCard, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
+                <Text style={[styles.reviewCardTitle, { color: colors.text.primary }]}>Personal Information</Text>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Full Name:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.full_name}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Email:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.email}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Phone:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.phone_number}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Nationality:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.nationality}</Text>
+                </View>
+                {selectedSubmission.ic_number && (
+                  <View style={styles.detailItem}>
+                    <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>IC Number:</Text>
+                    <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.ic_number}</Text>
+                  </View>
+                )}
+                {selectedSubmission.passport_number && (
+                  <View style={styles.detailItem}>
+                    <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Passport Number:</Text>
+                    <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.passport_number}</Text>
+                  </View>
+                )}
+                {selectedSubmission.country && (
+                  <View style={styles.detailItem}>
+                    <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Country:</Text>
+                    <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.country}</Text>
+                  </View>
+                )}
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Date of Birth:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.date_of_birth}</Text>
+                </View>
+              </View>
+
+              <View style={[styles.reviewCard, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
+                <Text style={[styles.reviewCardTitle, { color: colors.text.primary }]}>Address Information</Text>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Address Type:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.address_type}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Address:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.address}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>City:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.city}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Postcode:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.postcode}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>State:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.state}</Text>
+                </View>
+              </View>
+
+              <View style={[styles.reviewCard, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
+                <Text style={[styles.reviewCardTitle, { color: colors.text.primary }]}>Submission Details</Text>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Status:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>
+                    {selectedSubmission.status.charAt(0).toUpperCase() + selectedSubmission.status.slice(1)}
+                  </Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Submitted:</Text>
+                  <Text style={[styles.detailValue, { color: colors.text.primary }]}>
+                    {selectedSubmission.created_at ? new Date(selectedSubmission.created_at).toLocaleString() : 'N/A'}
+                  </Text>
+                </View>
+                {selectedSubmission.reviewed_at && (
+                  <View style={styles.detailItem}>
+                    <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Reviewed:</Text>
+                    <Text style={[styles.detailValue, { color: colors.text.primary }]}>
+                      {new Date(selectedSubmission.reviewed_at).toLocaleString()}
+                    </Text>
+                  </View>
+                )}
+                {selectedSubmission.admin_notes && (
+                  <View style={styles.detailItem}>
+                    <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Admin Notes:</Text>
+                    <Text style={[styles.detailValue, { color: colors.text.primary }]}>{selectedSubmission.admin_notes}</Text>
+                  </View>
+                )}
+              </View>
+
+              {((selectedSubmission.identity_document_url || selectedSubmission.proof_of_address_url || selectedSubmission.additional_document_url)) && (
+                <View style={[styles.reviewCard, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
+                  <Text style={[styles.reviewCardTitle, { color: colors.text.primary }]}>Uploaded Documents</Text>
+                  {console.log('🔍 Document URLs:', {
+                    identity: selectedSubmission.identity_document_url,
+                    address: selectedSubmission.proof_of_address_url,
+                    additional: selectedSubmission.additional_document_url
+                  })}
+                  
+                  {selectedSubmission.identity_document_url && (
+                    <View style={styles.documentItem}>
+                      <Text style={[styles.documentLabel, { color: colors.text.secondary }]}>Identity Document (IC Front):</Text>
+                      <View style={styles.documentPreviewContainer}>
+                        {imageErrors['identity'] ? (
+                          <View style={[styles.documentPreview, { backgroundColor: colors.background.tertiary, justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={[styles.documentErrorText, { color: colors.text.secondary }]}>Image not available</Text>
+                          </View>
+                        ) : (
+                          <Image 
+                            source={{ uri: selectedSubmission.identity_document_url }} 
+                            style={styles.documentPreview}
+                            resizeMode="cover"
+                            onError={(error) => {
+                              console.error('Image load error (IC Front):', error.nativeEvent);
+                              console.error('Failed URL:', selectedSubmission.identity_document_url);
+                              setImageErrors(prev => ({ ...prev, identity: true }));
+                            }}
+                            onLoad={() => console.log('Image loaded successfully (IC Front):', selectedSubmission.identity_document_url)}
+                          />
+                        )}
+                        <TouchableOpacity
+                          style={[styles.documentLink, { borderColor: colors.primary.main }]}
+                          onPress={() => {
+                            console.log('Opening URL:', selectedSubmission.identity_document_url);
+                            Linking.openURL(selectedSubmission.identity_document_url!);
+                          }}
+                        >
+                          <Text style={[styles.documentLinkText, { color: colors.primary.main }]}>Open Full Size</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                  
+                  {selectedSubmission.proof_of_address_url && (
+                    <View style={styles.documentItem}>
+                      <Text style={[styles.documentLabel, { color: colors.text.secondary }]}>Proof of Address (IC Back):</Text>
+                      <View style={styles.documentPreviewContainer}>
+                        {imageErrors['address'] ? (
+                          <View style={[styles.documentPreview, { backgroundColor: colors.background.tertiary, justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={[styles.documentErrorText, { color: colors.text.secondary }]}>Image not available</Text>
+                          </View>
+                        ) : (
+                          <Image 
+                            source={{ uri: selectedSubmission.proof_of_address_url }} 
+                            style={styles.documentPreview}
+                            resizeMode="cover"
+                            onError={(error) => {
+                              console.error('Image load error (IC Back):', error.nativeEvent);
+                              console.error('Failed URL:', selectedSubmission.proof_of_address_url);
+                              setImageErrors(prev => ({ ...prev, address: true }));
+                            }}
+                            onLoad={() => console.log('Image loaded successfully (IC Back):', selectedSubmission.proof_of_address_url)}
+                          />
+                        )}
+                        <TouchableOpacity
+                          style={[styles.documentLink, { borderColor: colors.primary.main }]}
+                          onPress={() => Linking.openURL(selectedSubmission.proof_of_address_url!)}
+                        >
+                          <Text style={[styles.documentLinkText, { color: colors.primary.main }]}>Open Full Size</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                  
+                  {selectedSubmission.additional_document_url && (
+                    <View style={styles.documentItem}>
+                      <Text style={[styles.documentLabel, { color: colors.text.secondary }]}>Additional Document (Selfie with IC):</Text>
+                      <View style={styles.documentPreviewContainer}>
+                        {imageErrors['additional'] ? (
+                          <View style={[styles.documentPreview, { backgroundColor: colors.background.tertiary, justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={[styles.documentErrorText, { color: colors.text.secondary }]}>Image not available</Text>
+                          </View>
+                        ) : (
+                          <Image 
+                            source={{ uri: selectedSubmission.additional_document_url }} 
+                            style={styles.documentPreview}
+                            resizeMode="cover"
+                            onError={(error) => {
+                              console.error('Image load error (Selfie):', error.nativeEvent);
+                              console.error('Failed URL:', selectedSubmission.additional_document_url);
+                              setImageErrors(prev => ({ ...prev, additional: true }));
+                            }}
+                            onLoad={() => console.log('Image loaded successfully (Selfie):', selectedSubmission.additional_document_url)}
+                          />
+                        )}
+                        <TouchableOpacity
+                          style={[styles.documentLink, { borderColor: colors.primary.main }]}
+                          onPress={() => Linking.openURL(selectedSubmission.additional_document_url!)}
+                        >
+                          <Text style={[styles.documentLinkText, { color: colors.primary.main }]}>Open Full Size</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
+            </>
           )}
 
-          <View style={[styles.notesContainer, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
-            <Text style={[styles.notesLabel, { color: colors.text.primary }]}>Admin Notes</Text>
-            <TextInput
-              style={[styles.notesInput, { color: colors.text.primary, borderColor: colors.border.light }]}
-              placeholder={`Add notes for this ${reviewAction}...`}
-              placeholderTextColor={colors.text.secondary}
-              value={adminNotes}
-              onChangeText={setAdminNotes}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </View>
+          {reviewAction !== 'view' && (
+            <View style={[styles.notesContainer, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
+              <Text style={[styles.notesLabel, { color: colors.text.primary }]}>Admin Notes</Text>
+              <TextInput
+                style={[styles.notesInput, { color: colors.text.primary, borderColor: colors.border.light }]}
+                placeholder={`Add notes for this ${reviewAction}...`}
+                placeholderTextColor={colors.text.secondary}
+                value={adminNotes}
+                onChangeText={setAdminNotes}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+          )}
         </ScrollView>
 
         <View style={[styles.modalActions, { borderTopColor: colors.border.light }]}>
@@ -422,28 +628,32 @@ export default function EKYCManagement() {
             onPress={() => setShowReviewModal(false)}
             disabled={isProcessing}
           >
-            <Text style={[styles.cancelButtonText, { color: colors.text.primary }]}>Cancel</Text>
+            <Text style={[styles.cancelButtonText, { color: colors.text.primary }]}>
+              {reviewAction === 'view' ? 'Close' : 'Cancel'}
+            </Text>
           </TouchableOpacity>
           
-          <TouchableOpacity
-            style={[
-              styles.modalButton,
-              styles.confirmButton,
-              {
-                backgroundColor: reviewAction === 'approve' ? colors.status.success : colors.status.error,
-              },
-            ]}
-            onPress={handleSubmitReview}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <ActivityIndicator size="small" color={colors.text.white} />
-            ) : (
-              <Text style={[styles.confirmButtonText, { color: colors.text.white }]}>
-                {reviewAction === 'approve' ? 'Approve' : 'Reject'}
-              </Text>
-            )}
-          </TouchableOpacity>
+          {reviewAction !== 'view' && (
+            <TouchableOpacity
+              style={[
+                styles.modalButton,
+                styles.confirmButton,
+                {
+                  backgroundColor: reviewAction === 'approve' ? colors.status.success : colors.status.error,
+                },
+              ]}
+              onPress={handleSubmitReview}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <ActivityIndicator size="small" color={colors.text.white} />
+              ) : (
+                <Text style={[styles.confirmButtonText, { color: colors.text.white }]}>
+                  {reviewAction === 'approve' ? 'Approve' : 'Reject'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </SafeAreaView>
     </Modal>
@@ -757,5 +967,55 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  detailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  detailValue: {
+    fontSize: 14,
+    flex: 2,
+    textAlign: 'right',
+  },
+  documentLink: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  documentLinkText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  documentItem: {
+    marginBottom: 20,
+  },
+  documentLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  documentPreviewContainer: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  documentPreview: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  documentErrorText: {
+    fontSize: 12,
+    textAlign: 'center',
   },
 });
