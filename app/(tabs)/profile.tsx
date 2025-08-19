@@ -1504,36 +1504,36 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   profileInfo: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     width: '100%',
   },
   profileInfoDesktop: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     width: '100%',
   },
 
 
   userNameContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'flex-end',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
     marginBottom: 8,
     width: '100%',
   },
   userNameTextContainer: {
     width: '100%',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
   userName: {
     fontSize: 28,
     fontWeight: '700',
-    textAlign: 'right',
+    textAlign: 'left',
     color: 'white',
   },
   userNameDesktop: {
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 8,
-    textAlign: 'right',
+    textAlign: 'left',
     color: 'white',
   },
   userBio: {
