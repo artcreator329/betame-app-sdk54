@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, Share, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, MessageCircle, User, Heart, Share as ShareIcon } from 'lucide-react-native';
+import { ArrowLeft, Star, MessageCircle, User, Heart, Share as ShareIcon, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -19,6 +19,8 @@ interface UserProfile {
   bio?: string;
   tagline?: string;
   created_at: string;
+  verification_status?: string;
+  is_verified?: boolean;
 }
 
 interface Service {
@@ -91,21 +93,34 @@ export default function UserProfileScreen() {
       try {
         setLoading(true);
         
-        // Fetch user profile
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
+        // Fetch user profile from both tables
+        const [profileResult, userProfileResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single(),
+          supabase
+            .from('user_profiles')
+            .select('verification_status')
+            .eq('user_id', userId)
+            .single()
+        ]);
 
-        if (profileError) {
-          console.error('Error fetching user profile:', profileError);
+        if (profileResult.error) {
+          console.error('Error fetching user profile:', profileResult.error);
           Alert.alert('Error', 'User profile not found');
           router.back();
           return;
         }
 
-        setUserProfile(profileData);
+        // Merge profile data with verification status
+        const mergedProfileData = {
+          ...profileResult.data,
+          verification_status: userProfileResult.data?.verification_status || null
+        };
+
+        setUserProfile(mergedProfileData);
 
         // Fetch user's services
         try {
@@ -242,6 +257,85 @@ export default function UserProfileScreen() {
           />
         ))}
       </View>
+    );
+  };
+
+  const renderVerificationTick = () => {
+    if (!userProfile?.verification_status && !userProfile?.is_verified) return null;
+
+    const getTickColor = (status: string, isVerified: boolean) => {
+      // Check if user has services (service provider)
+      const hasServiceListing = services.length > 0;
+      
+      if (isVerified) {
+        return hasServiceListing ? '#10B981' : '#3B82F6'; // Green for service providers, blue for verified users
+      }
+      
+      switch (status) {
+        case 'verified':
+          return hasServiceListing ? '#10B981' : '#3B82F6'; // Green for service providers, blue for verified users
+        case 'in_progress':
+          return '#F59E0B'; // Orange for in progress
+        case 'rejected':
+          return '#EF4444'; // Red for rejected
+        default:
+          return '#9CA3AF'; // Gray for not started
+      }
+    };
+
+    const getTickIcon = (status: string, isVerified: boolean) => {
+      if (isVerified) {
+        return <CheckCircle size={16} color={getTickColor(status, isVerified)} />;
+      }
+      
+      switch (status) {
+        case 'verified':
+          return <CheckCircle size={16} color={getTickColor(status, isVerified)} />;
+        case 'in_progress':
+          return <Clock size={16} color={getTickColor(status, isVerified)} />;
+        case 'rejected':
+          return <XCircle size={16} color={getTickColor(status, isVerified)} />;
+        default:
+          return <CheckCircle size={16} color={getTickColor(status, isVerified)} />;
+      }
+    };
+
+    const getTooltipText = (status: string, isVerified: boolean) => {
+      const hasServiceListing = services.length > 0;
+      
+      if (isVerified) {
+        return hasServiceListing ? 'Verified Service Provider' : 'Verified User';
+      }
+      
+      switch (status) {
+        case 'verified':
+          return hasServiceListing ? 'Verified Service Provider' : 'Verified User';
+        case 'in_progress':
+          return 'Verification In Progress';
+        case 'rejected':
+          return 'Verification Rejected';
+        default:
+          return 'Verification Not Started';
+      }
+    };
+
+    const verificationStatus = userProfile?.verification_status || (userProfile?.is_verified ? 'verified' : 'not_started');
+    const isVerified = userProfile?.is_verified || userProfile?.verification_status === 'verified';
+
+    return (
+      <TouchableOpacity 
+        style={styles.verificationTick}
+        onPress={() => {
+          Alert.alert(
+            'Verification Status',
+            getTooltipText(verificationStatus, isVerified),
+            [{ text: 'OK' }]
+          );
+        }}
+        activeOpacity={0.7}
+      >
+        {getTickIcon(verificationStatus, isVerified)}
+      </TouchableOpacity>
     );
   };
 
@@ -448,6 +542,7 @@ export default function UserProfileScreen() {
                     )}
                     <View style={styles.ratingContainer}>
                       <Text style={[styles.ratingText, { color: 'black' }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
+                      {renderVerificationTick()}
                       {averageRating > 0 && renderStars(averageRating)}
                       <Text style={[styles.reviewText, { color: 'black' }]}>({reviews.length} reviews)</Text>
                     </View>
@@ -977,5 +1072,11 @@ const styles = StyleSheet.create({
   },
   desktopRightColumn: {
     flex: 1,
+  },
+  verificationTick: {
+    marginLeft: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 15,
+    padding: 5,
   },
 });
