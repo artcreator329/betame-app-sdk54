@@ -45,6 +45,9 @@ export default function OrdersScreen() {
   const [animationValues] = useState<{ [key: string]: Animated.Value }>({});
   const [expandAll, setExpandAll] = useState(false);
   const [reviewAction, setReviewAction] = useState<'confirm' | 'request-changes' | null>(null);
+  const [showCompletedJobReviewModal, setShowCompletedJobReviewModal] = useState(false);
+  const [completedJobRating, setCompletedJobRating] = useState(5);
+  const [completedJobFeedback, setCompletedJobFeedback] = useState('');
 
   // Initialize animation values for each order
   const initializeAnimation = (orderId: string) => {
@@ -427,6 +430,101 @@ export default function OrdersScreen() {
     }
   };
 
+  const handleAcknowledgeRevision = async (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
+    if (!order.id) return;
+
+    try {
+      // Check if this is a direct order or escrow order
+      if ((order as any).orderType === 'direct') {
+        // Handle direct orders
+        const { ActiveJobService } = await import('@/lib/active-job-service');
+        const result = await ActiveJobService.acknowledgeRevision(order.id!, user!.id);
+        
+        if (result.success) {
+          Alert.alert(
+            'Revision Confirmed!', 
+            'You have confirmed the revision request and can now start working on the improvements.'
+          );
+          fetchOrders();
+        } else {
+          Alert.alert('Error', result.error || 'Failed to confirm revision');
+        }
+      } else {
+        // Handle escrow orders
+        const result = await EscrowService.acknowledgeRevision(order.id!, user!.id);
+        
+        if (result.success) {
+          Alert.alert(
+            'Revision Confirmed!', 
+            'You have confirmed the revision request and can now start working on the improvements.'
+          );
+          fetchOrders();
+        } else {
+          Alert.alert('Error', result.error || 'Failed to confirm revision');
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to confirm revision');
+    }
+  };
+
+  const handleDisputeRevision = async (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
+    if (!order.id) return;
+
+    // Prompt for dispute reason
+    Alert.prompt(
+      'Dispute Revision',
+      'Please provide a reason for disputing this revision request:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Submit Dispute', 
+          onPress: async (disputeReason) => {
+            if (!disputeReason || disputeReason.trim().length === 0) {
+              Alert.alert('Required Field', 'Please provide a reason for disputing the revision.');
+              return;
+            }
+
+            try {
+              // Check if this is a direct order or escrow order
+              if ((order as any).orderType === 'direct') {
+                // Handle direct orders
+                const { ActiveJobService } = await import('@/lib/active-job-service');
+                const result = await ActiveJobService.disputeRevision(order.id!, user!.id, disputeReason.trim());
+                
+                if (result.success) {
+                  Alert.alert(
+                    'Dispute Filed', 
+                    'Your dispute has been filed and the buyer has been notified.'
+                  );
+                  fetchOrders();
+                } else {
+                  Alert.alert('Error', result.error || 'Failed to file dispute');
+                }
+              } else {
+                // Handle escrow orders
+                const result = await EscrowService.disputeRevision(order.id!, user!.id, disputeReason.trim());
+                
+                if (result.success) {
+                  Alert.alert(
+                    'Dispute Filed', 
+                    'Your dispute has been filed and the buyer has been notified.'
+                  );
+                  fetchOrders();
+                } else {
+                  Alert.alert('Error', result.error || 'Failed to file dispute');
+                }
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to file dispute');
+            }
+          }
+        }
+      ],
+      'plain-text'
+    );
+  };
+
   const handleConfirmCompletion = async () => {
     if (!selectedOrder?.id) return;
 
@@ -435,7 +533,7 @@ export default function OrdersScreen() {
       if ((selectedOrder as any).orderType === 'direct') {
         // Import ActiveJobService dynamically
         const { ActiveJobService } = await import('@/lib/active-job-service');
-        const success = await ActiveJobService.confirmJobCompletion(selectedOrder.id, user!.id);
+        const success = await ActiveJobService.confirmJobCompletion(selectedOrder.id, user!.id, rating, feedback);
         
         if (success) {
           Alert.alert(
@@ -524,6 +622,101 @@ export default function OrdersScreen() {
     }
   };
 
+  const handleCompletedJobReview = async () => {
+    if (!selectedOrder?.id) return;
+
+    try {
+      // Check if this is a direct order or escrow order
+      if ((selectedOrder as any).orderType === 'direct') {
+                          // For direct orders, create a review record
+                  const { error: reviewError } = await supabase
+                    .from('reviews')
+                    .insert({
+                      reviewer_id: user!.id,
+                      reviewee_id: (selectedOrder as any).service_provider_id,
+                      service_id: (selectedOrder as any).service_id || null,
+                      order_id: null, // Set to null for active_jobs orders
+                      rating: completedJobRating,
+                      comment: completedJobFeedback
+                    });
+
+        if (reviewError) {
+          console.error('Error creating review:', reviewError);
+          Alert.alert('Error', 'Failed to submit review. Please try again.');
+          return;
+        }
+
+        // Update service provider's rating
+        const { ActiveJobService } = await import('@/lib/active-job-service');
+        await ActiveJobService.updateServiceProviderRating((selectedOrder as any).service_provider_id);
+
+        // Send notification to service provider about the review
+        const { notificationService } = await import('@/lib/notification-service');
+        await notificationService.addReviewNotification({
+          serviceProviderId: (selectedOrder as any).service_provider_id,
+          reviewerName: user?.user_metadata?.full_name || 'A customer',
+          reviewerImage: user?.user_metadata?.avatar_url || '',
+          serviceTitle: ((selectedOrder as any).escrow_transactions)?.service_title || (selectedOrder as any).title,
+          rating: completedJobRating,
+          feedback: completedJobFeedback,
+          orderId: selectedOrder.id
+        });
+
+        Alert.alert(
+          'Review Submitted!', 
+          'Thank you for your review. The service provider has been notified.'
+        );
+      } else {
+                          // For escrow orders, create a review record
+                  const { error: reviewError } = await supabase
+                    .from('reviews')
+                    .insert({
+                      reviewer_id: user!.id,
+                      reviewee_id: (selectedOrder as any).service_provider_id,
+                      service_id: (selectedOrder as any).service_id || null,
+                      order_id: null, // Set to null since we don't have legacy_orders reference
+                      rating: completedJobRating,
+                      comment: completedJobFeedback
+                    });
+
+        if (reviewError) {
+          console.error('Error creating review:', reviewError);
+          Alert.alert('Error', 'Failed to submit review. Please try again.');
+          return;
+        }
+
+        // Update service provider's rating
+        await EscrowService.updateServiceProviderRating((selectedOrder as any).service_provider_id);
+
+        // Send notification to service provider about the review
+        const { notificationService } = await import('@/lib/notification-service');
+        await notificationService.addReviewNotification({
+          serviceProviderId: (selectedOrder as any).service_provider_id,
+          reviewerName: user?.user_metadata?.full_name || 'A customer',
+          reviewerImage: user?.user_metadata?.avatar_url || '',
+          serviceTitle: ((selectedOrder as any).escrow_transactions)?.service_title || (selectedOrder as any).title,
+          rating: completedJobRating,
+          feedback: completedJobFeedback,
+          orderId: selectedOrder.id
+        });
+
+        Alert.alert(
+          'Review Submitted!', 
+          'Thank you for your review. The service provider has been notified.'
+        );
+      }
+
+      setShowCompletedJobReviewModal(false);
+      setCompletedJobFeedback('');
+      setCompletedJobRating(5);
+      setSelectedOrder(null);
+      fetchOrders();
+    } catch (error) {
+      console.error('Error submitting completed job review:', error);
+      Alert.alert('Error', 'Failed to submit review. Please try again.');
+    }
+  };
+
   const handleContactBuyer = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
     // Get the buyer ID from the order
     const buyerId = order.buyer_id;
@@ -608,6 +801,56 @@ export default function OrdersScreen() {
       default: 
         return status;
     }
+  };
+
+  /**
+   * Check if a completed job is within the 7-day review window
+   */
+  const isWithinReviewWindow = (order: any): boolean => {
+    if (order.current_status !== 'completed') return false;
+    
+    // Get completion date from different sources based on order type
+    let completionDate: string | null = null;
+    
+    if ((order as any).orderType === 'escrow') {
+      // For escrow orders, check completion_confirmed_at
+      completionDate = order.completion_confirmed_at;
+    } else {
+      // For direct orders, check completed_at or updated_at when status changed to completed_confirmed
+      completionDate = (order as any).completed_at || (order as any).updated_at;
+    }
+    
+    if (!completionDate) return false;
+    
+    const completionTime = new Date(completionDate).getTime();
+    const currentTime = new Date().getTime();
+    const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+    
+    return (currentTime - completionTime) <= sevenDaysInMs;
+  };
+
+  /**
+   * Get remaining days for review
+   */
+  const getRemainingReviewDays = (order: any): number => {
+    if (!isWithinReviewWindow(order)) return 0;
+    
+    let completionDate: string | null = null;
+    
+    if ((order as any).orderType === 'escrow') {
+      completionDate = order.completion_confirmed_at;
+    } else {
+      completionDate = (order as any).completed_at || (order as any).updated_at;
+    }
+    
+    if (!completionDate) return 0;
+    
+    const completionTime = new Date(completionDate).getTime();
+    const currentTime = new Date().getTime();
+    const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+    const remainingMs = sevenDaysInMs - (currentTime - completionTime);
+    
+    return Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
   };
 
   const getQuickActionButton = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
@@ -767,16 +1010,64 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
+
+        case 'revision_requested':
+          return (
+            <View style={styles.actionButtonContainer}>
+              <TouchableOpacity
+                style={[styles.orderCardActionButton, { backgroundColor: '#32CD32' }]}
+                onPress={() => handleAcknowledgeRevision(order)}
+              >
+                <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Confirm Revision</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.orderCardActionButton, { backgroundColor: '#DC143C' }]}
+                onPress={() => handleDisputeRevision(order)}
+              >
+                <Ionicons name="alert-circle" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Call for Dispute</Text>
+              </TouchableOpacity>
+            </View>
+          );
+
+        case 'revision_in_progress':
+          return (
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}>
+                <Ionicons name="construct-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Working on Revision</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactBuyer(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+              </TouchableOpacity>
+            </View>
+          );
+
+        case 'revision_completed':
+          return (
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#9932CC' }]}>
+                <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Revision Submitted</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactBuyer(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+              </TouchableOpacity>
+            </View>
+          );
         
         case 'completed':
           return (
             <View style={styles.actionButtonContainer}>
-              <View style={[styles.orderCardActionButton, { backgroundColor: '#228B22' }]}>
-                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>
-                  Earned: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
-                           `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
-                </Text>
-              </View>
               <TouchableOpacity
                 style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
                 onPress={() => handleContactBuyer(order)}
@@ -871,13 +1162,22 @@ export default function OrdersScreen() {
         case 'completed':
           return (
             <View style={styles.actionButtonContainer}>
-              <View style={[styles.orderCardActionButton, { backgroundColor: '#228B22' }]}>
-                <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>
-                  Paid: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
-                         `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
-                </Text>
-              </View>
+              {isWithinReviewWindow(order) && (
+                <TouchableOpacity
+                  style={[styles.orderCardActionButton, { backgroundColor: '#FFD700' }]}
+                  onPress={() => {
+                    setSelectedOrder(order);
+                    setCompletedJobRating(5);
+                    setCompletedJobFeedback('');
+                    setShowCompletedJobReviewModal(true);
+                  }}
+                >
+                  <Ionicons name="star" size={18} color="#fff" />
+                  <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>
+                    Rate & Review ({getRemainingReviewDays(order)} days left)
+                  </Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}
                 onPress={() => handleContactServiceProvider(order)}
@@ -1833,6 +2133,94 @@ export default function OrdersScreen() {
                     Acknowledging this order will notify the buyer and begin the work process.
                   </Text>
                 </View>
+              </>
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Completed Job Review Modal */}
+      <Modal
+        visible={showCompletedJobReviewModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background.primary }]}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.background.secondary, borderBottomColor: colors.border.main }]}>
+            <TouchableOpacity onPress={() => {
+              setShowCompletedJobReviewModal(false);
+              setCompletedJobFeedback('');
+              setCompletedJobRating(5);
+            }}>
+              <Text style={[styles.modalCancel, { color: colors.text.secondary }]}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Rate & Review Service</Text>
+            <View style={{ width: 50 }} />
+          </View>
+
+          <View style={styles.modalContent}>
+            {selectedOrder && (
+              <>
+                <View style={[styles.orderSummary, { backgroundColor: colors.background.secondary }]}>
+                  <Text style={[styles.summaryTitle, { color: colors.text.primary }]}>Service Details</Text>
+                  <Text style={[styles.summaryService, { color: colors.text.primary }]}>
+                    {((selectedOrder as any).escrow_transactions)?.service_title || (selectedOrder as any).title}
+                  </Text>
+                  <Text style={[styles.summaryAmount, { color: colors.primary.main }]}>
+                    Completed on: {new Date((selectedOrder as any).completion_confirmed_at || (selectedOrder as any).completed_at || (selectedOrder as any).updated_at).toLocaleDateString()}
+                  </Text>
+                </View>
+
+                <View style={styles.ratingSection}>
+                  <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Rate this service</Text>
+                  <View style={styles.starsContainer}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <TouchableOpacity
+                        key={star}
+                        onPress={() => setCompletedJobRating(star)}
+                      >
+                        <Ionicons
+                          name={star <= completedJobRating ? "star" : "star-outline"}
+                          size={32}
+                          color={star <= completedJobRating ? "#FFD700" : colors.text.secondary}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.feedbackSection}>
+                  <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Share your experience (Optional)</Text>
+                  <TextInput
+                    style={[styles.feedbackInput, { 
+                      backgroundColor: colors.background.secondary, 
+                      borderColor: colors.border.main,
+                      color: colors.text.primary 
+                    }]}
+                    placeholder="Tell us about your experience with this service..."
+                    placeholderTextColor={colors.text.secondary}
+                    value={completedJobFeedback}
+                    onChangeText={setCompletedJobFeedback}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                <View style={[styles.modalWarning, { backgroundColor: '#e8f5e8', borderLeftColor: '#28a745' }]}>
+                  <Ionicons name="information-circle-outline" size={20} color="#28a745" />
+                  <Text style={[styles.modalWarningText, { color: '#28a745' }]}>
+                    Your review helps other users and improves the service provider's profile. You have {getRemainingReviewDays(selectedOrder)} days left to submit your review.
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: colors.primary.main }]}
+                  onPress={handleCompletedJobReview}
+                >
+                  <Ionicons name="star" size={20} color="#fff" />
+                  <Text style={styles.actionButtonText}>Submit Review</Text>
+                </TouchableOpacity>
               </>
             )}
           </View>

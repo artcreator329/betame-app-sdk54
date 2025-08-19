@@ -1253,6 +1253,55 @@ export class NotificationService {
     console.log('🔔 NotificationService: addJobCompletionReminderNotification completed');
   }
 
+  // Helper method to add review notification for service provider
+  async addReviewNotification({
+    serviceProviderId,
+    reviewerName,
+    reviewerImage,
+    serviceTitle,
+    rating,
+    feedback,
+    orderId,
+  }: {
+    serviceProviderId: string;
+    reviewerName: string;
+    reviewerImage?: string;
+    serviceTitle: string;
+    rating: number;
+    feedback?: string;
+    orderId: string;
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addReviewNotification called with:', {
+      serviceProviderId,
+      reviewerName,
+      serviceTitle,
+      rating,
+      feedback,
+      orderId
+    });
+
+    const feedbackText = feedback ? `\n\nReview: "${feedback}"` : '';
+    const stars = '⭐'.repeat(rating);
+    
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'order' as const,
+      title: '⭐ New Review Received',
+      message: `${reviewerName} left a ${rating}-star review for "${serviceTitle}".${feedbackText}\n\nRating: ${stars}`,
+      data: {
+        orderId,
+        serviceTitle,
+        reviewerName,
+        reviewerImage,
+        rating,
+        feedback,
+        action_type: 'review_received'
+      }
+    };
+
+    await this.addNotification(notification, serviceProviderId);
+    console.log('🔔 NotificationService: addReviewNotification completed');
+  }
+
 }
 
 export const notificationService = NotificationService.getInstance();

@@ -68,12 +68,24 @@ function getNotificationColor(type: string, colors: any) {
   }
 }
 
-function getNotificationGradient(type: string) {
+function getNotificationGradient(type: string, data?: any) {
+  // Check for revision-related notifications first
+  if (type === 'order' && data?.action_type) {
+    if (data.action_type.includes('revision')) {
+      // Orange-yellow gradient for revision-related notifications
+      return ['#FF8C00', '#FFA500', '#FFD700'];
+    }
+    if (data.action_type.includes('completion') || data.action_type.includes('payment_released')) {
+      // Greenish-cyan gradient for job completion notifications
+      return ['#00CED1', '#20B2AA', '#32CD32'];
+    }
+  }
+
   switch (type) {
     case 'chat':
       return ['#E8F5E8', '#F0F9F0'];
     case 'order':
-      // Prominent gradient for order notifications - blue to purple
+      // Default blue to purple gradient for other order notifications
       return ['#6B46C1', '#4338CA', '#3B82F6'];
     case 'service':
       return ['#FFF3E0', '#FFF8F0'];
@@ -128,7 +140,7 @@ export default function SwipeableNotification({
   
   const IconComponent = getNotificationIcon(notification.type);
   const iconColor = getNotificationColor(notification.type, colors);
-  const gradientColors = getNotificationGradient(notification.type);
+  const gradientColors = getNotificationGradient(notification.type, notification.data);
   
   const isRead = notification.isRead;
   const readOpacity = isRead ? 0.6 : 1;

@@ -923,6 +923,41 @@ export class EscrowService {
       // Update platform wallet (remove from escrow)
       await this.updatePlatformWalletRelease(escrowTransaction.total_amount);
 
+      // Create a review record if rating and feedback are provided
+      if (rating && rating > 0) {
+        try {
+          // Get service_id from the service offer if available
+          const { data: serviceOfferData } = await supabase
+            .from('service_offers')
+            .select('service_id')
+            .eq('id', escrowTransaction.service_offer_id)
+            .single();
+
+          const { error: reviewError } = await supabase
+            .from('reviews')
+            .insert({
+              reviewer_id: buyerId,
+              reviewee_id: escrowTransaction.service_provider_id || escrowTransaction.seller_id,
+              service_id: serviceOfferData?.service_id || null,
+              order_id: jobStatusId,
+              rating: rating,
+              comment: feedback || null,
+            });
+
+          if (reviewError) {
+            console.error('Error creating escrow review:', reviewError);
+            // Don't fail the entire operation if review creation fails
+          } else {
+            console.log('✅ Escrow review created successfully for job:', jobStatusId);
+            
+            // Update service provider's overall rating
+            await this.updateServiceProviderRating(escrowTransaction.service_provider_id || escrowTransaction.seller_id);
+          }
+        } catch (error) {
+          console.error('Error in escrow review creation process:', error);
+        }
+      }
+
       // Send enhanced notification to service provider
       try {
         // Get buyer and service provider information
@@ -1136,6 +1171,52 @@ export class EscrowService {
       }
     } catch (error) {
       console.error('Error updating platform wallet release:', error);
+    }
+  }
+
+  /**
+   * Update service provider's overall rating based on all their reviews
+   */
+  static async updateServiceProviderRating(serviceProviderId: string): Promise<void> {
+    try {
+      // Get all reviews for this service provider
+      const { data: reviews, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('reviewee_id', serviceProviderId);
+
+      if (reviewsError) {
+        console.error('Error fetching reviews for rating update:', reviewsError);
+        return;
+      }
+
+      if (!reviews || reviews.length === 0) {
+        console.log('No reviews found for service provider:', serviceProviderId);
+        return;
+      }
+
+      // Calculate average rating
+      const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+      const averageRating = totalRating / reviews.length;
+      const reviewCount = reviews.length;
+
+      // Update user profile with new rating and review count
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({
+          rating: averageRating,
+          review_count: reviewCount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', serviceProviderId);
+
+      if (updateError) {
+        console.error('Error updating service provider rating:', updateError);
+      } else {
+        console.log(`✅ Updated service provider rating: ${averageRating.toFixed(2)} (${reviewCount} reviews)`);
+      }
+    } catch (error) {
+      console.error('Error in updateServiceProviderRating:', error);
     }
   }
 }

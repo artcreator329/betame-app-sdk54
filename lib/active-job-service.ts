@@ -194,13 +194,13 @@ export class ActiveJobService {
           .from('active_jobs')
           .select('*')
           .eq('buyer_id', userId)
-          .in('status', ['pending_confirmation', 'in_progress', 'completed', 'revision_requested', 'revision_in_progress', 'revision_completed'])
+          .in('status', ['pending_confirmation', 'in_progress', 'completed', 'completed_confirmed', 'revision_requested', 'revision_in_progress', 'revision_completed'])
           .order('created_at', { ascending: false }),
         supabase
           .from('active_jobs')
           .select('*')
           .eq('service_provider_id', userId)
-          .in('status', ['pending_confirmation', 'in_progress', 'completed', 'revision_requested', 'revision_in_progress', 'revision_completed'])
+          .in('status', ['pending_confirmation', 'in_progress', 'completed', 'completed_confirmed', 'revision_requested', 'revision_in_progress', 'revision_completed'])
           .order('created_at', { ascending: false })
       ]);
 
@@ -458,7 +458,12 @@ export class ActiveJobService {
   /**
    * Confirm job completion (buyer confirms the job is complete)
    */
-  static async confirmJobCompletion(jobId: string, buyerId: string): Promise<boolean> {
+  static async confirmJobCompletion(
+    jobId: string, 
+    buyerId: string, 
+    rating?: number, 
+    feedback?: string
+  ): Promise<boolean> {
     try {
       // First verify this is a completed job that needs buyer confirmation
       const { data: job, error: fetchError } = await supabase
@@ -489,6 +494,34 @@ export class ActiveJobService {
         return false;
       }
 
+      // Create a review record if rating and feedback are provided
+      if (rating && rating > 0) {
+        try {
+          const { error: reviewError } = await supabase
+            .from('reviews')
+            .insert({
+              reviewer_id: buyerId,
+              reviewee_id: job.service_provider_id,
+              service_id: null, // For direct orders, there's no specific service_id
+              order_id: jobId, // Using the active job id as the order reference
+              rating: rating,
+              comment: feedback || null,
+            });
+
+          if (reviewError) {
+            console.error('Error creating review:', reviewError);
+            // Don't fail the entire operation if review creation fails
+          } else {
+            console.log('✅ Review created successfully for job:', jobId);
+            
+            // Update service provider's overall rating
+            await this.updateServiceProviderRating(job.service_provider_id);
+          }
+        } catch (error) {
+          console.error('Error in review creation process:', error);
+        }
+      }
+
       // Send notification to service provider about payment release
       try {
         const { data: providerProfile } = await supabase
@@ -500,14 +533,24 @@ export class ActiveJobService {
         const providerName = providerProfile?.full_name || 'Service Provider';
         const providerImage = providerProfile?.avatar_url;
 
+        // Get buyer profile for notification
+        const { data: buyerProfile } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', buyerId)
+          .single();
+
+        const buyerName = buyerProfile?.full_name || 'Buyer';
+        const buyerImage = buyerProfile?.avatar_url;
+
         await notificationService.addJobCompletionConfirmationNotification({
           serviceProviderId: job.service_provider_id,
-          buyerName: 'Buyer', // We could fetch buyer name if needed
-          buyerImage: undefined,
+          buyerName,
+          buyerImage,
           serviceTitle: job.title,
           jobId: jobId,
-          rating: 5, // Default rating, could be made configurable
-          feedback: 'Job completed successfully', // Default feedback
+          rating: rating || 5,
+          feedback: feedback || 'Job completed successfully',
         });
 
         console.log('✅ Direct job completion confirmation notification sent to service provider:', job.service_provider_id);
@@ -519,6 +562,155 @@ export class ActiveJobService {
     } catch (error) {
       console.error('Error in confirmJobCompletion:', error);
       return false;
+    }
+  }
+
+  /**
+   * Service provider acknowledges revision request for direct job
+   */
+  static async acknowledgeRevision(
+    jobId: string,
+    serviceProviderId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('✅ Acknowledging revision for direct job:', jobId);
+
+      // Get job
+      const { data: job, error: jobError } = await supabase
+        .from('active_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .eq('service_provider_id', serviceProviderId)
+        .single();
+
+      if (jobError || !job) {
+        return { success: false, error: 'Job not found' };
+      }
+
+      // Check if job is in revision requested state
+      if (job.status !== 'revision_requested') {
+        return { success: false, error: 'Job is not in revision requested state' };
+      }
+
+      // Update job status to revision in progress
+      const { error: updateError } = await supabase
+        .from('active_jobs')
+        .update({
+          status: 'revision_in_progress',
+          revision_acknowledged_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', jobId);
+
+      if (updateError) {
+        console.error('Error acknowledging revision:', updateError);
+        return { success: false, error: 'Failed to acknowledge revision' };
+      }
+
+      // Send notification to buyer
+      try {
+        const { data: providerProfile } = await supabase
+          .from('user_profiles')
+          .select('full_name, avatar_url')
+          .eq('user_id', serviceProviderId)
+          .single();
+
+        const providerName = providerProfile?.full_name || 'Service Provider';
+        const providerImage = providerProfile?.avatar_url;
+
+        await notificationService.addRevisionAcknowledgmentNotification({
+          buyerId: job.buyer_id,
+          serviceProviderName: providerName,
+          serviceProviderImage: providerImage,
+          serviceTitle: job.title,
+          jobId: jobId,
+        });
+
+        console.log('✅ Direct job revision acknowledgment notification sent to buyer:', job.buyer_id);
+      } catch (error) {
+        console.error('Error sending revision acknowledgment notification:', error);
+      }
+
+      console.log('✅ Direct job revision acknowledged successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error in acknowledgeRevision:', error);
+      return { success: false, error: 'Failed to acknowledge revision' };
+    }
+  }
+
+  /**
+   * Service provider disputes revision request for direct job
+   */
+  static async disputeRevision(
+    jobId: string,
+    serviceProviderId: string,
+    disputeReason: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('⚠️ Disputing revision for direct job:', jobId);
+
+      // Get job
+      const { data: job, error: jobError } = await supabase
+        .from('active_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .eq('service_provider_id', serviceProviderId)
+        .single();
+
+      if (jobError || !job) {
+        return { success: false, error: 'Job not found' };
+      }
+
+      // Check if job is in revision requested state
+      if (job.status !== 'revision_requested') {
+        return { success: false, error: 'Job is not in revision requested state' };
+      }
+
+      // Update job status to disputed
+      const { error: updateError } = await supabase
+        .from('active_jobs')
+        .update({
+          status: 'disputed',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', jobId);
+
+      if (updateError) {
+        console.error('Error disputing revision:', updateError);
+        return { success: false, error: 'Failed to dispute revision' };
+      }
+
+      // Send notification to buyer
+      try {
+        const { data: providerProfile } = await supabase
+          .from('user_profiles')
+          .select('full_name, avatar_url')
+          .eq('user_id', serviceProviderId)
+          .single();
+
+        const providerName = providerProfile?.full_name || 'Service Provider';
+        const providerImage = providerProfile?.avatar_url;
+
+        await notificationService.addRevisionDisputeNotification({
+          buyerId: job.buyer_id,
+          serviceProviderName: providerName,
+          serviceProviderImage: providerImage,
+          serviceTitle: job.title,
+          jobId: jobId,
+          disputeReason,
+        });
+
+        console.log('✅ Direct job revision dispute notification sent to buyer:', job.buyer_id);
+      } catch (error) {
+        console.error('Error sending revision dispute notification:', error);
+      }
+
+      console.log('✅ Direct job revision dispute filed successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error in disputeRevision:', error);
+      return { success: false, error: 'Failed to dispute revision' };
     }
   }
 
@@ -608,6 +800,52 @@ export class ActiveJobService {
     } catch (error) {
       console.error('Error in updateJobDeliveryTime:', error);
       return null;
+    }
+  }
+
+  /**
+   * Update service provider's overall rating based on all their reviews
+   */
+  static async updateServiceProviderRating(serviceProviderId: string): Promise<void> {
+    try {
+      // Get all reviews for this service provider
+      const { data: reviews, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('reviewee_id', serviceProviderId);
+
+      if (reviewsError) {
+        console.error('Error fetching reviews for rating update:', reviewsError);
+        return;
+      }
+
+      if (!reviews || reviews.length === 0) {
+        console.log('No reviews found for service provider:', serviceProviderId);
+        return;
+      }
+
+      // Calculate average rating
+      const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+      const averageRating = totalRating / reviews.length;
+      const reviewCount = reviews.length;
+
+      // Update user profile with new rating and review count
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({
+          rating: averageRating,
+          review_count: reviewCount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', serviceProviderId);
+
+      if (updateError) {
+        console.error('Error updating service provider rating:', updateError);
+      } else {
+        console.log(`✅ Updated service provider rating: ${averageRating.toFixed(2)} (${reviewCount} reviews)`);
+      }
+    } catch (error) {
+      console.error('Error in updateServiceProviderRating:', error);
     }
   }
 }

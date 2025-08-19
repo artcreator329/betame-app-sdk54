@@ -46,6 +46,9 @@ export interface Notification {
     revisionDeadline?: string;
     disputeReason?: string;
     completionNotes?: string;
+    // Review notification fields
+    reviewerName?: string;
+    reviewerImage?: string;
   };
 }
 
