@@ -940,13 +940,17 @@ export default function ProfileScreen() {
                 <View style={[styles.profileContent, isDesktop && styles.profileContentDesktop]}>
                   <View style={[styles.profileInfo, isDesktop && styles.profileInfoDesktop]}>
                     <View style={styles.userNameContainer}>
-                      <Text 
-                        style={[styles.userName, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userNameDesktop]}
-                        numberOfLines={2}
-                      >
-                        {userProfile?.full_name || 'User'}
-                      </Text>
-                      {renderVerificationTick()}
+                      <View style={styles.userNameTextContainer}>
+                        <Text 
+                          style={[styles.userName, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userNameDesktop]}
+                          numberOfLines={2}
+                        >
+                          {userProfile?.full_name || 'User'}
+                        </Text>
+                      </View>
+                      <View style={styles.verificationTickContainer}>
+                        {renderVerificationTick()}
+                      </View>
                     </View>
                     {userProfile?.bio && (
                       <Text style={[styles.userBio, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userBioDesktop]}>{userProfile.bio}</Text>
@@ -1516,7 +1520,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'flex-end',
     marginBottom: 8,
-    flexWrap: 'wrap',
+    width: '100%',
+  },
+  userNameTextContainer: {
+    flex: 1,
+    flexShrink: 1,
   },
   userName: {
     fontSize: 28,
@@ -1524,7 +1532,6 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: 'white',
     flexShrink: 1,
-    flexWrap: 'wrap',
   },
   userNameDesktop: {
     fontSize: 28,
@@ -1533,7 +1540,6 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: 'white',
     flexShrink: 1,
-    flexWrap: 'wrap',
   },
   userBio: {
     fontSize: 16,
@@ -2208,6 +2214,11 @@ const styles = StyleSheet.create({
   verificationTick: {
     marginLeft: 8,
     padding: 4,
+  },
+  verificationTickContainer: {
+    marginLeft: 8,
+    flexShrink: 0,
+    alignSelf: 'flex-start',
   },
   ekycPromptContainer: {
     paddingVertical: 16,
