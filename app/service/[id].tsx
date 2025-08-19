@@ -739,14 +739,14 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   providerNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     marginBottom: 4,
   },
   providerName: {
     fontSize: 16,
     fontWeight: '600',
-    marginRight: 8,
+    marginBottom: 4,
   },
   checkProfile: {
     fontSize: 12,
