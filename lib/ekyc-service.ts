@@ -1,6 +1,7 @@
-import { supabase } from './supabase';
+import { supabase, supabaseAdmin } from './supabase';
 import { authService } from './auth-service';
 import { adminService } from './admin-service';
+import * as FileSystem from 'expo-file-system';
 
 export interface EKYCSubmission {
   id?: string;
@@ -39,47 +40,76 @@ export class EKYCService {
   /**
    * Upload document to Supabase storage
    */
-  static async uploadDocument(file: File | string, fileName: string, userId: string): Promise<string> {
+  static async uploadDocument(fileUri: string, fileName: string, userId: string): Promise<string> {
     try {
-      let fileToUpload: File | Blob;
+      console.log('📤 Starting document upload for:', fileName);
+      console.log('📤 File URI:', fileUri);
+      console.log('📤 User ID:', userId);
+
+      // Read the file as base64 using expo-file-system
+      const base64Data = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64
+      });
+
+      console.log('📤 Base64 data length:', base64Data.length);
       
-      // Handle React Native local URI or web File
-      if (typeof file === 'string') {
-        // For React Native, fetch the local file
-        const response = await fetch(file);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch file: ${response.statusText}`);
-        }
-        fileToUpload = await response.blob();
-      } else {
-        fileToUpload = file;
+      if (!base64Data || base64Data.length === 0) {
+        throw new Error('File is empty or could not be read');
       }
 
+      // Convert base64 to array buffer using the same method as ImageService
+      const { decode } = await import('base64-arraybuffer');
+      const arrayBuffer = decode(base64Data);
+
+      console.log('📤 Array buffer size:', arrayBuffer.byteLength);
+
+      // Generate file path
       const fileExt = fileName.split('.').pop() || 'jpg';
-      const filePath = `ekyc-documents/${userId}/${Date.now()}.${fileExt}`;
+      const timestamp = Date.now();
+      const filePath = `ekyc-documents/${userId}/${timestamp}.${fileExt}`;
 
-      console.log('📤 Uploading document to:', filePath);
+      console.log('📤 Uploading to path:', filePath);
 
+      // Map file extensions to proper MIME types
+      const getMimeType = (extension: string): string => {
+        const mimeTypes: { [key: string]: string } = {
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'bmp': 'image/bmp',
+          'tiff': 'image/tiff',
+          'tif': 'image/tiff'
+        };
+        return mimeTypes[extension] || 'image/jpeg';
+      };
+
+      // Upload to Supabase storage
       const { data, error } = await supabase.storage
         .from('documents')
-        .upload(filePath, fileToUpload, {
-          contentType: fileToUpload instanceof Blob ? fileToUpload.type : 'image/jpeg'
+        .upload(filePath, arrayBuffer, {
+          contentType: getMimeType(fileExt),
+          upsert: false
         });
 
       if (error) {
-        console.error('Error uploading document:', error);
+        console.error('❌ Upload error:', error);
         throw new Error(`Failed to upload document: ${error.message}`);
       }
+
+      console.log('✅ Document uploaded successfully:', data);
 
       // Get public URL
       const { data: urlData } = supabase.storage
         .from('documents')
         .getPublicUrl(filePath);
 
-      console.log('✅ Document uploaded successfully:', urlData.publicUrl);
+      console.log('✅ Public URL generated:', urlData.publicUrl);
+      
       return urlData.publicUrl;
     } catch (error) {
-      console.error('Error in uploadDocument:', error);
+      console.error('❌ Error in uploadDocument:', error);
       throw error;
     }
   }

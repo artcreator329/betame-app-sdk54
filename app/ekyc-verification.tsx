@@ -364,6 +364,66 @@ export default function EKYCVerificationScreen() {
     }
   };
 
+  /**
+   * Parse address string into separate components
+   */
+  const parseAddress = (addressString: string) => {
+    try {
+      // Remove extra spaces and normalize
+      const cleanAddress = addressString.trim().replace(/\s+/g, ' ');
+      
+      // Try to extract postcode (5-digit Malaysian postcode)
+      const postcodeMatch = cleanAddress.match(/\b\d{5}\b/);
+      const postcode = postcodeMatch ? postcodeMatch[0] : '';
+      
+      // Try to extract state (common Malaysian states)
+      const malaysianStates = [
+        'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
+        'Perak', 'Perlis', 'Pulau Pinang', 'Sabah', 'Sarawak', 'Selangor',
+        'Terengganu', 'Kuala Lumpur', 'Labuan', 'Putrajaya'
+      ];
+      
+      let state = '';
+      for (const stateName of malaysianStates) {
+        if (cleanAddress.toLowerCase().includes(stateName.toLowerCase())) {
+          state = stateName;
+          break;
+        }
+      }
+      
+      // Extract city (usually before state or postcode)
+      let city = '';
+      if (state) {
+        const beforeState = cleanAddress.split(state)[0].trim();
+        const parts = beforeState.split(',').map(p => p.trim()).filter(p => p);
+        city = parts[parts.length - 1] || '';
+      } else if (postcode) {
+        const beforePostcode = cleanAddress.split(postcode)[0].trim();
+        const parts = beforePostcode.split(',').map(p => p.trim()).filter(p => p);
+        city = parts[parts.length - 1] || '';
+      }
+      
+      // Street address is everything before city
+      let street = cleanAddress;
+      if (city) {
+        street = cleanAddress.split(city)[0].trim();
+        if (street.endsWith(',')) {
+          street = street.slice(0, -1).trim();
+        }
+      }
+      
+      return {
+        street: street || '',
+        city: city || '',
+        postcode: postcode || '',
+        state: state || ''
+      };
+    } catch (error: any) {
+      console.error('Error parsing address:', error);
+      return null;
+    }
+  };
+
   const handleAIAutoFill = async () => {
     try {
       setIsAnalyzingDocument(true);
@@ -401,46 +461,65 @@ export default function EKYCVerificationScreen() {
       const extracted = result.extractedInfo;
       console.log('✅ AI extracted information:', extracted);
 
-      // Validate the extracted information
-      const validation = AIDocumentAnalysisService.validateExtractedInfo(extracted);
-      if (!validation.isValid) {
+      // Check if AI analysis was successful or if it's fallback data
+      const confidence = extracted.confidence || 0;
+      const isFallback = confidence < 0.5;
+      
+      if (isFallback) {
         Alert.alert(
-          'Incomplete Information',
-          `The AI couldn't extract all required information:\n${validation.errors.join('\n')}\n\nPlease verify and complete the missing fields manually.`
+          'Manual Entry Required',
+          'The AI couldn\'t automatically extract information from your document. Please fill in the details manually. The form has been prepared for you to complete.',
+          [{ text: 'OK' }]
         );
       }
 
-      // Auto-fill the form with extracted information
+      // Auto-fill the form with extracted information (even if it's fallback data)
       const updatedInfo = { ...personalInfo };
       
-      if (extracted.fullName) {
+      if (extracted.fullName && extracted.fullName !== 'Manual entry required') {
         updatedInfo.fullName = extracted.fullName;
       }
       
-      if (documentType === 'IC' && extracted.icNumber) {
+      if (documentType === 'IC' && extracted.icNumber && extracted.icNumber !== 'Manual entry required') {
         updatedInfo.icNumber = extracted.icNumber;
-      } else if (documentType === 'Passport' && extracted.passportNumber) {
+      } else if (documentType === 'Passport' && extracted.passportNumber && extracted.passportNumber !== 'Manual entry required') {
         updatedInfo.passportNumber = extracted.passportNumber;
       }
       
-      if (extracted.dateOfBirth) {
+      if (extracted.dateOfBirth && extracted.dateOfBirth !== 'Manual entry required') {
         updatedInfo.dateOfBirth = extracted.dateOfBirth;
       }
       
-      if (extracted.nationality) {
+      if (extracted.nationality && extracted.nationality !== 'Manual entry required') {
         updatedInfo.nationality = extracted.nationality.toLowerCase() === 'malaysian' ? 'malaysian' : 'foreigner';
+      }
+
+      // Extract and parse address if available
+      if (extracted.address && extracted.address !== 'Manual entry required' && extracted.address !== 'null') {
+        const parsedAddress = parseAddress(extracted.address);
+        if (parsedAddress) {
+          updatedInfo.address = parsedAddress.street || '';
+          updatedInfo.city = parsedAddress.city || '';
+          updatedInfo.postcode = parsedAddress.postcode || '';
+          updatedInfo.state = parsedAddress.state || '';
+        }
       }
 
       setPersonalInfo(updatedInfo);
 
-      // Show a toast-like message instead of alert for automatic fill
-      console.log(`✅ AI auto-fill completed with ${Math.round((extracted.confidence || 0) * 100)}% confidence`);
+      // Show appropriate message based on confidence
+      if (isFallback) {
+        console.log('⚠️ AI analysis failed, using fallback data');
+      } else {
+        console.log(`✅ AI auto-fill completed with ${Math.round(confidence * 100)}% confidence`);
+      }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ AI auto-fill error:', error);
       Alert.alert(
         'Auto-fill Error',
-        'An error occurred while analyzing your document. Please try again or fill in the information manually.'
+        'An error occurred while analyzing your document. Please fill in the information manually.',
+        [{ text: 'OK' }]
       );
     } finally {
       setIsAnalyzingDocument(false);
@@ -472,6 +551,20 @@ export default function EKYCVerificationScreen() {
       console.log('📸 Selected image URI:', asset.uri);
       console.log('📸 Image size:', asset.fileSize);
       console.log('📸 Image type:', asset.type);
+      
+      // Test file access
+      try {
+        const testResponse = await fetch(asset.uri);
+        console.log('📸 Test fetch response status:', testResponse.status);
+        console.log('📸 Test fetch response ok:', testResponse.ok);
+        if (testResponse.ok) {
+          const testBlob = await testResponse.blob();
+          console.log('📸 Test blob size:', testBlob.size);
+          console.log('📸 Test blob type:', testBlob.type);
+        }
+      } catch (testError) {
+        console.error('❌ Test fetch failed:', testError);
+      }
 
       // First, update the appropriate document array with the local URI for immediate preview
       if (documentType === 'identity') {
@@ -501,21 +594,25 @@ export default function EKYCVerificationScreen() {
         
         // Update the appropriate document array with the uploaded URL
         if (documentType === 'identity') {
-          setIdentityDocuments(prev => 
-            prev.map(doc => 
+          setIdentityDocuments(prev => {
+            const updated = prev.map(doc => 
               doc.id === documentId 
                 ? { ...doc, uploaded: true, verified: true, uri: uploadedUrl }
                 : doc
-            )
-          );
+            );
+            console.log('🔄 Updated identity documents:', updated);
+            return updated;
+          });
         } else {
-          setAdditionalDocuments(prev => 
-            prev.map(doc => 
+          setAdditionalDocuments(prev => {
+            const updated = prev.map(doc => 
               doc.id === documentId 
                 ? { ...doc, uploaded: true, verified: true, uri: uploadedUrl }
                 : doc
-            )
-          );
+            );
+            console.log('🔄 Updated additional documents:', updated);
+            return updated;
+          });
         }
         
         Alert.alert(
@@ -523,11 +620,11 @@ export default function EKYCVerificationScreen() {
           'Document uploaded successfully',
           [{ text: 'OK' }]
         );
-      } catch (uploadError) {
+      } catch (uploadError: any) {
         console.error('❌ Upload to storage failed:', uploadError);
         console.error('❌ Upload error details:', {
-          message: uploadError.message,
-          stack: uploadError.stack,
+          message: uploadError?.message || 'Unknown error',
+          stack: uploadError?.stack,
           documentId,
           fileName: `${documentId}_${Date.now()}.jpg`
         });
@@ -557,7 +654,7 @@ export default function EKYCVerificationScreen() {
           [{ text: 'OK' }]
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Document upload error:', error);
       Alert.alert(
         'Upload Failed',
@@ -796,7 +893,23 @@ export default function EKYCVerificationScreen() {
 
             {document.uploaded && document.uri && (
               <View style={styles.documentPreview}>
-                <Image source={{ uri: document.uri }} style={styles.previewImage} resizeMode="cover" />
+                <View style={[styles.previewImageContainer, { backgroundColor: colors.background.secondary }]}>
+                  <Image 
+                    source={{ 
+                      uri: document.uri,
+                      headers: {
+                        'Cache-Control': 'no-cache'
+                      }
+                    }} 
+                    style={styles.previewImage} 
+                    resizeMode="cover"
+                    onError={(error) => {
+                      console.error('❌ Image loading error:', error.nativeEvent);
+                      console.error('❌ Failed URL:', document.uri);
+                    }}
+                    onLoad={() => console.log('✅ Image loaded successfully:', document.uri)}
+                  />
+                </View>
                 <TouchableOpacity
                   style={[styles.reuploadButton, { backgroundColor: colors.background.secondary }]}
                   onPress={() => handleDocumentUpload(document.id, 'identity')}
@@ -1145,11 +1258,23 @@ export default function EKYCVerificationScreen() {
             
             {document.uploaded && document.uri ? (
               <View style={styles.documentPreview}>
-                <Image 
-                  source={{ uri: document.uri }} 
-                  style={styles.previewImage}
-                  resizeMode="cover"
-                />
+                <View style={[styles.previewImageContainer, { backgroundColor: colors.background.secondary }]}>
+                  <Image 
+                    source={{ 
+                      uri: document.uri,
+                      headers: {
+                        'Cache-Control': 'no-cache'
+                      }
+                    }} 
+                    style={styles.previewImage}
+                    resizeMode="cover"
+                    onError={(error) => {
+                      console.error('❌ Image loading error:', error.nativeEvent);
+                      console.error('❌ Failed URL:', document.uri);
+                    }}
+                    onLoad={() => console.log('✅ Image loaded successfully:', document.uri)}
+                  />
+                </View>
                 <View style={styles.documentStatus}>
                   <Text style={[
                     styles.documentStatusText, 
@@ -2041,11 +2166,18 @@ const styles = StyleSheet.create({
     marginTop: 12,
     alignItems: 'center',
   },
-  previewImage: {
+  previewImageContainer: {
     width: 200,
     height: 150,
     borderRadius: 8,
     marginBottom: 12,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
   },
   reuploadButton: {
     flexDirection: 'row',
