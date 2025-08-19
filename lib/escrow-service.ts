@@ -32,7 +32,7 @@ export interface JobStatus {
   buyer_id: string;
   service_provider_id: string;
   seller_id?: string; // Keep for backward compatibility
-  current_status: 'payment_received' | 'acknowledgment_pending' | 'work_in_progress' | 'work_completed' | 'buyer_reviewing' | 'completed' | 'disputed' | 'cancelled';
+  current_status: 'payment_received' | 'acknowledgment_pending' | 'work_in_progress' | 'work_completed' | 'buyer_reviewing' | 'revision_requested' | 'revision_in_progress' | 'revision_completed' | 'completed' | 'disputed' | 'cancelled';
   work_started_at?: string;
   work_completed_at?: string;
   buyer_review_started_at?: string;
@@ -41,6 +41,11 @@ export interface JobStatus {
   scheduled_start_date?: string;
   auto_release_date?: string;
   notes?: string;
+  revision_requested_at?: string;
+  revision_request_reason?: string;
+  revision_deadline?: string;
+  revision_acknowledged_at?: string;
+  revision_completed_at?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -61,7 +66,7 @@ export interface JobCommunication {
   id?: string;
   job_status_id: string;
   sender_id: string;
-  message_type: 'message' | 'work_update' | 'completion_notice' | 'dispute_raised' | 'system_notification';
+  message_type: 'message' | 'work_update' | 'completion_notice' | 'dispute_raised' | 'system_notification' | 'revision_request' | 'revision_acknowledged' | 'revision_disputed' | 'revision_completed';
   message: string;
   attachments?: any[];
   is_read: boolean;
@@ -374,18 +379,481 @@ export class EscrowService {
         })
         .eq('id', jobStatusId);
 
-      // Notify buyer
-      await this.sendJobNotification(
-        jobStatusId,
-        'completion_notice',
-        'Work has been completed! Please review and confirm to release payment.',
-        sellerId
-      );
+      // Notify buyer with enhanced notification
+      try {
+        // Get buyer and service provider information
+        const { data: jobDetails, error: detailsError } = await supabase
+          .from('job_status')
+          .select(`
+            buyer_id,
+            service_provider_id,
+            service_offers!inner(
+              service_title,
+              services!inner(
+                title
+              )
+            )
+          `)
+          .eq('id', jobStatusId)
+          .single();
+
+        if (!detailsError && jobDetails) {
+          const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
+          const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
+          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          
+          // Get service provider profile
+          const { data: providerProfile } = await supabase
+            .from('user_profiles')
+            .select('full_name, avatar_url')
+            .eq('user_id', sellerId)
+            .single();
+
+          const providerName = providerProfile?.full_name || 'Service Provider';
+          const providerImage = providerProfile?.avatar_url;
+
+          // Send enhanced notification to buyer
+          await notificationService.addJobCompletionNotification({
+            buyerId: jobDetails.buyer_id,
+            serviceProviderName: providerName,
+            serviceProviderImage: providerImage,
+            serviceTitle,
+            jobId: jobStatusId,
+            hasPhotos: false, // Escrow service doesn't handle photos directly
+            completionMessage: completionNotes || undefined,
+          });
+
+          console.log('✅ Enhanced job completion notification sent to buyer:', jobDetails.buyer_id);
+        }
+      } catch (error) {
+        console.error('Error sending enhanced job completion notification:', error);
+        // Fallback to original notification method
+        await this.sendJobNotification(
+          jobStatusId,
+          'completion_notice',
+          'Work has been completed! Please review and confirm to release payment.',
+          sellerId
+        );
+      }
 
       return { success: true };
     } catch (error) {
       console.error('Error in completeWork:', error);
       return { success: false, error: 'Failed to complete work' };
+    }
+  }
+
+  /**
+   * Buyer requests revision/improvement for completed work
+   */
+  static async requestRevision(
+    jobStatusId: string,
+    buyerId: string,
+    revisionReason: string,
+    revisionDeadline?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔧 Requesting revision for job:', jobStatusId);
+
+      // Get job status
+      const { data: jobStatus, error: jobError } = await supabase
+        .from('job_status')
+        .select('*')
+        .eq('id', jobStatusId)
+        .eq('buyer_id', buyerId)
+        .single();
+
+      if (jobError || !jobStatus) {
+        return { success: false, error: 'Job not found' };
+      }
+
+      // Check if job is in reviewable state
+      if (jobStatus.current_status !== 'buyer_reviewing') {
+        return { success: false, error: 'Job is not in reviewable state' };
+      }
+
+      // Set default deadline to 7 days if not provided
+      const deadline = revisionDeadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      // Update job status to revision requested
+      await supabaseAdmin
+        .from('job_status')
+        .update({
+          current_status: 'revision_requested',
+          revision_requested_at: new Date().toISOString(),
+          revision_request_reason: revisionReason,
+          revision_deadline: deadline,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', jobStatusId);
+
+      // Send enhanced notification to service provider
+      try {
+        // Get buyer and service provider information
+        const { data: jobDetails, error: detailsError } = await supabase
+          .from('job_status')
+          .select(`
+            buyer_id,
+            service_provider_id,
+            service_offers!inner(
+              service_title,
+              services!inner(
+                title
+              )
+            )
+          `)
+          .eq('id', jobStatusId)
+          .single();
+
+        if (!detailsError && jobDetails) {
+          const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
+          const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
+          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          
+          // Get buyer profile
+          const { data: buyerProfile } = await supabase
+            .from('user_profiles')
+            .select('full_name, avatar_url')
+            .eq('user_id', buyerId)
+            .single();
+
+          const buyerName = buyerProfile?.full_name || 'Buyer';
+          const buyerImage = buyerProfile?.avatar_url;
+
+          // Send enhanced notification to service provider
+          await notificationService.addRevisionRequestNotification({
+            serviceProviderId: jobDetails.service_provider_id,
+            buyerName,
+            buyerImage,
+            serviceTitle,
+            jobId: jobStatusId,
+            revisionReason,
+            revisionDeadline: deadline,
+          });
+
+          console.log('✅ Enhanced revision request notification sent to service provider:', jobDetails.service_provider_id);
+        }
+      } catch (error) {
+        console.error('Error sending enhanced revision request notification:', error);
+        // Fallback to original notification method
+        await this.sendJobNotification(
+          jobStatusId,
+          'revision_request',
+          `Revision requested: ${revisionReason}`,
+          buyerId
+        );
+      }
+
+      console.log('✅ Revision requested successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error in requestRevision:', error);
+      return { success: false, error: 'Failed to request revision' };
+    }
+  }
+
+  /**
+   * Service provider acknowledges revision request
+   */
+  static async acknowledgeRevision(
+    jobStatusId: string,
+    serviceProviderId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('✅ Acknowledging revision for job:', jobStatusId);
+
+      // Get job status
+      const { data: jobStatus, error: jobError } = await supabase
+        .from('job_status')
+        .select('*')
+        .eq('id', jobStatusId)
+        .eq('service_provider_id', serviceProviderId)
+        .single();
+
+      if (jobError || !jobStatus) {
+        return { success: false, error: 'Job not found' };
+      }
+
+      // Check if job is in revision requested state
+      if (jobStatus.current_status !== 'revision_requested') {
+        return { success: false, error: 'Job is not in revision requested state' };
+      }
+
+      // Update job status to revision in progress
+      await supabaseAdmin
+        .from('job_status')
+        .update({
+          current_status: 'revision_in_progress',
+          revision_acknowledged_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', jobStatusId);
+
+      // Send enhanced notification to buyer
+      try {
+        // Get buyer and service provider information
+        const { data: jobDetails, error: detailsError } = await supabase
+          .from('job_status')
+          .select(`
+            buyer_id,
+            service_provider_id,
+            service_offers!inner(
+              service_title,
+              services!inner(
+                title
+              )
+            )
+          `)
+          .eq('id', jobStatusId)
+          .single();
+
+        if (!detailsError && jobDetails) {
+          const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
+          const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
+          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          
+          // Get service provider profile
+          const { data: providerProfile } = await supabase
+            .from('user_profiles')
+            .select('full_name, avatar_url')
+            .eq('user_id', serviceProviderId)
+            .single();
+
+          const providerName = providerProfile?.full_name || 'Service Provider';
+          const providerImage = providerProfile?.avatar_url;
+
+          // Send enhanced notification to buyer
+          await notificationService.addRevisionAcknowledgmentNotification({
+            buyerId: jobDetails.buyer_id,
+            serviceProviderName: providerName,
+            serviceProviderImage: providerImage,
+            serviceTitle,
+            jobId: jobStatusId,
+          });
+
+          console.log('✅ Enhanced revision acknowledgment notification sent to buyer:', jobDetails.buyer_id);
+        }
+      } catch (error) {
+        console.error('Error sending enhanced revision acknowledgment notification:', error);
+        // Fallback to original notification method
+        await this.sendJobNotification(
+          jobStatusId,
+          'revision_acknowledged',
+          'Service provider has acknowledged the revision request and will work on improvements.',
+          serviceProviderId
+        );
+      }
+
+      console.log('✅ Revision acknowledged successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error in acknowledgeRevision:', error);
+      return { success: false, error: 'Failed to acknowledge revision' };
+    }
+  }
+
+  /**
+   * Service provider disputes revision request
+   */
+  static async disputeRevision(
+    jobStatusId: string,
+    serviceProviderId: string,
+    disputeReason: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('⚠️ Disputing revision for job:', jobStatusId);
+
+      // Get job status
+      const { data: jobStatus, error: jobError } = await supabase
+        .from('job_status')
+        .select('*')
+        .eq('id', jobStatusId)
+        .eq('service_provider_id', serviceProviderId)
+        .single();
+
+      if (jobError || !jobStatus) {
+        return { success: false, error: 'Job not found' };
+      }
+
+      // Check if job is in revision requested state
+      if (jobStatus.current_status !== 'revision_requested') {
+        return { success: false, error: 'Job is not in revision requested state' };
+      }
+
+      // Update job status to disputed
+      await supabaseAdmin
+        .from('job_status')
+        .update({
+          current_status: 'disputed',
+          notes: `Revision dispute: ${disputeReason}`,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', jobStatusId);
+
+      // Send enhanced notification to buyer
+      try {
+        // Get buyer and service provider information
+        const { data: jobDetails, error: detailsError } = await supabase
+          .from('job_status')
+          .select(`
+            buyer_id,
+            service_provider_id,
+            service_offers!inner(
+              service_title,
+              services!inner(
+                title
+              )
+            )
+          `)
+          .eq('id', jobStatusId)
+          .single();
+
+        if (!detailsError && jobDetails) {
+          const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
+          const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
+          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          
+          // Get service provider profile
+          const { data: providerProfile } = await supabase
+            .from('user_profiles')
+            .select('full_name, avatar_url')
+            .eq('user_id', serviceProviderId)
+            .single();
+
+          const providerName = providerProfile?.full_name || 'Service Provider';
+          const providerImage = providerProfile?.avatar_url;
+
+          // Send enhanced notification to buyer
+          await notificationService.addRevisionDisputeNotification({
+            buyerId: jobDetails.buyer_id,
+            serviceProviderName: providerName,
+            serviceProviderImage: providerImage,
+            serviceTitle,
+            jobId: jobStatusId,
+            disputeReason,
+          });
+
+          console.log('✅ Enhanced revision dispute notification sent to buyer:', jobDetails.buyer_id);
+        }
+      } catch (error) {
+        console.error('Error sending enhanced revision dispute notification:', error);
+        // Fallback to original notification method
+        await this.sendJobNotification(
+          jobStatusId,
+          'revision_disputed',
+          `Revision request disputed: ${disputeReason}`,
+          serviceProviderId
+        );
+      }
+
+      console.log('✅ Revision dispute filed successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error in disputeRevision:', error);
+      return { success: false, error: 'Failed to dispute revision' };
+    }
+  }
+
+  /**
+   * Service provider completes revision
+   */
+  static async completeRevision(
+    jobStatusId: string,
+    serviceProviderId: string,
+    completionNotes?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('✅ Completing revision for job:', jobStatusId);
+
+      // Get job status
+      const { data: jobStatus, error: jobError } = await supabase
+        .from('job_status')
+        .select('*')
+        .eq('id', jobStatusId)
+        .eq('service_provider_id', serviceProviderId)
+        .single();
+
+      if (jobError || !jobStatus) {
+        return { success: false, error: 'Job not found' };
+      }
+
+      // Check if job is in revision in progress state
+      if (jobStatus.current_status !== 'revision_in_progress') {
+        return { success: false, error: 'Job is not in revision in progress state' };
+      }
+
+      // Update job status to revision completed
+      await supabaseAdmin
+        .from('job_status')
+        .update({
+          current_status: 'revision_completed',
+          revision_completed_at: new Date().toISOString(),
+          notes: completionNotes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', jobStatusId);
+
+      // Send enhanced notification to buyer
+      try {
+        // Get buyer and service provider information
+        const { data: jobDetails, error: detailsError } = await supabase
+          .from('job_status')
+          .select(`
+            buyer_id,
+            service_provider_id,
+            service_offers!inner(
+              service_title,
+              services!inner(
+                title
+              )
+            )
+          `)
+          .eq('id', jobStatusId)
+          .single();
+
+        if (!detailsError && jobDetails) {
+          const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
+          const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
+          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          
+          // Get service provider profile
+          const { data: providerProfile } = await supabase
+            .from('user_profiles')
+            .select('full_name, avatar_url')
+            .eq('user_id', serviceProviderId)
+            .single();
+
+          const providerName = providerProfile?.full_name || 'Service Provider';
+          const providerImage = providerProfile?.avatar_url;
+
+          // Send enhanced notification to buyer
+          await notificationService.addRevisionCompletionNotification({
+            buyerId: jobDetails.buyer_id,
+            serviceProviderName: providerName,
+            serviceProviderImage: providerImage,
+            serviceTitle,
+            jobId: jobStatusId,
+            completionNotes,
+          });
+
+          console.log('✅ Enhanced revision completion notification sent to buyer:', jobDetails.buyer_id);
+        }
+      } catch (error) {
+        console.error('Error sending enhanced revision completion notification:', error);
+        // Fallback to original notification method
+        await this.sendJobNotification(
+          jobStatusId,
+          'revision_completed',
+          `Revision completed${completionNotes ? `: ${completionNotes}` : ''}`,
+          serviceProviderId
+        );
+      }
+
+      console.log('✅ Revision completed successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error in completeRevision:', error);
+      return { success: false, error: 'Failed to complete revision' };
     }
   }
 
@@ -455,13 +923,40 @@ export class EscrowService {
       // Update platform wallet (remove from escrow)
       await this.updatePlatformWalletRelease(escrowTransaction.total_amount);
 
-      // Notify seller
-      await this.sendJobNotification(
-        jobStatusId,
-        'system_notification',
-        `Payment of ${sellerPayout} BetaCoins has been released to your wallet! (${escrowTransaction.amount} service fee - ${escrowTransaction.platform_fee} platform fee)`,
-        buyerId
-      );
+      // Send enhanced notification to service provider
+      try {
+        // Get buyer and service provider information
+        const { data: buyerProfile } = await supabase
+          .from('user_profiles')
+          .select('full_name, avatar_url')
+          .eq('user_id', buyerId)
+          .single();
+
+        const buyerName = buyerProfile?.full_name || 'Buyer';
+        const buyerImage = buyerProfile?.avatar_url;
+
+        // Send enhanced notification to service provider
+        await notificationService.addJobCompletionConfirmationNotification({
+          serviceProviderId: escrowTransaction.seller_id,
+          buyerName,
+          buyerImage,
+          serviceTitle: escrowTransaction.service_title,
+          jobId: jobStatusId,
+          rating,
+          feedback,
+        });
+
+        console.log('✅ Enhanced payment release notification sent to service provider:', escrowTransaction.seller_id);
+      } catch (error) {
+        console.error('Error sending enhanced payment release notification:', error);
+        // Fallback to original notification method
+        await this.sendJobNotification(
+          jobStatusId,
+          'system_notification',
+          `Payment of ${sellerPayout} BetaCoins has been released to your wallet! (${escrowTransaction.amount} service fee - ${escrowTransaction.platform_fee} platform fee)`,
+          buyerId
+        );
+      }
 
       console.log('✅ Payment released to seller successfully');
       return { success: true };

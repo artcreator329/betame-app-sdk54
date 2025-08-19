@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { ImageService } from './image-service';
 import { referralService } from './referral-service';
+import { notificationService } from './notification-service';
 
 export interface JobCompletionPhoto {
   id?: string;
@@ -90,21 +91,46 @@ export class JobCompletionService {
     completionMessage?: string
   ): Promise<boolean> {
     try {
-      // Start a transaction
-      const { data: jobStatus, error: jobError } = await supabase
+      // Get the job status to find the service offer ID
+      const { data: jobStatus, error: jobStatusError } = await supabase
+        .from('job_status')
+        .select('service_offer_id')
+        .eq('id', jobStatusId)
+        .single();
+
+      if (jobStatusError || !jobStatus) {
+        console.error('Error fetching job status:', jobStatusError);
+        return false;
+      }
+
+      // Update job status
+      const { error: jobError } = await supabase
         .from('job_status')
         .update({
           current_status: 'work_completed',
           work_completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', jobStatusId)
-        .select()
-        .single();
+        .eq('id', jobStatusId);
 
       if (jobError) {
         console.error('Error updating job status:', jobError);
         return false;
+      }
+
+      // Update the corresponding order status
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({
+          status: 'work_completed',
+          work_completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('service_offer_id', jobStatus.service_offer_id);
+
+      if (orderError) {
+        console.error('Error updating order status:', orderError);
+        // Don't fail the entire operation if order update fails
       }
 
       // Upload completion photos
@@ -140,6 +166,57 @@ export class JobCompletionService {
       } catch (error) {
         console.error('Error tracking job completion for referrals:', error);
         // Don't fail the entire operation if referral tracking fails
+      }
+
+      // Send notification to buyer about job completion
+      try {
+        // Get buyer and service provider information
+        const { data: jobDetails, error: detailsError } = await supabase
+          .from('job_status')
+          .select(`
+            buyer_id,
+            service_provider_id,
+            service_offers!inner(
+              service_title,
+              services!inner(
+                title
+              )
+            )
+          `)
+          .eq('id', jobStatusId)
+          .single();
+
+        if (!detailsError && jobDetails) {
+          const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
+          const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
+          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          
+          // Get service provider profile
+          const { data: providerProfile } = await supabase
+            .from('user_profiles')
+            .select('full_name, avatar_url')
+            .eq('user_id', serviceProviderId)
+            .single();
+
+          const providerName = providerProfile?.full_name || 'Service Provider';
+          const providerImage = providerProfile?.avatar_url;
+
+          // Send notification to buyer
+          await notificationService.addJobCompletionNotification({
+            buyerId: jobDetails.buyer_id,
+            serviceProviderName: providerName,
+            serviceProviderImage: providerImage,
+            serviceTitle,
+            jobId: jobStatusId,
+            hasPhotos: photos.length > 0,
+            completionMessage: completionMessage || undefined,
+          });
+
+          console.log('✅ Job completion notification sent to buyer:', jobDetails.buyer_id);
+        }
+      } catch (error) {
+        console.error('Error sending job completion notification:', error);
+        // Don't fail the entire operation if notification fails
       }
 
       return true;

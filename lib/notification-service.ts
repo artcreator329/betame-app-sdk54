@@ -936,6 +936,323 @@ export class NotificationService {
     await this.addNotification(notification, userId);
   }
 
+  // Helper method to add job completion notification for buyer
+  async addJobCompletionNotification({
+    buyerId,
+    serviceProviderName,
+    serviceProviderImage,
+    serviceTitle,
+    jobId,
+    hasPhotos,
+    completionMessage,
+  }: {
+    buyerId: string;
+    serviceProviderName: string;
+    serviceProviderImage?: string;
+    serviceTitle: string;
+    jobId: string;
+    hasPhotos: boolean;
+    completionMessage?: string;
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addJobCompletionNotification called with:', {
+      buyerId,
+      serviceProviderName,
+      serviceTitle,
+      jobId,
+      hasPhotos,
+      hasCompletionMessage: !!completionMessage
+    });
+
+    const photoText = hasPhotos ? ' with photos' : '';
+    const messageText = completionMessage ? `\n\nMessage: "${completionMessage}"` : '';
+    
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'order' as const,
+      title: '✅ Work Completed!',
+      message: `${serviceProviderName} has marked "${serviceTitle}" as completed${photoText}. Please review and confirm within 24 hours to release payment.${messageText}`,
+      data: {
+        orderId: jobId,
+        serviceTitle,
+        serviceProviderName,
+        serviceProviderImage,
+        hasPhotos,
+        completionMessage,
+        action_required: true,
+        action_type: 'review_completion',
+        deadline_hours: 24
+      }
+    };
+
+    await this.addNotification(notification, buyerId);
+    console.log('🔔 NotificationService: addJobCompletionNotification completed');
+  }
+
+  // Helper method to add job completion confirmation notification for service provider
+  async addJobCompletionConfirmationNotification({
+    serviceProviderId,
+    buyerName,
+    buyerImage,
+    serviceTitle,
+    jobId,
+    rating,
+    feedback,
+  }: {
+    serviceProviderId: string;
+    buyerName: string;
+    buyerImage?: string;
+    serviceTitle: string;
+    jobId: string;
+    rating?: number;
+    feedback?: string;
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addJobCompletionConfirmationNotification called with:', {
+      serviceProviderId,
+      buyerName,
+      serviceTitle,
+      jobId,
+      rating,
+      hasFeedback: !!feedback
+    });
+
+    const ratingText = rating ? ` (${rating}/5 stars)` : '';
+    const feedbackText = feedback ? `\n\nFeedback: "${feedback}"` : '';
+    
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'order' as const,
+      title: '🎉 Payment Released!',
+      message: `${buyerName} has confirmed completion of "${serviceTitle}"${ratingText}. Your payment has been released!${feedbackText}`,
+      data: {
+        orderId: jobId,
+        serviceTitle,
+        buyerName,
+        buyerImage,
+        rating,
+        feedback,
+        action_type: 'payment_released'
+      }
+    };
+
+    await this.addNotification(notification, serviceProviderId);
+    console.log('🔔 NotificationService: addJobCompletionConfirmationNotification completed');
+  }
+
+  // Helper method to add revision request notification for service provider
+  async addRevisionRequestNotification({
+    serviceProviderId,
+    buyerName,
+    buyerImage,
+    serviceTitle,
+    jobId,
+    revisionReason,
+    revisionDeadline,
+  }: {
+    serviceProviderId: string;
+    buyerName: string;
+    buyerImage?: string;
+    serviceTitle: string;
+    jobId: string;
+    revisionReason: string;
+    revisionDeadline: string;
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addRevisionRequestNotification called with:', {
+      serviceProviderId,
+      buyerName,
+      serviceTitle,
+      jobId,
+      revisionReason,
+      revisionDeadline
+    });
+
+    const deadlineDate = new Date(revisionDeadline);
+    const deadlineText = deadlineDate.toLocaleDateString();
+    
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'order' as const,
+      title: '🔧 Revision Requested',
+      message: `${buyerName} has requested revisions for "${serviceTitle}". Reason: "${revisionReason}". Please review and respond by ${deadlineText}.`,
+      data: {
+        orderId: jobId,
+        serviceTitle,
+        buyerName,
+        buyerImage,
+        revisionReason,
+        revisionDeadline,
+        action_required: true,
+        action_type: 'revision_request',
+      }
+    };
+
+    await this.addNotification(notification, serviceProviderId);
+    console.log('🔔 NotificationService: addRevisionRequestNotification completed');
+  }
+
+  // Helper method to add revision acknowledgment notification for buyer
+  async addRevisionAcknowledgmentNotification({
+    buyerId,
+    serviceProviderName,
+    serviceProviderImage,
+    serviceTitle,
+    jobId,
+  }: {
+    buyerId: string;
+    serviceProviderName: string;
+    serviceProviderImage?: string;
+    serviceTitle: string;
+    jobId: string;
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addRevisionAcknowledgmentNotification called with:', {
+      buyerId,
+      serviceProviderName,
+      serviceTitle,
+      jobId,
+    });
+    
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'order' as const,
+      title: '✅ Revision Acknowledged',
+      message: `${serviceProviderName} has acknowledged your revision request for "${serviceTitle}" and will work on the improvements.`,
+      data: {
+        orderId: jobId,
+        serviceTitle,
+        serviceProviderName,
+        serviceProviderImage,
+        action_type: 'revision_acknowledged'
+      }
+    };
+
+    await this.addNotification(notification, buyerId);
+    console.log('🔔 NotificationService: addRevisionAcknowledgmentNotification completed');
+  }
+
+  // Helper method to add revision dispute notification for buyer
+  async addRevisionDisputeNotification({
+    buyerId,
+    serviceProviderName,
+    serviceProviderImage,
+    serviceTitle,
+    jobId,
+    disputeReason,
+  }: {
+    buyerId: string;
+    serviceProviderName: string;
+    serviceProviderImage?: string;
+    serviceTitle: string;
+    jobId: string;
+    disputeReason: string;
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addRevisionDisputeNotification called with:', {
+      buyerId,
+      serviceProviderName,
+      serviceTitle,
+      jobId,
+      disputeReason
+    });
+    
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'order' as const,
+      title: '⚠️ Revision Disputed',
+      message: `${serviceProviderName} has disputed your revision request for "${serviceTitle}". Reason: "${disputeReason}". This will be reviewed by our support team.`,
+      data: {
+        orderId: jobId,
+        serviceTitle,
+        serviceProviderName,
+        serviceProviderImage,
+        disputeReason,
+        action_type: 'revision_disputed'
+      }
+    };
+
+    await this.addNotification(notification, buyerId);
+    console.log('🔔 NotificationService: addRevisionDisputeNotification completed');
+  }
+
+  // Helper method to add revision completion notification for buyer
+  async addRevisionCompletionNotification({
+    buyerId,
+    serviceProviderName,
+    serviceProviderImage,
+    serviceTitle,
+    jobId,
+    completionNotes,
+  }: {
+    buyerId: string;
+    serviceProviderName: string;
+    serviceProviderImage?: string;
+    serviceTitle: string;
+    jobId: string;
+    completionNotes?: string;
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addRevisionCompletionNotification called with:', {
+      buyerId,
+      serviceProviderName,
+      serviceTitle,
+      jobId,
+      completionNotes
+    });
+
+    const notesText = completionNotes ? `\n\nNotes: "${completionNotes}"` : '';
+    
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'order' as const,
+      title: '✅ Revision Completed',
+      message: `${serviceProviderName} has completed the revision for "${serviceTitle}". Please review the updated work.${notesText}`,
+      data: {
+        orderId: jobId,
+        serviceTitle,
+        serviceProviderName,
+        serviceProviderImage,
+        completionNotes,
+        action_required: true,
+        action_type: 'revision_completed'
+      }
+    };
+
+    await this.addNotification(notification, buyerId);
+    console.log('🔔 NotificationService: addRevisionCompletionNotification completed');
+  }
+
+  // Helper method to add job completion reminder notification for buyer
+  async addJobCompletionReminderNotification({
+    buyerId,
+    serviceProviderName,
+    serviceTitle,
+    jobId,
+    hoursRemaining,
+  }: {
+    buyerId: string;
+    serviceProviderName: string;
+    serviceTitle: string;
+    jobId: string;
+    hoursRemaining: number;
+  }): Promise<void> {
+    console.log('🔔 NotificationService: addJobCompletionReminderNotification called with:', {
+      buyerId,
+      serviceProviderName,
+      serviceTitle,
+      jobId,
+      hoursRemaining
+    });
+
+    const timeText = hoursRemaining <= 1 ? '1 hour' : `${hoursRemaining} hours`;
+    
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
+      type: 'order' as const,
+      title: '⏰ Review Deadline Approaching',
+      message: `You have ${timeText} left to review and confirm completion of "${serviceTitle}" by ${serviceProviderName}. Payment will be automatically released if not confirmed.`,
+      data: {
+        orderId: jobId,
+        serviceTitle,
+        serviceProviderName,
+        action_required: true,
+        action_type: 'review_completion_reminder',
+        hours_remaining: hoursRemaining
+      }
+    };
+
+    await this.addNotification(notification, buyerId);
+    console.log('🔔 NotificationService: addJobCompletionReminderNotification completed');
+  }
+
 }
 
 export const notificationService = NotificationService.getInstance();

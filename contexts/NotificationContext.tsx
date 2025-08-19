@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { Notification, NotificationContextType } from '@/types/notification';
 import { notificationService } from '@/lib/notification-service';
 import { notificationScheduler } from '@/lib/notification-scheduler';
+import { jobNotificationScheduler } from '@/lib/job-notification-scheduler';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -32,6 +33,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       await (notificationService as any).connect?.(user.id);
       await notificationScheduler.initialize(user.id);
+      await jobNotificationScheduler.start();
       
       await notificationService.getNotifications().then((savedNotifications) => {
         setNotifications(savedNotifications);
@@ -49,6 +51,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     return () => {
       if (unsubscribe) unsubscribe();
       notificationScheduler.disconnect();
+      jobNotificationScheduler.stop();
     };
   }, [user?.id]);
 

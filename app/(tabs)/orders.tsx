@@ -11,18 +11,21 @@ import {
   TextInput,
   Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { EscrowService, JobStatus } from '@/lib/escrow-service';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
+import JobCompletionPhotoUpload from '@/components/JobCompletionPhotoUpload';
+import { supabase } from '@/lib/supabase';
 
 export default function OrdersScreen() {
   const colors = useColors();
   const { user } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,6 +37,7 @@ export default function OrdersScreen() {
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState(5);
   const [scheduledStartDate, setScheduledStartDate] = useState('');
+  const [completionPhotos, setCompletionPhotos] = useState<Array<{ photo_url: string; photo_description?: string }>>([]);
   const [filter, setFilter] = useState<'all' | 'buying' | 'selling'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
@@ -233,27 +237,114 @@ export default function OrdersScreen() {
   const handleCompleteWork = async () => {
     if (!selectedOrder?.id) return;
 
+    // Require at least one photo
+    if (completionPhotos.length === 0) {
+      Alert.alert('Photo Required', 'Please upload at least one photo showing the completed work.');
+      return;
+    }
+
     try {
-      const result = await EscrowService.completeWork(
-        selectedOrder.id, 
-        user!.id, 
-        completionNotes
-      );
-      
-      if (result.success) {
-        Alert.alert(
-          'Work Completed!', 
-          'The buyer has been notified and will review your work. Payment will be released upon their confirmation.'
-        );
-        setShowCompletionModal(false);
-        setCompletionNotes('');
-        setSelectedOrder(null);
-        fetchOrders();
+      // Check if this is a direct order (active job) or escrow order
+      if ((selectedOrder as any).orderType === 'direct') {
+        // For direct orders, use ActiveJobService
+        const { ActiveJobService } = await import('@/lib/active-job-service');
+        const success = await ActiveJobService.completeJob(selectedOrder.id);
+        
+        if (success) {
+          Alert.alert(
+            'Work Completed!', 
+            'The job has been marked as completed. The buyer will be notified and can review your work.'
+          );
+          setShowCompletionModal(false);
+          setCompletionNotes('');
+          setCompletionPhotos([]);
+          setSelectedOrder(null);
+          fetchOrders();
+        } else {
+          Alert.alert('Error', 'Failed to complete work. Please try again.');
+        }
       } else {
-        Alert.alert('Error', result.error || 'Failed to complete work');
+        // For escrow orders, find the job status ID first, then use JobCompletionService
+        try {
+          const { data: jobStatus, error } = await supabase
+            .from('job_status')
+            .select('id')
+            .eq('service_offer_id', (selectedOrder as any).service_offer_id)
+            .single();
+
+          if (error || !jobStatus) {
+            // Fallback to original EscrowService if job status not found
+            const result = await EscrowService.completeWork(
+              selectedOrder.id, 
+              user!.id, 
+              completionNotes
+            );
+            
+            if (result.success) {
+              Alert.alert(
+                'Work Completed!', 
+                'The buyer has been notified and will review your work. Payment will be released upon their confirmation.'
+              );
+              setShowCompletionModal(false);
+              setCompletionNotes('');
+              setCompletionPhotos([]);
+              setSelectedOrder(null);
+              fetchOrders();
+            } else {
+              Alert.alert('Error', result.error || 'Failed to complete work');
+            }
+            return;
+          }
+
+          // Use JobCompletionService for photo upload
+          const { JobCompletionService } = await import('@/lib/job-completion-service');
+          const success = await JobCompletionService.completeJobWithPhotos(
+            jobStatus.id,
+            user!.id,
+            completionPhotos,
+            completionNotes.trim() || undefined
+          );
+          
+          if (success) {
+            Alert.alert(
+              'Work Completed!', 
+              'The job has been marked as completed with photos. The buyer will be notified and can review your work.'
+            );
+            setShowCompletionModal(false);
+            setCompletionNotes('');
+            setCompletionPhotos([]);
+            setSelectedOrder(null);
+            fetchOrders();
+          } else {
+            Alert.alert('Error', 'Failed to complete work. Please try again.');
+          }
+        } catch (jobStatusError) {
+          console.error('Error finding job status:', jobStatusError);
+          // Fallback to original EscrowService
+          const result = await EscrowService.completeWork(
+            selectedOrder.id, 
+            user!.id, 
+            completionNotes
+          );
+          
+          if (result.success) {
+            Alert.alert(
+              'Work Completed!', 
+              'The buyer has been notified and will review your work. Payment will be released upon their confirmation.'
+            );
+            setShowCompletionModal(false);
+            setCompletionNotes('');
+            setCompletionPhotos([]);
+            setSelectedOrder(null);
+            fetchOrders();
+          } else {
+            Alert.alert('Error', result.error || 'Failed to complete work');
+          }
+        }
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to complete work');
+      console.error('Error completing work:', error);
+      Alert.alert('Error', 'Failed to complete work. Please try again.');
     }
   };
 
@@ -981,9 +1072,14 @@ export default function OrdersScreen() {
       {/* Orders List */}
       <ScrollView
         style={styles.ordersList}
+        contentContainerStyle={[
+          styles.ordersListContent,
+          { paddingBottom: 120 + insets.bottom } // Add safe area bottom inset
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        showsVerticalScrollIndicator={false}
       >
         {filteredOrders.length === 0 ? (
           <View style={[styles.emptyState, { backgroundColor: colors.background.secondary }]}>
@@ -1275,12 +1371,24 @@ export default function OrdersScreen() {
       >
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background.primary }]}>
           <View style={[styles.modalHeader, { backgroundColor: colors.background.secondary, borderBottomColor: colors.border.main }]}>
-            <TouchableOpacity onPress={() => setShowCompletionModal(false)}>
+            <TouchableOpacity onPress={() => {
+              setShowCompletionModal(false);
+              setCompletionNotes('');
+              setCompletionPhotos([]);
+            }}>
               <Text style={[styles.modalCancel, { color: colors.text.secondary }]}>Cancel</Text>
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Mark Work Complete</Text>
-            <TouchableOpacity onPress={handleCompleteWork}>
-              <Text style={[styles.modalDone, { color: colors.primary.main }]}>Done</Text>
+            <TouchableOpacity 
+              onPress={handleCompleteWork}
+              disabled={completionPhotos.length === 0}
+            >
+              <Text style={[
+                styles.modalDone, 
+                { 
+                  color: completionPhotos.length === 0 ? colors.text.secondary : colors.primary.main 
+                }
+              ]}>Done</Text>
             </TouchableOpacity>
           </View>
 
@@ -1300,6 +1408,16 @@ export default function OrdersScreen() {
               numberOfLines={6}
               textAlignVertical="top"
             />
+            
+            {/* Photo Upload Section */}
+            <View style={styles.photoUploadSection}>
+              <JobCompletionPhotoUpload
+                userId={user?.id || ''}
+                photos={completionPhotos}
+                onPhotosChange={setCompletionPhotos}
+                maxPhotos={5}
+              />
+            </View>
             
             <View style={[styles.modalInfo, { backgroundColor: colors.background.secondary }]}>
               <Ionicons name="information-circle-outline" size={20} color={colors.primary.main} />
@@ -1589,7 +1707,9 @@ const styles = StyleSheet.create({
   ordersList: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 100, // Add bottom padding to prevent cropping
+  },
+  ordersListContent: {
+    paddingBottom: 20, // Base padding, safe area inset will be added dynamically
   },
   emptyState: {
     alignItems: 'center',
@@ -1790,6 +1910,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 120,
     borderWidth: 1,
+    marginBottom: 16,
+  },
+  photoUploadSection: {
     marginBottom: 16,
   },
   modalInfo: {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { supabase } from '../lib/supabase';
 import { Order, orderManagementService } from '../lib/order-management-service';
 
 interface OrderCardProps {
@@ -14,6 +16,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   currentUserId, 
   onOrderUpdate 
 }) => {
+  const router = useRouter();
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [canDispute, setCanDispute] = useState(false);
 
@@ -74,25 +77,25 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   };
 
   const handleMarkCompleted = async () => {
-    Alert.alert(
-      'Mark Work Completed',
-      'Are you sure you want to mark this work as completed? The buyer will have 24 hours to review.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Mark Completed',
-          onPress: async () => {
-            const success = await orderManagementService.markWorkCompleted(order.id, currentUserId);
-            if (success) {
-              Alert.alert('Success', 'Work marked as completed! Buyer has 24 hours to review.');
-              onOrderUpdate?.();
-            } else {
-              Alert.alert('Error', 'Failed to mark work as completed. Please try again.');
-            }
-          }
-        }
-      ]
-    );
+    try {
+      // Find the job status ID using the service offer ID from the order
+      const { data: jobStatus, error } = await supabase
+        .from('job_status')
+        .select('id')
+        .eq('service_offer_id', order.service_offer_id)
+        .single();
+
+      if (error || !jobStatus) {
+        Alert.alert('Error', 'Could not find job status. Please try again.');
+        return;
+      }
+
+      // Navigate to the job completion screen with photo upload
+      router.push(`/job-completion/${jobStatus.id}`);
+    } catch (error) {
+      console.error('Error navigating to job completion:', error);
+      Alert.alert('Error', 'Failed to open job completion screen. Please try again.');
+    }
   };
 
   const handleConfirmCompletion = async () => {

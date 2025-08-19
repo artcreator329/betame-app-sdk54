@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { ServiceOffer, ServiceOfferData } from '../types/chat';
 import { DirectOrderData } from './payment-service';
+import { notificationService } from './notification-service';
 
 export interface ActiveJob {
   id?: string;
@@ -325,6 +326,44 @@ export class ActiveJobService {
       if (error) {
         console.error('Error completing job:', error);
         return false;
+      }
+
+      // Send notification to buyer about job completion
+      try {
+        // Get job details and user information
+        const { data: jobDetails, error: detailsError } = await supabase
+          .from('active_jobs')
+          .select('buyer_id, service_provider_id, title')
+          .eq('id', jobId)
+          .single();
+
+        if (!detailsError && jobDetails) {
+          // Get service provider profile
+          const { data: providerProfile } = await supabase
+            .from('user_profiles')
+            .select('full_name, avatar_url')
+            .eq('user_id', jobDetails.service_provider_id)
+            .single();
+
+          const providerName = providerProfile?.full_name || 'Service Provider';
+          const providerImage = providerProfile?.avatar_url;
+
+          // Send notification to buyer
+          await notificationService.addJobCompletionNotification({
+            buyerId: jobDetails.buyer_id,
+            serviceProviderName: providerName,
+            serviceProviderImage: providerImage,
+            serviceTitle: jobDetails.title,
+            jobId: jobId,
+            hasPhotos: false, // Direct orders don't have photo upload in this flow
+            completionMessage: undefined,
+          });
+
+          console.log('✅ Direct job completion notification sent to buyer:', jobDetails.buyer_id);
+        }
+      } catch (error) {
+        console.error('Error sending direct job completion notification:', error);
+        // Don't fail the entire operation if notification fails
       }
 
       return true;

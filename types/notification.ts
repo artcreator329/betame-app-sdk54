@@ -31,6 +31,21 @@ export interface Notification {
     action?: string;
     // Location request notification fields
     actionType?: string;
+    // Job completion notification fields
+    serviceProviderName?: string;
+    serviceProviderImage?: string;
+    hasPhotos?: boolean;
+    completionMessage?: string;
+    action_type?: string;
+    deadline_hours?: number;
+    rating?: number;
+    feedback?: string;
+    hours_remaining?: number;
+    // Revision notification fields
+    revisionReason?: string;
+    revisionDeadline?: string;
+    disputeReason?: string;
+    completionNotes?: string;
   };
 }
 

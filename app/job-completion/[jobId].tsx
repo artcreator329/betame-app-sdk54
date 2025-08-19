@@ -107,7 +107,11 @@ export default function JobCompletionScreen() {
           [
             {
               text: 'OK',
-              onPress: () => router.back(),
+              onPress: () => {
+                // Navigate back and refresh the orders list
+                router.back();
+                // The orders page should refresh automatically due to focus effect
+              },
             },
           ]
         );
