@@ -83,6 +83,19 @@ export default function UserProfileScreen() {
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
     : 0;
 
+  // Set initial active tab based on whether user is viewing their own profile
+  useEffect(() => {
+    if (user && userId) {
+      if (user.id === userId) {
+        // User is viewing their own profile - can show "I'm Hiring" tab
+        setActiveTab('My Services'); // Default to "My Services" for own profile
+      } else {
+        // User is viewing another user's profile - hide "I'm Hiring" tab
+        setActiveTab('My Services'); // Default to "My Services" for other users
+      }
+    }
+  }, [user, userId]);
+
   useEffect(() => {
     const fetchUserData = async () => {
       if (!userId || typeof userId !== 'string') {
@@ -588,32 +601,44 @@ export default function UserProfileScreen() {
               <View style={styles.desktopRightColumn}>
                 {/* Tab Navigation */}
                 <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }, isDesktop && styles.tabNavigationDesktop]}>
-                  {['I\'m Hiring', 'My Services', 'Reviews'].map((tab) => (
-                    <TouchableOpacity
-                      key={tab}
-                      style={[
-                        styles.tab,
-                        activeTab === tab && { borderBottomColor: colors.primary.main },
-                        isDesktop && styles.tabDesktop,
-                      ]}
-                      onPress={() => setActiveTab(tab)}
-                    >
-                      <Text
+                  {(() => {
+                    // Show all tabs for own profile, hide "I'm Hiring" for other users
+                    const tabs = user && user.id === userId 
+                      ? ['I\'m Hiring', 'My Services', 'Reviews']
+                      : ['My Services', 'Reviews'];
+                    
+                    // If current active tab is "I'm Hiring" but we're viewing another user, switch to "My Services"
+                    if (activeTab === 'I\'m Hiring' && user && user.id !== userId) {
+                      setActiveTab('My Services');
+                    }
+                    
+                    return tabs.map((tab) => (
+                      <TouchableOpacity
+                        key={tab}
                         style={[
-                          styles.tabText,
-                          { 
-                            color: activeTab === tab 
-                              ? colors.text.primary  // Use primary text color for better contrast
-                              : colors.text.secondary 
-                          },
-                          activeTab === tab && styles.activeTabText,
-                          isDesktop && styles.tabTextDesktop,
+                          styles.tab,
+                          activeTab === tab && { borderBottomColor: colors.primary.main },
+                          isDesktop && styles.tabDesktop,
                         ]}
+                        onPress={() => setActiveTab(tab)}
                       >
-                        {tab}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <Text
+                          style={[
+                            styles.tabText,
+                            { 
+                              color: activeTab === tab 
+                                ? colors.text.primary  // Use primary text color for better contrast
+                                : colors.text.secondary 
+                            },
+                            activeTab === tab && styles.activeTabText,
+                            isDesktop && styles.tabTextDesktop,
+                          ]}
+                        >
+                          {tab}
+                        </Text>
+                      </TouchableOpacity>
+                    ));
+                  })()}
                 </View>
 
                 {/* Tab Content */}
@@ -653,32 +678,44 @@ export default function UserProfileScreen() {
 
               {/* Tab Navigation */}
               <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }, isDesktop && styles.tabNavigationDesktop]}>
-                {['I\'m Hiring', 'My Services', 'Reviews'].map((tab) => (
-                  <TouchableOpacity
-                    key={tab}
-                    style={[
-                      styles.tab,
-                      activeTab === tab && { borderBottomColor: colors.primary.main },
-                      isDesktop && styles.tabDesktop,
-                    ]}
-                    onPress={() => setActiveTab(tab)}
-                  >
-                    <Text
+                {(() => {
+                  // Show all tabs for own profile, hide "I'm Hiring" for other users
+                  const tabs = user && user.id === userId 
+                    ? ['I\'m Hiring', 'My Services', 'Reviews']
+                    : ['My Services', 'Reviews'];
+                  
+                  // If current active tab is "I'm Hiring" but we're viewing another user, switch to "My Services"
+                  if (activeTab === 'I\'m Hiring' && user && user.id !== userId) {
+                    setActiveTab('My Services');
+                  }
+                  
+                  return tabs.map((tab) => (
+                    <TouchableOpacity
+                      key={tab}
                       style={[
-                        styles.tabText,
-                        { 
-                          color: activeTab === tab 
-                            ? colors.text.primary  // Use primary text color for better contrast
-                            : colors.text.secondary 
-                        },
-                        activeTab === tab && styles.activeTabText,
-                        isDesktop && styles.tabTextDesktop,
+                        styles.tab,
+                        activeTab === tab && { borderBottomColor: colors.primary.main },
+                        isDesktop && styles.tabDesktop,
                       ]}
+                      onPress={() => setActiveTab(tab)}
                     >
-                      {tab}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text
+                        style={[
+                          styles.tabText,
+                          { 
+                            color: activeTab === tab 
+                              ? colors.text.primary  // Use primary text color for better contrast
+                              : colors.text.secondary 
+                          },
+                          activeTab === tab && styles.activeTabText,
+                          isDesktop && styles.tabTextDesktop,
+                        ]}
+                      >
+                        {tab}
+                      </Text>
+                    </TouchableOpacity>
+                  ));
+                })()}
               </View>
 
               {/* Tab Content */}
