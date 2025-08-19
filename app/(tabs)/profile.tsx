@@ -948,15 +948,13 @@ export default function ProfileScreen() {
                           {userProfile?.full_name || 'User'}
                         </Text>
                       </View>
-                      <View style={styles.verificationTickContainer}>
-                        {renderVerificationTick()}
-                      </View>
                     </View>
                     {userProfile?.bio && (
                       <Text style={[styles.userBio, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userBioDesktop]}>{userProfile.bio}</Text>
                     )}
                     <View style={styles.ratingContainer}>
                       <Text style={[styles.ratingText, { color: isDarkMode ? 'white' : 'black' }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
+                      {renderVerificationTick()}
                       {averageRating > 0 && renderStars(averageRating)}
                       <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({reviews.length} reviews)</Text>
                     </View>
@@ -2214,11 +2212,6 @@ const styles = StyleSheet.create({
   verificationTick: {
     marginLeft: 8,
     padding: 4,
-  },
-  verificationTickContainer: {
-    marginLeft: 8,
-    flexShrink: 0,
-    alignSelf: 'flex-start',
   },
   ekycPromptContainer: {
     paddingVertical: 16,
