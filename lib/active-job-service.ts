@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { ServiceOffer, ServiceOfferData } from '../types/chat';
 import { DirectOrderData } from './payment-service';
 import { notificationService } from './notification-service';
+import { referralService } from './referral-service';
 
 export interface ActiveJob {
   id?: string;
@@ -331,6 +332,22 @@ export class ActiveJobService {
       if (error) {
         console.error('Error completing job:', error);
         return false;
+      }
+
+      // Track job completion for referral system
+      try {
+        const { data: jobDetails } = await supabase
+          .from('active_jobs')
+          .select('service_provider_id')
+          .eq('id', jobId)
+          .single();
+        
+        if (jobDetails?.service_provider_id) {
+          await referralService.trackJobCompletion(jobDetails.service_provider_id);
+        }
+      } catch (error) {
+        console.error('Error tracking job completion for referrals:', error);
+        // Don't fail the entire operation if referral tracking fails
       }
 
       // Send notification to buyer about job completion

@@ -18,7 +18,6 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminService } from '@/lib/admin-service';
 import { referralService } from '@/lib/referral-service';
-import { ReferralInputModal } from '@/components/ReferralInputModal';
 import { BackgroundVideoPlayer } from '@/components/BackgroundVideoPlayer';
 import { audioSessionManager } from '@/lib/audio-session-manager';
 import { supabase } from '@/lib/supabase';
@@ -28,9 +27,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showReferralModal, setShowReferralModal] = useState(false);
-  const [newUserId, setNewUserId] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
   const { signIn, signUp } = useAuth();
@@ -62,15 +60,12 @@ export default function LoginScreen() {
       
       if (result.error) {
         Alert.alert('Error', result.error.message);
-      } else if (result.user) {
+      } else {
         // Check if user is admin
-        const isAdmin = await adminService.isAdmin(result.user.id);
-        
+        const isAdmin = await adminService.isAdmin(result.user!.id);
         if (isAdmin) {
-          // Navigate to admin dashboard
-          router.replace('/admin');
+          router.replace('/admin-dashboard');
         } else {
-          // Navigate to main app
           router.replace('/(tabs)');
         }
       }
@@ -79,32 +74,6 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleReferralSuccess = () => {
-    // Show success message and inform user to check email
-    Alert.alert(
-      'Account Created!',
-      'Please check your email and click the verification link to complete your registration. The link will automatically redirect you back to the app.',
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            // Reset form
-            setEmail('');
-            setPassword('');
-            setFullName('');
-            setIsSignUp(false);
-            setNewUserId(null);
-          }
-        }
-      ]
-    );
-  };
-
-  const handleReferralSkip = () => {
-    setShowReferralModal(false);
-    handleReferralSuccess();
   };
 
   const handleEmailAuth = async () => {
@@ -134,21 +103,91 @@ export default function LoginScreen() {
         } else if (result.user) {
           console.log('🔍 Login: User signed up:', result.user.id);
           
-          // Show email verification alert first
-          Alert.alert(
-            'Account Created Successfully! 🎉',
-            'We\'ve sent a verification link to your email. Please check your inbox and click the verification link to activate your account.\n\nIf you don\'t see the email, check your spam folder.',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  // After user acknowledges email verification, show referral modal
-                  setNewUserId(result.user!.id);
-                  setShowReferralModal(true);
-                }
+          // Handle referral code if provided
+          if (referralCode.trim()) {
+            try {
+              const referralSuccess = await referralService.handleReferralSignup(
+                result.user.id, 
+                referralCode.trim().toUpperCase()
+              );
+              
+              if (referralSuccess) {
+                Alert.alert(
+                  'Account Created Successfully! 🎉',
+                  'We\'ve sent a verification link to your email. Please check your inbox and click the verification link to activate your account.\n\n✅ Referral code applied! Your referrer has earned 15 credits.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        // Reset form
+                        setEmail('');
+                        setPassword('');
+                        setFullName('');
+                        setReferralCode('');
+                        setIsSignUp(false);
+                      }
+                    }
+                  ]
+                );
+              } else {
+                Alert.alert(
+                  'Account Created Successfully! 🎉',
+                  'We\'ve sent a verification link to your email. Please check your inbox and click the verification link to activate your account.\n\n⚠️ Referral code could not be applied. It may be invalid or already used.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        // Reset form
+                        setEmail('');
+                        setPassword('');
+                        setFullName('');
+                        setReferralCode('');
+                        setIsSignUp(false);
+                      }
+                    }
+                  ]
+                );
               }
-            ]
-          );
+            } catch (referralError) {
+              console.error('Referral error:', referralError);
+              Alert.alert(
+                'Account Created Successfully! 🎉',
+                'We\'ve sent a verification link to your email. Please check your inbox and click the verification link to activate your account.\n\n⚠️ Referral code could not be applied due to an error.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      // Reset form
+                      setEmail('');
+                      setPassword('');
+                      setFullName('');
+                      setReferralCode('');
+                      setIsSignUp(false);
+                    }
+                  }
+                ]
+              );
+            }
+          } else {
+            // No referral code provided
+            Alert.alert(
+              'Account Created Successfully! 🎉',
+              'We\'ve sent a verification link to your email. Please check your inbox and click the verification link to activate your account.\n\nIf you don\'t see the email, check your spam folder.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    // Reset form
+                    setEmail('');
+                    setPassword('');
+                    setFullName('');
+                    setReferralCode('');
+                    setIsSignUp(false);
+                  }
+                }
+              ]
+            );
+          }
         }
       } catch (error: any) {
         Alert.alert('Error', error.message || 'An unexpected error occurred');
@@ -182,13 +221,13 @@ export default function LoginScreen() {
         Alert.alert('Error', error.message);
       } else {
         Alert.alert(
-          'Verification Email Resent',
-          'We\'ve sent a new verification link to your email. Please check your inbox and spam folder.',
+          'Verification Email Sent',
+          'A new verification email has been sent to your inbox. Please check your email and click the verification link.',
           [{ text: 'OK' }]
         );
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
+      Alert.alert('Error', error.message || 'Failed to resend verification email');
     } finally {
       setLoading(false);
     }
@@ -196,7 +235,6 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Background Video Player with Random Selection and Fading Transitions */}
       <BackgroundVideoPlayer
         videos={videos}
         onVideoError={handleVideoError}
@@ -256,7 +294,7 @@ export default function LoginScreen() {
                 {isSignUp && (
                   <TextInput
                    style={styles.input}
-                   placeholder="username"
+                   placeholder="Full Name"
                    placeholderTextColor="#9CA3AF"
                    value={fullName}
                    onChangeText={setFullName}
@@ -279,7 +317,7 @@ export default function LoginScreen() {
                    returnKeyType="next"
                  />
                 
-                                 <TextInput
+                <TextInput
                    style={styles.input}
                    placeholder="Password"
                    placeholderTextColor="#9CA3AF"
@@ -287,9 +325,29 @@ export default function LoginScreen() {
                    onChangeText={setPassword}
                    secureTextEntry
                    textContentType={isSignUp ? "newPassword" : "password"}
-                   returnKeyType="done"
-                   onSubmitEditing={handleEmailAuth}
+                   returnKeyType={isSignUp ? "next" : "done"}
+                   onSubmitEditing={isSignUp ? undefined : handleEmailAuth}
                  />
+
+                {/* Referral Code Input - Only show for sign up */}
+                {isSignUp && (
+                  <View style={styles.referralContainer}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Referral Code (Optional)"
+                      placeholderTextColor="#9CA3AF"
+                      value={referralCode}
+                      onChangeText={setReferralCode}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      returnKeyType="done"
+                      onSubmitEditing={handleEmailAuth}
+                    />
+                    <Text style={styles.referralNote}>
+                      💰 Enter a friend's referral code to give them 15 credits when you sign up, and 25 more when you complete your first job!
+                    </Text>
+                  </View>
+                )}
 
                 {/* Remember Me and Reset Password - Only show for sign in */}
                 {!isSignUp && (
@@ -331,7 +389,11 @@ export default function LoginScreen() {
                    <Text style={styles.toggleText}>
                      {isSignUp ? 'Already have an account?' : "Don't have an account?"}
                    </Text>
-                   <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
+                   <TouchableOpacity onPress={() => {
+                     setIsSignUp(!isSignUp);
+                     // Clear referral code when switching modes
+                     setReferralCode('');
+                   }}>
                      <Text style={styles.toggleLink}>
                        {isSignUp ? ' Sign In' : ' Sign Up'}
                      </Text>
@@ -407,16 +469,6 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Referral Input Modal */}
-      {newUserId && (
-        <ReferralInputModal
-          visible={showReferralModal}
-          onClose={handleReferralSkip}
-          onSuccess={handleReferralSuccess}
-          userId={newUserId}
-        />
-      )}
     </SafeAreaView>
   );
 }
@@ -690,6 +742,21 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '500',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+  },
+  referralContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  referralNote: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 16,
+    fontWeight: '400',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
   },
