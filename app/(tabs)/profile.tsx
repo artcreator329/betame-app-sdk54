@@ -1514,22 +1514,20 @@ const styles = StyleSheet.create({
 
 
   userNameContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
     justifyContent: 'flex-end',
     marginBottom: 8,
     width: '100%',
   },
   userNameTextContainer: {
-    flex: 1,
-    flexShrink: 1,
+    width: '100%',
+    alignItems: 'flex-end',
   },
   userName: {
     fontSize: 28,
     fontWeight: '700',
     textAlign: 'right',
     color: 'white',
-    flexShrink: 1,
   },
   userNameDesktop: {
     fontSize: 28,
@@ -1537,7 +1535,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'right',
     color: 'white',
-    flexShrink: 1,
   },
   userBio: {
     fontSize: 16,
