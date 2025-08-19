@@ -149,7 +149,7 @@ function DatePickerField({ label, day, month, year, onDayChange, onMonthChange, 
 
 export default function MyAccountScreen() {
   const router = useRouter();
-  const { user, userProfile, updateProfile } = useAuth();
+  const { user, userProfile, updateProfile, refreshProfile } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -294,9 +294,17 @@ export default function MyAccountScreen() {
   // Refresh eKYC status when page comes into focus
   useFocusEffect(
     React.useCallback(() => {
+      refreshProfile(); // Refresh user profile data
       loadEkycSubmission();
-    }, [user])
+    }, [user, refreshProfile])
   );
+
+  // Remove the problematic real-time subscription for now
+  // useEffect(() => {
+  //   if (!user) return;
+  //   console.log('🔄 Setting up real-time subscription for my-account page');
+  //   // ... subscription code removed
+  // }, [user]);
 
   // Also load eKYC data when component mounts
   useEffect(() => {

@@ -90,6 +90,80 @@ export default function ProfileScreen() {
     }
   }, [user]);
 
+  // Set up real-time subscription to user profile changes
+  // useEffect(() => {
+  //   if (!user) return;
+
+  //   console.log('🔄 Setting up real-time subscription for user profile changes');
+    
+  //   const channel = supabase
+  //     .channel(`user_profile_${user.id}`)
+  //     .on(
+  //       'postgres_changes',
+  //       {
+  //         event: 'UPDATE',
+  //         schema: 'public',
+  //         table: 'user_profiles',
+  //         filter: `user_id=eq.${user.id}`
+  //       },
+  //       (payload) => {
+  //         console.log('🔄 User profile updated:', payload.new);
+  //         // Refresh the user profile data when it changes
+  //         refreshProfile().catch(error => {
+  //           console.error('❌ Error refreshing profile after update:', error);
+  //         });
+  //       }
+  //     )
+  //     .on(
+  //       'postgres_changes',
+  //       {
+  //         event: 'INSERT',
+  //         schema: 'public',
+  //         table: 'ekyc_submissions',
+  //         filter: `user_id=eq.${user.id}`
+  //       },
+  //       (payload) => {
+  //         console.log('🔄 New eKYC submission:', payload.new);
+  //         // Refresh eKYC submission data
+  //         loadEkycSubmission().catch(error => {
+  //           console.error('❌ Error loading eKYC submission after insert:', error);
+  //         });
+  //       }
+  //     )
+  //     .on(
+  //       'postgres_changes',
+  //       {
+  //         event: 'UPDATE',
+  //         schema: 'public',
+  //         table: 'ekyc_submissions',
+  //         filter: `user_id=eq.${user.id}`
+  //       },
+  //       (payload) => {
+  //         console.log('🔄 eKYC submission updated:', payload.new);
+  //         // Refresh both user profile and eKYC submission data
+  //         Promise.all([
+  //           refreshProfile(),
+  //           loadEkycSubmission()
+  //         ]).catch(error => {
+  //           console.error('❌ Error refreshing data after eKYC update:', error);
+  //         });
+  //       }
+  //     )
+  //     .subscribe((status) => {
+  //       console.log('🔄 Real-time subscription status:', status);
+  //       if (status === 'SUBSCRIBED') {
+  //         console.log('✅ Real-time subscription established successfully');
+  //       } else if (status === 'CHANNEL_ERROR') {
+  //         console.error('❌ Real-time subscription error');
+  //       }
+  //     });
+
+  //   return () => {
+  //     console.log('🔄 Cleaning up real-time subscription for user profile');
+  //     supabase.removeChannel(channel);
+  //   };
+  // }, [user]); // Remove refreshProfile and loadEkycSubmission from dependencies
+
   // Fetch user's services and reviews from Supabase
   const handleProfileVisibilityChange = useCallback(async (serviceId: string, isVisible: boolean) => {
     // Update the local state immediately for better UX
@@ -171,17 +245,9 @@ export default function ProfileScreen() {
         }
       }
     }
-  }, [user, activeTab]);
+  }, [user]); // Remove activeTab from dependencies
 
-  useEffect(() => {
-    if (user) {
-      fetchProfileData();
-      contextCheckAdminStatus();
-      setupJobNotifications();
-    }
-  }, [user]);
-
-  const setupJobNotifications = async () => {
+  const setupJobNotifications = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -215,7 +281,15 @@ export default function ProfileScreen() {
       console.error('Error setting up job notifications:', error);
       console.log('ℹ️  Job proposal features will be limited until database migration is applied');
     }
-  };
+  }, [user, fetchProfileData]);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfileData();
+      contextCheckAdminStatus();
+      setupJobNotifications();
+    }
+  }, [user, fetchProfileData, contextCheckAdminStatus, setupJobNotifications]);
 
   const handleJobNotificationPress = (activity: any) => {
     // Mark notification as read and navigate to job details
@@ -244,10 +318,11 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       if (user) {
+        refreshProfile(); // Refresh user profile data (including verification status)
         fetchProfileData();
         loadEkycSubmission();
       }
-    }, [user])
+    }, [user, refreshProfile])
   );
 
   const handleShareProfile = () => {
@@ -1116,7 +1191,7 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
 
                 {/* eKYC Verification Prompt - Show different states based on verification status */}
-                {(!userProfile?.ekyc_verification_status || userProfile?.ekyc_verification_status !== 'verified') && (
+                {userProfile?.verification_status !== 'verified' && (
                   <TouchableOpacity
                     style={[
                       styles.ekycPromptContainer, 

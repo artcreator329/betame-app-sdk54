@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { authService } from '@/lib/auth-service';
 import { supabaseChatService } from '@/lib/supabase-chat-service';
@@ -453,11 +453,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   // Refresh profile function
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) {
       await fetchUserProfile(user.id);
     }
-  };
+  }, [user]);
 
   const clearSignInError = () => {
     setHasSignInError(false);

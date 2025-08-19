@@ -12,6 +12,7 @@ import { ArrowLeft, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/lib/auth-service';
+import { supabase } from '@/lib/supabase';
 
 export default function BecomeServiceProviderScreen() {
   const router = useRouter();
@@ -31,6 +32,13 @@ export default function BecomeServiceProviderScreen() {
       );
     }
   }, [user, router]);
+
+  // Remove the problematic real-time subscription for now
+  // useEffect(() => {
+  //   if (!user) return;
+  //   console.log('🔄 Setting up real-time subscription for become-service-provider page');
+  //   // ... subscription code removed
+  // }, [user]);
 
   // Function to register user as service provider
   const handleBecomeServiceProvider = async () => {

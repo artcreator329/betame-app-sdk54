@@ -101,7 +101,10 @@ export default function EKYCVerificationScreen() {
     const checkVerificationStatus = async () => {
       try {
         console.log('🔍 Checking verification status for user:', user?.id);
-        if (!user) return;
+        if (!user) {
+          setLoadingStatus(false);
+          return;
+        }
         
         setLoadingStatus(true);
         
@@ -157,7 +160,13 @@ export default function EKYCVerificationScreen() {
         setLoadingStatus(false);
       }
     };
-    checkVerificationStatus();
+    
+    // Only start checking if user is available
+    if (user) {
+      checkVerificationStatus();
+    } else {
+      setLoadingStatus(false);
+    }
   }, [user]);
 
   // Helper function to format IC number with dashes
@@ -1314,26 +1323,31 @@ export default function EKYCVerificationScreen() {
   );
 
   const renderVerificationStep = () => {
+    // Show loading state while checking status
     if (loadingStatus) {
       return (
         <View style={styles.verificationContainer}>
           <ActivityIndicator size="large" color={colors.primary.main} />
           <Text style={[styles.verificationTitle, { color: colors.text.primary }]}>Loading Status...</Text>
+          <Text style={[styles.verificationSubtitle, { color: colors.text.secondary }]}>
+            Checking your verification status...
+          </Text>
         </View>
       );
     }
 
+    // If no submission status and not loading, show start verification option
     if (!submissionStatus) {
       return (
         <View style={styles.verificationContainer}>
-          <AlertCircle size={48} color={colors.status.error} />
-          <Text style={[styles.verificationTitle, { color: colors.text.primary }]}>Submission Not Found</Text>
+          <Shield size={48} color={colors.primary.main} />
+          <Text style={[styles.verificationTitle, { color: colors.text.primary }]}>Start Verification</Text>
           <Text style={[styles.verificationSubtitle, { color: colors.text.secondary }]}>
-            No eKYC submission found. Please start the verification process.
+            Begin your eKYC verification process to verify your identity and access all features.
           </Text>
           <TouchableOpacity
             style={[styles.submitButton, { backgroundColor: colors.primary.main }]}
-            onPress={() => setCurrentStep('personal')}
+            onPress={() => setCurrentStep('identity_document')}
           >
             <Text style={[styles.submitButtonText, { color: colors.text.white }]}>Start Verification</Text>
           </TouchableOpacity>
@@ -1681,13 +1695,26 @@ export default function EKYCVerificationScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-            {currentStep === 'identity_document' && renderIdentityDocumentStep()}
-            {currentStep === 'personal' && renderPersonalInfoStep()}
-            {currentStep === 'documents' && renderDocumentsStep()}
-          {currentStep === 'terms' && renderTermsStep()}
-          {currentStep === 'verification' && renderVerificationStep()}
-          {currentStep === 'review' && renderReviewStep()}
-          {currentStep === 'complete' && renderCompleteStep()}
+          {/* Show loading state for verification step while loading */}
+          {currentStep === 'verification' && loadingStatus ? (
+            <View style={styles.verificationContainer}>
+              <ActivityIndicator size="large" color={colors.primary.main} />
+              <Text style={[styles.verificationTitle, { color: colors.text.primary }]}>Loading Status...</Text>
+              <Text style={[styles.verificationSubtitle, { color: colors.text.secondary }]}>
+                Checking your verification status...
+              </Text>
+            </View>
+          ) : (
+            <>
+              {currentStep === 'identity_document' && renderIdentityDocumentStep()}
+              {currentStep === 'personal' && renderPersonalInfoStep()}
+              {currentStep === 'documents' && renderDocumentsStep()}
+              {currentStep === 'terms' && renderTermsStep()}
+              {currentStep === 'verification' && renderVerificationStep()}
+              {currentStep === 'review' && renderReviewStep()}
+              {currentStep === 'complete' && renderCompleteStep()}
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
