@@ -8,12 +8,12 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, Trash2, CheckCheck, Filter, X } from 'lucide-react-native';
+import { Bell, Trash2, CheckCheck, Filter, X, CheckSquare, Square } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/contexts/ThemeContext';
-import SwipeableNotification from '@/components/SwipeableNotification';
+import SelectableNotification from '@/components/SelectableNotification';
 import NotificationDetailModal from '@/components/NotificationDetailModal';
 import { Notification } from '@/types/notification';
 
@@ -38,6 +38,8 @@ export default function NotificationsScreen() {
   });
   const [selectedNotification, setSelectedNotification] = React.useState<Notification | null>(null);
   const [showDetailModal, setShowDetailModal] = React.useState(false);
+  const [selectionMode, setSelectionMode] = React.useState(false);
+  const [selectedNotifications, setSelectedNotifications] = React.useState<Set<string>>(new Set());
 
   // Debug logging
   React.useEffect(() => {
@@ -154,6 +156,44 @@ export default function NotificationsScreen() {
     await markAsRead(notificationId);
   };
 
+  // Selection functions
+  const handleSelectNotification = (notificationId: string) => {
+    setSelectedNotifications(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(notificationId)) {
+        newSet.delete(notificationId);
+      } else {
+        newSet.add(notificationId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleToggleSelectionMode = () => {
+    if (selectionMode) {
+      setSelectionMode(false);
+      setSelectedNotifications(new Set());
+    } else {
+      setSelectionMode(true);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedNotifications.size === filteredNotifications.length) {
+      setSelectedNotifications(new Set());
+    } else {
+      setSelectedNotifications(new Set(filteredNotifications.map(n => n.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    for (const notificationId of selectedNotifications) {
+      await clearNotification(notificationId);
+    }
+    setSelectedNotifications(new Set());
+    setSelectionMode(false);
+  };
+
   // Filter management functions
   const setCategoryFilter = (category: 'all' | 'chat' | 'order' | 'system') => {
     setFilters(prev => ({ ...prev, category }));
@@ -186,8 +226,10 @@ export default function NotificationsScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <View style={[styles.header, { borderBottomColor: colors.border.light, backgroundColor: colors.background.primary }]}>
         <View style={styles.titleSection}>
-          <Text style={[styles.title, { color: colors.text.primary }]}>Notifications</Text>
-          {unreadCount > 0 && (
+          <Text style={[styles.title, { color: colors.text.primary }]}>
+            {selectionMode ? `Selected (${selectedNotifications.size})` : 'Notifications'}
+          </Text>
+          {!selectionMode && unreadCount > 0 && (
             <View style={[styles.unreadBadge, { backgroundColor: colors.status.error }]}>
               <Text style={[styles.unreadBadgeText, { color: colors.text.white }]}>
                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -199,57 +241,90 @@ export default function NotificationsScreen() {
         <View style={styles.headerActions}>
           {filteredNotifications.length > 0 && (
             <>
-              {unreadCount > 0 && (
-                <TouchableOpacity 
-                  onPress={markAllAsRead} 
-                  style={[styles.iconButton, { backgroundColor: colors.primary.main }]}
-                >
-                  <CheckCheck size={18} color={colors.text.white} />
-                </TouchableOpacity>
+              {selectionMode ? (
+                <>
+                  <TouchableOpacity 
+                    onPress={handleSelectAll}
+                    style={[styles.iconButton, { backgroundColor: colors.primary.main }]}
+                  >
+                    {selectedNotifications.size === filteredNotifications.length ? (
+                      <CheckSquare size={18} color={colors.text.white} />
+                    ) : (
+                      <Square size={18} color={colors.text.white} />
+                    )}
+                  </TouchableOpacity>
+                  {selectedNotifications.size > 0 && (
+                    <TouchableOpacity 
+                      onPress={handleDeleteSelected}
+                      style={[styles.iconButton, { backgroundColor: colors.status.error }]}
+                    >
+                      <Trash2 size={18} color={colors.text.white} />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity 
+                    onPress={handleToggleSelectionMode}
+                    style={[styles.iconButton, { backgroundColor: colors.background.secondary, borderWidth: 1, borderColor: colors.border.light }]}
+                  >
+                    <X size={18} color={colors.text.primary} />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  {unreadCount > 0 && (
+                    <TouchableOpacity 
+                      onPress={markAllAsRead} 
+                      style={[styles.iconButton, { backgroundColor: colors.primary.main }]}
+                    >
+                      <CheckCheck size={18} color={colors.text.white} />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity 
+                    onPress={handleToggleSelectionMode}
+                    style={[styles.iconButton, { backgroundColor: colors.background.secondary, borderWidth: 1, borderColor: colors.border.light }]}
+                  >
+                    <CheckSquare size={18} color={colors.text.primary} />
+                  </TouchableOpacity>
+                </>
               )}
-              <TouchableOpacity 
-                onPress={clearAllNotifications}
-                style={[styles.iconButton, { backgroundColor: colors.status.error }]}
-              >
-                <Trash2 size={18} color={colors.text.white} />
-              </TouchableOpacity>
             </>
           )}
         </View>
       </View>
 
       {/* Filter Toggle Button */}
-      <View style={[styles.filterToggleContainer, { backgroundColor: colors.background.primary, borderBottomColor: colors.border.light }]}>
-        <TouchableOpacity 
-          onPress={() => setShowFilters(!showFilters)}
-          style={[
-            styles.filterToggleButton,
-            { 
-              backgroundColor: hasActiveFilters ? colors.primary.main : colors.background.secondary,
-              borderColor: colors.border.light,
-            }
-          ]}
-        >
-          <Filter size={16} color={hasActiveFilters ? colors.text.white : colors.text.primary} />
-          <Text style={[
-            styles.filterToggleText,
-            { color: hasActiveFilters ? colors.text.white : colors.text.primary }
-          ]}>
-            Filters {hasActiveFilters ? `(${totalFilteredCount})` : ''}
-          </Text>
-          {hasActiveFilters && (
-            <TouchableOpacity 
-              onPress={clearAllFilters}
-              style={styles.clearFiltersButton}
-            >
-              <X size={14} color={colors.text.white} />
-            </TouchableOpacity>
-          )}
-        </TouchableOpacity>
-      </View>
+      {!selectionMode && (
+        <View style={[styles.filterToggleContainer, { backgroundColor: colors.background.primary, borderBottomColor: colors.border.light }]}>
+          <TouchableOpacity 
+            onPress={() => setShowFilters(!showFilters)}
+            style={[
+              styles.filterToggleButton,
+              { 
+                backgroundColor: hasActiveFilters ? colors.primary.main : colors.background.secondary,
+                borderColor: colors.border.light,
+              }
+            ]}
+          >
+            <Filter size={16} color={hasActiveFilters ? colors.text.white : colors.text.primary} />
+            <Text style={[
+              styles.filterToggleText,
+              { color: hasActiveFilters ? colors.text.white : colors.text.primary }
+            ]}>
+              Filters {hasActiveFilters ? `(${totalFilteredCount})` : ''}
+            </Text>
+            {hasActiveFilters && (
+              <TouchableOpacity 
+                onPress={clearAllFilters}
+                style={styles.clearFiltersButton}
+              >
+                <X size={14} color={colors.text.white} />
+              </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Filter Options */}
-      {showFilters && (
+      {showFilters && !selectionMode && (
         <View style={[styles.filterOptionsContainer, { backgroundColor: colors.background.secondary, borderBottomColor: colors.border.light }]}>
           {/* Category Filters */}
           <View style={styles.filterSection}>
@@ -458,15 +533,17 @@ export default function NotificationsScreen() {
               <Bell size={48} color={colors.text.secondary} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>
-              {hasActiveFilters ? 'No matching notifications' : 'All caught up!'}
+              {selectionMode ? 'No notifications to select' : hasActiveFilters ? 'No matching notifications' : 'All caught up!'}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.text.secondary }]}>
-              {hasActiveFilters 
-                ? 'Try adjusting your filters to see more notifications.'
-                : 'You don\'t have any notifications right now.\nWe\'ll let you know when something new happens.'
+              {selectionMode 
+                ? 'Exit selection mode to view and interact with notifications.'
+                : hasActiveFilters 
+                  ? 'Try adjusting your filters to see more notifications.'
+                  : 'You don\'t have any notifications right now.\nWe\'ll let you know when something new happens.'
               }
             </Text>
-            {hasActiveFilters && (
+            {hasActiveFilters && !selectionMode && (
               <TouchableOpacity 
                 onPress={clearAllFilters}
                 style={[styles.clearAllFiltersButton, { backgroundColor: colors.primary.main }]}
@@ -476,16 +553,29 @@ export default function NotificationsScreen() {
                 </Text>
               </TouchableOpacity>
             )}
+            {selectionMode && (
+              <TouchableOpacity 
+                onPress={handleToggleSelectionMode}
+                style={[styles.clearAllFiltersButton, { backgroundColor: colors.primary.main }]}
+              >
+                <Text style={[styles.clearFiltersButtonText, { color: colors.text.white }]}>
+                  Exit selection mode
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           <View style={styles.notificationsList}>
             {filteredNotifications.map((notification) => (
-              <SwipeableNotification
+              <SelectableNotification
                 key={notification.id}
                 notification={notification}
                 onPress={handleNotificationPress}
                 onDelete={handleClearNotification}
                 onMarkAsRead={handleMarkAsRead}
+                isSelected={selectedNotifications.has(notification.id)}
+                onSelect={handleSelectNotification}
+                selectionMode={selectionMode}
               />
             ))}
             
