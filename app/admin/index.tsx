@@ -75,16 +75,23 @@ export default function AdminDashboard() {
         console.log('🔄 Admin: Starting sign out process...');
         
         // Try to sign out properly first
-        await signOut();
-        console.log('✅ Admin: Sign out completed, redirecting...');
+        const result = await signOut();
+        console.log('✅ Admin: Sign out completed, result:', result);
         
-        // Force a complete page reload to clear all state
-        window.location.href = '/';
+        // Use router navigation instead of window.location for better compatibility
+        if (result && result.error) {
+          console.error('❌ Admin: Sign out error:', result.error);
+          // Still navigate away even on error to prevent loops
+          router.replace('/auth/login');
+        } else {
+          // Navigate to login page after successful sign out
+          router.replace('/auth/login');
+        }
         
       } catch (error) {
         console.error('❌ Admin: Sign out exception:', error);
-        // Force redirect even on error to prevent loops
-        window.location.href = '/';
+        // Force navigation even on error to prevent loops
+        router.replace('/auth/login');
       }
     } else {
       // Use Alert for mobile
@@ -344,7 +351,14 @@ export default function AdminDashboard() {
             <Text style={styles.desktopHeaderTitle}>Admin Dashboard</Text>
             <Text style={styles.desktopHeaderSubtitle}>Welcome back, Admin</Text>
           </View>
-          <TouchableOpacity style={styles.desktopSignOutButton} onPress={handleSignOut}>
+          <TouchableOpacity 
+            style={styles.desktopSignOutButton} 
+            onPress={handleSignOut}
+            activeOpacity={0.7}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out of admin dashboard"
+          >
             <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>

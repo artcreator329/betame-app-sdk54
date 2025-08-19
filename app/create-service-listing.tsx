@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -56,7 +56,54 @@ export default function CreateServiceListingScreen() {
   const [showAIModal, setShowAIModal] = useState(false);
 
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
+
+  // Check verification status on component mount
+  useEffect(() => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'You need to sign in to create service listings. Would you like to sign in now?',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => router.back() },
+          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+        ]
+      );
+      return;
+    }
+
+    if (!userProfile?.is_service_provider) {
+      Alert.alert(
+        'Service Provider Registration Required',
+        'You need to be a registered service provider to create service listings. Would you like to register now?',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => router.back() },
+          { text: 'Register', onPress: () => router.push('/become-service-provider') }
+        ]
+      );
+      return;
+    }
+
+    if (userProfile?.verification_status !== 'verified') {
+      const statusMessages = {
+        'not_started': 'You need to complete eKYC verification to create service listings.',
+        'in_progress': 'Your eKYC verification is still being processed. Please wait for approval before creating service listings.',
+        'rejected': 'Your eKYC verification was rejected. Please retry the verification process to create service listings.'
+      };
+
+      const actionText = userProfile?.verification_status === 'not_started' ? 'Start Verification' : 'View Status';
+      
+      Alert.alert(
+        'Verification Required',
+        statusMessages[userProfile?.verification_status as keyof typeof statusMessages] || 'Verification required to create service listings.',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => router.back() },
+          { text: actionText, onPress: () => router.push('/become-service-provider') }
+        ]
+      );
+      return;
+    }
+  }, [user, userProfile, router]);
 
   const handleServiceTypeSelect = (serviceType: string) => {
     setSelectedServiceType(serviceType);

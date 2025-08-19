@@ -122,6 +122,46 @@ export default function BecomeServiceProviderScreen() {
               </TouchableOpacity>
             </View>
           </>
+        ) : userProfile?.verification_status === 'in_progress' ? (
+          <>
+            <Text style={styles.title}>Verification in Progress</Text>
+            <Text style={styles.subtitle}>Your eKYC verification is currently being processed. We'll notify you once it's complete!</Text>
+            
+            <View style={styles.statusContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.statusText}>Processing your verification...</Text>
+              <Text style={styles.statusSubtext}>This typically takes 1-3 business days</Text>
+            </View>
+          </>
+        ) : userProfile?.verification_status === 'verified' ? (
+          <>
+            <Text style={styles.title}>Verification Complete!</Text>
+            <Text style={styles.subtitle}>Your eKYC verification has been approved. Complete your service provider registration!</Text>
+            
+            <TouchableOpacity 
+              style={[styles.becomeServiceProviderButton, isBecomingServiceProvider && styles.disabledButton]}
+              onPress={handleBecomeServiceProvider}
+              disabled={isBecomingServiceProvider}
+            >
+              {isBecomingServiceProvider ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.becomeServiceProviderButtonText}>Complete Registration</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        ) : userProfile?.verification_status === 'rejected' ? (
+          <>
+            <Text style={styles.title}>Verification Rejected</Text>
+            <Text style={styles.subtitle}>Unfortunately, your eKYC verification was not approved. Please try again with updated documents.</Text>
+            
+            <TouchableOpacity 
+              style={styles.becomeServiceProviderButton}
+              onPress={() => router.push('/ekyc-verification')}
+            >
+              <Text style={styles.becomeServiceProviderButtonText}>Retry Verification</Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <>
             <Text style={styles.title}>Become a Service Provider</Text>
@@ -236,5 +276,22 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
+  },
+  statusContainer: {
+    alignItems: 'center',
+    marginVertical: 40,
+  },
+  statusText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#1D1D1F',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  statusSubtext: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

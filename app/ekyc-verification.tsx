@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,11 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Linking,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { CanvasWatermarkService } from '../lib/canvas-watermark';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   ArrowLeft, 
@@ -25,10 +29,20 @@ import {
   Mail,
   MapPin,
   Calendar,
-  CreditCard
+  CreditCard,
+  Scale,
+  Download,
+  XCircle
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/lib/auth-service';
+import { EKYCService } from '@/lib/ekyc-service';
+import { supabase } from '@/lib/supabase';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { SERVICE_PROVIDER_TERMS_OF_SERVICE, generateToSPDF } from '@/constants/ServiceProviderToS';
 
 interface VerificationStep {
   id: string;
@@ -45,27 +59,187 @@ interface DocumentType {
   required: boolean;
   uploaded: boolean;
   verified: boolean;
+  uri?: string;
 }
 
 export default function EKYCVerificationScreen() {
   const router = useRouter();
   const colors = useColors();
-  const [currentStep, setCurrentStep] = useState<'personal' | 'documents' | 'verification' | 'review' | 'complete'>('personal');
+  const { user, refreshProfile } = useAuth();
+  const [currentStep, setCurrentStep] = useState<'personal' | 'documents' | 'terms' | 'verification' | 'review' | 'complete'>('personal');
+  const [tosAccepted, setTosAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showStateDropdown, setShowStateDropdown] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<any>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+
+  // Malaysian States and Federal Territories
+  const malaysianStates = [
+    'Johor',
+    'Kedah',
+    'Kelantan',
+    'Melaka',
+    'Negeri Sembilan',
+    'Pahang',
+    'Perak',
+    'Perlis',
+    'Pulau Pinang',
+    'Sabah',
+    'Sarawak',
+    'Selangor',
+    'Terengganu',
+    'Kuala Lumpur',
+    'Labuan',
+    'Putrajaya'
+  ];
+
+  // Check current verification status when component mounts
+  useEffect(() => {
+    const checkVerificationStatus = async () => {
+      try {
+        console.log('🔍 Checking verification status for user:', user?.id);
+        if (!user) return;
+        
+        setLoadingStatus(true);
+        
+        // Get current user profile
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('verification_status')
+          .eq('user_id', user.id)
+          .single();
+        
+        console.log('📋 User profile:', profile);
+        
+        if (profile) {
+          // Check if user has already submitted eKYC
+          const { data: existingSubmission } = await supabase
+            .from('ekyc_submissions')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          console.log('📄 Existing submission:', existingSubmission);
+          
+          if (existingSubmission) {
+            // Set the submission status for display
+            setSubmissionStatus(existingSubmission);
+            
+            // User has already submitted eKYC, show appropriate status
+            if (existingSubmission.status === 'approved') {
+              setCurrentStep('complete');
+            } else if (existingSubmission.status === 'rejected') {
+              // Allow user to resubmit
+              setCurrentStep('personal');
+            } else {
+              // Pending review
+              setCurrentStep('verification');
+            }
+          } else {
+            // No submission yet, start from beginning
+            console.log('🆕 No existing submission, starting from beginning');
+            setCurrentStep('personal');
+          }
+        } else {
+          console.log('⚠️ No user profile found, starting from beginning');
+          setCurrentStep('personal');
+        }
+      } catch (error) {
+        console.error('❌ Error checking verification status:', error);
+        // If error, start from beginning
+        setCurrentStep('personal');
+      } finally {
+        setLoadingStatus(false);
+      }
+    };
+    checkVerificationStatus();
+  }, [user]);
+
+  // Helper function to format IC number with dashes
+  const formatICNumber = (value: string) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, '');
+    
+    // Format as XXXXXX-XX-XXXX
+    if (digits.length <= 6) {
+      return digits;
+    } else if (digits.length <= 8) {
+      return `${digits.slice(0, 6)}-${digits.slice(6)}`;
+    } else {
+      return `${digits.slice(0, 6)}-${digits.slice(6, 8)}-${digits.slice(8, 12)}`;
+    }
+  };
+
+  // Helper function to extract DOB from IC number
+  const extractDOBFromIC = (icNumber: string) => {
+    const digits = icNumber.replace(/\D/g, '');
+    if (digits.length >= 6) {
+      const year = digits.slice(0, 2);
+      const month = digits.slice(2, 4);
+      const day = digits.slice(4, 6);
+      
+      // Determine century (assume 00-30 is 2000s, 31-99 is 1900s)
+      const fullYear = parseInt(year) <= 30 ? `20${year}` : `19${year}`;
+      
+      return `${day}/${month}/${fullYear}`;
+    }
+    return '';
+  };
 
   // Personal Information
   const [personalInfo, setPersonalInfo] = useState({
+    nationality: 'malaysian', // 'malaysian' or 'foreigner'
     fullName: '',
     icNumber: '',
+    passportNumber: '',
+    country: '', // for foreigners
     dateOfBirth: '',
-    phoneNumber: '',
+    phoneNumber: '+60',
     email: '',
+    addressType: 'current', // 'current' or 'registered'
     address: '',
     city: '',
     postcode: '',
     state: ''
   });
+
+  // Auto-fill email from user context
+  useEffect(() => {
+    if (user?.email && !personalInfo.email) {
+      setPersonalInfo(prev => ({
+        ...prev,
+        email: user.email || ''
+      }));
+    }
+  }, [user?.email]);
+
+  // Load submission status when user changes
+  useEffect(() => {
+    const loadSubmissionStatus = async () => {
+      try {
+        if (!user) return;
+        
+        const { data: submission } = await supabase
+          .from('ekyc_submissions')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        setSubmissionStatus(submission);
+      } catch (error) {
+        console.error('Error loading submission status:', error);
+      } finally {
+        setLoadingStatus(false);
+      }
+    };
+    
+    loadSubmissionStatus();
+  }, [user]);
+
+
 
   // Document uploads
   const [documents, setDocuments] = useState<DocumentType[]>([
@@ -108,21 +282,28 @@ export default function EKYCVerificationScreen() {
       id: 'personal',
       title: 'Personal Information',
       description: 'Enter your personal details',
-      status: currentStep === 'personal' ? 'in_progress' : currentStep === 'documents' || currentStep === 'verification' || currentStep === 'review' || currentStep === 'complete' ? 'completed' : 'pending',
+      status: currentStep === 'personal' ? 'in_progress' : ['documents', 'terms', 'verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
       icon: <User size={20} />
     },
     {
       id: 'documents',
       title: 'Document Upload',
       description: 'Upload required documents',
-      status: currentStep === 'documents' ? 'in_progress' : currentStep === 'verification' || currentStep === 'review' || currentStep === 'complete' ? 'completed' : 'pending',
+      status: currentStep === 'documents' ? 'in_progress' : ['terms', 'verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
       icon: <FileText size={20} />
+    },
+    {
+      id: 'terms',
+      title: 'Terms of Service',
+      description: 'Accept service provider terms',
+      status: currentStep === 'terms' ? 'in_progress' : ['verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
+      icon: <Scale size={20} />
     },
     {
       id: 'verification',
       title: 'Identity Verification',
       description: 'Verification in progress',
-      status: currentStep === 'verification' ? 'in_progress' : currentStep === 'review' || currentStep === 'complete' ? 'completed' : 'pending',
+      status: currentStep === 'verification' ? 'in_progress' : ['review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
       icon: <Shield size={20} />
     },
     {
@@ -135,37 +316,107 @@ export default function EKYCVerificationScreen() {
   ];
 
   const handlePersonalInfoChange = (field: string, value: string) => {
-    setPersonalInfo(prev => ({ ...prev, [field]: value }));
+    if (field === 'icNumber' && personalInfo.nationality === 'malaysian') {
+      // Format IC number with dashes
+      const formattedIC = formatICNumber(value);
+      const extractedDOB = extractDOBFromIC(formattedIC);
+      
+      setPersonalInfo(prev => ({
+        ...prev,
+        icNumber: formattedIC,
+        dateOfBirth: extractedDOB || prev.dateOfBirth
+      }));
+    } else if (field === 'nationality') {
+      // Reset relevant fields when nationality changes
+      setPersonalInfo(prev => ({
+        ...prev,
+        nationality: value,
+        icNumber: '',
+        passportNumber: '',
+        dateOfBirth: value === 'foreigner' ? prev.dateOfBirth : ''
+      }));
+    } else {
+      setPersonalInfo(prev => ({ ...prev, [field]: value }));
+    }
   };
 
-  const handleDocumentUpload = (documentId: string) => {
-    // Simulate document upload
-    Alert.alert(
-      'Document Upload',
-      'This is a mock implementation. In the real app, this would open camera/gallery for document capture.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Simulate Upload', 
-          onPress: () => {
-            setDocuments(prev => 
-              prev.map(doc => 
-                doc.id === documentId 
-                  ? { ...doc, uploaded: true, verified: true }
-                  : doc
-              )
-            );
-            Alert.alert('Success', 'Document uploaded successfully!');
-          }
+  const handleDocumentUpload = async (documentId: string) => {
+    try {
+      const result = await CanvasWatermarkService.showImagePickerWithWatermark({
+        text: 'BetaMe',
+        opacity: 0.3,
+        fontSize: 32,
+        color: '#FFFFFF'
+      });
+
+      if (result) {
+        // First, update the document with the local URI for immediate preview
+        setDocuments(prev => 
+          prev.map(doc => 
+            doc.id === documentId 
+              ? { ...doc, uploaded: true, verified: false, uri: result.uri }
+              : doc
+          )
+        );
+
+        // Then upload to Supabase storage in the background
+        try {
+          const fileName = `${documentId}_${Date.now()}.jpg`;
+          const uploadedUrl = await EKYCService.uploadDocument(result.uri, fileName, user?.id || '');
+          
+          // Update document with the uploaded URL
+          setDocuments(prev => 
+            prev.map(doc => 
+              doc.id === documentId 
+                ? { ...doc, uploaded: true, verified: true, uri: uploadedUrl }
+                : doc
+            )
+          );
+          
+          Alert.alert(
+            'Success',
+            'Document uploaded successfully with BetaMe watermark',
+            [{ text: 'OK' }]
+          );
+        } catch (uploadError) {
+          console.error('Upload to storage failed:', uploadError);
+          // Keep the local image but mark as not verified
+          setDocuments(prev => 
+            prev.map(doc => 
+              doc.id === documentId 
+                ? { ...doc, uploaded: true, verified: false, uri: result.uri }
+                : doc
+            )
+          );
+          
+          Alert.alert(
+            'Upload Warning',
+            'Document selected but upload to server failed. You can continue, but please try uploading again later.',
+            [{ text: 'OK' }]
+          );
         }
-      ]
-    );
+      }
+    } catch (error) {
+      console.error('Document upload error:', error);
+      Alert.alert(
+        'Upload Failed',
+        'Failed to select document. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleNextStep = () => {
     if (currentStep === 'personal') {
-      // Validate personal information
-      const requiredFields = ['fullName', 'icNumber', 'dateOfBirth', 'phoneNumber', 'email', 'address', 'city', 'postcode', 'state'];
+      // Validate personal information based on nationality
+      let requiredFields = ['fullName', 'dateOfBirth', 'phoneNumber', 'email', 'address', 'city', 'postcode', 'state'];
+      
+      if (personalInfo.nationality === 'malaysian') {
+        requiredFields.push('icNumber');
+      } else {
+        requiredFields.push('passportNumber');
+      }
+      
       const missingFields = requiredFields.filter(field => !personalInfo[field as keyof typeof personalInfo]);
       
       if (missingFields.length > 0) {
@@ -180,6 +431,12 @@ export default function EKYCVerificationScreen() {
       
       if (!uploadedRequired) {
         Alert.alert('Missing Documents', 'Please upload all required documents.');
+        return;
+      }
+      setCurrentStep('terms');
+    } else if (currentStep === 'terms') {
+      if (!tosAccepted) {
+        Alert.alert('Terms Required', 'Please accept the Terms of Service to continue.');
         return;
       }
       setCurrentStep('verification');
@@ -198,30 +455,102 @@ export default function EKYCVerificationScreen() {
   const handleBackStep = () => {
     if (currentStep === 'documents') {
       setCurrentStep('personal');
-    } else if (currentStep === 'verification') {
+    } else if (currentStep === 'terms') {
       setCurrentStep('documents');
+    } else if (currentStep === 'verification') {
+      setCurrentStep('terms');
     } else if (currentStep === 'review') {
       setCurrentStep('verification');
     }
   };
 
-  const handleSubmitVerification = () => {
+  const handleSubmitVerification = async () => {
+    console.log('🚀 Starting eKYC submission process...');
+    console.log('👤 Current user:', user);
+    console.log('📋 Personal info:', personalInfo);
+    console.log('📄 Documents:', documents);
+    
     setIsSubmitting(true);
     
-    // Simulate submission process
-    setTimeout(() => {
+    try {
+      // Check if user is authenticated
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      console.log('✅ User is authenticated:', user.id);
+
+      // Prepare document URLs from uploaded documents
+      const documentUrls: Record<string, string> = {};
+      documents.forEach(doc => {
+        if (doc.uploaded && doc.uri) {
+          documentUrls[doc.id] = doc.uri;
+          console.log(`📎 Document ${doc.id}:`, doc.uri);
+        }
+      });
+
+      console.log('📎 Total documents with URLs:', Object.keys(documentUrls).length);
+
+      // Submit eKYC data to Supabase
+      const submissionData = {
+        nationality: personalInfo.nationality === 'malaysian' ? 'Malaysian' as const : 'Foreigner' as const,
+        full_name: personalInfo.fullName,
+        ic_number: personalInfo.nationality === 'malaysian' ? personalInfo.icNumber : undefined,
+        passport_number: personalInfo.nationality === 'foreigner' ? personalInfo.passportNumber : undefined,
+        country: personalInfo.nationality === 'foreigner' ? personalInfo.country : undefined,
+        date_of_birth: personalInfo.dateOfBirth,
+        phone_number: personalInfo.phoneNumber,
+        email: personalInfo.email,
+        address_type: personalInfo.addressType === 'current' ? 'Current Address' as const : 'Registered Address' as const,
+        address: personalInfo.address,
+        city: personalInfo.city,
+        postcode: personalInfo.postcode,
+        state: personalInfo.state,
+        document_urls: documentUrls,
+        terms_accepted: tosAccepted,
+        terms_accepted_at: new Date().toISOString()
+      };
+
+      console.log('📤 Submitting eKYC data:', submissionData);
+      
+      // Submit to Supabase (this already updates the user's verification status internally)
+      const result = await EKYCService.submitEKYC(submissionData);
+      console.log('✅ eKYC submission result:', result);
+      
+      // Refresh the user profile to get the updated verification status
+      await refreshProfile();
+      console.log('✅ Profile refreshed after eKYC submission');
+      
       setIsSubmitting(false);
       Alert.alert(
         'Verification Submitted!',
-        'Your eKYC verification has been submitted successfully. You will receive updates via email and SMS. The verification process typically takes 1-3 business days.',
+        'Your eKYC verification has been submitted successfully and is now under review. You will receive updates via email and SMS. The verification process typically takes 1-3 business days.',
         [
           {
-            text: 'OK',
-            onPress: () => router.push('/become-service-provider')
+            text: 'Return to Home',
+            onPress: () => router.replace('/')
           }
         ]
       );
-    }, 2000);
+    } catch (error) {
+      console.error('❌ Error submitting eKYC verification:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack,
+        user: user?.id,
+        personalInfo: personalInfo
+      });
+      setIsSubmitting(false);
+      Alert.alert(
+        'Error',
+        `There was an error submitting your verification: ${error.message}. Please try again.`,
+        [
+          {
+            text: 'OK'
+          }
+        ]
+      );
+    }
   };
 
   const renderProgressIndicator = () => (
@@ -272,8 +601,46 @@ export default function EKYCVerificationScreen() {
         Please provide your accurate personal information for verification
       </Text>
 
+      {/* Nationality Selection */}
       <View style={styles.inputGroup}>
-        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Full Name (as per IC)</Text>
+        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Nationality</Text>
+        <View style={styles.row}>
+          <TouchableOpacity
+            style={[
+              styles.nationalityButton,
+              {
+                backgroundColor: personalInfo.nationality === 'malaysian' ? colors.primary.main : colors.background.tertiary,
+                borderColor: personalInfo.nationality === 'malaysian' ? colors.primary.main : colors.border.light,
+                marginRight: 12
+              }
+            ]}
+            onPress={() => handlePersonalInfoChange('nationality', 'malaysian')}
+          >
+            <Text style={[
+              styles.nationalityButtonText,
+              { color: personalInfo.nationality === 'malaysian' ? 'white' : colors.text.primary }
+            ]}>Malaysian</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.nationalityButton,
+              {
+                backgroundColor: personalInfo.nationality === 'foreigner' ? colors.primary.main : colors.background.tertiary,
+                borderColor: personalInfo.nationality === 'foreigner' ? colors.primary.main : colors.border.light
+              }
+            ]}
+            onPress={() => handlePersonalInfoChange('nationality', 'foreigner')}
+          >
+            <Text style={[
+              styles.nationalityButtonText,
+              { color: personalInfo.nationality === 'foreigner' ? 'white' : colors.text.primary }
+            ]}>Foreigner</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Full Name {personalInfo.nationality === 'malaysian' ? '(as per IC)' : '(as per Passport)'}</Text>
         <TextInput
           style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
           value={personalInfo.fullName}
@@ -284,26 +651,63 @@ export default function EKYCVerificationScreen() {
         />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>IC Number</Text>
-        <TextInput
-          style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
-          value={personalInfo.icNumber}
-          onChangeText={(text) => handlePersonalInfoChange('icNumber', text)}
-          placeholder="e.g., 880101-01-1234"
-          placeholderTextColor={colors.text.tertiary}
-          keyboardType="numeric"
-        />
-      </View>
+      {/* Conditional IC/Passport Field */}
+      {personalInfo.nationality === 'malaysian' ? (
+        <View style={styles.inputGroup}>
+          <Text style={[styles.inputLabel, { color: colors.text.primary }]}>IC Number</Text>
+          <TextInput
+            style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
+            value={personalInfo.icNumber}
+            onChangeText={(text) => handlePersonalInfoChange('icNumber', text)}
+            placeholder="e.g., 880101-01-1234"
+            placeholderTextColor={colors.text.tertiary}
+            keyboardType="numeric"
+            maxLength={14}
+          />
+        </View>
+      ) : (
+        <>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Country</Text>
+            <TextInput
+              style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
+              value={personalInfo.country}
+              onChangeText={(text) => handlePersonalInfoChange('country', text)}
+              placeholder="Enter your country"
+              placeholderTextColor={colors.text.tertiary}
+              autoCapitalize="words"
+            />
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Passport Number</Text>
+            <TextInput
+              style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
+              value={personalInfo.passportNumber}
+              onChangeText={(text) => handlePersonalInfoChange('passportNumber', text)}
+              placeholder="Enter passport number"
+              placeholderTextColor={colors.text.tertiary}
+              autoCapitalize="characters"
+            />
+          </View>
+        </>
+      )}
 
       <View style={styles.inputGroup}>
         <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Date of Birth</Text>
         <TextInput
-          style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
+          style={[
+            styles.textInput, 
+            { 
+              backgroundColor: personalInfo.nationality === 'malaysian' ? colors.background.secondary : colors.background.tertiary, 
+              borderColor: colors.border.light, 
+              color: personalInfo.nationality === 'malaysian' ? colors.text.secondary : colors.text.primary 
+            }
+          ]}
           value={personalInfo.dateOfBirth}
-          onChangeText={(text) => handlePersonalInfoChange('dateOfBirth', text)}
+          onChangeText={(text) => personalInfo.nationality === 'foreigner' ? handlePersonalInfoChange('dateOfBirth', text) : null}
           placeholder="DD/MM/YYYY"
           placeholderTextColor={colors.text.tertiary}
+          editable={personalInfo.nationality === 'foreigner'}
         />
       </View>
 
@@ -311,9 +715,13 @@ export default function EKYCVerificationScreen() {
         <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Phone Number</Text>
         <TextInput
           style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
-          value={personalInfo.phoneNumber}
-          onChangeText={(text) => handlePersonalInfoChange('phoneNumber', text)}
-          placeholder="e.g., 012-3456789"
+          value={personalInfo.phoneNumber.startsWith('+60') ? personalInfo.phoneNumber : `+60${personalInfo.phoneNumber}`}
+          onChangeText={(text) => {
+            // Remove +60 prefix if user tries to edit it, then re-add it
+            const cleanText = text.replace(/^\+60/, '');
+            handlePersonalInfoChange('phoneNumber', `+60${cleanText}`);
+          }}
+          placeholder="+60 12-3456789"
           placeholderTextColor={colors.text.tertiary}
           keyboardType="phone-pad"
         />
@@ -322,23 +730,70 @@ export default function EKYCVerificationScreen() {
       <View style={styles.inputGroup}>
         <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Email Address</Text>
         <TextInput
-          style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
+          style={[
+            styles.textInput, 
+            { 
+              backgroundColor: colors.background.secondary, 
+              borderColor: colors.border.light, 
+              color: colors.text.secondary 
+            }
+          ]}
           value={personalInfo.email}
-          onChangeText={(text) => handlePersonalInfoChange('email', text)}
           placeholder="your.email@example.com"
           placeholderTextColor={colors.text.tertiary}
           keyboardType="email-address"
           autoCapitalize="none"
+          editable={false}
         />
       </View>
 
+      {/* Address Type Selection */}
       <View style={styles.inputGroup}>
-        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Address</Text>
+        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Address Type</Text>
+        <View style={styles.row}>
+          <TouchableOpacity
+            style={[
+              styles.nationalityButton,
+              {
+                backgroundColor: personalInfo.addressType === 'current' ? colors.primary.main : colors.background.tertiary,
+                borderColor: personalInfo.addressType === 'current' ? colors.primary.main : colors.border.light,
+                marginRight: 12
+              }
+            ]}
+            onPress={() => handlePersonalInfoChange('addressType', 'current')}
+          >
+            <Text style={[
+              styles.nationalityButtonText,
+              { color: personalInfo.addressType === 'current' ? 'white' : colors.text.primary }
+            ]}>Current Address</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.nationalityButton,
+              {
+                backgroundColor: personalInfo.addressType === 'registered' ? colors.primary.main : colors.background.tertiary,
+                borderColor: personalInfo.addressType === 'registered' ? colors.primary.main : colors.border.light
+              }
+            ]}
+            onPress={() => handlePersonalInfoChange('addressType', 'registered')}
+          >
+            <Text style={[
+              styles.nationalityButtonText,
+              { color: personalInfo.addressType === 'registered' ? 'white' : colors.text.primary }
+            ]}>Registered Address</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>
+          {personalInfo.addressType === 'current' ? 'Current Address' : 'Registered Address'}
+        </Text>
         <TextInput
           style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
           value={personalInfo.address}
           onChangeText={(text) => handlePersonalInfoChange('address', text)}
-          placeholder="Enter your full address"
+          placeholder={`Enter your ${personalInfo.addressType} address`}
           placeholderTextColor={colors.text.tertiary}
           multiline
         />
@@ -368,15 +823,42 @@ export default function EKYCVerificationScreen() {
         </View>
       </View>
 
-      <View style={styles.inputGroup}>
+      <View style={[styles.inputGroup, { position: 'relative', zIndex: 1000, marginBottom: showStateDropdown ? 220 : 20 }]}>
         <Text style={[styles.inputLabel, { color: colors.text.primary }]}>State</Text>
-        <TextInput
-          style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
-          value={personalInfo.state}
-          onChangeText={(text) => handlePersonalInfoChange('state', text)}
-          placeholder="e.g., Selangor, Kuala Lumpur"
-          placeholderTextColor={colors.text.tertiary}
-        />
+        <TouchableOpacity
+          style={[styles.dropdownContainer, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}
+          onPress={() => setShowStateDropdown(!showStateDropdown)}
+        >
+          <Text style={[styles.dropdownText, { color: personalInfo.state ? colors.text.primary : colors.text.tertiary }]}>
+            {personalInfo.state || 'Select State'}
+          </Text>
+          <Text style={styles.dropdownArrow}>▼</Text>
+        </TouchableOpacity>
+        
+        {showStateDropdown && (
+          <View style={[styles.dropdownOptions, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
+            <ScrollView 
+              style={styles.dropdownScrollView} 
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              {malaysianStates.map((state) => (
+                <TouchableOpacity
+                  key={state}
+                  style={[styles.dropdownOption, { backgroundColor: colors.background.primary }]}
+                  onPress={() => {
+                    handlePersonalInfoChange('state', state);
+                    setShowStateDropdown(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dropdownOptionText, { color: colors.text.primary }]}>{state}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -400,11 +882,38 @@ export default function EKYCVerificationScreen() {
                 )}
               </View>
               {document.uploaded && (
-                <CheckCircle size={24} color={colors.status.success} />
+                document.verified ? (
+                  <CheckCircle size={24} color={colors.status.success} />
+                ) : (
+                  <Clock size={24} color={colors.status.warning} />
+                )
               )}
             </View>
             
-            {!document.uploaded && (
+            {document.uploaded && document.uri ? (
+              <View style={styles.documentPreview}>
+                <Image 
+                  source={{ uri: document.uri }} 
+                  style={styles.previewImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.documentStatus}>
+                  <Text style={[
+                    styles.documentStatusText, 
+                    { color: document.verified ? colors.status.success : colors.status.warning }
+                  ]}>
+                    {document.verified ? 'Uploaded' : 'Uploading...'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.reuploadButton, { backgroundColor: colors.background.secondary }]}
+                  onPress={() => handleDocumentUpload(document.id)}
+                >
+                  <Upload size={16} color={colors.text.secondary} />
+                  <Text style={[styles.reuploadButtonText, { color: colors.text.secondary }]}>Replace</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
               <TouchableOpacity
                 style={[styles.uploadButton, { backgroundColor: colors.primary.main }]}
                 onPress={() => handleDocumentUpload(document.id)}
@@ -426,30 +935,128 @@ export default function EKYCVerificationScreen() {
     </View>
   );
 
-  const renderVerificationStep = () => (
-    <View style={styles.verificationContainer}>
-      <ActivityIndicator size="large" color={colors.primary.main} />
-      <Text style={[styles.verificationTitle, { color: colors.text.primary }]}>Verification in Progress</Text>
-      <Text style={[styles.verificationSubtitle, { color: colors.text.secondary }]}>
-        We are verifying your identity and documents. This may take a few minutes.
-      </Text>
-      
-      <View style={styles.verificationSteps}>
-        <View style={styles.verificationStep}>
-          <CheckCircle size={20} color={colors.status.success} />
-          <Text style={[styles.verificationStepText, { color: colors.text.secondary }]}>Personal information validated</Text>
+  const renderVerificationStep = () => {
+    if (loadingStatus) {
+      return (
+        <View style={styles.verificationContainer}>
+          <ActivityIndicator size="large" color={colors.primary.main} />
+          <Text style={[styles.verificationTitle, { color: colors.text.primary }]}>Loading Status...</Text>
         </View>
-        <View style={styles.verificationStep}>
-          <CheckCircle size={20} color={colors.status.success} />
-          <Text style={[styles.verificationStepText, { color: colors.text.secondary }]}>Documents uploaded successfully</Text>
+      );
+    }
+
+    if (!submissionStatus) {
+      return (
+        <View style={styles.verificationContainer}>
+          <AlertCircle size={48} color={colors.status.error} />
+          <Text style={[styles.verificationTitle, { color: colors.text.primary }]}>Submission Not Found</Text>
+          <Text style={[styles.verificationSubtitle, { color: colors.text.secondary }]}>
+            No eKYC submission found. Please start the verification process.
+          </Text>
+          <TouchableOpacity
+            style={[styles.submitButton, { backgroundColor: colors.primary.main }]}
+            onPress={() => setCurrentStep('personal')}
+          >
+            <Text style={[styles.submitButtonText, { color: colors.text.white }]}>Start Verification</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.verificationStep}>
-          <Clock size={20} color={colors.primary.main} />
-          <Text style={[styles.verificationStepText, { color: colors.text.secondary }]}>Identity verification in progress...</Text>
+      );
+    }
+
+    const getStatusIcon = () => {
+      switch (submissionStatus.status) {
+        case 'approved':
+          return <CheckCircle size={48} color={colors.status.success} />;
+        case 'rejected':
+          return <XCircle size={48} color={colors.status.error} />;
+        default:
+          return <Clock size={48} color={colors.primary.main} />;
+      }
+    };
+
+    const getStatusTitle = () => {
+      switch (submissionStatus.status) {
+        case 'approved':
+          return 'Verification Approved';
+        case 'rejected':
+          return 'Verification Rejected';
+        default:
+          return 'Verification in Progress';
+      }
+    };
+
+    const getStatusSubtitle = () => {
+      switch (submissionStatus.status) {
+        case 'approved':
+          return 'Your identity has been successfully verified. You can now access all features.';
+        case 'rejected':
+          return submissionStatus.admin_notes || 'Your verification was not approved. Please review and resubmit.';
+        default:
+          return 'We are reviewing your submission. This may take 1-3 business days.';
+      }
+    };
+
+    return (
+      <View style={styles.verificationContainer}>
+        {getStatusIcon()}
+        <Text style={[styles.verificationTitle, { color: colors.text.primary }]}>{getStatusTitle()}</Text>
+        <Text style={[styles.verificationSubtitle, { color: colors.text.secondary }]}>
+          {getStatusSubtitle()}
+        </Text>
+        
+        <View style={[styles.reviewCard, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, marginTop: 20 }]}>
+          <Text style={[styles.reviewSectionTitle, { color: colors.text.primary }]}>Submission Details</Text>
+          <View style={styles.reviewItem}>
+            <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Submitted:</Text>
+            <Text style={[styles.reviewValue, { color: colors.text.primary }]}>
+              {new Date(submissionStatus.created_at).toLocaleDateString()}
+            </Text>
+          </View>
+          <View style={styles.reviewItem}>
+            <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Status:</Text>
+            <Text style={[styles.reviewValue, { color: colors.text.primary }]}>
+              {submissionStatus.status.charAt(0).toUpperCase() + submissionStatus.status.slice(1)}
+            </Text>
+          </View>
+          {submissionStatus.reviewed_at && (
+            <View style={styles.reviewItem}>
+              <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Reviewed:</Text>
+              <Text style={[styles.reviewValue, { color: colors.text.primary }]}>
+                {new Date(submissionStatus.reviewed_at).toLocaleDateString()}
+              </Text>
+            </View>
+          )}
         </View>
+
+        {submissionStatus.status === 'rejected' && (
+          <TouchableOpacity
+            style={[styles.submitButton, { backgroundColor: colors.primary.main, marginTop: 20 }]}
+            onPress={() => setCurrentStep('personal')}
+          >
+            <Text style={[styles.submitButtonText, { color: colors.text.white }]}>Resubmit Application</Text>
+          </TouchableOpacity>
+        )}
+        
+        {(submissionStatus.status === 'approved' || submissionStatus.status === 'pending') && (
+          <View style={styles.completeButtonContainer}>
+            <TouchableOpacity
+              style={[styles.submitButton, { backgroundColor: colors.primary.main, flex: 1, marginRight: 10 }]}
+              onPress={() => router.replace('/')}
+            >
+              <Text style={[styles.submitButtonText, { color: colors.text.white }]}>Return to Home</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.submitButton, { backgroundColor: colors.background.tertiary, borderWidth: 1, borderColor: colors.primary.main, flex: 1, marginLeft: 10 }]}
+              onPress={() => router.push('/my-account')}
+            >
+              <Text style={[styles.submitButtonText, { color: colors.primary.main }]}>View Profile</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderReviewStep = () => (
     <View style={styles.stepContent}>
@@ -461,12 +1068,35 @@ export default function EKYCVerificationScreen() {
       <View style={[styles.reviewCard, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
         <Text style={[styles.reviewSectionTitle, { color: colors.text.primary }]}>Personal Information</Text>
         <View style={styles.reviewItem}>
+          <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Nationality:</Text>
+          <Text style={[styles.reviewValue, { color: colors.text.primary }]}>
+            {personalInfo.nationality === 'malaysian' ? 'Malaysian' : 'Foreigner'}
+          </Text>
+        </View>
+        <View style={styles.reviewItem}>
           <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Full Name:</Text>
           <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.fullName}</Text>
         </View>
+        {personalInfo.nationality === 'malaysian' ? (
+          <View style={styles.reviewItem}>
+            <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>IC Number:</Text>
+            <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.icNumber}</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.reviewItem}>
+              <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Country:</Text>
+              <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.country}</Text>
+            </View>
+            <View style={styles.reviewItem}>
+              <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Passport Number:</Text>
+              <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.passportNumber}</Text>
+            </View>
+          </>
+        )}
         <View style={styles.reviewItem}>
-          <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>IC Number:</Text>
-          <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.icNumber}</Text>
+          <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Date of Birth:</Text>
+          <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.dateOfBirth}</Text>
         </View>
         <View style={styles.reviewItem}>
           <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Phone:</Text>
@@ -475,6 +1105,28 @@ export default function EKYCVerificationScreen() {
         <View style={styles.reviewItem}>
           <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Email:</Text>
           <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.email}</Text>
+        </View>
+        <View style={styles.reviewItem}>
+          <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Address Type:</Text>
+          <Text style={[styles.reviewValue, { color: colors.text.primary }]}>
+            {personalInfo.addressType === 'current' ? 'Current Address' : 'Registered Address'}
+          </Text>
+        </View>
+        <View style={styles.reviewItem}>
+          <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Address:</Text>
+          <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.address}</Text>
+        </View>
+        <View style={styles.reviewItem}>
+          <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>City:</Text>
+          <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.city}</Text>
+        </View>
+        <View style={styles.reviewItem}>
+          <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Postcode:</Text>
+          <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.postcode}</Text>
+        </View>
+        <View style={styles.reviewItem}>
+          <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>State:</Text>
+          <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{personalInfo.state}</Text>
         </View>
       </View>
 
@@ -496,6 +1148,82 @@ export default function EKYCVerificationScreen() {
       </View>
     </View>
   );
+
+  const handleGeneratePDF = async () => {
+    try {
+      const htmlContent = generateToSPDF(
+        personalInfo.fullName,
+        personalInfo.icNumber,
+        new Date().toLocaleDateString('en-MY')
+      );
+      
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false,
+      });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Service Provider Terms of Service',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Success', 'PDF generated successfully!');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
+    }
+  };
+
+  const renderTermsStep = () => {
+    return (
+      <View style={styles.stepContent}>
+        <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Terms of Service</Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.text.secondary }]}>
+          Please read and accept the Service Provider Terms of Service to continue
+        </Text>
+
+        <View style={[styles.tosContainer, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
+           <ScrollView style={styles.tosScrollView} showsVerticalScrollIndicator={true}>
+             <Text style={[styles.tosTitle, { color: colors.text.primary }]}>{SERVICE_PROVIDER_TERMS_OF_SERVICE.title}</Text>
+             <Text style={[styles.tosEffectiveDate, { color: colors.text.secondary }]}>Last Updated: {SERVICE_PROVIDER_TERMS_OF_SERVICE.lastUpdated}</Text>
+             
+             <Text style={[styles.tosSectionContent, { color: colors.text.secondary }]}>{SERVICE_PROVIDER_TERMS_OF_SERVICE.content}</Text>
+           </ScrollView>
+         </View>
+
+         <View style={styles.tosActions}>
+        <TouchableOpacity
+          style={[styles.pdfButton, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}
+          onPress={handleGeneratePDF}
+        >
+          <Download size={20} color={colors.text.primary} />
+          <Text style={[styles.pdfButtonText, { color: colors.text.primary }]}>Download PDF</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tosCheckbox, tosAccepted && { backgroundColor: colors.primary.main }]}
+          onPress={() => setTosAccepted(!tosAccepted)}
+        >
+          {tosAccepted && <CheckCircle size={20} color="white" />}
+        </TouchableOpacity>
+        <Text style={[styles.tosCheckboxText, { color: colors.text.primary }]}>
+          I have read and agree to the Service Provider Terms of Service
+        </Text>
+      </View>
+
+      {!tosAccepted && (
+        <View style={[styles.infoBox, { backgroundColor: colors.status.warning + '20', borderColor: colors.status.warning }]}>
+          <AlertCircle size={20} color={colors.status.warning} />
+          <Text style={[styles.infoText, { color: colors.status.warning }]}>
+            You must accept the Terms of Service to proceed with becoming a service provider.
+          </Text>
+        </View>
+      )}
+    </View>
+    );
+  };
 
   const renderCompleteStep = () => (
     <View style={styles.completeContainer}>
@@ -529,17 +1257,21 @@ export default function EKYCVerificationScreen() {
         </View>
       </View>
 
-      <TouchableOpacity
-        style={[styles.submitButton, { backgroundColor: colors.primary.main }]}
-        onPress={handleSubmitVerification}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text style={[styles.submitButtonText, { color: colors.text.white }]}>Submit Verification</Text>
-        )}
-      </TouchableOpacity>
+      <View style={styles.completeButtonContainer}>
+        <TouchableOpacity
+          style={[styles.submitButton, { backgroundColor: colors.primary.main, flex: 1, marginRight: 10 }]}
+          onPress={() => router.replace('/')}
+        >
+          <Text style={[styles.submitButtonText, { color: colors.text.white }]}>Return to Home</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.submitButton, { backgroundColor: colors.background.tertiary, borderWidth: 1, borderColor: colors.primary.main, flex: 1, marginLeft: 10 }]}
+          onPress={() => router.push('/my-account')}
+        >
+          <Text style={[styles.submitButtonText, { color: colors.primary.main }]}>View Profile</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -560,13 +1292,25 @@ export default function EKYCVerificationScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {currentStep === 'personal' && renderPersonalInfoStep()}
-        {currentStep === 'documents' && renderDocumentsStep()}
-        {currentStep === 'verification' && renderVerificationStep()}
-        {currentStep === 'review' && renderReviewStep()}
-        {currentStep === 'complete' && renderCompleteStep()}
-      </ScrollView>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      >
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {currentStep === 'personal' && renderPersonalInfoStep()}
+          {currentStep === 'documents' && renderDocumentsStep()}
+          {currentStep === 'terms' && renderTermsStep()}
+          {currentStep === 'verification' && renderVerificationStep()}
+          {currentStep === 'review' && renderReviewStep()}
+          {currentStep === 'complete' && renderCompleteStep()}
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Action Buttons */}
       {currentStep !== 'verification' && currentStep !== 'complete' && (
@@ -580,12 +1324,31 @@ export default function EKYCVerificationScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={[styles.nextButton, { backgroundColor: colors.primary.main }]}
-            onPress={handleNextStep}
+            style={[
+              styles.nextButton, 
+              { 
+                backgroundColor: (currentStep === 'terms' && !tosAccepted) 
+                  ? colors.interactive.disabled 
+                  : colors.primary.main 
+              }
+            ]}
+            onPress={currentStep === 'review' ? handleSubmitVerification : handleNextStep}
+            disabled={(currentStep === 'terms' && !tosAccepted) || (currentStep === 'review' && isSubmitting)}
           >
-            <Text style={[styles.nextButtonText, { color: colors.text.white }]}>
-              {currentStep === 'review' ? 'Submit' : 'Next'}
-            </Text>
+            {currentStep === 'review' && isSubmitting ? (
+              <ActivityIndicator size="small" color={colors.text.white} />
+            ) : (
+              <Text style={[
+                styles.nextButtonText, 
+                { 
+                  color: (currentStep === 'terms' && !tosAccepted) 
+                    ? colors.text.tertiary 
+                    : colors.text.white 
+                }
+              ]}>
+                {currentStep === 'review' ? 'Submit' : 'Next'}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -683,6 +1446,19 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+  },
+  nationalityButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nationalityButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   documentsContainer: {
     gap: 16,
@@ -869,5 +1645,168 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 18,
     fontWeight: '600',
+  },
+  tosContainer: {
+    height: 300,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  tosScrollView: {
+    flex: 1,
+    padding: 16,
+  },
+  tosTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  tosEffectiveDate: {
+    fontSize: 14,
+    marginBottom: 16,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  tosSection: {
+    marginBottom: 16,
+  },
+  tosSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  tosSectionContent: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  tosActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  pdfButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  pdfButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  tosCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tosCheckboxText: {
+    fontSize: 14,
+    flex: 1,
+    marginLeft: 8,
+  },
+  dropdownContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    minHeight: 48,
+  },
+  dropdownText: {
+    fontSize: 16,
+    flex: 1,
+  },
+  dropdownArrow: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  dropdownOptions: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    borderRadius: 12,
+    borderWidth: 1,
+    maxHeight: 200,
+    zIndex: 1001,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    marginTop: 4,
+    backgroundColor: 'white',
+  },
+  dropdownScrollView: {
+    maxHeight: 200,
+  },
+  dropdownOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+    backgroundColor: 'white',
+  },
+  dropdownOptionText: {
+    fontSize: 16,
+  },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 999,
+  },
+  documentStatus: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  documentStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  documentPreview: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  reuploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  reuploadButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  completeButtonContainer: {
+    flexDirection: 'row',
+    marginTop: 20,
   },
 });

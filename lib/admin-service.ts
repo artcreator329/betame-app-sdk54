@@ -1260,16 +1260,95 @@ class AdminService {
     checkInInterval?: number; // days
   }): Promise<{ success: boolean; error?: string }> {
     try {
-      // In a real app, this would update a settings table
-      console.log('📝 Updating global notification settings:', settings);
-      
-      // Simulate database update
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const { error } = await supabaseAdmin
+        .from('admin_notification_settings')
+        .upsert({
+          id: 1, // Single row for global settings
+          ...settings,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) {
+        console.error('Error updating notification settings:', error);
+        return { success: false, error: error.message };
+      }
 
       return { success: true };
     } catch (error) {
       console.error('Error updating notification settings:', error);
       return { success: false, error: 'Unexpected error occurred' };
+    }
+  }
+
+  /**
+   * Get all admin users
+   */
+  async getAllAdminUsers(): Promise<AdminUser[]> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('admin_roles')
+        .select(`
+          user_id,
+          role,
+          permissions,
+          created_at,
+          profiles!inner(
+            id,
+            email,
+            full_name
+          )
+        `);
+
+      if (error) {
+        console.error('Error fetching admin users:', error);
+        return [];
+      }
+
+      return data?.map((admin: any) => ({
+         id: admin.user_id,
+         email: admin.profiles?.email || '',
+         full_name: admin.profiles?.full_name,
+         role: admin.role,
+         permissions: admin.permissions,
+         created_at: admin.created_at
+       })) || [];
+    } catch (error) {
+      console.error('Error in getAllAdminUsers:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Send eKYC notification to all admins
+   */
+  async sendEKYCNotificationToAdmins(submissionData: {
+    userId: string;
+    userName: string;
+    submissionId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Get all admin users
+      const adminUsers = await this.getAllAdminUsers();
+      
+      if (adminUsers.length === 0) {
+        console.warn('No admin users found to notify');
+        return { success: false, error: 'No admin users found' };
+      }
+
+      const adminUserIds = adminUsers.map(admin => admin.id);
+      
+      // Send notification to all admins
+      const result = await this.sendBroadcastNotification(
+        'New eKYC Submission',
+        `${submissionData.userName} has submitted a new eKYC verification request for review.`,
+        'system',
+        adminUserIds
+      );
+
+      return result;
+    } catch (error) {
+      console.error('Error sending eKYC notification to admins:', error);
+      return { success: false, error: 'Failed to send notifications' };
     }
   }
 }

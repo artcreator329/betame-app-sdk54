@@ -414,6 +414,8 @@ class AuthService {
         service_provider_description: userProfileData?.service_provider_description || userProfileData?.seller_description,
         rating: userProfileData?.rating || profileData?.rating || 0,
         review_count: userProfileData?.review_count || profileData?.review_count || 0,
+        // Include verification status
+        verification_status: userProfileData?.verification_status || 'not_started',
         // Ensure we have the user_id for consistency
         user_id: user,
       };
@@ -438,6 +440,7 @@ class AuthService {
     date_of_birth?: string;
     gender?: string;
     is_verified?: boolean;
+    verification_status?: string;
   }): Promise<{ data: any; error: any }> {
     try {
       const user = await this.getCurrentUser();
@@ -445,50 +448,85 @@ class AuthService {
         return { data: null, error: { message: 'User not authenticated' } };
       }
 
-      // First, check if profile exists
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
-
+      // Separate updates for profiles and user_profiles tables
+      const { verification_status, ...profileUpdates } = updates;
       let data, error;
 
-      if (existingProfile) {
-        // Profile exists, update it
-        const result = await supabase
+      // Update profiles table if there are profile-specific updates
+      if (Object.keys(profileUpdates).length > 0) {
+        // First, check if profile exists
+        const { data: existingProfile } = await supabase
           .from('profiles')
-          .update(updates)
+          .select('id')
           .eq('id', user.id)
-          .select()
-          .single();
-        data = result.data;
-        error = result.error;
-      } else {
-        // Profile doesn't exist, create it
-        const profileData = {
-          id: user.id,
-          email: user.email,
-          full_name: user.user_metadata?.full_name || updates.full_name || user.email?.split('@')[0],
-          ...updates,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        const result = await supabase
-          .from('profiles')
-          .insert(profileData)
-          .select()
-          .single();
-        data = result.data;
-        error = result.error;
+          .maybeSingle();
+
+        if (existingProfile) {
+          // Profile exists, update it
+          const result = await supabase
+            .from('profiles')
+            .update(profileUpdates)
+            .eq('id', user.id)
+            .select()
+            .single();
+          data = result.data;
+          error = result.error;
+        } else {
+          // Profile doesn't exist, create it
+          const profileData = {
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || profileUpdates.full_name || user.email?.split('@')[0],
+            ...profileUpdates,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          const result = await supabase
+            .from('profiles')
+            .insert(profileData)
+            .select()
+            .single();
+          data = result.data;
+          error = result.error;
+        }
+
+        if (error) {
+          console.error('❌ AuthService: Update profile error:', error);
+          return { data, error };
+        }
       }
 
-      if (error) {
-        console.error('❌ AuthService: Update user profile error:', error);
+      // Update user_profiles table if verification_status is provided
+      if (verification_status !== undefined) {
+        // Try to update existing user_profiles record first
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update({ verification_status })
+          .eq('user_id', user.id);
+
+        if (updateError && updateError.code === 'PGRST116') {
+          // No existing record, create a new one
+          const { error: insertError } = await supabase
+            .from('user_profiles')
+            .insert({
+              user_id: user.id,
+              verification_status,
+            });
+
+          if (insertError) {
+            console.error('❌ AuthService: Error creating user profile with verification status:', insertError);
+            return { data: null, error: insertError };
+          }
+        } else if (updateError) {
+          console.error('❌ AuthService: Error updating verification status:', updateError);
+          return { data: null, error: updateError };
+        }
       }
 
-      return { data, error };
+      // Return the updated profile data
+      const updatedProfile = await this.getUserProfile(user.id);
+      return { data: updatedProfile, error: null };
     } catch (error) {
       console.error('❌ AuthService: Update user profile exception:', error);
       return { 

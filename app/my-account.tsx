@@ -12,6 +12,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Check } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface FormFieldProps {
   label: string;
@@ -161,10 +163,44 @@ export default function MyAccountScreen() {
     accountNumber: '',
     contactNumber: '',
   });
+  
+  const [ekycSubmission, setEkycSubmission] = useState<any>(null);
+  const [loadingEkyc, setLoadingEkyc] = useState(true);
+  const [profileDataLoaded, setProfileDataLoaded] = useState(false);
+
+  // Load eKYC submission status
+  const loadEkycSubmission = async () => {
+    try {
+      if (!user) return;
+      
+      console.log('🔍 Loading eKYC submission for user:', user.id);
+      
+      const { data, error } = await supabase
+        .from('ekyc_submissions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+        console.error('Error loading eKYC submission:', error);
+      } else {
+        console.log('✅ eKYC submission loaded:', data);
+        setEkycSubmission(data);
+      }
+    } catch (error) {
+      console.error('Error loading eKYC submission:', error);
+    } finally {
+      setLoadingEkyc(false);
+    }
+  };
 
   useEffect(() => {
     // Load user data when component mounts
     if (userProfile) {
+      console.log('👤 Loading user profile data:', userProfile);
+      
       // Parse date of birth if available
       let day = '', month = '', year = '';
       if (userProfile.date_of_birth) {
@@ -178,21 +214,29 @@ export default function MyAccountScreen() {
         year = date.getFullYear().toString();
       }
 
-      setFormData(prev => ({
-        ...prev,
-        email: user?.email || '',
-        mobile: userProfile.phone || '',
-        gender: userProfile.gender ? userProfile.gender.charAt(0).toUpperCase() + userProfile.gender.slice(1) : '',
-        day,
-        month,
-        year,
-        // Bank details are not stored in database, keeping as empty for now
-        bankName: '',
-        accountHolderName: userProfile.full_name || '',
-        accountNumber: '',
-        contactNumber: userProfile.phone || '',
-      }));
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          email: user?.email || '',
+          mobile: userProfile.phone || '',
+          gender: userProfile.gender ? userProfile.gender.charAt(0).toUpperCase() + userProfile.gender.slice(1) : '',
+          day,
+          month,
+          year,
+          // Bank details are not stored in database, keeping as empty for now
+          bankName: '',
+          accountHolderName: userProfile.full_name || '',
+          accountNumber: '',
+          contactNumber: userProfile.phone || '',
+        };
+        console.log('📝 Initial form data from profile:', newData);
+        return newData;
+      });
+      setProfileDataLoaded(true);
     }
+    
+    // Load eKYC submission status
+    loadEkycSubmission();
   }, [user, userProfile]);
 
   const handleSave = async () => {
@@ -242,6 +286,61 @@ export default function MyAccountScreen() {
     );
   };
 
+  // Refresh eKYC status when returning to this page
+  const handleRefreshEkyc = () => {
+    loadEkycSubmission();
+  };
+
+  // Refresh eKYC status when page comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadEkycSubmission();
+    }, [user])
+  );
+
+  // Also load eKYC data when component mounts
+  useEffect(() => {
+    if (user) {
+      loadEkycSubmission();
+    }
+  }, [user]);
+
+  // Update form data when eKYC submission is loaded
+  useEffect(() => {
+    if (ekycSubmission && (profileDataLoaded || !userProfile)) {
+      console.log('📋 Loading eKYC data into form:', ekycSubmission);
+      
+      // Parse date of birth from eKYC submission
+      let day = '', month = '', year = '';
+      if (ekycSubmission.date_of_birth) {
+        const date = new Date(ekycSubmission.date_of_birth);
+        const months = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        day = date.getDate().toString();
+        month = months[date.getMonth()];
+        year = date.getFullYear().toString();
+      }
+
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          email: ekycSubmission.email || user?.email || '',
+          mobile: ekycSubmission.phone_number || userProfile?.phone || '',
+          gender: userProfile?.gender ? userProfile.gender.charAt(0).toUpperCase() + userProfile.gender.slice(1) : '', // Keep gender from profile
+          day,
+          month,
+          year,
+          accountHolderName: ekycSubmission.full_name || userProfile?.full_name || '',
+          contactNumber: ekycSubmission.phone_number || userProfile?.phone || '',
+        };
+        console.log('📝 Updated form data:', newData);
+        return newData;
+      });
+    }
+  }, [ekycSubmission, user, userProfile, profileDataLoaded]);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -270,6 +369,7 @@ export default function MyAccountScreen() {
             onChangeText={(text) => setFormData(prev => ({ ...prev, mobile: text }))}
             verified={userProfile?.phone ? true : false}
             onPress={handleRegisterMobile}
+            editable={!ekycSubmission} // Make read-only if eKYC submission exists
           />
 
           <DropdownField
@@ -288,6 +388,131 @@ export default function MyAccountScreen() {
             onMonthChange={(month) => setFormData(prev => ({ ...prev, month }))}
             onYearChange={(year) => setFormData(prev => ({ ...prev, year }))}
           />
+
+          {/* Identity Verification Section */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Identity Verification</Text>
+          </View>
+
+          <View style={styles.verificationContainer}>
+            <View style={styles.verificationStatus}>
+              <Text style={styles.verificationLabel}>Verification Status:</Text>
+              <View style={[
+                styles.verificationBadge,
+                (ekycSubmission?.status === 'approved' || userProfile?.verification_status === 'verified') && styles.verifiedBadge,
+                (ekycSubmission?.status === 'rejected' || userProfile?.verification_status === 'rejected') && styles.rejectedBadge,
+                (ekycSubmission?.status === 'pending' || userProfile?.verification_status === 'in_progress') && styles.pendingBadge,
+              ]}>
+                <Text style={[
+                  styles.verificationBadgeText,
+                  (ekycSubmission?.status === 'approved' || userProfile?.verification_status === 'verified') && styles.verifiedBadgeText,
+                  (ekycSubmission?.status === 'rejected' || userProfile?.verification_status === 'rejected') && styles.rejectedBadgeText,
+                  (ekycSubmission?.status === 'pending' || userProfile?.verification_status === 'in_progress') && styles.pendingBadgeText,
+                ]}>
+                  {ekycSubmission?.status === 'approved' || userProfile?.verification_status === 'verified' ? 'Verified' :
+                   ekycSubmission?.status === 'rejected' || userProfile?.verification_status === 'rejected' ? 'Rejected' :
+                   ekycSubmission?.status === 'pending' ? 'Pending' :
+                   userProfile?.verification_status === 'in_progress' ? 'In Progress' :
+                   'Not Started'}
+                </Text>
+              </View>
+            </View>
+            
+            {(ekycSubmission?.status !== 'approved' && userProfile?.verification_status !== 'verified') && (
+              <TouchableOpacity 
+                style={styles.verificationButton}
+                onPress={() => router.push('/ekyc-verification')}
+              >
+                <Text style={styles.verificationButtonText}>
+                  {ekycSubmission?.status === 'rejected' || userProfile?.verification_status === 'rejected' ? 'Resubmit Verification' :
+                   ekycSubmission?.status === 'pending' ? 'Check Verification Status' :
+                   userProfile?.verification_status === 'in_progress' ? 'Check Verification Status' :
+                   'Start Verification'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* eKYC Submission Details Section - Show when eKYC submission exists */}
+          {ekycSubmission && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>eKYC Submission Details</Text>
+                <Text style={styles.ekycNote}>
+                  The information below is from your eKYC verification submission and cannot be edited here.
+                </Text>
+              </View>
+
+              <View style={[styles.ekycDetailsContainer, { backgroundColor: '#F8F9FA', borderColor: '#E9ECEF' }]}>
+                <View style={styles.ekycDetailItem}>
+                  <Text style={styles.ekycDetailLabel}>Full Name:</Text>
+                  <Text style={styles.ekycDetailValue}>{ekycSubmission.full_name}</Text>
+                </View>
+                
+                <View style={styles.ekycDetailItem}>
+                  <Text style={styles.ekycDetailLabel}>Nationality:</Text>
+                  <Text style={styles.ekycDetailValue}>{ekycSubmission.nationality}</Text>
+                </View>
+                
+                {ekycSubmission.ic_number && (
+                  <View style={styles.ekycDetailItem}>
+                    <Text style={styles.ekycDetailLabel}>IC Number:</Text>
+                    <Text style={styles.ekycDetailValue}>{ekycSubmission.ic_number}</Text>
+                  </View>
+                )}
+                
+                {ekycSubmission.passport_number && (
+                  <View style={styles.ekycDetailItem}>
+                    <Text style={styles.ekycDetailLabel}>Passport Number:</Text>
+                    <Text style={styles.ekycDetailValue}>{ekycSubmission.passport_number}</Text>
+                  </View>
+                )}
+                
+                <View style={styles.ekycDetailItem}>
+                  <Text style={styles.ekycDetailLabel}>Date of Birth:</Text>
+                  <Text style={styles.ekycDetailValue}>
+                    {ekycSubmission.date_of_birth ? new Date(ekycSubmission.date_of_birth).toLocaleDateString() : 'Not provided'}
+                  </Text>
+                </View>
+                
+                <View style={styles.ekycDetailItem}>
+                  <Text style={styles.ekycDetailLabel}>Phone Number:</Text>
+                  <Text style={styles.ekycDetailValue}>{ekycSubmission.phone_number}</Text>
+                </View>
+                
+                <View style={styles.ekycDetailItem}>
+                  <Text style={styles.ekycDetailLabel}>Email:</Text>
+                  <Text style={styles.ekycDetailValue}>{ekycSubmission.email}</Text>
+                </View>
+                
+                <View style={styles.ekycDetailItem}>
+                  <Text style={styles.ekycDetailLabel}>Address Type:</Text>
+                  <Text style={styles.ekycDetailValue}>{ekycSubmission.address_type}</Text>
+                </View>
+                
+                <View style={styles.ekycDetailItem}>
+                  <Text style={styles.ekycDetailLabel}>Address:</Text>
+                  <Text style={styles.ekycDetailValue}>
+                    {ekycSubmission.address}, {ekycSubmission.city}, {ekycSubmission.postcode}, {ekycSubmission.state}
+                  </Text>
+                </View>
+                
+                <View style={styles.ekycDetailItem}>
+                  <Text style={styles.ekycDetailLabel}>Submission Date:</Text>
+                  <Text style={styles.ekycDetailValue}>
+                    {new Date(ekycSubmission.created_at).toLocaleDateString()}
+                  </Text>
+                </View>
+                
+                {ekycSubmission.admin_notes && (
+                  <View style={styles.ekycDetailItem}>
+                    <Text style={styles.ekycDetailLabel}>Admin Notes:</Text>
+                    <Text style={styles.ekycDetailValue}>{ekycSubmission.admin_notes}</Text>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
 
           {/* Bank Account Details Section */}
           <View style={styles.sectionHeader}>
@@ -322,10 +547,12 @@ export default function MyAccountScreen() {
             <Text style={styles.updateLinkText}>Click here to update your banking details</Text>
           </TouchableOpacity>
 
-          {/* Save Button */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Save Changes</Text>
-          </TouchableOpacity>
+          {/* Save Button - Hide when eKYC submission exists since data is read-only */}
+          {!ekycSubmission && (
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>Save Changes</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -483,5 +710,94 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  verificationContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  verificationStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  verificationLabel: {
+    fontSize: 14,
+    color: '#1D1D1F',
+    fontWeight: '500',
+  },
+  verificationBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F2F2F7',
+  },
+  verificationBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  verifiedBadge: {
+    backgroundColor: '#34C759',
+  },
+  verifiedBadgeText: {
+    color: '#FFFFFF',
+  },
+  rejectedBadge: {
+    backgroundColor: '#FF3B30',
+  },
+  rejectedBadgeText: {
+    color: '#FFFFFF',
+  },
+  pendingBadge: {
+    backgroundColor: '#FF9500',
+  },
+  pendingBadgeText: {
+    color: '#FFFFFF',
+  },
+  verificationButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  verificationButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  ekycDetailsContainer: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  ekycDetailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
+  },
+  ekycDetailLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6C757D',
+    flex: 1,
+  },
+  ekycDetailValue: {
+    fontSize: 14,
+    color: '#1D1D1F',
+    flex: 2,
+    textAlign: 'right',
+  },
+  ekycNote: {
+    fontSize: 12,
+    color: '#6C757D',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform, StatusBar, RefreshControl, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun, Heart as HeartFilled, Settings as SettingsFilled, Sun as SunFilled, Moon as MoonFilled, Wallet as WalletFilled, Trophy as TrophyFilled } from 'lucide-react-native';
+import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun, Heart as HeartFilled, Settings as SettingsFilled, Sun as SunFilled, Moon as MoonFilled, Wallet as WalletFilled, Trophy as TrophyFilled, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,6 +53,8 @@ export default function ProfileScreen() {
   const [unreadJobNotifications, setUnreadJobNotifications] = useState(0);
   const [jobNotificationService] = useState(() => JobNotificationService.getInstance());
   const [refreshing, setRefreshing] = useState(false);
+  const [ekycSubmission, setEkycSubmission] = useState<any>(null);
+  const [loadingEkyc, setLoadingEkyc] = useState(true);
   const router = useRouter();
   const { user, userProfile, updateProfile, refreshProfile, checkAdminStatus: contextCheckAdminStatus, isAdmin } = useAuth();
   const colors = useColors();
@@ -62,6 +64,31 @@ export default function ProfileScreen() {
   const averageRating = reviews.length > 0
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : 0;
+
+  // Load eKYC submission status
+  const loadEkycSubmission = useCallback(async () => {
+    try {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('ekyc_submissions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+        console.error('Error loading eKYC submission:', error);
+      } else {
+        setEkycSubmission(data);
+      }
+    } catch (error) {
+      console.error('Error loading eKYC submission:', error);
+    } finally {
+      setLoadingEkyc(false);
+    }
+  }, [user]);
 
   // Fetch user's services and reviews from Supabase
   const handleProfileVisibilityChange = useCallback(async (serviceId: string, isVisible: boolean) => {
@@ -205,6 +232,7 @@ export default function ProfileScreen() {
     try {
       await refreshProfile(); // Refresh profile from AuthContext
       await fetchProfileData(); // Refresh local data
+      await loadEkycSubmission(); // Refresh eKYC submission data
     } catch (error) {
       console.error('Error refreshing profile:', error);
     } finally {
@@ -217,6 +245,7 @@ export default function ProfileScreen() {
     useCallback(() => {
       if (user) {
         fetchProfileData();
+        loadEkycSubmission();
       }
     }, [user])
   );
@@ -500,11 +529,42 @@ export default function ProfileScreen() {
                 })
             )}
             <TouchableOpacity
-              style={[styles.addServiceButton, { backgroundColor: colors.primary.main }]}
-              onPress={() => router.push('/create-service-listing')}
+              style={[
+                styles.addServiceButton, 
+                { 
+                  backgroundColor: userProfile?.is_service_provider 
+                    ? colors.primary.main 
+                    : colors.text.secondary,
+                  opacity: userProfile?.is_service_provider ? 1 : 0.6
+                }
+              ]}
+              onPress={() => {
+                if (userProfile?.is_service_provider) {
+                  router.push('/create-service-listing');
+                } else {
+                  Alert.alert(
+                    'Verification Required',
+                    'You need to be a verified service provider to create service listings. Please complete your verification first.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { 
+                        text: 'Get Verified', 
+                        onPress: () => router.push('/become-service-provider')
+                      }
+                    ]
+                  );
+                }
+              }}
+              disabled={!userProfile?.is_service_provider}
             >
-              <Text style={[styles.addServiceButtonIcon, { color: colors.text.white }]}>+</Text>
-              <Text style={[styles.addServiceButtonText, { color: colors.text.white }]}>Offer Your Best Service/Product Now</Text>
+              <Text style={[
+                styles.addServiceButtonIcon, 
+                { color: userProfile?.is_service_provider ? colors.text.white : colors.text.tertiary }
+              ]}>+</Text>
+              <Text style={[
+                styles.addServiceButtonText, 
+                { color: userProfile?.is_service_provider ? colors.text.white : colors.text.tertiary }
+              ]}>Offer Your Best Service/Product Now</Text>
             </TouchableOpacity>
           </View>
         );
@@ -551,6 +611,124 @@ export default function ProfileScreen() {
       default:
         return null;
     }
+  };
+
+  const renderVerificationTick = () => {
+    if (!userProfile?.verification_status) return null;
+
+    const getTickColor = (status: string) => {
+      // Check if user has bank statement (service provider)
+      const hasServiceListing = services.length > 0;
+      
+      switch (status) {
+        case 'verified':
+          return hasServiceListing ? '#10B981' : '#3B82F6'; // Green for service providers, blue for verified users
+        case 'in_progress':
+          return '#F59E0B'; // Orange for in progress
+        case 'rejected':
+          return '#EF4444'; // Red for rejected
+        default:
+          return '#9CA3AF'; // Gray for not started
+      }
+    };
+
+    const getTickIcon = (status: string) => {
+      switch (status) {
+        case 'verified':
+          return <CheckCircle size={16} color={getTickColor(status)} />;
+        case 'in_progress':
+          return <Clock size={16} color={getTickColor(status)} />;
+        case 'rejected':
+          return <XCircle size={16} color={getTickColor(status)} />;
+        default:
+          return <CheckCircle size={16} color={getTickColor(status)} />;
+      }
+    };
+
+    const getTooltipText = (status: string) => {
+      const hasServiceListing = services.length > 0;
+      
+      switch (status) {
+        case 'verified':
+          return hasServiceListing ? 'Verified Service Provider' : 'Verified User';
+        case 'in_progress':
+          return 'Verification In Progress';
+        case 'rejected':
+          return 'Verification Rejected';
+        default:
+          return 'Verification Not Started';
+      }
+    };
+
+    return (
+      <TouchableOpacity 
+        style={styles.verificationTick}
+        onPress={() => {
+          Alert.alert(
+            'Verification Status',
+            getTooltipText(userProfile.verification_status),
+            [{ text: 'OK' }]
+          );
+        }}
+        activeOpacity={0.7}
+      >
+        {getTickIcon(userProfile.verification_status)}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderVerificationStatus = () => {
+    if (!userProfile?.verification_status) return null;
+
+    const getStatusIcon = (status: string) => {
+      switch (status) {
+        case 'verified':
+          return <CheckCircle size={20} color="#10B981" />;
+        case 'in_progress':
+          return <Clock size={20} color="#F59E0B" />;
+        case 'rejected':
+          return <XCircle size={20} color="#EF4444" />;
+        default:
+          return <AlertCircle size={20} color="#6B7280" />;
+      }
+    };
+
+    const getStatusTitle = (status: string) => {
+      switch (status) {
+        case 'verified':
+          return 'Verified';
+        case 'in_progress':
+          return 'Verification In Progress';
+        case 'rejected':
+          return 'Verification Rejected';
+        default:
+          return 'Verification Not Started';
+      }
+    };
+
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'verified':
+          return '#10B981';
+        case 'in_progress':
+          return '#F59E0B';
+        case 'rejected':
+          return '#EF4444';
+        default:
+          return '#6B7280';
+      }
+    };
+
+    return (
+      <View style={[styles.verificationStatusContainer, { backgroundColor: colors.background.secondary }]}>
+        <View style={styles.verificationStatusContent}>
+          {getStatusIcon(userProfile.verification_status)}
+          <Text style={[styles.verificationStatusText, { color: getStatusColor(userProfile.verification_status) }]}>
+            {getStatusTitle(userProfile.verification_status)}
+          </Text>
+        </View>
+      </View>
+    );
   };
 
   // Show login prompt for non-authenticated users
@@ -686,9 +864,12 @@ export default function ProfileScreen() {
               ) : (
                 <View style={[styles.profileContent, isDesktop && styles.profileContentDesktop]}>
                   <View style={[styles.profileInfo, isDesktop && styles.profileInfoDesktop]}>
-                    <Text style={[styles.userName, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userNameDesktop]}>
-                      {userProfile?.full_name || 'User'}
-                    </Text>
+                    <View style={styles.userNameContainer}>
+                      <Text style={[styles.userName, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userNameDesktop]}>
+                        {userProfile?.full_name || 'User'}
+                      </Text>
+                      {renderVerificationTick()}
+                    </View>
                     {userProfile?.bio && (
                       <Text style={[styles.userBio, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userBioDesktop]}>{userProfile.bio}</Text>
                     )}
@@ -697,6 +878,7 @@ export default function ProfileScreen() {
                       {averageRating > 0 && renderStars(averageRating)}
                       <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({reviews.length} reviews)</Text>
                     </View>
+                    {/* Removed large verification status display */}
                   </View>
                 </View>
               )}
@@ -932,6 +1114,39 @@ export default function ProfileScreen() {
                     <ReferralStatsInline userId={user?.id} />
                   </View>
                 </TouchableOpacity>
+
+                {/* eKYC Verification Prompt - Show different states based on verification status */}
+                {(!userProfile?.ekyc_verification_status || userProfile?.ekyc_verification_status !== 'verified') && (
+                  <TouchableOpacity
+                    style={[
+                      styles.ekycPromptContainer, 
+                      { 
+                        backgroundColor: ekycSubmission?.status === 'pending' ? '#FFD700' : colors.primary.main 
+                      }, 
+                      isDesktop && styles.ekycPromptContainerDesktop
+                    ]}
+                    onPress={() => router.push('/ekyc-verification')}
+                  >
+                    <View style={styles.ekycPromptContent}>
+                      {ekycSubmission?.status === 'pending' ? (
+                        <Clock size={24} color="white" style={styles.ekycPromptIcon} />
+                      ) : (
+                        <CheckCircle size={24} color="white" style={styles.ekycPromptIcon} />
+                      )}
+                      <View style={styles.ekycPromptTextContainer}>
+                        <Text style={[styles.ekycPromptTitle, { color: 'white' }]}>
+                          {ekycSubmission?.status === 'pending' ? 'Pending' : 'Complete Verification'}
+                        </Text>
+                        <Text style={[styles.ekycPromptSubtitle, { color: 'rgba(255,255,255,0.9)' }]}>
+                          {ekycSubmission?.status === 'pending' 
+                            ? 'Your verification is under review • We\'ll notify you soon'
+                            : 'Unlock all features • Become a service provider • Place service orders'
+                          }
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* Tab Navigation */}
@@ -1218,10 +1433,15 @@ const styles = StyleSheet.create({
   },
 
 
+  userNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginBottom: 8,
+  },
   userName: {
     fontSize: 28,
     fontWeight: '700',
-    marginBottom: 8,
     textAlign: 'right',
     color: 'white',
   },
@@ -1883,5 +2103,68 @@ const styles = StyleSheet.create({
   },
   desktopRightColumn: {
     flex: 1,
+  },
+  verificationStatusContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  verificationStatusContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verificationStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  verificationTick: {
+    marginLeft: 8,
+    padding: 4,
+  },
+  ekycPromptContainer: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    ...(Platform.OS === 'web' && {
+      width: '100%',
+    }),
+  },
+  ekycPromptContainerDesktop: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginBottom: 14,
+  },
+  ekycPromptContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ekycPromptIcon: {
+    marginRight: 12,
+  },
+  ekycPromptTextContainer: {
+    flex: 1,
+  },
+  ekycPromptTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  ekycPromptSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

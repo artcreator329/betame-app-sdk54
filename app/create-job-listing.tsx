@@ -71,7 +71,48 @@ export default function CreateJobListingScreen() {
   const [showAIModal, setShowAIModal] = useState(false);
   
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
+
+  // Check verification status on component mount
+  useEffect(() => {
+    if (!user) {
+      Alert.alert('Authentication Required', 'Please sign in to create job listings.', [
+        { text: 'OK', onPress: () => router.push('/auth/login') }
+      ]);
+      return;
+    }
+  }, [user, router]);
+
+  // Check service provider and verification status
+  useEffect(() => {
+    if (!user) return;
+
+    if (!userProfile?.is_service_provider) {
+      Alert.alert('Service Provider Registration Required', 'You need to register as a service provider to create job listings.', [
+        { text: 'OK', onPress: () => router.push('/become-service-provider') }
+      ]);
+      return;
+    }
+
+    if (userProfile?.verification_status !== 'verified') {
+      let message = 'Your account verification is required to create job listings.';
+      let action = () => router.push('/become-service-provider');
+      
+      if (userProfile?.verification_status === 'not_started') {
+        message = 'Please complete your eKYC verification to create job listings.';
+      } else if (userProfile?.verification_status === 'in_progress') {
+        message = 'Your eKYC verification is being processed. Please wait for approval before creating job listings.';
+        action = () => router.back();
+      } else if (userProfile?.verification_status === 'rejected') {
+        message = 'Your eKYC verification was rejected. Please resubmit your verification to create job listings.';
+      }
+      
+      Alert.alert('Verification Required', message, [
+        { text: 'OK', onPress: action }
+      ]);
+      return;
+    }
+  }, [user, router]);
 
   // Debug: Monitor modal state changes
   useEffect(() => {
