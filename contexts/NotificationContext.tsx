@@ -20,7 +20,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     let unsubscribe: (() => void) | undefined;
 
     const loadNotifications = async () => {
+      console.log('🔍 NotificationContext: loadNotifications called with user:', user?.id);
+      
       if (!user?.id) {
+        console.log('🔍 NotificationContext: No user ID, clearing notifications');
         setNotifications([]);
         setUnreadCount(0);
         // Ensure realtime channel is cleaned up when user logs out
@@ -31,16 +34,20 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         return;
       }
 
+      console.log('🔍 NotificationContext: Connecting notification service for user:', user.id);
       await (notificationService as any).connect?.(user.id);
       await notificationScheduler.initialize(user.id);
       await jobNotificationScheduler.start();
       
+      console.log('🔍 NotificationContext: Getting notifications from service');
       await notificationService.getNotifications().then((savedNotifications) => {
+        console.log('🔍 NotificationContext: Received notifications:', savedNotifications.length);
         setNotifications(savedNotifications);
         setUnreadCount(savedNotifications.filter(n => !n.isRead).length);
       });
 
       unsubscribe = notificationService.subscribe((updatedNotifications) => {
+        console.log('🔍 NotificationContext: Received updated notifications:', updatedNotifications.length);
         // Force React to detect the change by creating a new array reference
         setNotifications([...updatedNotifications]);
         setUnreadCount(updatedNotifications.filter(n => !n.isRead).length);
@@ -85,6 +92,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     setNotifications(prev => [...prev]);
   };
 
+  const refreshNotifications = async () => {
+    await notificationService.refreshNotifications();
+  };
+
   const value: NotificationContextType = {
     notifications,
     unreadCount,
@@ -93,6 +104,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     markAllAsRead,
     clearNotification,
     clearAllNotifications,
+    refreshNotifications,
   };
 
   return (

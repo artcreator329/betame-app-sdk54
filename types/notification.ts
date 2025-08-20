@@ -60,4 +60,5 @@ export interface NotificationContextType {
   markAllAsRead: () => void;
   clearNotification: (notificationId: string) => void;
   clearAllNotifications: () => void;
+  refreshNotifications: () => void;
 }

@@ -642,24 +642,79 @@ export class SupabaseChatService {
 
       // Add notification for the buyer about the new offer
       try {
-        console.log('🔔 Creating offer notification for buyer:', buyerId, 'from seller:', senderId);
+        console.log('🔔 Creating offer notification for chat:', chatId, 'seller:', sellerId);
         
-        await notificationService.addOfferNotification({
-          participantId: buyerId, // This is the buyer who will receive the notification
-          participantName: senderName, // This is the seller who made the offer
-          participantImage: senderImage,
-          chatId: chatId,
-          offerId: offerData.id,
-          serviceTitle: serviceData.title,
-          price: serviceData.customPrice || serviceData.price,
-          currency: serviceData.currency,
-          senderId: senderId, // Add seller ID for navigation
-          isIncoming: true,
-        });
-        console.log('✅ Offer notification sent successfully to buyer:', buyerId);
+        // Get the buyer ID (the other participant in the chat)
+        const { data: participants } = await supabase
+          .from('chat_participants')
+          .select('user_id')
+          .eq('chat_id', chatId)
+          .neq('user_id', sellerId);
+
+        console.log('🔔 Found participants:', participants);
+
+        if (participants && participants.length > 0) {
+          const buyerId = participants[0].user_id;
+          console.log('🔔 Sending offer notification to buyer:', buyerId);
+          
+          await notificationService.addOfferNotification({
+            participantId: buyerId, // This is the buyer who will receive the notification
+            participantName: senderName, // This is the seller who made the offer
+            participantImage: senderImage,
+            chatId: chatId,
+            offerId: offerData.id,
+            serviceTitle: serviceData.title,
+            price: serviceData.customPrice || serviceData.price,
+            currency: serviceData.currency,
+            senderId: sellerId, // Add seller ID for navigation
+            isIncoming: true,
+          });
+          console.log('✅ Offer notification sent successfully');
+        } else {
+          console.log('❌ No participants found for offer notification');
+        }
       } catch (notificationError) {
         console.error('❌ Error adding offer notification:', notificationError);
-        // Don't fail the offer creation if notification fails
+        
+        // Fallback: Create notification directly via RPC
+        try {
+          console.log('🔄 Attempting fallback notification creation...');
+          
+          // Get the buyer ID again for fallback
+          const { data: participants } = await supabase
+            .from('chat_participants')
+            .select('user_id')
+            .eq('chat_id', chatId)
+            .neq('user_id', sellerId);
+
+          if (participants && participants.length > 0) {
+            const buyerId = participants[0].user_id;
+            
+            await supabase.rpc('create_notification', {
+              p_user_id: buyerId,
+              p_type: 'offer',
+              p_title: `New offer from ${senderName}`,
+              p_message: `${serviceData.title} - ${serviceData.currency} ${serviceData.customPrice || serviceData.price}`,
+              p_data: {
+                chatId,
+                participantId: sellerId,
+                participantName: senderName,
+                participantImage: senderImage,
+                offerId: offerData.id,
+                offerStatus: 'pending',
+                serviceTitle: serviceData.title,
+                price: serviceData.customPrice || serviceData.price,
+                currency: serviceData.currency,
+              },
+              p_id: `offer_${offerData.id}_${Date.now()}`,
+            });
+            console.log('✅ Fallback notification created successfully for buyer:', buyerId);
+          } else {
+            console.log('❌ No participants found for fallback notification');
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback notification also failed:', fallbackError);
+        }
       }
 
       const transformedMessage = await this.transformMessage(data, senderId);
@@ -1009,7 +1064,46 @@ export class SupabaseChatService {
         }
       } catch (notificationError) {
         console.error('❌ Error adding offer notification:', notificationError);
-        // Don't fail the offer creation if notification fails
+        
+        // Fallback: Create notification directly via RPC
+        try {
+          console.log('🔄 Attempting fallback notification creation...');
+          
+          // Get the buyer ID again for fallback
+          const { data: participants } = await supabase
+            .from('chat_participants')
+            .select('user_id')
+            .eq('chat_id', chatId)
+            .neq('user_id', sellerId);
+
+          if (participants && participants.length > 0) {
+            const buyerId = participants[0].user_id;
+            
+            await supabase.rpc('create_notification', {
+              p_user_id: buyerId,
+              p_type: 'offer',
+              p_title: `New offer from ${senderName}`,
+              p_message: `${serviceData.title} - ${serviceData.currency} ${serviceData.customPrice || serviceData.price}`,
+              p_data: {
+                chatId,
+                participantId: sellerId,
+                participantName: senderName,
+                participantImage: senderImage,
+                offerId: offerData.id,
+                offerStatus: 'pending',
+                serviceTitle: serviceData.title,
+                price: serviceData.customPrice || serviceData.price,
+                currency: serviceData.currency,
+              },
+              p_id: `offer_${offerData.id}_${Date.now()}`,
+            });
+            console.log('✅ Fallback notification created successfully for buyer:', buyerId);
+          } else {
+            console.log('❌ No participants found for fallback notification');
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback notification also failed:', fallbackError);
+        }
       }
 
       return {
@@ -1036,6 +1130,28 @@ export class SupabaseChatService {
     } catch (error) {
       console.error('🔍 DEBUG: Error querying service offer:', error);
       return { data: null, error };
+    }
+  }
+
+  // Test method to verify notification service is working
+  async testNotificationService(targetUserId: string) {
+    console.log('🔍 DEBUG: Testing notification service for user:', targetUserId);
+    try {
+      await notificationService.addOfferNotification({
+        participantId: targetUserId,
+        participantName: 'Test User',
+        participantImage: 'https://example.com/avatar.jpg',
+        chatId: 'test-chat-id',
+        offerId: 'test-offer-id',
+        serviceTitle: 'Test Service',
+        price: 100,
+        currency: 'USD',
+        senderId: 'test-sender-id',
+        isIncoming: true,
+      });
+      console.log('✅ DEBUG: Test notification sent successfully');
+    } catch (error) {
+      console.error('❌ DEBUG: Test notification failed:', error);
     }
   }
 

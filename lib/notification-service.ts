@@ -49,11 +49,16 @@ export class NotificationService {
 
   // Connect for a logged-in user: set current user, hydrate from Supabase, and start realtime
   async connect(userId: string): Promise<void> {
+    console.log('🔍 NotificationService: connect called with userId:', userId);
     this.setCurrentUser(userId);
     await this.initializeService(userId);
+    console.log('🔍 NotificationService: initializeService completed');
     await this.hydrateFromSupabase();
+    console.log('🔍 NotificationService: hydrateFromSupabase completed');
     await this.backfillLocalToSupabase();
+    console.log('🔍 NotificationService: backfillLocalToSupabase completed');
     this.startRealtimeSubscription(userId);
+    console.log('🔍 NotificationService: startRealtimeSubscription completed');
   }
 
   private async loadNotifications(): Promise<void> {
@@ -247,6 +252,7 @@ export class NotificationService {
 
   private async hydrateFromSupabase(): Promise<void> {
     if (!this.currentUserId) return;
+    console.log('🔍 NotificationService: hydrateFromSupabase called for user:', this.currentUserId);
     try {
       const { data, error } = await supabase
         .from('notifications')
@@ -256,9 +262,11 @@ export class NotificationService {
         .limit(100);
 
       if (error) {
-        console.error('Error fetching notifications from Supabase:', error);
+        console.error('❌ NotificationService: Error fetching notifications from Supabase:', error);
         return;
       }
+
+      console.log('🔍 NotificationService: Fetched notifications from Supabase:', data?.length || 0);
 
       if (!data) return;
 
@@ -279,10 +287,12 @@ export class NotificationService {
       for (const n of supabaseNotifications) byId.set(n.id, n);
       this.notifications = Array.from(byId.values()).sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
 
+      console.log('🔍 NotificationService: Final notifications count after hydration:', this.notifications.length);
+
       await this.saveNotifications();
       this.notifyListeners();
     } catch (error) {
-      console.error('Unexpected error hydrating notifications from Supabase:', error);
+      console.error('❌ NotificationService: Unexpected error hydrating notifications from Supabase:', error);
     }
   }
 
@@ -342,7 +352,8 @@ export class NotificationService {
       message: notification.message.substring(0, 50) + '...',
       targetUserId,
       currentUserId: this.currentUserId,
-      isForCurrentUser: targetUserId === this.currentUserId
+      isForCurrentUser: targetUserId === this.currentUserId,
+      isInitialized: this.isInitialized
     });
     
     const newNotification: Notification = {
@@ -353,10 +364,18 @@ export class NotificationService {
       isRead: false,
     };
     
-    console.log('📝 NotificationService: Created new notification for user:', targetUserId);
+    console.log('📝 NotificationService: Created new notification object with ID:', newNotification.id);
 
     // Write-through to Supabase via secure RPC (this will trigger realtime for the target user)
     try {
+      console.log('📝 NotificationService: Calling create_notification RPC with data:', {
+        p_user_id: targetUserId,
+        p_type: newNotification.type,
+        p_title: newNotification.title,
+        p_message: newNotification.message,
+        p_id: newNotification.id
+      });
+      
       const { error } = await supabase.rpc('create_notification', {
         p_user_id: targetUserId,
         p_type: newNotification.type,
@@ -367,11 +386,13 @@ export class NotificationService {
       });
       if (error) {
         console.error('❌ NotificationService: Failed to insert notification to Supabase:', error);
+        throw error;
       } else {
         console.log('✅ NotificationService: Notification saved to Supabase for user:', targetUserId);
       }
     } catch (error) {
       console.error('❌ NotificationService: Exception inserting notification to Supabase:', error);
+      throw error;
     }
 
     // If the target user is the current user, add to local notifications and show system notification
@@ -510,7 +531,20 @@ export class NotificationService {
     if (!this.isInitialized) {
       await this.initializeService();
     }
+    
+    // If we have a current user but no notifications, try to hydrate from Supabase
+    if (this.currentUserId && this.notifications.length === 0) {
+      console.log('🔍 NotificationService: No local notifications found, hydrating from Supabase');
+      await this.hydrateFromSupabase();
+    }
+    
     return this.notifications;
+  }
+
+  async refreshNotifications(): Promise<void> {
+    if (!this.currentUserId) return;
+    console.log('🔍 NotificationService: Force refreshing notifications from Supabase');
+    await this.hydrateFromSupabase();
   }
 
   async getNotificationsPage(pageSize: number, beforeCreatedAt?: string, beforeId?: string): Promise<{ items: Notification[]; nextCursor?: { createdAt: string; id: string } }> {
@@ -725,7 +759,8 @@ export class NotificationService {
       offerId,
       serviceTitle,
       senderId,
-      currentUserId: this.currentUserId
+      currentUserId: this.currentUserId,
+      isInitialized: this.isInitialized
     });
 
     // CRITICAL: Prevent self-notifications - don't notify if sender is the same as recipient
@@ -751,9 +786,15 @@ export class NotificationService {
       },
     };
     
-    console.log('🔔 NotificationService: Created offer notification:', notification);
-    await this.addNotification(notification, participantId);
-    console.log('🔔 NotificationService: Offer notification sent to:', participantId);
+    console.log('🔔 NotificationService: Created offer notification object:', notification);
+    console.log('🔔 NotificationService: About to call addNotification for user:', participantId);
+    
+    try {
+      await this.addNotification(notification, participantId);
+      console.log('✅ NotificationService: Offer notification sent successfully to:', participantId);
+    } catch (error) {
+      console.error('❌ NotificationService: Error sending offer notification:', error);
+    }
   }
 
   // Helper method to add offer acceptance notification

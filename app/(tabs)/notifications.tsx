@@ -16,6 +16,7 @@ import { useColors } from '@/contexts/ThemeContext';
 import SelectableNotification from '@/components/SelectableNotification';
 import NotificationDetailModal from '@/components/NotificationDetailModal';
 import { Notification } from '@/types/notification';
+import { useState } from 'react';
 
 // Filter types
 interface NotificationFilters {
@@ -25,22 +26,30 @@ interface NotificationFilters {
 }
 
 export default function NotificationsScreen() {
-  const router = useRouter();
+  const { notifications, markAsRead, markAllAsRead, clearNotification, clearAllNotifications, refreshNotifications } = useNotifications();
   const { user } = useAuth();
-  const { notifications, markAsRead, markAllAsRead, clearNotification, clearAllNotifications } = useNotifications();
+  const router = useRouter();
   const colors = useColors();
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [showFilters, setShowFilters] = React.useState(false);
-  const [filters, setFilters] = React.useState<NotificationFilters>({
+  const [refreshing, setRefreshing] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<NotificationFilters>({
     category: 'all',
     readStatus: 'all',
     dateRange: 'all',
   });
-  const [selectedNotification, setSelectedNotification] = React.useState<Notification | null>(null);
-  const [showDetailModal, setShowDetailModal] = React.useState(false);
-  const [selectionMode, setSelectionMode] = React.useState(false);
-  const [selectedNotifications, setSelectedNotifications] = React.useState<Set<string>>(new Set());
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedNotifications, setSelectedNotifications] = useState<Set<string>>(new Set());
 
+  // Add debugging
+  React.useEffect(() => {
+    console.log('🔍 NotificationsScreen: Current state:', {
+      notificationsCount: notifications.length,
+      user: user?.id,
+      notifications: notifications.slice(0, 3) // Log first 3 notifications
+    });
+  }, [notifications, user]);
 
 
   const onRefresh = React.useCallback(() => {
@@ -279,6 +288,12 @@ export default function NotificationsScreen() {
                     style={[styles.iconButton, { backgroundColor: colors.background.secondary, borderWidth: 1, borderColor: colors.border.light }]}
                   >
                     <X size={18} color={colors.text.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={refreshNotifications}
+                    style={[styles.iconButton, { backgroundColor: colors.background.secondary, borderWidth: 1, borderColor: colors.border.light }]}
+                  >
+                    <Text style={{ color: colors.text.primary, fontSize: 12 }}>R</Text>
                   </TouchableOpacity>
                 </>
               ) : (
