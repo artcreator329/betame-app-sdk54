@@ -28,7 +28,7 @@
     "ios": {
       "supportsTablet": true,
       "config": {
-        "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}"
+        "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.artcreator329.boltexponativewind"
     },
