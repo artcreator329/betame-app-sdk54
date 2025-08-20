@@ -61,13 +61,8 @@ export default function LoginScreen() {
       if (result.error) {
         Alert.alert('Error', result.error.message);
       } else {
-        // Check if user is admin
-        const isAdmin = await adminService.isAdmin(result.user!.id);
-        if (isAdmin) {
-          router.replace('/admin-dashboard');
-        } else {
-          router.replace('/(tabs)');
-        }
+        // All users go to regular tabs, admin status is checked in profile page
+        router.replace('/(tabs)');
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'An unexpected error occurred');

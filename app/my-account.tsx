@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useFocusEffect } from '@react-navigation/native';
+import { adminService } from '@/lib/admin-service';
 
 interface FormFieldProps {
   label: string;
@@ -167,6 +168,7 @@ export default function MyAccountScreen() {
   const [ekycSubmission, setEkycSubmission] = useState<any>(null);
   const [loadingEkyc, setLoadingEkyc] = useState(true);
   const [profileDataLoaded, setProfileDataLoaded] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Load eKYC submission status
   const loadEkycSubmission = async () => {
@@ -237,6 +239,15 @@ export default function MyAccountScreen() {
     
     // Load eKYC submission status
     loadEkycSubmission();
+    
+    // Check if user is admin
+    const checkAdminStatus = async () => {
+      if (user) {
+        const adminStatus = await adminService.isAdmin(user.id);
+        setIsAdmin(adminStatus);
+      }
+    };
+    checkAdminStatus();
   }, [user, userProfile]);
 
   const handleSave = async () => {

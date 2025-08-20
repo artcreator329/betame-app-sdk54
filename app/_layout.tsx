@@ -149,12 +149,7 @@ function RootLayoutNav() {
       return;
     }
     
-    // Check if user is admin and trying to access regular pages
-    if (isAdmin && !inAdminGroup && !inAuthGroup) {
-      console.log('🔍 Layout: Admin accessing regular pages, redirecting to admin dashboard');
-      router.replace('/admin-dashboard');
-      return;
-    }
+
     
     // Pages that require authentication (user-specific actions)
     const authenticatedPages = [
@@ -193,8 +188,11 @@ function RootLayoutNav() {
       return;
     }
     
+    // Allow admin users to access admin pages
+    const onAdminPage = segments[0] === 'admin' || segments[0] === 'admin-dashboard';
+    
     // Default navigation for authenticated users - only redirect if not in any allowed group
-    if (user && !inTabsGroup && !inAdminGroup && !inAuthGroup) {
+    if (user && !inTabsGroup && !inAdminGroup && !inAuthGroup && !onAdminPage) {
       console.log('🔍 Layout: Authenticated user on unknown page, redirecting to home');
       router.replace('/');
     }
@@ -212,6 +210,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="admin" options={{ headerShown: false }} />
+      <Stack.Screen name="admin-dashboard" options={{ headerShown: false }} />
       <Stack.Screen name="chat/[participantId]" options={{ headerShown: false }} />
       <Stack.Screen name="job/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="service/[id]" options={{ headerShown: false }} />

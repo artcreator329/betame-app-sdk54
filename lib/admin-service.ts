@@ -55,7 +55,7 @@ class AdminService {
 
       // Use the secure database function
       const { data, error } = await supabase
-        .rpc('is_user_admin', { user_id: user });
+        .rpc('is_user_admin', { input_user_id: user });
       
       if (error) {
         console.error('AdminService: Error checking admin status:', error);

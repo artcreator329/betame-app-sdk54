@@ -250,7 +250,7 @@ export class EKYCService {
       
       // Check if user is admin
       const { data: adminCheck, error: adminError } = await supabase
-        .rpc('is_user_admin', { user_id: user.id });
+        .rpc('is_user_admin', { input_user_id: user.id });
       
       if (adminError) {
         console.error('❌ EKYCService: Error checking admin status:', adminError);
@@ -300,7 +300,7 @@ export class EKYCService {
 
       // Check if user is admin
       const { data: adminCheck, error: adminError } = await supabase
-        .rpc('is_user_admin', { user_id: user.id });
+        .rpc('is_user_admin', { input_user_id: user.id });
       
       if (adminError) {
         console.error('❌ EKYCService: Error checking admin status:', adminError);

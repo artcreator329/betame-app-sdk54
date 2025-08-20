@@ -291,6 +291,8 @@ export default function ProfileScreen() {
     }
   }, [user, fetchProfileData, contextCheckAdminStatus, setupJobNotifications]);
 
+
+
   const handleJobNotificationPress = (activity: any) => {
     // Mark notification as read and navigate to job details
     if (activity.job_listing_id) {
