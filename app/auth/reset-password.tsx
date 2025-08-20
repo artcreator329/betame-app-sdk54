@@ -13,10 +13,30 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { BackgroundVideoPlayer } from '@/components/BackgroundVideoPlayer';
+import { LinearGradient } from 'expo-linear-gradient';
 import { audioSessionManager } from '@/lib/audio-session-manager';
 import { supabase } from '@/lib/supabase';
 import { authService } from '@/lib/auth-service';
+
+// Only import BackgroundVideoPlayer for iOS
+const BackgroundVideoPlayer = Platform.OS === 'ios' 
+  ? require('@/components/BackgroundVideoPlayer').BackgroundVideoPlayer 
+  : null;
+
+// Simple Android Blue Gradient Background Component
+function AndroidGradientBackground() {
+  return (
+    <View style={styles.gradientContainer}>
+      <LinearGradient
+        colors={['#4facfe', '#00f2fe']}
+        style={styles.gradientBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      <View style={styles.gradientOverlay} />
+    </View>
+  );
+}
 
 export default function ResetPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -34,9 +54,11 @@ export default function ResetPasswordScreen() {
     require('../../assets/images/sign_up_page_video_3.mp4'),
   ];
 
-  // Configure audio session for silent video playback
+  // Configure audio session for silent video playback (only for iOS)
   useEffect(() => {
-    audioSessionManager.configureForSilentPlayback();
+    if (Platform.OS === 'ios') {
+      audioSessionManager.configureForSilentPlayback();
+    }
   }, []);
 
   const handleVideoError = (error: any) => {
@@ -146,12 +168,14 @@ export default function ResetPasswordScreen() {
   if (!isValidToken) {
     return (
       <SafeAreaView style={styles.container}>
-        {/* Background Video Player with Random Selection and Fading Transitions */}
-        <BackgroundVideoPlayer
-          videos={videos}
-          fadeDuration={500}
-          onVideoError={handleVideoError}
-        />
+        {Platform.OS === 'android' && <AndroidGradientBackground />}
+        {Platform.OS === 'ios' && (
+          <BackgroundVideoPlayer
+            videos={videos}
+            fadeDuration={500}
+            onVideoError={handleVideoError}
+          />
+        )}
         
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -246,12 +270,14 @@ export default function ResetPasswordScreen() {
   // Show password reset form if token or session is valid
   return (
     <SafeAreaView style={styles.container}>
-      {/* Background Video Player with Random Selection and Fading Transitions */}
-      <BackgroundVideoPlayer
-        videos={videos}
-        fadeDuration={1500}
-        onVideoError={handleVideoError}
-      />
+      {Platform.OS === 'android' && <AndroidGradientBackground />}
+      {Platform.OS === 'ios' && (
+        <BackgroundVideoPlayer
+          videos={videos}
+          fadeDuration={1500}
+          onVideoError={handleVideoError}
+        />
+      )}
       
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -467,5 +493,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  gradientContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: -1,
+  },
+  gradientBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
   },
 });

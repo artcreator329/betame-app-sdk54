@@ -18,9 +18,29 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminService } from '@/lib/admin-service';
 import { referralService } from '@/lib/referral-service';
-import { BackgroundVideoPlayer } from '@/components/BackgroundVideoPlayer';
+import { LinearGradient } from 'expo-linear-gradient';
 import { audioSessionManager } from '@/lib/audio-session-manager';
 import { supabase } from '@/lib/supabase';
+
+// Only import BackgroundVideoPlayer for iOS
+const BackgroundVideoPlayer = Platform.OS === 'ios' 
+  ? require('@/components/BackgroundVideoPlayer').BackgroundVideoPlayer 
+  : null;
+
+// Simple Android Blue Gradient Background Component
+function AndroidGradientBackground() {
+  return (
+    <View style={styles.gradientContainer}>
+      <LinearGradient
+        colors={['#4facfe', '#00f2fe']}
+        style={styles.gradientBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      <View style={styles.gradientOverlay} />
+    </View>
+  );
+}
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -39,9 +59,11 @@ export default function LoginScreen() {
     require('../../assets/images/sign_up_page_video_3.mp4'),
   ];
 
-  // Configure audio session for silent video playback
+  // Configure audio session for silent video playback (only for iOS)
   useEffect(() => {
-    audioSessionManager.configureForSilentPlayback();
+    if (Platform.OS === 'ios') {
+      audioSessionManager.configureForSilentPlayback();
+    }
   }, []);
 
   const handleVideoError = (error: any) => {
@@ -230,10 +252,13 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <BackgroundVideoPlayer
-        videos={videos}
-        onVideoError={handleVideoError}
-      />
+      {Platform.OS === 'android' && <AndroidGradientBackground />}
+      {Platform.OS === 'ios' && (
+        <BackgroundVideoPlayer
+          videos={videos}
+          onVideoError={handleVideoError}
+        />
+      )}
       
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -755,5 +780,28 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
+  },
+  gradientContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: -1,
+  },
+  gradientBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Overlay for better text readability
   },
 });

@@ -5,13 +5,30 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { adminService } from '@/lib/admin-service';
+
+// Simple Android Blue Gradient Background Component
+function AndroidGradientBackground() {
+  return (
+    <View style={styles.gradientContainer}>
+      <LinearGradient
+        colors={['#4facfe', '#00f2fe']}
+        style={styles.gradientBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      <View style={styles.gradientOverlay} />
+    </View>
+  );
+}
 
 export default function VerifyEmailScreen() {
   const [loading, setLoading] = useState(true);
@@ -144,24 +161,26 @@ export default function VerifyEmailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Video Background */}
-      <View style={styles.videoContainer}>
-        <Video
-          source={videos[currentVideoIndex]}
-          style={styles.video}
-          resizeMode={ResizeMode.COVER}
-          shouldPlay
-          isLooping={false}
-          isMuted
-          onPlaybackStatusUpdate={(status) => {
-            if (status.isLoaded && status.didJustFinish) {
-              handleVideoEnd();
-            }
-          }}
-        />
-        {/* Overlay for better text readability */}
-        <View style={styles.videoOverlay} />
-      </View>
+      {Platform.OS === 'android' && <AndroidGradientBackground />}
+      {Platform.OS === 'ios' && (
+        <View style={styles.videoContainer}>
+          <Video
+            source={videos[currentVideoIndex]}
+            style={styles.video}
+            resizeMode={ResizeMode.COVER}
+            shouldPlay
+            isLooping={false}
+            isMuted
+            onPlaybackStatusUpdate={(status) => {
+              if (status.isLoaded && status.didJustFinish) {
+                handleVideoEnd();
+              }
+            }}
+          />
+          {/* Overlay for better text readability */}
+          <View style={styles.videoOverlay} />
+        </View>
+      )}
       
       <View style={styles.content}>
         {renderContent()}
@@ -258,5 +277,28 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
     paddingHorizontal: 20,
+  },
+  gradientContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: -1,
+  },
+  gradientBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
 });
