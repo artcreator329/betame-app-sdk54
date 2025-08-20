@@ -21,6 +21,7 @@ import SearchBarWithAutoComplete from '@/components/SearchBarWithAutoComplete';
 import NearbyCategoryIcon from '@/components/NearbyCategoryIcon';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
+import { BannerService, Banner } from '@/lib/banner-service';
 
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -111,6 +112,7 @@ const bannerSlides: BannerSlide[] = [
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [nearbyServices, setNearbyServices] = useState<Service[]>([]);
   const [trendingServices, setTrendingServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
@@ -149,11 +151,13 @@ export default function HomeScreen() {
     
     try {
       // Fetch all data concurrently
-      const [nearby, trending] = await Promise.all([
+      const [bannersData, nearby, trending] = await Promise.all([
+        BannerService.getActiveBanners(),
         ServiceService.getNearbyServices(),
         ServiceService.getTrendingServices()
       ]);
       
+      setBanners(bannersData);
       setNearbyServices(nearby.map(convertToUIService));
       setTrendingServices(trending.map(convertToUIService));
     } catch (error) {
@@ -190,12 +194,32 @@ export default function HomeScreen() {
     setCurrentSlide(slideIndex);
   };
 
-  const renderBannerItem = ({ item }: { item: BannerSlide }) => (
+  const renderBannerItem = ({ item }: { item: Banner }) => (
     <View style={[styles.bannerSlide, { width: isDesktop ? screenWidth - 200 : screenWidth - 40 }]}>
-      <Image source={{ uri: item.image }} style={styles.bannerImage} />
-      <View style={[styles.bannerOverlay, { backgroundColor: item.backgroundColor }]}>
+      <Image 
+        source={{ uri: item.image_url }} 
+        style={styles.bannerImage}
+        resizeMode="cover"
+      />
+      <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]}>
         <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
-        <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.subtitle}</Text>
+        {item.description && (
+          <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.description}</Text>
+        )}
+        {item.link_url && (
+          <TouchableOpacity 
+            style={styles.bannerButton}
+            onPress={() => {
+              // Handle banner click - could open link or navigate
+              if (item.link_url) {
+                // For now, just show an alert
+                Alert.alert('Banner Clicked', `Banner: ${item.title}`);
+              }
+            }}
+          >
+            <Text style={styles.bannerButtonText}>Learn More</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -266,27 +290,35 @@ export default function HomeScreen() {
 
         {/* Banner Ad Space */}
         <View style={[styles.bannerContainer, { shadowColor: colors.shadow.medium }]}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={handleSlideChange}
-            style={styles.bannerSlider}
-            nestedScrollEnabled={true}
-          >
-            {bannerSlides.map((item) => renderBannerItem({ item }))}
-          </ScrollView>
-          <View style={styles.bannerIndicators}>
-            {bannerSlides.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.indicator,
-                  index === currentSlide && styles.activeIndicator,
-                ]}
-              />
-            ))}
-          </View>
+          {banners.length > 0 ? (
+            <>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={handleSlideChange}
+                style={styles.bannerSlider}
+                nestedScrollEnabled={true}
+              >
+                {banners.map((item) => renderBannerItem({ item }))}
+              </ScrollView>
+              <View style={styles.bannerIndicators}>
+                {banners.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.indicator,
+                      index === currentSlide && styles.activeIndicator,
+                    ]}
+                  />
+                ))}
+              </View>
+            </>
+          ) : (
+            <View style={styles.noBannersContainer}>
+              <Text style={styles.noBannersText}>No banners available</Text>
+            </View>
+          )}
         </View>
 
         {/* Nearby Services */}
@@ -484,12 +516,12 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   bannerSlide: {
-    height: isDesktop ? 200 : 140,
+    height: isDesktop ? 240 : 160, // Adjusted for 1200x425 aspect ratio
     position: 'relative',
   },
   bannerImage: {
     width: '100%',
-    height: isDesktop ? 200 : 140,
+    height: isDesktop ? 240 : 160, // Adjusted for 1200x425 aspect ratio
   },
   bannerOverlay: {
     position: 'absolute',
@@ -695,5 +727,32 @@ const styles = StyleSheet.create({
     fontSize: isDesktop ? 16 : 14,
     fontWeight: '500',
     textDecorationLine: 'none',
+  },
+  bannerButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  bannerButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  noBannersContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+  },
+  noBannersText: {
+    fontSize: 16,
+    color: '#6c757d',
+    textAlign: 'center',
   },
 });
