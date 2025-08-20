@@ -6,9 +6,9 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  FlatList,
   Modal,
   SafeAreaView,
+  ScrollView,
 } from 'react-native';
 import { Search, X, Check, Sparkles, AlertCircle } from 'lucide-react-native';
 import { AIServiceTypeService, ServiceTypeSuggestion } from '@/lib/ai-service-type-service';
@@ -169,23 +169,7 @@ export default function AIServiceTypeSelector({
     );
   };
 
-  const renderSuggestionItem = ({ item }: { item: string }) => (
-    <TouchableOpacity
-      style={[
-        styles.suggestionItem,
-        { backgroundColor: colors.background.tertiary },
-        selectedServiceType === item && { borderColor: colors.primary.main, borderWidth: 2 }
-      ]}
-      onPress={() => handleServiceTypeSelect(item)}
-    >
-      <Text style={[styles.suggestionItemText, { color: colors.text.primary }]}>
-        {item}
-      </Text>
-      {selectedServiceType === item && (
-        <Check size={20} color={colors.primary.main} />
-      )}
-    </TouchableOpacity>
-  );
+
 
   const renderCustomInput = () => {
     if (!showCustomInput) return null;
@@ -293,20 +277,38 @@ export default function AIServiceTypeSelector({
             </View>
           ) : (
             <>
-              <FlatList
-                data={suggestions}
-                renderItem={renderSuggestionItem}
-                keyExtractor={(item) => item}
+              <ScrollView 
                 style={styles.suggestionsList}
                 showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
+                contentContainerStyle={suggestions.length === 0 ? styles.emptyContainer : undefined}
+              >
+                {suggestions.length > 0 ? (
+                  suggestions.map((item) => (
+                    <TouchableOpacity
+                      key={item}
+                      style={[
+                        styles.suggestionItem,
+                        { backgroundColor: colors.background.tertiary },
+                        selectedServiceType === item && { borderColor: colors.primary.main, borderWidth: 2 }
+                      ]}
+                      onPress={() => handleServiceTypeSelect(item)}
+                    >
+                      <Text style={[styles.suggestionItemText, { color: colors.text.primary }]}>
+                        {item}
+                      </Text>
+                      {selectedServiceType === item && (
+                        <Check size={20} color={colors.primary.main} />
+                      )}
+                    </TouchableOpacity>
+                  ))
+                ) : (
                   <View style={styles.emptyContainer}>
                     <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
                       {searchQuery ? 'No matching service types found' : 'No existing service types'}
                     </Text>
                   </View>
-                }
-              />
+                )}
+              </ScrollView>
 
               {renderCustomInput()}
 

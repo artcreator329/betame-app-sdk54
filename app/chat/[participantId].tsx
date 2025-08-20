@@ -13,7 +13,6 @@ import {
   Modal,
   ActionSheetIOS,
   ActivityIndicator,
-  FlatList,
 } from 'react-native';
 import CalendarPicker from '@/components/CalendarPicker';
 import TimePicker from '@/components/TimePicker';
@@ -1940,11 +1939,13 @@ export default function ChatScreen() {
                   </TouchableOpacity>
                 </View>
               ) : (
-                <FlatList
-                  data={(userServices || []).filter(service => service.id && service.id.trim() !== '')}
-                  keyExtractor={(item) => item.id || ''}
-                  renderItem={({ item }) => (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.servicesList}
+                >
+                  {(userServices || []).filter(service => service.id && service.id.trim() !== '').map((item) => (
                     <TouchableOpacity 
+                      key={item.id || ''}
                       style={styles.serviceItem}
                       onPress={() => handleShareService(item)}
                     >
@@ -1964,10 +1965,8 @@ export default function ChatScreen() {
                         </Text>
                       </View>
                     </TouchableOpacity>
-                  )}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.servicesList}
-                />
+                  ))}
+                </ScrollView>
               )}
             </View>
           </View>

@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  FlatList,
   Image,
   ActivityIndicator,
   Keyboard,
-  Dimensions
+  Dimensions,
+  ScrollView,
 } from 'react-native';
 import { Search, X, Clock, TrendingUp, MapPin, User, Briefcase, Tag } from 'lucide-react-native';
 import { useColors } from '@/contexts/ThemeContext';
@@ -202,38 +202,7 @@ export default function SearchBarWithAutoComplete({
     }
   };
 
-  const renderSuggestionItem = ({ item }: { item: SearchSuggestion }) => (
-    <TouchableOpacity
-      style={[styles.suggestionItem, { backgroundColor: colors.background.primary }]}
-      onPress={() => handleSuggestionPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.suggestionIcon}>
-        {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.suggestionImage} />
-        ) : (
-          getIconForSuggestionType(item.type)
-        )}
-      </View>
-      <View style={styles.suggestionContent}>
-        <Text style={[styles.suggestionTitle, { color: colors.text.primary }]} numberOfLines={1}>
-          {item.title}
-        </Text>
-        {item.subtitle && (
-          <Text style={[styles.suggestionSubtitle, { color: colors.text.secondary }]} numberOfLines={1}>
-            {item.subtitle}
-          </Text>
-        )}
-      </View>
-      {item.rating && item.rating > 0 && (
-        <View style={styles.suggestionRating}>
-          <Text style={[styles.ratingText, { color: colors.text.secondary }]}>
-            ⭐ {item.rating.toFixed(1)}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+
 
   const renderPopularTerm = (term: string, index: number) => (
     <TouchableOpacity
@@ -298,15 +267,46 @@ export default function SearchBarWithAutoComplete({
         <View style={[styles.suggestionsContainer, { backgroundColor: colors.background.primary }]}>
           {/* Search Suggestions */}
           {suggestions.length > 0 && (
-            <FlatList
-              data={suggestions}
-              renderItem={renderSuggestionItem}
-              keyExtractor={(item) => `${item.type}-${item.id}`}
+            <ScrollView
               style={styles.suggestionsList}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               nestedScrollEnabled={true}
-            />
+            >
+              {suggestions.map((item) => (
+                <TouchableOpacity
+                  key={`${item.type}-${item.id}`}
+                  style={[styles.suggestionItem, { backgroundColor: colors.background.primary }]}
+                  onPress={() => handleSuggestionPress(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.suggestionIcon}>
+                    {item.image_url ? (
+                      <Image source={{ uri: item.image_url }} style={styles.suggestionImage} />
+                    ) : (
+                      getIconForSuggestionType(item.type)
+                    )}
+                  </View>
+                  <View style={styles.suggestionContent}>
+                    <Text style={[styles.suggestionTitle, { color: colors.text.primary }]} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    {item.subtitle && (
+                      <Text style={[styles.suggestionSubtitle, { color: colors.text.secondary }]} numberOfLines={1}>
+                        {item.subtitle}
+                      </Text>
+                    )}
+                  </View>
+                  {item.rating && item.rating > 0 && (
+                    <View style={styles.suggestionRating}>
+                      <Text style={[styles.ratingText, { color: colors.text.secondary }]}>
+                        ⭐ {item.rating.toFixed(1)}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           )}
 
           {/* Popular Terms and Recent Searches (when no query) */}
@@ -468,5 +468,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 6,
     fontWeight: '500',
+  },
+  userIcon: {
+    fontSize: 16,
   },
 });
