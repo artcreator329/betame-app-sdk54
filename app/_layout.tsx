@@ -41,24 +41,55 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Image, StyleSheet, Dimensions } from 'react-native';
 import { useEffect, useState } from 'react';
 import { configureLocalNotifications } from '@/lib/local-notifications';
 import { useDeepLinking } from '@/hooks/useDeepLinking';
 import { audioSessionManager } from '@/lib/audio-session-manager';
+import * as SplashScreen from 'expo-splash-screen';
 
-function LoadingScreen() {
+const { width, height } = Dimensions.get('window');
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
+function CustomSplashScreen() {
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    const hideSplash = async () => {
+      try {
+        // Hide the native splash screen
+        await SplashScreen.hideAsync();
+        
+        // Add a small delay before hiding our custom splash screen
+        setTimeout(() => {
+          setIsVisible(false);
+        }, 100);
+      } catch (error) {
+        console.warn('Error hiding splash screen:', error);
+      }
+    };
+
+    hideSplash();
+  }, []);
+
   return (
-    <View style={{ 
-      flex: 1, 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      backgroundColor: '#ffffff'
-    }}>
-      <ActivityIndicator size="large" color="#007AFF" />
-      <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
-        Loading...
-      </Text>
+    <View style={[styles.splashContainer, { opacity: isVisible ? 1 : 0 }]}>
+      <View style={styles.logoContainer}>
+        <Image 
+          source={require('../assets/images/icon_splashscreen.png')}
+          style={styles.splashImage}
+          resizeMode="contain"
+        />
+        <Text style={styles.splashText}>BetaMe</Text>
+        <Text style={styles.splashSubtext}>Connecting People & Services</Text>
+      </View>
+      <ActivityIndicator 
+        size="large" 
+        color="#007AFF" 
+        style={styles.loadingIndicator}
+      />
     </View>
   );
 }
@@ -202,7 +233,7 @@ function RootLayoutNav() {
   }, [user, isAdmin, loading, segments, isMounted]);
 
   if (loading) {
-    return <LoadingScreen />;
+    return <CustomSplashScreen />;
   }
 
   return (
@@ -262,6 +293,7 @@ function ThemedStatusBar() {
 
 export default function RootLayout() {
   useFrameworkReady();
+  const [appIsReady, setAppIsReady] = useState(false);
 
   console.log('🔄 App: Rendering RootLayout...');
 
@@ -279,8 +311,27 @@ export default function RootLayout() {
       }
     };
     
-    setupNotifications();
+    const prepareApp = async () => {
+      try {
+        // Setup notifications
+        await setupNotifications();
+        
+        // Add a minimum delay to show the splash screen
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        setAppIsReady(true);
+      } catch (error) {
+        console.error('❌ Error preparing app:', error);
+        setAppIsReady(true);
+      }
+    };
+    
+    prepareApp();
   }, []);
+
+  if (!appIsReady) {
+    return <CustomSplashScreen />;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -299,3 +350,38 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  splashContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  splashImage: {
+    width: width * 0.5,
+    height: height * 0.15,
+    marginBottom: 30,
+  },
+  splashText: {
+    fontSize: 42,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  splashSubtext: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 5,
+    fontWeight: '400',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  loadingIndicator: {
+    marginTop: 20,
+  },
+});

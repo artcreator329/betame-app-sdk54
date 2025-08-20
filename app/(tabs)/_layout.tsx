@@ -96,9 +96,20 @@ export default function TabLayout() {
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const { unreadCount } = useNotifications();
+  const segments = useSegments();
   
   const screenWidth = Dimensions.get('window').width;
-  const tabWidth = isDesktop ? (screenWidth - 200) / 5 : (screenWidth - 40) / 5; // More space on desktop
+  
+  // Calculate visible tabs based on authentication status
+  const visibleTabs = navItems.filter(item => {
+    if (item.requiresAuth && !isAuthenticated && item.name !== 'services') {
+      return false;
+    }
+    return true;
+  });
+  
+  const visibleTabCount = visibleTabs.length;
+  const tabWidth = isDesktop ? (screenWidth - 200) / visibleTabCount : (screenWidth - 40) / visibleTabCount;
   const indicatorPosition = useSharedValue(0);
   
   const animatedIndicatorStyle = useAnimatedStyle(() => {
@@ -108,11 +119,24 @@ export default function TabLayout() {
   });
   
   const moveIndicator = (index: number) => {
-    indicatorPosition.value = withSpring(index * tabWidth, {
-      damping: 15,
-      stiffness: 150,
-    });
+    // Map the actual tab index to the visible tab index
+    const visibleIndex = visibleTabs.findIndex(tab => tab.name === navItems[index].name);
+    if (visibleIndex !== -1) {
+      indicatorPosition.value = withSpring(visibleIndex * tabWidth, {
+        damping: 15,
+        stiffness: 150,
+      });
+    }
   };
+
+  // Set initial indicator position based on current route
+  useEffect(() => {
+    const currentRoute = segments[segments.length - 1] || 'index';
+    const currentIndex = navItems.findIndex(item => item.name === currentRoute);
+    if (currentIndex !== -1) {
+      moveIndicator(currentIndex);
+    }
+  }, [isAuthenticated, visibleTabCount, segments]);
 
   const NotificationBadge = ({ count }: { count: number }) => {
     if (count === 0) return null;
