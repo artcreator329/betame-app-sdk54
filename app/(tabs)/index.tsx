@@ -194,35 +194,45 @@ export default function HomeScreen() {
     setCurrentSlide(slideIndex);
   };
 
-  const renderBannerItem = ({ item }: { item: Banner }) => (
-    <View style={[styles.bannerSlide, { width: isDesktop ? screenWidth - 200 : screenWidth - 40 }]}>
-      <Image 
-        source={{ uri: item.image_url }} 
-        style={styles.bannerImage}
-        resizeMode="cover"
-      />
-      <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]}>
-        <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
-        {item.description && (
-          <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.description}</Text>
-        )}
-        {item.link_url && (
-          <TouchableOpacity 
-            style={styles.bannerButton}
-            onPress={() => {
-              // Handle banner click - could open link or navigate
-              if (item.link_url) {
-                // For now, just show an alert
-                Alert.alert('Banner Clicked', `Banner: ${item.title}`);
-              }
-            }}
-          >
-            <Text style={styles.bannerButtonText}>Learn More</Text>
-          </TouchableOpacity>
-        )}
+  const renderBannerItem = ({ item }: { item: Banner }) => {
+    // Calculate proper height for 1200x425 aspect ratio
+    // Formula: height = width * (425 / 1200) to maintain exact aspect ratio
+    const bannerWidth = isDesktop ? screenWidth - 200 : screenWidth - 40;
+    const bannerHeight = Math.round(bannerWidth * (425 / 1200));
+    
+    return (
+      <View style={[styles.bannerSlide, { 
+        width: bannerWidth,
+        height: bannerHeight 
+      }]}>
+        <Image 
+          source={{ uri: item.image_url }} 
+          style={[styles.bannerImage, { height: bannerHeight }]}
+          resizeMode="cover"
+        />
+        <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]}>
+          <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
+          {item.description && (
+            <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.description}</Text>
+          )}
+          {item.link_url && (
+            <TouchableOpacity 
+              style={styles.bannerButton}
+              onPress={() => {
+                // Handle banner click - could open link or navigate
+                if (item.link_url) {
+                  // For now, just show an alert
+                  Alert.alert('Banner Clicked', `Banner: ${item.title}`);
+                }
+              }}
+            >
+              <Text style={styles.bannerButtonText}>Learn More</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
@@ -516,12 +526,10 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   bannerSlide: {
-    height: isDesktop ? 240 : 160, // Adjusted for 1200x425 aspect ratio
     position: 'relative',
   },
   bannerImage: {
     width: '100%',
-    height: isDesktop ? 240 : 160, // Adjusted for 1200x425 aspect ratio
   },
   bannerOverlay: {
     position: 'absolute',
