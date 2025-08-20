@@ -836,4 +836,5 @@ const styles = StyleSheet.create({
   aiButtonDisabled: {
     backgroundColor: '#E5E5EA',
   },
+
 });

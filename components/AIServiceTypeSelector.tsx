@@ -123,16 +123,16 @@ export default function AIServiceTypeSelector({
     return (
       <View style={styles.aiSuggestionContainer}>
         <View style={styles.aiSuggestionHeader}>
-          <Sparkles size={16} color={colors.primary} />
-          <Text style={[styles.aiSuggestionTitle, { color: colors.text }]}>
+          <Sparkles size={16} color={colors.primary.main} />
+          <Text style={[styles.aiSuggestionTitle, { color: colors.text.primary }]}>
             AI Suggestion
           </Text>
         </View>
         
         {isLoadingAI ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            <ActivityIndicator size="small" color={colors.primary.main} />
+            <Text style={[styles.loadingText, { color: colors.text.secondary }]}>
               Analyzing service...
             </Text>
           </View>
@@ -141,28 +141,28 @@ export default function AIServiceTypeSelector({
             style={[
               styles.aiSuggestionItem,
               { 
-                backgroundColor: colors.background,
-                borderColor: aiSuggestion.isExisting ? colors.success : colors.primary
+                backgroundColor: colors.background.tertiary,
+                borderColor: aiSuggestion.isExisting ? colors.status.success : colors.primary.main
               }
             ]}
             onPress={() => handleServiceTypeSelect(aiSuggestion.suggestedType)}
           >
             <View style={styles.suggestionContent}>
-              <Text style={[styles.suggestionText, { color: colors.text }]}>
+              <Text style={[styles.suggestionText, { color: colors.text.primary }]}>
                 {aiSuggestion.suggestedType}
               </Text>
               <View style={styles.suggestionMeta}>
-                <Text style={[styles.confidenceText, { color: colors.textSecondary }]}>
+                <Text style={[styles.confidenceText, { color: colors.text.secondary }]}>
                   {Math.round(aiSuggestion.confidence * 100)}% confidence
                 </Text>
                 {aiSuggestion.isExisting && (
-                  <View style={[styles.existingBadge, { backgroundColor: colors.success }]}>
+                  <View style={[styles.existingBadge, { backgroundColor: colors.status.success }]}>
                     <Text style={styles.existingBadgeText}>Existing</Text>
                   </View>
                 )}
               </View>
             </View>
-            <Check size={20} color={colors.primary} />
+            <Check size={20} color={colors.primary.main} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -173,16 +173,16 @@ export default function AIServiceTypeSelector({
     <TouchableOpacity
       style={[
         styles.suggestionItem,
-        { backgroundColor: colors.background },
-        selectedServiceType === item && { borderColor: colors.primary, borderWidth: 2 }
+        { backgroundColor: colors.background.tertiary },
+        selectedServiceType === item && { borderColor: colors.primary.main, borderWidth: 2 }
       ]}
       onPress={() => handleServiceTypeSelect(item)}
     >
-      <Text style={[styles.suggestionItemText, { color: colors.text }]}>
+      <Text style={[styles.suggestionItemText, { color: colors.text.primary }]}>
         {item}
       </Text>
       {selectedServiceType === item && (
-        <Check size={20} color={colors.primary} />
+        <Check size={20} color={colors.primary.main} />
       )}
     </TouchableOpacity>
   );
@@ -192,20 +192,20 @@ export default function AIServiceTypeSelector({
 
     return (
       <View style={styles.customInputContainer}>
-        <Text style={[styles.customInputLabel, { color: colors.text }]}>
+        <Text style={[styles.customInputLabel, { color: colors.text.primary }]}>
           Create Custom Service Type
         </Text>
         <TextInput
           style={[
             styles.customInput,
             { 
-              backgroundColor: colors.background,
-              borderColor: validationError ? colors.error : colors.border,
-              color: colors.text
+              backgroundColor: colors.background.tertiary,
+              borderColor: validationError ? colors.status.error : colors.border.main,
+              color: colors.text.primary
             }
           ]}
           placeholder="Enter service type name..."
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.text.secondary}
           value={customServiceType}
           onChangeText={(text) => {
             setCustomServiceType(text);
@@ -216,27 +216,27 @@ export default function AIServiceTypeSelector({
         />
         {validationError && (
           <View style={styles.errorContainer}>
-            <AlertCircle size={16} color={colors.error} />
-            <Text style={[styles.errorText, { color: colors.error }]}>
+            <AlertCircle size={16} color={colors.status.error} />
+            <Text style={[styles.errorText, { color: colors.status.error }]}>
               {validationError}
             </Text>
           </View>
         )}
         <View style={styles.customInputButtons}>
           <TouchableOpacity
-            style={[styles.customButton, styles.cancelButton, { borderColor: colors.border }]}
+            style={[styles.customButton, styles.cancelButton, { borderColor: colors.border.main }]}
             onPress={() => {
               setShowCustomInput(false);
               setCustomServiceType('');
               setValidationError(null);
             }}
           >
-            <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+            <Text style={[styles.cancelButtonText, { color: colors.text.secondary }]}>
               Cancel
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.customButton, styles.submitButton, { backgroundColor: colors.primary }]}
+            style={[styles.customButton, styles.submitButton, { backgroundColor: colors.primary.main }]}
             onPress={handleCustomServiceTypeSubmit}
             disabled={!customServiceType.trim()}
           >
@@ -249,21 +249,21 @@ export default function AIServiceTypeSelector({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]}>
-        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background.secondary }]}>
+        <View style={[styles.header, { backgroundColor: colors.background.tertiary, borderBottomColor: colors.border.main }]}>
           <View style={styles.headerLeft}>
             <TouchableOpacity 
               onPress={handleClose}
-              style={[styles.closeButton, { backgroundColor: colors.backgroundSecondary }]}
+              style={[styles.closeButton, { backgroundColor: colors.background.secondary }]}
             >
-              <X size={20} color={colors.text} />
+              <X size={20} color={colors.text.primary} />
             </TouchableOpacity>
           </View>
           <View style={styles.headerContent}>
-            <Text style={[styles.title, { color: colors.text }]}>
+            <Text style={[styles.title, { color: colors.text.primary }]}>
               Select Service Type
             </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
               Choose or create a category for your service
             </Text>
           </View>
@@ -273,21 +273,21 @@ export default function AIServiceTypeSelector({
         <View style={styles.content}>
           {renderAISuggestion()}
 
-          <View style={[styles.searchContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Search size={20} color={colors.textSecondary} style={styles.searchIcon} />
+          <View style={[styles.searchContainer, { backgroundColor: colors.background.tertiary, borderColor: colors.border.main }]}>
+            <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
             <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
+              style={[styles.searchInput, { color: colors.text.primary }]}
               placeholder="Search existing service types..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={colors.text.secondary}
             />
           </View>
 
           {isLoadingSuggestions ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              <ActivityIndicator size="large" color={colors.primary.main} />
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>
                 Loading suggestions...
               </Text>
             </View>
@@ -301,7 +301,7 @@ export default function AIServiceTypeSelector({
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                   <View style={styles.emptyContainer}>
-                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
                       {searchQuery ? 'No matching service types found' : 'No existing service types'}
                     </Text>
                   </View>
@@ -312,10 +312,10 @@ export default function AIServiceTypeSelector({
 
               {!showCustomInput && (
                 <TouchableOpacity
-                  style={[styles.createCustomButton, { borderColor: colors.primary }]}
+                  style={[styles.createCustomButton, { borderColor: colors.primary.main }]}
                   onPress={() => setShowCustomInput(true)}
                 >
-                  <Text style={[styles.createCustomButtonText, { color: colors.primary }]}>
+                  <Text style={[styles.createCustomButtonText, { color: colors.primary.main }]}>
                     Create Custom Service Type
                   </Text>
                 </TouchableOpacity>
