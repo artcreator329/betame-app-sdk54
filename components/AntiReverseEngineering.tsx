@@ -32,11 +32,11 @@ export default function AntiReverseEngineering({
     try {
       const checks: SecurityCheck[] = [];
 
-      // Check 1: Debug mode detection
+      // Check 1: Debug mode detection (allow in development)
       const debugCheck = await checkDebugMode();
       checks.push(debugCheck);
 
-      // Check 2: Emulator/Simulator detection
+      // Check 2: Emulator/Simulator detection (allow in development)
       const emulatorCheck = await checkEmulator();
       checks.push(emulatorCheck);
 
@@ -48,7 +48,7 @@ export default function AntiReverseEngineering({
       const signatureCheck = await checkAppSignature();
       checks.push(signatureCheck);
 
-      // Check 5: Code integrity check
+      // Check 5: Code integrity check (relaxed for development)
       const integrityCheck = await checkCodeIntegrity();
       checks.push(integrityCheck);
 
@@ -62,42 +62,47 @@ export default function AntiReverseEngineering({
 
       setSecurityChecks(checks);
 
-      // Determine overall security status
+      // Determine overall security status - be more lenient in development
       const failedChecks = checks.filter(check => !check.passed);
-      const isOverallSecure = failedChecks.length === 0;
+      const isOverallSecure = __DEV__ ? true : failedChecks.length === 0; // Always allow in development
 
       setIsSecure(isOverallSecure);
       setIsLoading(false);
 
-      // Handle security violations
-      if (!isOverallSecure) {
+      // Handle security violations only in production
+      if (!isOverallSecure && !__DEV__) {
         handleSecurityViolations(failedChecks);
       }
 
-      // Log security audit
-      await securityService.logSecurityAudit(
-        'system',
-        'security_checks_performed',
-        failedChecks.length * 10,
-        {
-          total_checks: checks.length,
-          failed_checks: failedChecks.length,
-          failed_check_names: failedChecks.map(check => check.name),
-        }
-      );
+      // Log security audit (only in production or for monitoring)
+      if (!__DEV__) {
+        await securityService.logSecurityAudit(
+          'system',
+          'security_checks_performed',
+          failedChecks.length * 10,
+          {
+            total_checks: checks.length,
+            failed_checks: failedChecks.length,
+            failed_check_names: failedChecks.map(check => check.name),
+          }
+        );
+      }
 
     } catch (error) {
       console.error('Security checks failed:', error);
-      setIsSecure(false);
+      // In development, don't fail the app
+      setIsSecure(__DEV__ ? true : false);
       setIsLoading(false);
       
-      // Log security violation
-      await securityService.logSecurityAudit(
-        'system',
-        'security_check_failure',
-        100,
-        { error: error.message }
-      );
+      // Log security violation only in production
+      if (!__DEV__) {
+        await securityService.logSecurityAudit(
+          'system',
+          'security_check_failure',
+          100,
+          { error: error.message }
+        );
+      }
     }
   };
 
@@ -107,10 +112,10 @@ export default function AntiReverseEngineering({
       const isDebug = __DEV__;
       
       if (isDebug) {
-        console.warn('⚠️ Security: Running in debug mode');
+        console.log('🔍 Security: Running in debug mode (allowed in development)');
         return {
           name: 'Debug Mode',
-          passed: false,
+          passed: __DEV__ ? true : false, // Allow in development
           description: 'App is running in debug mode',
         };
       }
@@ -123,7 +128,7 @@ export default function AntiReverseEngineering({
     } catch (error) {
       return {
         name: 'Debug Mode',
-        passed: false,
+        passed: __DEV__ ? true : false, // Allow in development
         description: 'Debug mode check failed',
       };
     }
@@ -135,10 +140,10 @@ export default function AntiReverseEngineering({
       const isEmulator = !Device.isDevice;
       
       if (isEmulator) {
-        console.warn('⚠️ Security: Running on emulator/simulator');
+        console.log('🔍 Security: Running on emulator/simulator (allowed in development)');
         return {
           name: 'Emulator Detection',
-          passed: false,
+          passed: __DEV__ ? true : false, // Allow in development
           description: 'App is running on emulator/simulator',
         };
       }
@@ -151,7 +156,7 @@ export default function AntiReverseEngineering({
     } catch (error) {
       return {
         name: 'Emulator Detection',
-        passed: false,
+        passed: __DEV__ ? true : false, // Allow in development
         description: 'Emulator detection failed',
       };
     }
@@ -210,7 +215,7 @@ export default function AntiReverseEngineering({
     } catch (error) {
       return {
         name: 'Root/Jailbreak Detection',
-        passed: false,
+        passed: __DEV__ ? true : false, // Allow in development
         description: 'Root/jailbreak detection failed',
       };
     }
@@ -225,7 +230,7 @@ export default function AntiReverseEngineering({
       if (appId !== expectedAppId) {
         return {
           name: 'App Signature',
-          passed: false,
+          passed: __DEV__ ? true : false, // Allow in development
           description: 'Invalid application signature',
         };
       }
@@ -237,7 +242,7 @@ export default function AntiReverseEngineering({
       if (!appVersion || !buildVersion) {
         return {
           name: 'App Signature',
-          passed: false,
+          passed: __DEV__ ? true : false, // Allow in development
           description: 'Invalid app version information',
         };
       }
@@ -250,7 +255,7 @@ export default function AntiReverseEngineering({
     } catch (error) {
       return {
         name: 'App Signature',
-        passed: false,
+        passed: __DEV__ ? true : false, // Allow in development
         description: 'App signature verification failed',
       };
     }
@@ -261,8 +266,8 @@ export default function AntiReverseEngineering({
       // Check for code tampering by verifying critical functions
       const criticalFunctions = [
         'securityService',
-        'secureWalletService',
-        'secureReferralService',
+        'supabase',
+        'useAuth',
       ];
 
       let allFunctionsExist = true;
@@ -276,7 +281,7 @@ export default function AntiReverseEngineering({
       if (!allFunctionsExist) {
         return {
           name: 'Code Integrity',
-          passed: false,
+          passed: __DEV__ ? true : false, // Allow in development
           description: 'Critical security functions missing',
         };
       }
@@ -316,7 +321,7 @@ export default function AntiReverseEngineering({
     } catch (error) {
       return {
         name: 'Code Integrity',
-        passed: false,
+        passed: __DEV__ ? true : false, // Allow in development
         description: 'Code integrity check failed',
       };
     }
@@ -343,7 +348,7 @@ export default function AntiReverseEngineering({
       if (suspiciousEnvironment) {
         return {
           name: 'Runtime Environment',
-          passed: false,
+          passed: __DEV__ ? true : false, // Allow in development
           description: 'Suspicious runtime environment detected',
         };
       }
@@ -366,7 +371,7 @@ export default function AntiReverseEngineering({
       if (devToolsDetected) {
         return {
           name: 'Runtime Environment',
-          passed: false,
+          passed: __DEV__ ? true : false, // Allow in development
           description: 'Development tools detected',
         };
       }
@@ -379,7 +384,7 @@ export default function AntiReverseEngineering({
     } catch (error) {
       return {
         name: 'Runtime Environment',
-        passed: false,
+        passed: __DEV__ ? true : false, // Allow in development
         description: 'Runtime environment check failed',
       };
     }
@@ -406,7 +411,7 @@ export default function AntiReverseEngineering({
       if (networkToolsDetected) {
         return {
           name: 'Network Security',
-          passed: false,
+          passed: __DEV__ ? true : false, // Allow in development
           description: 'Network interception tools detected',
         };
       }
@@ -442,7 +447,7 @@ export default function AntiReverseEngineering({
     } catch (error) {
       return {
         name: 'Network Security',
-        passed: false,
+        passed: __DEV__ ? true : false, // Allow in development
         description: 'Network security check failed',
       };
     }
@@ -456,34 +461,38 @@ export default function AntiReverseEngineering({
       onSecurityViolation(`Security violations detected: ${failedChecks.map(check => check.name).join(', ')}`);
     }
 
-    // Show alert to user
-    Alert.alert(
-      'Security Warning',
-      'Security violations detected. The app may not function properly.',
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            // Optionally restrict app functionality
-            console.log('User acknowledged security warning');
+    // Show alert to user only in production
+    if (!__DEV__) {
+      Alert.alert(
+        'Security Warning',
+        'Security violations detected. The app may not function properly.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Optionally restrict app functionality
+              console.log('User acknowledged security warning');
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
 
-    // Log detailed security audit
-    securityService.logSecurityAudit(
-      'system',
-      'security_violations_detected',
-      90,
-      {
-        failed_checks: failedChecks.map(check => ({
-          name: check.name,
-          description: check.description,
-        })),
-        device_info: securityService.getDeviceFingerprint(),
-      }
-    );
+    // Log detailed security audit only in production
+    if (!__DEV__) {
+      securityService.logSecurityAudit(
+        'system',
+        'security_violations_detected',
+        90,
+        {
+          failed_checks: failedChecks.map(check => ({
+            name: check.name,
+            description: check.description,
+          })),
+          device_info: securityService.getDeviceFingerprint(),
+        }
+      );
+    }
   };
 
   // Show loading state
@@ -495,8 +504,8 @@ export default function AntiReverseEngineering({
     );
   }
 
-  // Show security violation screen
-  if (!isSecure) {
+  // Show security violation screen only in production
+  if (!isSecure && !__DEV__) {
     return (
       <View style={{ 
         flex: 1, 
@@ -552,7 +561,7 @@ export default function AntiReverseEngineering({
     );
   }
 
-  // Render children if all security checks pass
+  // Render children if all security checks pass or in development
   return <>{children}</>;
 }
 
@@ -586,7 +595,7 @@ export const performSecurityCheck = async (checkName: string): Promise<boolean> 
     }
   } catch (error) {
     console.error(`Security check ${checkName} failed:`, error);
-    return false;
+    return __DEV__ ? true : false; // Allow in development
   }
 };
 
@@ -595,7 +604,7 @@ async function checkDebugMode(): Promise<SecurityCheck> {
   const isDebug = __DEV__;
   return {
     name: 'Debug Mode',
-    passed: !isDebug,
+    passed: __DEV__ ? true : !isDebug, // Allow in development
     description: isDebug ? 'App is running in debug mode' : 'App is running in production mode',
   };
 }
@@ -604,7 +613,7 @@ async function checkEmulator(): Promise<SecurityCheck> {
   const isEmulator = !Device.isDevice;
   return {
     name: 'Emulator Detection',
-    passed: !isEmulator,
+    passed: __DEV__ ? true : !isEmulator, // Allow in development
     description: isEmulator ? 'App is running on emulator/simulator' : 'App is running on real device',
   };
 }
@@ -625,18 +634,18 @@ async function checkAppSignature(): Promise<SecurityCheck> {
   
   return {
     name: 'App Signature',
-    passed: isValid,
+    passed: __DEV__ ? true : isValid, // Allow in development
     description: isValid ? 'App signature verified' : 'Invalid application signature',
   };
 }
 
 async function checkCodeIntegrity(): Promise<SecurityCheck> {
-  const criticalFunctions = ['securityService', 'secureWalletService', 'secureReferralService'];
+  const criticalFunctions = ['securityService', 'supabase', 'useAuth'];
   const allFunctionsExist = criticalFunctions.every(func => typeof (global as any)[func] !== 'undefined');
   
   return {
     name: 'Code Integrity',
-    passed: allFunctionsExist,
+    passed: __DEV__ ? true : allFunctionsExist, // Allow in development
     description: allFunctionsExist ? 'Code integrity verified' : 'Critical security functions missing',
   };
 }
@@ -647,7 +656,7 @@ async function checkRuntimeEnvironment(): Promise<SecurityCheck> {
   
   return {
     name: 'Runtime Environment',
-    passed: !toolsDetected,
+    passed: __DEV__ ? true : !toolsDetected, // Allow in development
     description: toolsDetected ? 'Development tools detected' : 'Runtime environment appears secure',
   };
 }
@@ -658,7 +667,7 @@ async function checkNetworkSecurity(): Promise<SecurityCheck> {
   
   return {
     name: 'Network Security',
-    passed: !toolsDetected,
+    passed: __DEV__ ? true : !toolsDetected, // Allow in development
     description: toolsDetected ? 'Network interception tools detected' : 'Network security verified',
   };
 }

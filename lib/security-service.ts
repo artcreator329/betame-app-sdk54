@@ -99,9 +99,9 @@ class SecurityService {
       app_version: Application.nativeApplicationVersion || 'unknown',
       build_number: Application.nativeBuildVersion || 'unknown',
       device_name: Device.deviceName || 'unknown',
-      total_memory: Device.totalMemory,
-      cpu_architecture: Device.cpuArchitecture,
-      screen_resolution: `${Device.screenWidth}x${Device.screenHeight}`,
+      total_memory: Device.totalMemory || undefined,
+      cpu_architecture: undefined, // Device.cpuArchitecture not available in expo-device
+      screen_resolution: undefined, // Device.screenWidth/screenHeight not available in expo-device
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       locale: Intl.DateTimeFormat().resolvedOptions().locale,
     };
@@ -466,7 +466,7 @@ class SecurityService {
   }
 
   /**
-   * Log security audit event
+   * Log security audit events
    */
   async logSecurityAudit(
     userId: string,
@@ -475,6 +475,20 @@ class SecurityService {
     metadata: any = {}
   ): Promise<void> {
     try {
+      // For system-level audits, skip database logging in development
+      if (userId === 'system' && __DEV__) {
+        console.log('🔍 Security Audit (Development):', { action, riskScore, metadata });
+        return;
+      }
+
+      // Validate userId is a valid UUID for database logging
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
+      
+      if (!isValidUUID && userId !== 'system') {
+        console.warn('Invalid UUID for security audit:', userId);
+        return;
+      }
+
       const audit: Omit<SecurityAudit, 'id' | 'created_at'> = {
         user_id: userId,
         action,
@@ -488,13 +502,18 @@ class SecurityService {
         },
       };
 
-      // Store in database
-      const { error } = await supabase
-        .from('security_audits')
-        .insert(audit);
+      // Store in database only for valid user IDs
+      if (isValidUUID) {
+        const { error } = await supabase
+          .from('security_audits')
+          .insert(audit);
 
-      if (error) {
-        console.error('Failed to log security audit:', error);
+        if (error) {
+          console.error('Failed to log security audit:', error);
+        }
+      } else {
+        // For system audits, just log to console
+        console.log('🔍 System Security Audit:', { action, riskScore, metadata });
       }
     } catch (error) {
       console.error('Security audit logging failed:', error);

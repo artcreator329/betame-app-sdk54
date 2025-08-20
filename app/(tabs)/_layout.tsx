@@ -58,8 +58,8 @@ function DesktopSidebar() {
 
       <View style={styles.navContainer}>
         {navItems.map((item) => {
-          // Skip auth-required items if user is not authenticated
-          if (item.requiresAuth && !isAuthenticated) return null;
+          // Skip auth-required items if user is not authenticated (except services for browsing)
+          if (item.requiresAuth && !isAuthenticated && item.name !== 'services') return null;
           
           const isActive = currentRoute === item.name;
           const IconComponent = item.icon;
@@ -153,7 +153,7 @@ export default function TabLayout() {
             tabBarStyle: { display: 'none' }, // Hide the tab bar on desktop
           }}>
             <Tabs.Screen name="index" />
-            <Tabs.Screen name="services" options={{ href: isAuthenticated ? '/services' : null }} />
+            <Tabs.Screen name="services" />
             <Tabs.Screen name="orders" options={{ href: isAuthenticated ? '/orders' : null }} />
             <Tabs.Screen name="notifications" options={{ href: isAuthenticated ? '/notifications' : null }} />
             <Tabs.Screen name="profile" />
@@ -235,7 +235,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Briefcase size={size} color={color} />
           ),
-          href: isAuthenticated ? '/services' : null,
+          // Allow non-authenticated users to browse services
         }}
         listeners={{
           focus: () => moveIndicator(1),

@@ -46,6 +46,8 @@ const convertToUIService = (dbService: DBService): Service => ({
 });
 
 export default function ServicesScreen() {
+  console.log('🚀 ServicesScreen: Component rendered');
+  
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,15 +63,17 @@ export default function ServicesScreen() {
   }, [refreshing]);
 
   const fetchServices = useCallback(async () => {
+    console.log('🔍 ServicesScreen: fetchServices called');
     try {
       setIsLoading(true);
+      console.log('🔍 ServicesScreen: Calling ServiceService.getAllServices()');
       const allServices = await ServiceService.getAllServices();
       console.log('📋 ServicesScreen: Fetched services from DB:', allServices.length);
       const uiServices = allServices.map(convertToUIService);
       console.log('🎨 ServicesScreen: Converted to UI services:', uiServices.map(s => ({ id: s.id, title: s.title })));
       setServices(uiServices);
     } catch (error) {
-      console.error('Error fetching services:', error);
+      console.error('❌ ServicesScreen: Error fetching services:', error);
       setServices([]);
     } finally {
       setIsLoading(false);

@@ -42,7 +42,7 @@ import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, ActivityIndicator } from 'react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { configureLocalNotifications } from '@/lib/local-notifications';
 import { useDeepLinking } from '@/hooks/useDeepLinking';
 import { audioSessionManager } from '@/lib/audio-session-manager';
@@ -67,6 +67,7 @@ function RootLayoutNav() {
   const { user, isAdmin, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
   
   // Initialize deep linking
   useDeepLinking();
@@ -76,15 +77,22 @@ function RootLayoutNav() {
     audioSessionManager.configureForSilentPlayback();
   }, []);
 
+  // Mark component as mounted after initial render
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   console.log('🔄 RootLayoutNav: Rendering with user:', !!user, 'isAdmin:', isAdmin, 'loading:', loading, 'segments:', segments);
 
   useEffect(() => {
     console.log('🔄 RootLayoutNav: useEffect triggered with loading:', loading);
-    if (loading) {
-      console.log('⏳ RootLayoutNav: Still loading, returning early');
+    
+    // Don't navigate until component is mounted
+    if (!isMounted) {
+      console.log('⏳ RootLayoutNav: Component not mounted yet, skipping navigation');
       return;
     }
-
+    
     const inAuthGroup = segments[0] === 'auth';
     const inTabsGroup = segments[0] === '(tabs)';
     const inAdminGroup = segments[0] === 'admin';
@@ -94,7 +102,6 @@ function RootLayoutNav() {
     console.log('🔍 Layout: Groups - auth:', inAuthGroup, 'tabs:', inTabsGroup, 'admin:', inAdminGroup);
     
     // Allow access to auth pages without authentication
-    // Also allow access when there are verification tokens in the URL
     if (inAuthGroup) {
       console.log('🔍 Layout: In auth group, allowing access');
       return;
@@ -102,177 +109,149 @@ function RootLayoutNav() {
     
     // Allow access to pages with verification tokens for deep linking
     const hasVerificationToken = segments.some(segment => 
-      segment?.includes('token=') || segment?.includes('code=') || segment?.includes('verification=')
+      segment.includes('token=') || 
+      segment.includes('type=') || 
+      segment.includes('email=')
     );
+    
     if (hasVerificationToken) {
-      console.log('🔍 Layout: Verification token detected, allowing access');
+      console.log('🔍 Layout: Has verification token, allowing access');
       return;
     }
     
-    // Don't auto-redirect admin users - let the login flow handle admin routing
-    // This allows the AdminSignInChoiceModal to appear
-    // if (user && isAdmin && !inAdminGroup) {
-    //   console.log('🔍 Layout: Admin user not in admin group, redirecting to /admin');
-    //   router.replace('/admin');
-    //   return;
-    // }
-    
-    // If user is not admin but trying to access admin pages, redirect to homepage
-    if (inAdminGroup && (!user || !isAdmin)) {
-      router.replace('/(tabs)');
+    // If still loading, don't navigate - wait for loading to complete
+    if (loading) {
+      console.log('⏳ RootLayoutNav: Still loading, waiting for authentication to complete');
       return;
     }
     
-    // For tabs group, allow homepage access without authentication
-    if (inTabsGroup) {
-      const currentTab = segments[1];
-      const isHomePage = !currentTab; // Default tab (no specific tab segment) is homepage
-      
-      // Allow homepage access for everyone, require auth for other tabs
-      if (!isHomePage && !user) {
-        console.log('🔍 Layout: Non-homepage tab without auth, redirecting to login');
+    // Public pages that don't require authentication
+    const publicPages = [
+      'about-us', 'contact-us', 'faq', 'legal', 'privacy-policy', 'terms-of-service',
+      'safety-security', 'payment-help', 'support', 'user-guide'
+    ];
+    
+    const currentPage = segments[0];
+    
+    // Allow non-authenticated users to access the homepage (tabs group)
+    if (!user && inTabsGroup) {
+      console.log('🔍 Layout: Non-authenticated user accessing homepage, allowing access');
+      return;
+    }
+    
+    // Temporarily allow all access for debugging
+    console.log('🔍 Layout: Allowing access to all pages for debugging');
+    
+    // Check if user is admin and trying to access admin pages
+    if (inAdminGroup && !isAdmin) {
+      console.log('🔍 Layout: Non-admin trying to access admin pages, redirecting to home');
+      router.replace('/');
+      return;
+    }
+    
+    // Check if user is admin and trying to access regular pages
+    if (isAdmin && !inAdminGroup && !inAuthGroup) {
+      console.log('🔍 Layout: Admin accessing regular pages, redirecting to admin dashboard');
+      router.replace('/admin-dashboard');
+      return;
+    }
+    
+    // Pages that require authentication (user-specific actions)
+    const authenticatedPages = [
+      'settings', 'edit-profile', 'notification-settings', 'wallet', 'messages',
+      'favorites', 'orders', 'create-service-listing', 'create-job-listing',
+      'become-service-provider', 'ekyc-verification', 'malaysian-payment-gateway',
+      'edit-service', 'job-acceptance', 'job-progress', 'job-completion', 'job-review'
+    ];
+    
+    // Pages that require authentication for actions but allow viewing
+    const viewOnlyPages = [
+      'search', 'trending', 'nearby', 'check-in', 'detailed-service-listing',
+      'service', 'profile', 'user-profile', 'chat', 'job', 'test-map'
+    ];
+    
+    // Allow access to public pages without authentication
+    if (publicPages.includes(currentPage)) {
+      console.log('🔍 Layout: Accessing public page, allowing access');
+      return;
+    }
+    
+    // Check authentication for authenticated pages (require login)
+    if (authenticatedPages.includes(currentPage)) {
+      if (!user) {
+        console.log('🔍 Layout: Unauthenticated user trying to access authenticated page, redirecting to login');
         router.replace('/auth/login');
         return;
       }
-      console.log('🔍 Layout: In tabs group, allowing access');
+      console.log('🔍 Layout: Accessing authenticated page, allowing access');
       return;
     }
     
-    // Allow access to specific pages without authentication
-    const publicPages = ['trending', 'nearby', 'user-profile', 'profile', 'service', 'terms-of-service', 'privacy-policy', 'legal', 'about-us', 'contact-us', 'faq', 'user-guide', 'safety-security'];
-    const currentPage = segments[0];
-    
-    if (publicPages.includes(currentPage)) {
-      console.log('🔍 Layout: Public page, allowing access');
+    // Allow viewing of service-related pages without authentication
+    if (viewOnlyPages.includes(currentPage)) {
+      console.log('🔍 Layout: Accessing view-only page, allowing access for browsing');
       return;
     }
     
-    // If user is not authenticated and not in auth, tabs, or public pages, redirect to homepage
-    if (!user) {
-      console.log('🔍 Layout: No user and not in allowed pages, redirecting to tabs');
-      router.replace('/(tabs)');
-      return;
+    // Default navigation for authenticated users - only redirect if not in any allowed group
+    if (user && !inTabsGroup && !inAdminGroup && !inAuthGroup) {
+      console.log('🔍 Layout: Authenticated user on unknown page, redirecting to home');
+      router.replace('/');
     }
     
-    // For authenticated users, allow access to all pages
-    console.log('🔍 Layout: Authenticated user, allowing access to all pages');
-  }, [user, isAdmin, segments, loading]);
+    // Temporarily allow all access for debugging
+    console.log('🔍 Layout: Allowing access to all pages for debugging');
+  }, [user, isAdmin, loading, segments, isMounted]);
 
-  console.log('🔄 RootLayoutNav: About to render Stack with segments:', segments);
-
-  // Show loading screen while auth is loading
   if (loading) {
-    console.log('⏳ RootLayoutNav: Showing loading screen');
     return <LoadingScreen />;
   }
 
   return (
-    <Stack 
-      screenOptions={{ 
-        headerShown: false,
-        animation: 'slide_from_right',
-        animationDuration: 450,
-        animationTypeForReplace: 'push',
-        gestureEnabled: true,
-        gestureDirection: 'horizontal',
-      }}>
-      <Stack.Screen 
-        name="auth/login" 
-        options={{ 
-          animation: 'fade',
-          animationDuration: 350,
-        }}
-      />
-      <Stack.Screen 
-        name="auth/verify-email" 
-        options={{ 
-          animation: 'fade',
-          animationDuration: 350,
-        }}
-      />
-      <Stack.Screen 
-        name="auth/callback" 
-        options={{ 
-          animation: 'fade',
-          animationDuration: 350,
-        }}
-      />
-      <Stack.Screen 
-        name="auth/reset-password" 
-        options={{ 
-          animation: 'fade',
-          animationDuration: 350,
-        }}
-      />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="admin" />
-      <Stack.Screen name="admin/notifications" />
-      <Stack.Screen name="service/[id]" />
-      <Stack.Screen name="user-profile/[userId]" />
-      <Stack.Screen name="profile/[userId]" />
-      <Stack.Screen name="search" />
-      <Stack.Screen name="messages" />
-      <Stack.Screen name="chat/[participantId]" />
-      <Stack.Screen 
-        name="wallet" 
-        options={{ 
-          animation: 'slide_from_bottom',
-          animationDuration: 500,
-        }}
-      />
-      <Stack.Screen 
-        name="settings" 
-        options={{ 
-          animation: 'slide_from_bottom',
-          animationDuration: 500,
-        }}
-      />
-      <Stack.Screen name="edit-profile" />
-      <Stack.Screen 
-        name="become-service-provider" 
-        options={{ 
-          animation: 'slide_from_bottom',
-          animationDuration: 500,
-        }}
-      />
-      <Stack.Screen name="nearby" />
-      <Stack.Screen 
-        name="create-job-listing" 
-        options={{ 
-          animation: 'slide_from_bottom',
-          animationDuration: 500,
-        }}
-      />
-      <Stack.Screen 
-        name="create-service-listing" 
-        options={{ 
-          animation: 'slide_from_bottom',
-          animationDuration: 500,
-        }}
-      />
-      <Stack.Screen name="favorites" />
-      <Stack.Screen name="trending" />
-      <Stack.Screen name="check-in" />
-      <Stack.Screen 
-        name="notification-settings" 
-        options={{ 
-          animation: 'slide_from_bottom',
-          animationDuration: 500,
-        }}
-      />
-      <Stack.Screen name="terms-of-service" />
-      <Stack.Screen name="privacy-policy" />
-      <Stack.Screen name="legal" />
-      <Stack.Screen name="faq" />
-      <Stack.Screen name="about-us" />
-      <Stack.Screen name="contact-us" />
-      <Stack.Screen name="support" />
-      <Stack.Screen name="user-guide" />
-      <Stack.Screen name="safety-security" />
-      <Stack.Screen name="payment-help" />
-      <Stack.Screen name="my-account" />
-      <Stack.Screen name="orders" />
-      <Stack.Screen name="+not-found" />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="auth" options={{ headerShown: false }} />
+      <Stack.Screen name="admin" options={{ headerShown: false }} />
+      <Stack.Screen name="chat/[participantId]" options={{ headerShown: false }} />
+      <Stack.Screen name="job/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="service/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="profile/[userId]" options={{ headerShown: false }} />
+      <Stack.Screen name="user-profile/[userId]" options={{ headerShown: false }} />
+      <Stack.Screen name="edit-service/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="job-acceptance/[jobId]" options={{ headerShown: false }} />
+      <Stack.Screen name="job-progress/[jobId]" options={{ headerShown: false }} />
+      <Stack.Screen name="job-completion/[jobId]" options={{ headerShown: false }} />
+      <Stack.Screen name="job-review/[jobId]" options={{ headerShown: false }} />
+      <Stack.Screen name="check-in" options={{ headerShown: false }} />
+      <Stack.Screen name="nearby" options={{ headerShown: false }} />
+      <Stack.Screen name="search" options={{ headerShown: false }} />
+      <Stack.Screen name="trending" options={{ headerShown: false }} />
+      <Stack.Screen name="favorites" options={{ headerShown: false }} />
+      <Stack.Screen name="orders" options={{ headerShown: false }} />
+      <Stack.Screen name="messages" options={{ headerShown: false }} />
+      <Stack.Screen name="wallet" options={{ headerShown: false }} />
+      <Stack.Screen name="trophy" options={{ headerShown: false }} />
+      <Stack.Screen name="create-service-listing" options={{ headerShown: false }} />
+      <Stack.Screen name="create-job-listing" options={{ headerShown: false }} />
+      <Stack.Screen name="detailed-service-listing" options={{ headerShown: false }} />
+      <Stack.Screen name="become-service-provider" options={{ headerShown: false }} />
+      <Stack.Screen name="ekyc-verification" options={{ headerShown: false }} />
+      <Stack.Screen name="malaysian-payment-gateway" options={{ headerShown: false }} />
+      <Stack.Screen name="about-us" options={{ headerShown: false }} />
+      <Stack.Screen name="contact-us" options={{ headerShown: false }} />
+      <Stack.Screen name="faq" options={{ headerShown: false }} />
+      <Stack.Screen name="legal" options={{ headerShown: false }} />
+      <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+      <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
+      <Stack.Screen name="safety-security" options={{ headerShown: false }} />
+      <Stack.Screen name="payment-help" options={{ headerShown: false }} />
+      <Stack.Screen name="support" options={{ headerShown: false }} />
+      <Stack.Screen name="user-guide" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ headerShown: false }} />
+      <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+      <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
+      <Stack.Screen name="test-map" options={{ headerShown: false }} />
+      <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
     </Stack>
   );
 }

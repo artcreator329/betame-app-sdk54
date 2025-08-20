@@ -35,19 +35,24 @@ export class ServiceService {
    * Get all services
    */
   static async getAllServices(): Promise<Service[]> {
+    console.log('🔍 ServiceService.getAllServices: Starting...');
     try {
       // Get all services including variants
+      console.log('🔍 ServiceService.getAllServices: Making Supabase query...');
       const { data: allServices, error: servicesError } = await supabase
         .from('services')
-        .select('*, industry')
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (servicesError) {
-        console.error('Error fetching services:', servicesError);
+        console.error('❌ ServiceService.getAllServices: Error fetching services:', servicesError);
         return [];
       }
 
+      console.log('✅ ServiceService.getAllServices: Got services from DB:', allServices?.length || 0);
+
       if (!allServices || allServices.length === 0) {
+        console.log('ℹ️ ServiceService.getAllServices: No services found');
         return [];
       }
 
@@ -124,7 +129,7 @@ export class ServiceService {
       // Get all nearby services including variants
       const { data: allServices, error: servicesError } = await supabase
         .from('services')
-        .select('*, industry')
+        .select('*')
         .eq('is_nearby', true)
         .order('created_at', { ascending: false });
 
@@ -212,7 +217,7 @@ export class ServiceService {
       // First get trending services
       const { data: services, error: servicesError } = await supabase
         .from('services')
-        .select('*, industry')
+        .select('*')
         .eq('is_trending', true)
         .order('rating', { ascending: false })
         .order('review_count', { ascending: false });
@@ -271,7 +276,7 @@ export class ServiceService {
       // Get all services by category including variants
       const { data: allServices, error: servicesError } = await supabase
         .from('services')
-        .select('*, industry')
+        .select('*')
         .eq('category_name', categoryName)
         .order('created_at', { ascending: false });
 
@@ -358,7 +363,7 @@ export class ServiceService {
     try {
       const { data, error } = await supabase
         .from('services')
-        .select('*, industry')
+        .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
@@ -381,7 +386,7 @@ export class ServiceService {
     try {
       const { data: variants, error } = await supabase
         .from('services')
-        .select('*, industry')
+        .select('*')
         .eq('parent_service_id', parentServiceId)
         .order('created_at', { ascending: true });
 
@@ -482,7 +487,7 @@ export class ServiceService {
       
       const { data: service, error } = await supabase
         .from('services')
-        .select('*, industry')
+        .select('*')
         .eq('id', id)
         .maybeSingle();
 
@@ -537,7 +542,7 @@ export class ServiceService {
     try {
       const { data, error } = await supabase
         .from('services')
-        .select('*, industry')
+        .select('*')
         .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
         .order('created_at', { ascending: false });
 
