@@ -266,16 +266,16 @@ export default function HomeScreen() {
 
         {/* Banner Ad Space */}
         <View style={[styles.bannerContainer, { shadowColor: colors.shadow.medium }]}>
-          <FlatList
-            data={bannerSlides}
-            renderItem={renderBannerItem}
-            keyExtractor={(item) => item.id}
+          <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={handleSlideChange}
             style={styles.bannerSlider}
-          />
+            nestedScrollEnabled={true}
+          >
+            {bannerSlides.map((item) => renderBannerItem({ item }))}
+          </ScrollView>
           <View style={styles.bannerIndicators}>
             {bannerSlides.map((_, index) => (
               <View

@@ -61,8 +61,7 @@ export class SearchService {
           category_name,
           location,
           rating,
-          user_id,
-          profiles!services_user_id_fkey(full_name, avatar_url)
+          user_id
         `)
         .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category_name.ilike.%${searchTerm}%`)
         .eq('status', 'active')
@@ -97,8 +96,7 @@ export class SearchService {
           currency,
           cover_photo,
           location_address,
-          user_id,
-          profiles!job_listings_user_id_fkey(full_name, avatar_url)
+          user_id
         `)
         .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
         .eq('status', 'active')
@@ -217,6 +215,7 @@ export class SearchService {
    * Perform full search with filters
    */
   static async search(query: string, filters?: SearchFilters): Promise<SearchResult> {
+    console.log('🔍 SearchService.search called with query:', query, 'filters:', filters);
     const searchTerm = query.trim().toLowerCase();
     const result: SearchResult = {
       services: [],
@@ -228,11 +227,13 @@ export class SearchService {
     };
 
     if (!searchTerm) {
+      console.log('🔍 SearchService.search: Empty search term, returning empty result');
       return result;
     }
 
     try {
       // Build service query
+      console.log('🔍 SearchService.search: Building service query for searchTerm:', searchTerm);
       let serviceQuery = supabase
         .from('services')
         .select(`
@@ -246,8 +247,7 @@ export class SearchService {
           location,
           rating,
           review_count,
-          user_id,
-          profiles!services_user_id_fkey(full_name, avatar_url)
+          user_id
         `)
         .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category_name.ilike.%${searchTerm}%`)
         .eq('status', 'active');
@@ -269,7 +269,13 @@ export class SearchService {
         serviceQuery = serviceQuery.gte('rating', filters.rating);
       }
 
-      const { data: services } = await serviceQuery.limit(this.SEARCH_LIMIT);
+      const { data: services, error: servicesError } = await serviceQuery.limit(this.SEARCH_LIMIT);
+
+      if (servicesError) {
+        console.error('🔍 SearchService.search: Error fetching services:', servicesError);
+      }
+
+      console.log('🔍 SearchService.search: Found services:', services?.length || 0);
 
       if (services) {
         result.services = services.map(service => ({
@@ -299,8 +305,7 @@ export class SearchService {
             currency,
             cover_photo,
             location_address,
-            user_id,
-            profiles!job_listings_user_id_fkey(full_name, avatar_url)
+            user_id
           `)
           .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
           .eq('status', 'active');
@@ -346,8 +351,15 @@ export class SearchService {
 
       result.total = result.services.length + result.jobs.length + result.users.length;
 
+      console.log('🔍 SearchService.search: Final result:', {
+        services: result.services.length,
+        jobs: result.jobs.length,
+        users: result.users.length,
+        total: result.total
+      });
+
     } catch (error) {
-      console.error('Error performing search:', error);
+      console.error('🔍 SearchService.search: Error performing search:', error);
     }
 
     return result;

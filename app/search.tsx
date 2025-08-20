@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -40,33 +40,45 @@ export default function SearchScreen() {
   const { user } = useAuth();
 
   useEffect(() => {
+    console.log('🔍 SearchScreen: useEffect for searchQuery, searchQuery:', searchQuery, 'filters:', filters);
     if (searchQuery.trim()) {
+      console.log('🔍 SearchScreen: Triggering performSearch with:', searchQuery);
       performSearch(searchQuery, filters);
     }
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, performSearch]);
 
   useEffect(() => {
+    console.log('🔍 SearchScreen: useEffect for q parameter, q:', q);
     if (q) {
+      console.log('🔍 SearchScreen: Setting searchQuery to:', q);
       setSearchQuery(q);
+      // Also trigger the search immediately when we have a query parameter
+      performSearch(q, filters);
     }
-  }, [q]);
+  }, [q, performSearch, filters]);
 
-  const performSearch = async (query: string, searchFilters?: SearchFilters) => {
-    if (!query.trim()) return;
+  const performSearch = useCallback(async (query: string, searchFilters?: SearchFilters) => {
+    console.log('🔍 SearchScreen.performSearch called with query:', query, 'filters:', searchFilters);
+    if (!query.trim()) {
+      console.log('🔍 SearchScreen.performSearch: Empty query, returning early');
+      return;
+    }
 
     setIsLoading(true);
     try {
       const results = await SearchService.search(query, searchFilters);
+      console.log('🔍 SearchScreen.performSearch: Got results:', results);
       setSearchResults(results);
     } catch (error) {
-      console.error('Error performing search:', error);
+      console.error('🔍 SearchScreen.performSearch: Error performing search:', error);
       Alert.alert('Error', 'Failed to search. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const handleSearch = (query: string) => {
+    console.log('🔍 SearchScreen.handleSearch called with query:', query);
     setSearchQuery(query);
     performSearch(query, filters);
   };
@@ -108,7 +120,17 @@ export default function SearchScreen() {
   };
 
   const renderTabContent = () => {
-    if (!searchResults) return null;
+    if (!searchResults) {
+      console.log('🔍 SearchScreen.renderTabContent: searchResults is null');
+      return null;
+    }
+    
+    console.log('🔍 SearchScreen.renderTabContent: Rendering with searchResults:', {
+      services: searchResults.services.length,
+      jobs: searchResults.jobs.length,
+      users: searchResults.users.length,
+      total: searchResults.total
+    });
 
     const renderServiceItem = (item: any) => (
       <View key={item.id} style={styles.resultItem}>
@@ -271,6 +293,9 @@ export default function SearchScreen() {
                 'No results found'
               }
             </Text>
+            <Text style={[styles.searchInfoText, { color: colors.text.secondary, fontSize: 12 }]}>
+              Debug: searchQuery="{searchQuery}", searchResults={searchResults ? 'exists' : 'null'}, isLoading={isLoading.toString()}
+            </Text>
           </View>
         )}
 
@@ -332,6 +357,26 @@ export default function SearchScreen() {
             <Text style={[styles.noResultsText, { color: colors.text.secondary }]}>
               Try adjusting your search terms or filters
             </Text>
+          </View>
+        )}
+
+        {/* Initial State - No Search Query */}
+        {!isLoading && !searchQuery && !searchResults && (
+          <View style={styles.initialState}>
+            <Text style={[styles.initialStateTitle, { color: colors.text.primary }]}>
+              Search for services, jobs, or people
+            </Text>
+            <Text style={[styles.initialStateText, { color: colors.text.secondary }]}>
+              Enter a search term to get started
+            </Text>
+            <TouchableOpacity
+              style={[styles.testButton, { backgroundColor: colors.primary.main }]}
+              onPress={() => handleSearch('Corporate')}
+            >
+              <Text style={[styles.testButtonText, { color: colors.text.white }]}>
+                Test Search: "Corporate"
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -465,5 +510,30 @@ const styles = StyleSheet.create({
   noResultsText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  initialState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  initialStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  initialStateText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  testButton: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  testButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
