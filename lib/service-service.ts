@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { FeatureService } from './feature-service';
 
 export interface Service {
   id?: string;
@@ -93,10 +94,15 @@ export class ServiceService {
       // Create a map for quick lookup
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      // Combine parent services with profile data and variants
+      // Get active features for all services
+      const serviceIds = parentServices.map(s => s.id);
+      const activeFeaturesMap = await FeatureService.getActiveFeaturesForServices(serviceIds);
+
+      // Combine parent services with profile data, variants, and active features
       return parentServices.map(service => {
         const profile = profileMap.get(service.user_id);
         const variants = variantsMap.get(service.id) || [];
+        const activeFeatures = activeFeaturesMap[service.id] || [];
         
         // Add profile data to variants as well
         const variantsWithProfiles = variants.map(variant => {
@@ -112,7 +118,8 @@ export class ServiceService {
           ...service,
           provider_name: profile?.full_name || 'Service Provider',
           provider_avatar: profile?.avatar_url,
-          service_variants: variantsWithProfiles
+          service_variants: variantsWithProfiles,
+          active_features: activeFeatures
         };
       });
     } catch (error) {
@@ -187,20 +194,26 @@ export class ServiceService {
       // Create a map for quick lookup
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      // Combine main services with profile data and adjusted pricing
+      // Get active features for all services
+      const serviceIds = mainServices.map(s => s.id);
+      const activeFeaturesMap = await FeatureService.getActiveFeaturesForServices(serviceIds);
+
+      // Combine main services with profile data, adjusted pricing, and active features
       return mainServices.map(service => {
         const profile = profileMap.get(service.user_id);
         const variants = variantsMap.get(service.id) || [];
         const lowestPrice = variants.length > 0 
           ? Math.min(...variants.map(v => v.price))
           : service.price;
+        const activeFeatures = activeFeaturesMap[service.id] || [];
         
         return {
           ...service,
           price: lowestPrice,
           provider_name: profile?.full_name || 'Service Provider',
           provider_avatar: profile?.avatar_url,
-          service_variants: variants
+          service_variants: variants,
+          active_features: activeFeatures
         };
       });
     } catch (error) {
@@ -253,13 +266,19 @@ export class ServiceService {
       // Create a map for quick lookup
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      // Combine services with profile data
+      // Get active features for all services
+      const serviceIds = services.map(s => s.id);
+      const activeFeaturesMap = await FeatureService.getActiveFeaturesForServices(serviceIds);
+
+      // Combine services with profile data and active features
       return services.map(service => {
         const profile = profileMap.get(service.user_id);
+        const activeFeatures = activeFeaturesMap[service.id] || [];
         return {
           ...service,
           provider_name: profile?.full_name || 'Service Provider',
-          provider_avatar: profile?.avatar_url
+          provider_avatar: profile?.avatar_url,
+          active_features: activeFeatures
         };
       });
     } catch (error) {
@@ -372,7 +391,17 @@ export class ServiceService {
         return [];
       }
 
-      return data || [];
+      const services = data || [];
+      
+      // Get active features for all services
+      const serviceIds = services.map(s => s.id);
+      const activeFeaturesMap = await FeatureService.getActiveFeaturesForServices(serviceIds);
+
+      // Combine services with active features
+      return services.map(service => ({
+        ...service,
+        active_features: activeFeaturesMap[service.id] || []
+      }));
     } catch (error) {
       console.error('Error in getUserServices:', error);
       return [];

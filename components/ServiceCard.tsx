@@ -8,6 +8,8 @@ import { useColors } from '@/contexts/ThemeContext';
 import { ServiceService } from '@/lib/service-service';
 import { FavoritesService } from '@/lib/favorites-service';
 import { supabase } from '@/lib/supabase';
+import { FeatureService, ServiceFeatureApplication } from '@/lib/feature-service';
+import FeatureIcons from './FeatureIcons';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -276,6 +278,13 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
             <Star size={12} color="#FFD700" fill="#FFD700" />
             <Text style={styles.rating}>{service.rating}</Text>
             <Text style={styles.reviewCount}>({service.review_count})</Text>
+            {service.active_features && service.active_features.length > 0 && (
+              <FeatureIcons 
+                features={service.active_features} 
+                size={16} 
+                style={styles.featureIcons}
+              />
+            )}
           </View>
           <Text style={styles.provider}>{service.provider_name || 'Unknown Provider'}</Text>
           <Text style={styles.title} numberOfLines={showVariants ? undefined : 2}>
@@ -402,6 +411,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
     marginLeft: 2,
+  },
+  featureIcons: {
+    marginLeft: 'auto',
   },
   provider: {
     fontSize: 13,
