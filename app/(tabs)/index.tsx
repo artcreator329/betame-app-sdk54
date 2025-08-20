@@ -200,6 +200,9 @@ export default function HomeScreen() {
     const bannerWidth = isDesktop ? screenWidth - 200 : screenWidth - 40;
     const bannerHeight = Math.round(bannerWidth * (425 / 1200));
     
+    // Check if there's any text content to display
+    const hasTextContent = item.title || item.description || item.link_url;
+    
     return (
       <View style={[styles.bannerSlide, { 
         width: bannerWidth,
@@ -210,26 +213,28 @@ export default function HomeScreen() {
           style={[styles.bannerImage, { height: bannerHeight }]}
           resizeMode="cover"
         />
-        <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]}>
-          <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
-          {item.description && (
-            <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.description}</Text>
-          )}
-          {item.link_url && (
-            <TouchableOpacity 
-              style={styles.bannerButton}
-              onPress={() => {
-                // Handle banner click - could open link or navigate
-                if (item.link_url) {
-                  // For now, just show an alert
-                  Alert.alert('Banner Clicked', `Banner: ${item.title}`);
-                }
-              }}
-            >
-              <Text style={styles.bannerButtonText}>Learn More</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {hasTextContent && (
+          <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]}>
+            <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
+            {item.description && (
+              <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.description}</Text>
+            )}
+            {item.link_url && (
+              <TouchableOpacity 
+                style={styles.bannerButton}
+                onPress={() => {
+                  // Handle banner click - could open link or navigate
+                  if (item.link_url) {
+                    // For now, just show an alert
+                    Alert.alert('Banner Clicked', `Banner: ${item.title}`);
+                  }
+                }}
+              >
+                <Text style={styles.bannerButtonText}>Learn More</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
     );
   };
