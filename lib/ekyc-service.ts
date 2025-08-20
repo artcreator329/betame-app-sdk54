@@ -133,6 +133,38 @@ export class EKYCService {
       // Map document URLs from the frontend format to database format
         const documentUrls = submission.document_urls || {};
         
+        // Format date from DD/MM/YYYY to YYYY-MM-DD for database
+        const formatDateForDatabase = (dateString: string): string => {
+          if (!dateString) return '';
+          
+          // Handle DD/MM/YYYY format
+          const parts = dateString.split('/');
+          if (parts.length === 3) {
+            const day = parts[0];
+            const month = parts[1];
+            const year = parts[2];
+            // Convert DD/MM/YYYY to YYYY-MM-DD
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          }
+          
+          // If already in YYYY-MM-DD format, return as is
+          if (dateString.includes('-') && dateString.length === 10) {
+            return dateString;
+          }
+          
+          // Try to parse as Date object
+          try {
+            const date = new Date(dateString);
+            if (!isNaN(date.getTime())) {
+              return date.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            console.warn('Could not parse date:', dateString);
+          }
+          
+          return dateString; // Return original if all else fails
+        };
+        
         const submissionData: Omit<EKYCSubmission, 'id' | 'created_at' | 'updated_at'> = {
           user_id: user.id,
           nationality: submission.nationality,
@@ -140,7 +172,7 @@ export class EKYCService {
           ic_number: submission.ic_number,
           passport_number: submission.passport_number,
           country: submission.country,
-          date_of_birth: submission.date_of_birth,
+          date_of_birth: formatDateForDatabase(submission.date_of_birth),
           phone_number: submission.phone_number,
           email: submission.email,
           address_type: submission.address_type,
