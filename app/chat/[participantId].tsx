@@ -594,20 +594,54 @@ export default function ChatScreen() {
   const contactPatterns = [
     /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, // Phone numbers
     /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, // Email addresses
-    /\b(?:whatsapp|telegram|wechat|line|instagram|facebook|twitter|snapchat)\b/gi, // Social media platforms
-    /\b(?:call me|text me|dm me|contact me at)\b/gi, // Contact requests
-    /\b(?:my number is|my phone is|my email is)\b/gi, // Personal info sharing
+    /(?:whatsapp|telegram|wechat|line|instagram|facebook|twitter|snapchat)/gi, // Social media platforms
+    /(?:call me|text me|dm me|contact me at|contact me)/gi, // Contact requests
+    /(?:my number is|my phone is|my email is|my number|my phone|my email)/gi, // Personal info sharing
   ];
 
   const moderateMessage = (messageText: string): { isHidden: boolean; moderationReason?: string } => {
-    for (const pattern of contactPatterns) {
-      if (pattern.test(messageText)) {
-        return {
-          isHidden: true,
-          moderationReason: 'Message contains personal contact information and has been hidden for safety.'
-        };
-      }
+    const lowerMessage = messageText.toLowerCase();
+    
+    // Check for phone numbers
+    if (/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g.test(messageText)) {
+      return {
+        isHidden: true,
+        moderationReason: 'Message contains phone number and has been blocked for safety.'
+      };
     }
+    
+    // Check for email addresses
+    if (/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g.test(messageText)) {
+      return {
+        isHidden: true,
+        moderationReason: 'Message contains email address and has been blocked for safety.'
+      };
+    }
+    
+    // Check for social media platforms
+    if (/(?:whatsapp|telegram|wechat|line|instagram|facebook|twitter|snapchat)/gi.test(lowerMessage)) {
+      return {
+        isHidden: true,
+        moderationReason: 'Message contains social media platform and has been blocked for safety.'
+      };
+    }
+    
+    // Check for contact requests
+    if (/(?:call me|text me|dm me|contact me at|contact me)/gi.test(lowerMessage)) {
+      return {
+        isHidden: true,
+        moderationReason: 'Message contains contact request and has been blocked for safety.'
+      };
+    }
+    
+    // Check for personal info sharing
+    if (/(?:my number is|my phone is|my email is|my number|my phone|my email)/gi.test(lowerMessage)) {
+      return {
+        isHidden: true,
+        moderationReason: 'Message contains personal information sharing and has been blocked for safety.'
+      };
+    }
+    
     return { isHidden: false };
   };
 
@@ -615,6 +649,19 @@ export default function ChatScreen() {
     if (!message.trim() || !user?.id || !userProfile) return;
 
     const messageText = message.trim();
+    
+    // Check for moderation before sending
+    const moderation = moderateMessage(messageText);
+    
+    if (moderation.isHidden) {
+      Alert.alert(
+        'Message Blocked',
+        moderation.moderationReason || 'Your message contains personal contact information and has been blocked for safety. Please use the platform\'s built-in messaging system.',
+        [{ text: 'OK' }]
+      );
+      return; // Don't send the message
+    }
+    
     setMessage(''); // Clear input immediately for better UX
     
     const result = await sendChatMessage(
@@ -627,15 +674,15 @@ export default function ChatScreen() {
       quotedMessage?.messageType === 'job_offer' ? 'offer' : quotedMessage?.messageType
     );
 
-    if (!result) {
-      Alert.alert(
-        'Message Moderated',
-        'Your message contains personal contact information and has been hidden for safety. Please use the platform\'s built-in messaging system.',
-        [{ text: 'OK' }]
-      );
-    } else {
+    if (result) {
       // Clear quoted message after successful send
       setQuotedMessage(null);
+    } else {
+      Alert.alert(
+        'Error',
+        'Failed to send message. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
