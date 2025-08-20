@@ -352,17 +352,25 @@ export class EKYCService {
     status: 'not_started' | 'in_progress' | 'verified' | 'rejected'
   ): Promise<void> {
     try {
-      const { error } = await supabase
+      console.log('🔧 EKYCService: Updating user verification status:', { userId, status });
+      
+      // Use supabaseAdmin to bypass RLS policies for admin operations
+      const { error } = await supabaseAdmin
         .from('user_profiles')
-        .update({ verification_status: status })
+        .update({ 
+          verification_status: status,
+          updated_at: new Date().toISOString()
+        })
         .eq('user_id', userId);
 
       if (error) {
-        console.error('Error updating user verification status:', error);
+        console.error('❌ Error updating user verification status:', error);
         throw new Error(`Failed to update verification status: ${error.message}`);
       }
+      
+      console.log('✅ EKYCService: User verification status updated successfully');
     } catch (error) {
-      console.error('Error in updateUserVerificationStatus:', error);
+      console.error('❌ Error in updateUserVerificationStatus:', error);
       throw error;
     }
   }
@@ -405,6 +413,58 @@ export class EKYCService {
     } catch (error) {
       console.error('Error checking verified service provider status:', error);
       return false;
+    }
+  }
+
+  /**
+   * Fix users with approved eKYC but incorrect verification status
+   * This is a one-time fix for users affected by the RLS policy issue
+   */
+  static async fixVerificationStatusMismatch(): Promise<{ fixed: number; errors: number }> {
+    try {
+      console.log('🔧 EKYCService: Starting verification status mismatch fix...');
+      
+      // Find users with approved eKYC but incorrect verification status
+      const { data: mismatchedUsers, error } = await supabaseAdmin
+        .from('ekyc_submissions')
+        .select(`
+          user_id,
+          status,
+          reviewed_at,
+          user_profiles!inner(verification_status)
+        `)
+        .eq('status', 'approved')
+        .neq('user_profiles.verification_status', 'verified')
+        .not('reviewed_at', 'is', null);
+
+      if (error) {
+        console.error('❌ Error finding mismatched users:', error);
+        throw new Error(`Failed to find mismatched users: ${error.message}`);
+      }
+
+      console.log(`🔧 EKYCService: Found ${mismatchedUsers?.length || 0} users with mismatched status`);
+
+      let fixed = 0;
+      let errors = 0;
+
+      if (mismatchedUsers && mismatchedUsers.length > 0) {
+        for (const user of mismatchedUsers) {
+          try {
+            await this.updateUserVerificationStatus(user.user_id, 'verified');
+            fixed++;
+            console.log(`✅ Fixed user ${user.user_id}`);
+          } catch (updateError) {
+            console.error(`❌ Failed to fix user ${user.user_id}:`, updateError);
+            errors++;
+          }
+        }
+      }
+
+      console.log(`✅ EKYCService: Verification status fix completed. Fixed: ${fixed}, Errors: ${errors}`);
+      return { fixed, errors };
+    } catch (error) {
+      console.error('❌ Error in fixVerificationStatusMismatch:', error);
+      throw error;
     }
   }
 }
