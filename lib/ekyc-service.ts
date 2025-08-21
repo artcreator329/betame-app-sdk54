@@ -377,33 +377,159 @@ export class EKYCService {
   }
 
   /**
-   * Update user verification status in profile
+   * Update user verification status in profile with enhanced error handling and monitoring
    */
   private static async updateUserVerificationStatus(
     userId: string, 
-    status: 'not_started' | 'in_progress' | 'verified' | 'rejected'
+    status: 'not_started' | 'in_progress' | 'verified' | 'rejected',
+    retryCount: number = 0
   ): Promise<void> {
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
+
     try {
-      console.log('🔧 EKYCService: Updating user verification status:', { userId, status });
+      console.log('🔧 EKYCService: Updating user verification status:', { 
+        userId, 
+        status, 
+        attempt: retryCount + 1,
+        maxRetries: maxRetries + 1
+      });
       
+      // First, verify the user exists
+      const { data: userExists, error: userCheckError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('user_id, verification_status, full_name')
+        .eq('user_id', userId)
+        .single();
+
+      if (userCheckError) {
+        console.error('❌ Error checking user existence:', userCheckError);
+        throw new Error(`User not found: ${userCheckError.message}`);
+      }
+
+      const currentStatus = userExists.verification_status;
+      console.log('📊 Current verification status:', currentStatus, '→ New status:', status);
+
+      // Skip update if status is already correct
+      if (currentStatus === status) {
+        console.log('✅ Status already correct, skipping update');
+        return;
+      }
+
       // Use supabaseAdmin to bypass RLS policies for admin operations
-      const { error } = await supabaseAdmin
+      const { data: updateResult, error } = await supabaseAdmin
         .from('user_profiles')
         .update({ 
           verification_status: status,
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .select('verification_status, updated_at');
 
       if (error) {
         console.error('❌ Error updating user verification status:', error);
+        
+        // Retry logic for transient errors
+        if (retryCount < maxRetries && this.isRetryableError(error)) {
+          console.log(`🔄 Retrying update in ${retryDelay}ms... (attempt ${retryCount + 2}/${maxRetries + 1})`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          return this.updateUserVerificationStatus(userId, status, retryCount + 1);
+        }
+        
         throw new Error(`Failed to update verification status: ${error.message}`);
       }
       
-      console.log('✅ EKYCService: User verification status updated successfully');
+      console.log('✅ EKYCService: User verification status updated successfully:', updateResult);
+
+      // Log the sync operation for monitoring
+      try {
+        await this.logSyncOperation(userId, currentStatus, status, 'service_update');
+      } catch (logError) {
+        console.warn('⚠️ Failed to log sync operation:', logError);
+        // Don't fail the main operation if logging fails
+      }
+
     } catch (error) {
       console.error('❌ Error in updateUserVerificationStatus:', error);
+      
+      // Log the failure for monitoring
+      try {
+        await this.logSyncFailure(userId, status, error.message);
+      } catch (logError) {
+        console.warn('⚠️ Failed to log sync failure:', logError);
+      }
+      
       throw error;
+    }
+  }
+
+  /**
+   * Check if an error is retryable
+   */
+  private static isRetryableError(error: any): boolean {
+    const retryableCodes = ['PGRST301', 'PGRST302', '23505']; // Connection issues, conflicts
+    return retryableCodes.includes(error.code) || 
+           error.message?.includes('timeout') ||
+           error.message?.includes('connection');
+  }
+
+  /**
+   * Log sync operation for monitoring
+   */
+  private static async logSyncOperation(
+    userId: string, 
+    oldStatus: string, 
+    newStatus: string, 
+    source: string
+  ): Promise<void> {
+    try {
+      const { data: userInfo } = await supabaseAdmin
+        .from('user_profiles')
+        .select('full_name')
+        .eq('user_id', userId)
+        .single();
+
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+      await supabaseAdmin
+        .from('ekyc_sync_log')
+        .insert({
+          user_id: userId,
+          user_email: authUser.user?.email || 'unknown',
+          user_name: userInfo?.full_name || 'unknown',
+          old_ekyc_status: oldStatus,
+          new_ekyc_status: newStatus,
+          new_verification_status: newStatus,
+          trigger_source: source
+        });
+    } catch (error) {
+      console.warn('⚠️ Failed to log sync operation:', error);
+    }
+  }
+
+  /**
+   * Log sync failure for monitoring
+   */
+  private static async logSyncFailure(
+    userId: string, 
+    attemptedStatus: string, 
+    errorMessage: string
+  ): Promise<void> {
+    try {
+      await supabaseAdmin
+        .from('ekyc_sync_log')
+        .insert({
+          user_id: userId,
+          user_email: 'unknown',
+          user_name: 'unknown',
+          old_ekyc_status: 'unknown',
+          new_ekyc_status: attemptedStatus,
+          new_verification_status: 'failed',
+          trigger_source: 'service_update_failed',
+          sync_timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+      console.warn('⚠️ Failed to log sync failure:', error);
     }
   }
 
@@ -497,6 +623,121 @@ export class EKYCService {
     } catch (error) {
       console.error('❌ Error in fixVerificationStatusMismatch:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get eKYC sync statistics
+   */
+  static async getSyncStatistics(): Promise<any> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .rpc('get_ekyc_sync_stats');
+
+      if (error) {
+        console.error('❌ Error getting sync statistics:', error);
+        throw new Error(`Failed to get sync statistics: ${error.message}`);
+      }
+
+      return data?.[0] || {};
+    } catch (error) {
+      console.error('❌ Error in getSyncStatistics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check for sync mismatches
+   */
+  static async checkSyncMismatches(): Promise<any[]> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .rpc('check_ekyc_profile_sync_mismatches');
+
+      if (error) {
+        console.error('❌ Error checking sync mismatches:', error);
+        throw new Error(`Failed to check sync mismatches: ${error.message}`);
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error in checkSyncMismatches:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get sync operation logs
+   */
+  static async getSyncLogs(limit: number = 50): Promise<any[]> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('ekyc_sync_log')
+        .select('*')
+        .order('sync_timestamp', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('❌ Error getting sync logs:', error);
+        throw new Error(`Failed to get sync logs: ${error.message}`);
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error in getSyncLogs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Monitor eKYC sync health
+   */
+  static async monitorSyncHealth(): Promise<{
+    status: 'healthy' | 'warning' | 'critical';
+    issues: string[];
+    stats: any;
+    mismatches: any[];
+  }> {
+    try {
+      const [stats, mismatches] = await Promise.all([
+        this.getSyncStatistics(),
+        this.checkSyncMismatches()
+      ]);
+
+      const issues: string[] = [];
+      let status: 'healthy' | 'warning' | 'critical' = 'healthy';
+
+      // Check for critical issues
+      if (mismatches.length > 0) {
+        issues.push(`${mismatches.length} sync mismatch(es) detected`);
+        status = 'critical';
+      }
+
+      // Check for warnings
+      if (stats.recent_syncs_24h === 0 && stats.pending_submissions > 0) {
+        issues.push('No recent sync operations despite pending submissions');
+        if (status !== 'critical') status = 'warning';
+      }
+
+      if (stats.sync_mismatches > 0) {
+        issues.push(`${stats.sync_mismatches} total sync mismatches`);
+        if (status !== 'critical') status = 'warning';
+      }
+
+      return {
+        status,
+        issues,
+        stats,
+        mismatches
+      };
+    } catch (error) {
+      console.error('❌ Error monitoring sync health:', error);
+      return {
+        status: 'critical',
+        issues: [`Monitoring failed: ${error.message}`],
+        stats: {},
+        mismatches: []
+      };
     }
   }
 }

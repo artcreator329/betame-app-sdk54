@@ -1,14 +1,28 @@
 {
-  "name": "bolt-expo-starter",
+  "name": "betame",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
     "build:web": "expo export --platform web",
+    "build:android": "node scripts/build-android-aab.js",
     "lint": "expo lint",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "clean-cache": "node scripts/clean-cache-and-update-icon.js",
+    "clear-icon-cache": "node scripts/clear-icon-cache.js",
+    "dev-clean": "node scripts/clear-icon-cache.js && expo start --clear",
+    "fix-app-name": "node scripts/fix-app-name.js",
+    "debug-ekyc-status": "node scripts/debug-ekyc-verification-status.js",
+    "fix-ekyc-sync": "node scripts/fix-ekyc-profile-sync-simple.js",
+    "monitor-ekyc-sync": "node scripts/monitor-ekyc-sync.js",
+    "setup-ekyc-trigger": "node scripts/setup-ekyc-trigger.js",
+    "setup-admin-monitoring": "node scripts/setup-admin-ekyc-monitoring.js",
+    "start": "expo start --dev-client"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",

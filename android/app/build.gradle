@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.artcreator329.boltexponativewind'
+    namespace 'com.betame.app'
     defaultConfig {
-        applicationId 'com.artcreator329.boltexponativewind'
+        applicationId 'com.betame.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

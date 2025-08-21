@@ -537,7 +537,70 @@ export default function EKYCVerificationScreen() {
 
   const handleDocumentUpload = async (documentId: string, documentType: 'identity' | 'additional' = 'additional') => {
     try {
-      // Use basic image picker without watermark for now to test upload
+      // Show action sheet to choose between camera and gallery
+      Alert.alert(
+        'Upload Document',
+        'Choose how you want to upload your document',
+        [
+          {
+            text: 'Take Photo',
+            onPress: () => handleCameraUpload(documentId, documentType)
+          },
+          {
+            text: 'Choose from Gallery',
+            onPress: () => handleGalleryUpload(documentId, documentType)
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('❌ Document upload error:', error);
+      Alert.alert(
+        'Upload Failed',
+        'Failed to initiate document upload. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleCameraUpload = async (documentId: string, documentType: 'identity' | 'additional' = 'additional') => {
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant camera access to take photos of your documents.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: false,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      await processUploadedImage(asset, documentId, documentType);
+    } catch (error: any) {
+      console.error('❌ Camera upload error:', error);
+      Alert.alert(
+        'Camera Error',
+        'Failed to take photo. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleGalleryUpload = async (documentId: string, documentType: 'identity' | 'additional' = 'additional') => {
+    try {
+      // Request media library permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Please grant media library access to upload documents.');
@@ -556,6 +619,19 @@ export default function EKYCVerificationScreen() {
       }
 
       const asset = result.assets[0];
+      await processUploadedImage(asset, documentId, documentType);
+    } catch (error: any) {
+      console.error('❌ Gallery upload error:', error);
+      Alert.alert(
+        'Gallery Error',
+        'Failed to select image from gallery. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const processUploadedImage = async (asset: any, documentId: string, documentType: 'identity' | 'additional' = 'additional') => {
+    try {
       console.log('📸 Selected image URI:', asset.uri);
       console.log('📸 Image size:', asset.fileSize);
       console.log('📸 Image type:', asset.type);
@@ -663,10 +739,10 @@ export default function EKYCVerificationScreen() {
         );
       }
     } catch (error: any) {
-      console.error('❌ Document upload error:', error);
+      console.error('❌ Image processing error:', error);
       Alert.alert(
-        'Upload Failed',
-        'Failed to select document. Please try again.',
+        'Processing Failed',
+        'Failed to process the selected image. Please try again.',
         [{ text: 'OK' }]
       );
     }
@@ -934,7 +1010,7 @@ export default function EKYCVerificationScreen() {
                 onPress={() => handleDocumentUpload(document.id, 'identity')}
               >
                 <Camera size={20} color={colors.text.white} />
-                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Upload {document.name}</Text>
+                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Take Photo or Upload</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -947,6 +1023,7 @@ export default function EKYCVerificationScreen() {
         <View style={styles.infoContent}>
           <Text style={[styles.infoTitle, { color: colors.text.primary }]}>Important Notes</Text>
           <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+            • Take a photo directly or choose from your gallery{'\n'}
             • Ensure your document is clearly visible and well-lit{'\n'}
             • All text should be readable and not blurry{'\n'}
             • Upload the front side of your {personalInfo.nationality === 'malaysian' ? 'IC' : 'Passport'}{'\n'}
@@ -1304,8 +1381,8 @@ export default function EKYCVerificationScreen() {
                 style={[styles.uploadButton, { backgroundColor: colors.primary.main }]}
                 onPress={() => handleDocumentUpload(document.id, 'additional')}
               >
-                <Upload size={20} color="white" />
-                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Upload Document</Text>
+                <Camera size={20} color="white" />
+                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Take Photo or Upload</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1315,7 +1392,7 @@ export default function EKYCVerificationScreen() {
       <View style={[styles.infoBox, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
         <AlertCircle size={20} color={colors.status.warning} />
         <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-          Ensure all documents are clear, well-lit, and show all information. Blurry or incomplete documents may delay verification.
+          You can take photos directly with your camera or upload from your gallery. Ensure all documents are clear, well-lit, and show all information. Blurry or incomplete documents may delay verification.
         </Text>
       </View>
     </View>

@@ -678,9 +678,17 @@ export default function EKYCManagement() {
           <ArrowLeft size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>eKYC Management</Text>
-        <TouchableOpacity onPress={onRefresh}>
-          <FileText size={24} color={colors.primary.main} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            onPress={() => router.push('/admin/ekyc-monitoring')}
+            style={[styles.monitorButton, { backgroundColor: colors.primary.main }]}
+          >
+            <Text style={[styles.monitorButtonText, { color: colors.text.white }]}>Monitor</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onRefresh}>
+            <FileText size={24} color={colors.primary.main} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -734,6 +742,20 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
+    fontWeight: '600',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  monitorButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  monitorButtonText: {
+    fontSize: 12,
     fontWeight: '600',
   },
   content: {

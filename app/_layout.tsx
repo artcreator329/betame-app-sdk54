@@ -103,6 +103,9 @@ function RootLayoutNav() {
   // Initialize deep linking
   useDeepLinking();
 
+  // Check if this is admin-only deployment (only for admin dashboard deployment)
+  const isAdminOnly = process.env.EXPO_PUBLIC_ADMIN_ONLY === 'true';
+
   // Configure audio session globally to prevent AudioSession logs
   useEffect(() => {
     audioSessionManager.configureForSilentPlayback();
@@ -121,6 +124,14 @@ function RootLayoutNav() {
     // Don't navigate until component is mounted
     if (!isMounted) {
       console.log('⏳ RootLayoutNav: Component not mounted yet, skipping navigation');
+      return;
+    }
+
+    // If this is admin-only deployment, redirect to admin dashboard
+    // (This only applies to the admin dashboard deployment, not the main app)
+    if (isAdminOnly) {
+      console.log('🔍 Layout: Admin-only deployment, redirecting to admin dashboard');
+      router.replace('/admin-dashboard');
       return;
     }
     

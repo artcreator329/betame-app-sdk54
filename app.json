@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BetaMe",
-    "slug": "bolt-expo-nativewind",
+    "slug": "betame",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -38,9 +38,11 @@
           "apiKey": "<REDACTED_GOOGLE_API_KEY>"
         }
       },
-      "package": "com.artcreator329.boltexponativewind",
+      "package": "com.betame.app",
       "enableProguardInReleaseBuilds": false,
-      "enableSeparateBuildPerCPUArchitecture": false
+      "enableSeparateBuildPerCPUArchitecture": false,
+      "versionCode": 1,
+      "versionName": "1.0.0"
     },
     "web": {
       "bundler": "metro",

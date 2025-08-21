@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "BetaMe",
+    "slug": "bolt-expo-nativewind",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "betame",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/icon_splashscreen.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "newArchEnabled": false,
+    "linking": {
+      "prefixes": [
+        "betame://",
+        "https://betame.com.my"
+      ],
+      "config": {
+        "screens": {
+          "profile/[userId]": "profile/:userId",
+          "auth/reset-password": "auth/reset-password"
+        }
+      }
+    },
+    "ios": {
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
+      },
+      "bundleIdentifier": "com.artcreator329.boltexponativewind"
+    },
+    "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "<REDACTED_GOOGLE_API_KEY>"
+        }
+      },
+      "package": "com.betame.app",
+      "enableProguardInReleaseBuilds": false,
+      "enableSeparateBuildPerCPUArchitecture": false,
+      "versionCode": 1,
+      "versionName": "1.0.0"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "config": {
+        "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser",
+      "expo-dev-client",
+      "expo-video"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "61606867-ad42-470c-9ce7-2299e2485f73"
+      }
+    }
+  }
+}
