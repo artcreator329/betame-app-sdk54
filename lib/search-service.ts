@@ -232,6 +232,19 @@ export class SearchService {
     }
 
     try {
+      // First, check if the search term matches any category name
+      const { data: matchingCategories } = await supabase
+        .from('services')
+        .select('category_name')
+        .ilike('category_name', `%${searchTerm}%`)
+        .not('category_name', 'is', null);
+
+      const categoryMatches = matchingCategories 
+        ? [...new Set(matchingCategories.map(c => c.category_name).filter(Boolean))]
+        : [];
+
+      console.log('🔍 SearchService.search: Category matches for searchTerm:', searchTerm, ':', categoryMatches);
+
       // Build service query
       console.log('🔍 SearchService.search: Building service query for searchTerm:', searchTerm);
       let serviceQuery = supabase
@@ -249,13 +262,18 @@ export class SearchService {
           review_count,
           user_id
         `)
-        .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category_name.ilike.%${searchTerm}%`)
         .eq('status', 'active');
 
-      // Apply filters
+      // Apply category filter first (if specified)
       if (filters?.category) {
         serviceQuery = serviceQuery.eq('category_name', filters.category);
+        console.log('🔍 SearchService.search: Applied category filter:', filters.category);
       }
+
+      // Apply search filters within the category (or across all if no category filter)
+      serviceQuery = serviceQuery.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+
+      // Apply other filters
       if (filters?.location) {
         serviceQuery = serviceQuery.ilike('location', `%${filters.location}%`);
       }
@@ -276,8 +294,111 @@ export class SearchService {
       }
 
       console.log('🔍 SearchService.search: Found services:', services?.length || 0);
+      if (services && services.length > 0) {
+        console.log('🔍 SearchService.search: Sample service titles:', services.slice(0, 3).map(s => s.title));
+      }
 
-      if (services) {
+      // If no services found and we have a category filter, try a broader search within that category
+      if ((!services || services.length === 0) && filters?.category) {
+        console.log('🔍 SearchService.search: No exact matches found, trying broader search within category');
+        
+        // Try searching for individual words in the search term
+        const searchWords = searchTerm.split(' ').filter(word => word.length > 2);
+        
+        if (searchWords.length > 0) {
+          const wordConditions = searchWords.map(word => 
+            `title.ilike.%${word}%,description.ilike.%${word}%`
+          ).join(',');
+          
+          const fallbackQuery = supabase
+            .from('services')
+            .select(`
+              id,
+              title,
+              description,
+              price,
+              currency,
+              image_url,
+              category_name,
+              location,
+              rating,
+              review_count,
+              user_id
+            `)
+            .eq('status', 'active')
+            .eq('category_name', filters.category)
+            .or(wordConditions)
+            .limit(this.SEARCH_LIMIT);
+
+          const { data: fallbackServices, error: fallbackError } = await fallbackQuery;
+          
+          if (fallbackError) {
+            console.error('🔍 SearchService.search: Error in fallback search:', fallbackError);
+          }
+
+          if (fallbackServices && fallbackServices.length > 0) {
+            console.log('🔍 SearchService.search: Found services with fallback search:', fallbackServices.length);
+            result.services = fallbackServices.map(service => ({
+              id: service.id,
+              type: 'service' as const,
+              title: service.title,
+              subtitle: `${service.currency} ${service.price} • ${service.category_name}`,
+              image_url: service.image_url,
+              category: service.category_name,
+              location: service.location,
+              user_id: service.user_id,
+              rating: service.rating,
+              price: service.price,
+              currency: service.currency
+            }));
+          }
+        }
+        
+        // If still no results, show all services in the category as a final fallback
+        if (result.services.length === 0) {
+          console.log('🔍 SearchService.search: No search matches found, showing all services in category as fallback');
+          
+          const { data: allCategoryServices, error: allCategoryError } = await supabase
+            .from('services')
+            .select(`
+              id,
+              title,
+              description,
+              price,
+              currency,
+              image_url,
+              category_name,
+              location,
+              rating,
+              review_count,
+              user_id
+            `)
+            .eq('status', 'active')
+            .eq('category_name', filters.category)
+            .limit(this.SEARCH_LIMIT);
+
+          if (allCategoryError) {
+            console.error('🔍 SearchService.search: Error fetching all category services:', allCategoryError);
+          }
+
+          if (allCategoryServices && allCategoryServices.length > 0) {
+            console.log('🔍 SearchService.search: Found all category services:', allCategoryServices.length);
+            result.services = allCategoryServices.map(service => ({
+              id: service.id,
+              type: 'service' as const,
+              title: service.title,
+              subtitle: `${service.currency} ${service.price} • ${service.category_name}`,
+              image_url: service.image_url,
+              category: service.category_name,
+              location: service.location,
+              user_id: service.user_id,
+              rating: service.rating,
+              price: service.price,
+              currency: service.currency
+            }));
+          }
+        }
+      } else if (services) {
         result.services = services.map(service => ({
           id: service.id,
           type: 'service' as const,

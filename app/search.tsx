@@ -369,14 +369,6 @@ export default function SearchScreen() {
             <Text style={[styles.initialStateText, { color: colors.text.secondary }]}>
               Enter a search term to get started
             </Text>
-            <TouchableOpacity
-              style={[styles.testButton, { backgroundColor: colors.primary.main }]}
-              onPress={() => handleSearch('Corporate')}
-            >
-              <Text style={[styles.testButtonText, { color: colors.text.white }]}>
-                Test Search: "Corporate"
-              </Text>
-            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -525,15 +517,5 @@ const styles = StyleSheet.create({
   initialStateText: {
     fontSize: 14,
     textAlign: 'center',
-  },
-  testButton: {
-    marginTop: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  testButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
   },
 });

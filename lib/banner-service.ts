@@ -8,6 +8,7 @@ export interface Banner {
   link_url?: string;
   is_active: boolean;
   order_index: number;
+  click_count: number;
   created_at: string;
 }
 
@@ -53,6 +54,41 @@ export class BannerService {
       return data || [];
     } catch (error) {
       console.error('Error in getAllBanners:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Increment click count for a banner
+   */
+  static async incrementClickCount(bannerId: string): Promise<void> {
+    try {
+      // First get the current click count
+      const { data: currentBanner, error: fetchError } = await supabase
+        .from('homepage_banners')
+        .select('click_count')
+        .eq('id', bannerId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching current click count:', fetchError);
+        throw fetchError;
+      }
+
+      // Then increment it
+      const { error } = await supabase
+        .from('homepage_banners')
+        .update({ 
+          click_count: (currentBanner?.click_count || 0) + 1
+        })
+        .eq('id', bannerId);
+
+      if (error) {
+        console.error('Error incrementing click count:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error in incrementClickCount:', error);
       throw error;
     }
   }

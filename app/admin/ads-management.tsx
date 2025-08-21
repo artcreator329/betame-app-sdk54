@@ -31,6 +31,7 @@ interface Banner {
   link_url?: string;
   is_active: boolean;
   order_index: number;
+  click_count: number;
   created_at: string;
 }
 
@@ -343,7 +344,7 @@ export default function AdsManagement() {
         throw dbError;
       }
       fetchBanners();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading banner:', error);
       Alert.alert('Error', `Failed to upload banner: ${error.message || 'Unknown error'}`);
     } finally {
@@ -633,6 +634,28 @@ export default function AdsManagement() {
     }
   };
 
+  // Function to reset click count for a banner
+  const resetClickCount = async (bannerId: string) => {
+    try {
+      const { error } = await supabase
+        .from('homepage_banners')
+        .update({ click_count: 0 })
+        .eq('id', bannerId);
+
+      if (error) {
+        console.error('Error resetting click count:', error);
+        Alert.alert('Error', 'Failed to reset click count');
+        return;
+      }
+
+      console.log('Click count reset successfully for banner:', bannerId);
+      fetchBanners();
+    } catch (error) {
+      console.error('Error resetting click count:', error);
+      Alert.alert('Error', 'Failed to reset click count');
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -801,6 +824,7 @@ export default function AdsManagement() {
                             Status: {banner.is_active ? 'Active' : 'Inactive'}
                           </Text>
                           <Text style={styles.bannerOrder}>Order: {banner.order_index + 1}</Text>
+                          <Text style={styles.bannerClickCount}>Clicks: {banner.click_count || 0}</Text>
                         </View>
                       </>
                     )}
@@ -888,6 +912,14 @@ export default function AdsManagement() {
                     >
                       <Ionicons name="trash-outline" size={14} color="#fff" />
                       <Text style={styles.actionButtonText}>Delete</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[styles.actionButtonLarge, styles.resetButtonLarge]}
+                      onPress={() => resetClickCount(banner.id)}
+                    >
+                      <Ionicons name="refresh-outline" size={14} color="#fff" />
+                      <Text style={styles.actionButtonText}>Reset Clicks</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1101,6 +1133,8 @@ const styles = StyleSheet.create({
   bannerMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   bannerStatus: {
     fontSize: 14,
@@ -1109,6 +1143,11 @@ const styles = StyleSheet.create({
   bannerOrder: {
     fontSize: 14,
     color: '#666',
+  },
+  bannerClickCount: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
   },
   bannerControls: {
     flexDirection: 'row',
@@ -1198,6 +1237,9 @@ const styles = StyleSheet.create({
   },
   deleteButtonLarge: {
     backgroundColor: '#dc3545',
+  },
+  resetButtonLarge: {
+    backgroundColor: '#ffc107',
   },
   actionButtonText: {
     color: '#fff',

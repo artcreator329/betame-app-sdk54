@@ -61,6 +61,9 @@ function DesktopSidebar() {
           // Skip auth-required items if user is not authenticated (except services for browsing)
           if (item.requiresAuth && !isAuthenticated && item.name !== 'services') return null;
           
+          // For profile tab, show "Sign In" when not authenticated
+          const displayTitle = item.name === 'profile' && !isAuthenticated ? 'Sign In' : item.title;
+          const displayRoute = item.name === 'profile' && !isAuthenticated ? '/auth/login' : item.route;
           const isActive = currentRoute === item.name;
           const IconComponent = item.icon;
           
@@ -68,7 +71,13 @@ function DesktopSidebar() {
             <TouchableOpacity
               key={item.name}
               style={[styles.navItem, isActive && styles.navItemActive]}
-              onPress={() => router.push(item.route as any)}
+              onPress={() => {
+                if (item.name === 'profile' && !isAuthenticated) {
+                  router.push('/auth/login');
+                } else {
+                  router.push(displayRoute as any);
+                }
+              }}
             >
               <View style={styles.navItemContent}>
                 <IconComponent 
@@ -78,7 +87,7 @@ function DesktopSidebar() {
                 {item.name === 'notifications' && <NotificationBadge count={unreadCount} />}
               </View>
               <Text style={[styles.navItemText, isActive && styles.navItemTextActive]}>
-                {item.title}
+                {displayTitle}
               </Text>
             </TouchableOpacity>
           );
@@ -86,7 +95,7 @@ function DesktopSidebar() {
       </View>
 
       <View style={styles.sidebarFooter}>
-        <Text style={styles.footerText}>BetaMe v1.0</Text>
+        <Text style={styles.footerText}>BetaMe v1.0.0</Text>
       </View>
     </View>
   );
@@ -97,6 +106,7 @@ export default function TabLayout() {
   const isAuthenticated = !!user;
   const { unreadCount } = useNotifications();
   const segments = useSegments();
+  const router = useRouter();
   
   const screenWidth = Dimensions.get('window').width;
   
@@ -180,7 +190,7 @@ export default function TabLayout() {
             <Tabs.Screen name="services" />
             <Tabs.Screen name="orders" options={{ href: isAuthenticated ? '/orders' : null }} />
             <Tabs.Screen name="notifications" options={{ href: isAuthenticated ? '/notifications' : null }} />
-            <Tabs.Screen name="profile" />
+            <Tabs.Screen name="profile" options={{ href: isAuthenticated ? '/profile' : null }} />
           </Tabs>
         </View>
       </View>
@@ -297,13 +307,19 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: isAuthenticated ? 'Profile' : 'Sign In',
           tabBarIcon: ({ color, size }) => (
             <User size={size} color={color} />
           ),
         }}
         listeners={{
           focus: () => moveIndicator(4),
+          tabPress: (e) => {
+            if (!isAuthenticated) {
+              e.preventDefault();
+              router.push('/auth/login');
+            }
+          },
         }}
       />
     </Tabs>

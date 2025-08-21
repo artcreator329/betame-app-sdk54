@@ -194,50 +194,7 @@ export default function HomeScreen() {
     setCurrentSlide(slideIndex);
   };
 
-  const renderBannerItem = ({ item }: { item: Banner }) => {
-    // Calculate proper height for 1200x425 aspect ratio
-    // Formula: height = width * (425 / 1200) to maintain exact aspect ratio
-    const bannerWidth = isDesktop ? screenWidth - 200 : screenWidth - 40;
-    const bannerHeight = Math.round(bannerWidth * (425 / 1200));
-    
-    // Check if there's any text content to display
-    const hasTextContent = item.title || item.description || item.link_url;
-    
-    return (
-      <View style={[styles.bannerSlide, { 
-        width: bannerWidth,
-        height: bannerHeight 
-      }]}>
-        <Image 
-          source={{ uri: item.image_url }} 
-          style={[styles.bannerImage, { height: bannerHeight }]}
-          resizeMode="cover"
-        />
-        {hasTextContent && (
-          <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]}>
-            <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
-            {item.description && (
-              <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.description}</Text>
-            )}
-            {item.link_url && (
-              <TouchableOpacity 
-                style={styles.bannerButton}
-                onPress={() => {
-                  // Handle banner click - could open link or navigate
-                  if (item.link_url) {
-                    // For now, just show an alert
-                    Alert.alert('Banner Clicked', `Banner: ${item.title}`);
-                  }
-                }}
-              >
-                <Text style={styles.bannerButtonText}>Learn More</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </View>
-    );
-  };
+
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
@@ -315,7 +272,64 @@ export default function HomeScreen() {
                 style={styles.bannerSlider}
                 nestedScrollEnabled={true}
               >
-                {banners.map((item) => renderBannerItem({ item }))}
+                {banners.map((item) => {
+                  const bannerWidth = isDesktop ? screenWidth - 200 : screenWidth - 40;
+                  const bannerHeight = Math.round(bannerWidth * (425 / 1200));
+                  
+                  // Check if there's any text content to display
+                  const hasTextContent = item.title || item.description || item.link_url;
+                  
+                  const handleBannerClick = async () => {
+                    try {
+                      // Increment click count
+                      await BannerService.incrementClickCount(item.id);
+                      
+                      // Handle banner click - could open link or navigate
+                      if (item.link_url) {
+                        // For now, just show an alert
+                        Alert.alert('Banner Clicked', `Banner: ${item.title}`);
+                      }
+                    } catch (error) {
+                      console.error('Error tracking banner click:', error);
+                      // Still show the alert even if tracking fails
+                      if (item.link_url) {
+                        Alert.alert('Banner Clicked', `Banner: ${item.title}`);
+                      }
+                    }
+                  };
+                  
+                  return (
+                    <View key={item.id}>
+                      <TouchableOpacity 
+                        style={[styles.bannerSlide, { 
+                          width: bannerWidth,
+                          height: bannerHeight 
+                        }]}
+                        onPress={handleBannerClick}
+                        activeOpacity={0.9}
+                      >
+                        <Image 
+                          source={{ uri: item.image_url }} 
+                          style={[styles.bannerImage, { height: bannerHeight }]}
+                          resizeMode="cover"
+                        />
+                        {hasTextContent && (
+                          <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]}>
+                            <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
+                            {item.description && (
+                              <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.description}</Text>
+                            )}
+                            {item.link_url && (
+                              <View style={styles.bannerButton}>
+                                <Text style={styles.bannerButtonText}>Learn More</Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
               </ScrollView>
               <View style={styles.bannerIndicators}>
                 {banners.map((_, index) => (
