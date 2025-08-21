@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,18 +11,16 @@ import {
   ActivityIndicator,
   Image,
   ScrollView,
-  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { adminService } from '@/lib/admin-service';
 import { referralService } from '@/lib/referral-service';
 import { LinearGradient } from 'expo-linear-gradient';
 import { audioSessionManager } from '@/lib/audio-session-manager';
 import { supabase } from '@/lib/supabase';
 
-// Only import BackgroundVideoPlayer for iOS
+// Import BackgroundVideoPlayer for iOS with improved stability
 const BackgroundVideoPlayer = Platform.OS === 'ios' 
   ? require('@/components/BackgroundVideoPlayer').BackgroundVideoPlayer 
   : null;
@@ -67,7 +65,8 @@ export default function LoginScreen() {
   }, []);
 
   const handleVideoError = (error: any) => {
-    console.log('Video error:', error);
+    console.log('Video error (non-critical):', error);
+    // Don't take any action on video errors to prevent flashing
   };
 
   const handleSignIn = async () => {
@@ -253,7 +252,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {Platform.OS === 'android' && <AndroidGradientBackground />}
-      {Platform.OS === 'ios' && (
+      {Platform.OS === 'ios' && BackgroundVideoPlayer && (
         <BackgroundVideoPlayer
           videos={videos}
           onVideoError={handleVideoError}

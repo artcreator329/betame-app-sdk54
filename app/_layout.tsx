@@ -54,18 +54,11 @@ const { width, height } = Dimensions.get('window');
 SplashScreen.preventAutoHideAsync();
 
 function CustomSplashScreen() {
-  const [isVisible, setIsVisible] = useState(true);
-
   useEffect(() => {
     const hideSplash = async () => {
       try {
-        // Hide the native splash screen
+        // Hide the native splash screen immediately
         await SplashScreen.hideAsync();
-        
-        // Add a small delay before hiding our custom splash screen
-        setTimeout(() => {
-          setIsVisible(false);
-        }, 100);
       } catch (error) {
         console.warn('Error hiding splash screen:', error);
       }
@@ -75,7 +68,7 @@ function CustomSplashScreen() {
   }, []);
 
   return (
-    <View style={[styles.splashContainer, { opacity: isVisible ? 1 : 0 }]}>
+    <View style={styles.splashContainer}>
       <View style={styles.logoContainer}>
         <Image 
           source={require('../assets/images/icon_splashscreen.png')}
@@ -327,9 +320,7 @@ export default function RootLayout() {
         // Setup notifications
         await setupNotifications();
         
-        // Add a minimum delay to show the splash screen
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+        // Remove artificial delay to prevent flashing
         setAppIsReady(true);
       } catch (error) {
         console.error('❌ Error preparing app:', error);

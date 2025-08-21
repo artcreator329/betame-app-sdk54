@@ -15,6 +15,7 @@ export function BackgroundVideoPlayer({
   fadeDuration = 800,
 }: BackgroundVideoPlayerProps) {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   const videoRef = useRef<Video>(null);
 
   // Initialize and configure audio session
@@ -25,31 +26,29 @@ export function BackgroundVideoPlayer({
 
   const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
-      console.log('Video status:', {
-        didJustFinish: status.didJustFinish,
-        positionMillis: status.positionMillis,
-        durationMillis: status.durationMillis,
-        currentIndex: currentVideoIndex
-      });
-      
+      // Only log essential info to reduce console noise
       if (status.didJustFinish) {
-        // Move to next video when current video ends
+        // Smoothly transition to next video
         const nextIndex = (currentVideoIndex + 1) % videos.length;
-        console.log('Transitioning to next video:', nextIndex);
         setCurrentVideoIndex(nextIndex);
+        setIsVideoReady(false); // Reset ready state for smooth transition
       }
     }
   };
 
   const handleVideoError = (error: string) => {
-    console.warn('Video error:', error);
-    // Move to next video on error
-    const nextIndex = (currentVideoIndex + 1) % videos.length;
-    setCurrentVideoIndex(nextIndex);
+    // Silently handle video errors to prevent flashing
+    console.warn('Video error (handled gracefully):', error);
     
+    // Don't immediately switch videos on error to prevent flashing
+    // Let the fallback background show instead
     if (onVideoError) {
       onVideoError(error);
     }
+  };
+
+  const handleVideoLoad = () => {
+    setIsVideoReady(true);
   };
 
   // For iOS: Render videos
@@ -63,19 +62,26 @@ export function BackgroundVideoPlayer({
 
   return (
     <View style={styles.container}>
+      {/* Always show fallback background to prevent flashing */}
+      <View style={styles.fallbackBackground} />
+      
+      {/* Video layer with smooth loading */}
       <Video
          key={currentVideoIndex}
          ref={videoRef}
          source={videos[currentVideoIndex]}
-         style={styles.video}
-         shouldPlay
+         style={[styles.video, { opacity: isVideoReady ? 1 : 0 }]}
+         shouldPlay={isVideoReady}
          isLooping={false}
          isMuted
          resizeMode={ResizeMode.COVER}
          onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
          onError={(error) => handleVideoError(error)}
-         onLoad={() => console.log('Video loaded:', currentVideoIndex)}
+         onLoad={handleVideoLoad}
+         onLoadStart={() => setIsVideoReady(false)}
        />
+      
+      {/* Overlay for better text readability */}
       <View style={styles.videoOverlay} />
     </View>
   );
@@ -91,7 +97,11 @@ const styles = StyleSheet.create({
     zIndex: -1,
   },
   video: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
     height: '100%',
   },
@@ -102,9 +112,15 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 1,
   },
   fallbackBackground: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: '#000000',
+    zIndex: 0,
   },
 });

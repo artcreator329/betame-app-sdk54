@@ -4,8 +4,8 @@ import { Platform, View, Text, Dimensions, TouchableOpacity, StyleSheet } from '
 import { Home, Users, FileText, Bell, User, Briefcase } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { useFocusEffect } from '@react-navigation/native';
+// Removed animation imports to prevent flashing
+// Removed unused import
 import { useRouter, useSegments } from 'expo-router';
 
 const { width } = Dimensions.get('window');
@@ -118,35 +118,7 @@ export default function TabLayout() {
     return true;
   });
   
-  const visibleTabCount = visibleTabs.length;
-  const tabWidth = isDesktop ? (screenWidth - 200) / visibleTabCount : (screenWidth - 40) / visibleTabCount;
-  const indicatorPosition = useSharedValue(0);
-  
-  const animatedIndicatorStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateX: indicatorPosition.value }],
-    };
-  });
-  
-  const moveIndicator = (index: number) => {
-    // Map the actual tab index to the visible tab index
-    const visibleIndex = visibleTabs.findIndex(tab => tab.name === navItems[index].name);
-    if (visibleIndex !== -1) {
-      indicatorPosition.value = withSpring(visibleIndex * tabWidth, {
-        damping: 15,
-        stiffness: 150,
-      });
-    }
-  };
-
-  // Set initial indicator position based on current route
-  useEffect(() => {
-    const currentRoute = segments[segments.length - 1] || 'index';
-    const currentIndex = navItems.findIndex(item => item.name === currentRoute);
-    if (currentIndex !== -1) {
-      moveIndicator(currentIndex);
-    }
-  }, [isAuthenticated, visibleTabCount, segments]);
+  // Removed animation code to prevent flashing
 
   const NotificationBadge = ({ count }: { count: number }) => {
     if (count === 0) return null;
@@ -232,22 +204,7 @@ export default function TabLayout() {
             backgroundColor: 'white',
             borderRadius: 25,
             overflow: 'hidden',
-          }}>
-            <Animated.View
-              style={[
-                {
-                  position: 'absolute',
-                  top: 4,
-                  left: 8,
-                  width: tabWidth - 16,
-                  height: 4,
-                  backgroundColor: '#007AFF',
-                  borderRadius: 2,
-                },
-                animatedIndicatorStyle,
-              ]}
-            />
-          </View>
+          }} />
         ),
       }}>
       <Tabs.Screen
@@ -258,9 +215,7 @@ export default function TabLayout() {
             <Home size={size} color={color} />
           ),
         }}
-        listeners={{
-          focus: () => moveIndicator(0),
-        }}
+        // Removed animation listeners
       />
       <Tabs.Screen
         name="services"
@@ -271,9 +226,7 @@ export default function TabLayout() {
           ),
           // Allow non-authenticated users to browse services
         }}
-        listeners={{
-          focus: () => moveIndicator(1),
-        }}
+        // Removed animation listeners
       />
       <Tabs.Screen
         name="orders"
@@ -284,9 +237,7 @@ export default function TabLayout() {
           ),
           href: isAuthenticated ? '/orders' : null,
         }}
-        listeners={{
-          focus: () => moveIndicator(2),
-        }}
+        // Removed animation listeners
       />
       <Tabs.Screen
         name="notifications"
@@ -300,9 +251,7 @@ export default function TabLayout() {
           ),
           href: isAuthenticated ? '/notifications' : null,
         }}
-        listeners={{
-          focus: () => moveIndicator(3),
-        }}
+        // Removed animation listeners
       />
       <Tabs.Screen
         name="profile"
@@ -313,7 +262,6 @@ export default function TabLayout() {
           ),
         }}
         listeners={{
-          focus: () => moveIndicator(4),
           tabPress: (e) => {
             if (!isAuthenticated) {
               e.preventDefault();
