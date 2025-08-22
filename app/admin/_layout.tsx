@@ -23,6 +23,7 @@ const adminNavItems: AdminNavItem[] = [
   { name: 'services', title: 'Services', icon: 'briefcase-outline', route: '/admin/services' },
   { name: 'ekyc-management', title: 'eKYC', icon: 'shield-checkmark-outline', route: '/admin/ekyc-management' },
   { name: 'ekyc-monitoring', title: 'eKYC Monitor', icon: 'pulse-outline', route: '/admin/ekyc-monitoring' },
+  { name: 'bank-statements', title: 'Bank Statements', icon: 'card-outline', route: '/admin/bank-statements' },
   { name: 'transactions', title: 'Transactions', icon: 'card-outline', route: '/admin/transactions' },
   { name: 'chats', title: 'Chats', icon: 'chatbubbles-outline', route: '/admin/chats' },
   { name: 'notifications', title: 'Notifications', icon: 'notifications-outline', route: '/admin/notifications' },

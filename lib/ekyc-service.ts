@@ -182,7 +182,7 @@ export class EKYCService {
           state: submission.state,
           identity_document_url: documentUrls.ic_front || documentUrls.ic || documentUrls.passport,
           proof_of_address_url: documentUrls.ic_back || documentUrls.address || documentUrls.proof_of_address,
-          additional_document_url: documentUrls.selfie || documentUrls.bank_statement || documentUrls.additional,
+          additional_document_url: documentUrls.selfie || documentUrls.additional,
           status: 'pending'
         };
 

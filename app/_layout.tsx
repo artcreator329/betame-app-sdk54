@@ -191,7 +191,8 @@ function RootLayoutNav() {
       'settings', 'edit-profile', 'notification-settings', 'wallet', 'messages',
       'favorites', 'orders', 'create-service-listing', 'create-job-listing',
       'become-service-provider', 'ekyc-verification', 'malaysian-payment-gateway',
-      'edit-service', 'job-acceptance', 'job-progress', 'job-completion', 'job-review'
+      'edit-service', 'job-acceptance', 'job-progress', 'job-completion', 'job-review',
+      'bank-upload'
     ];
     
     // Pages that require authentication for actions but allow viewing
@@ -264,11 +265,11 @@ function RootLayoutNav() {
       <Stack.Screen name="orders" options={{ headerShown: false }} />
       <Stack.Screen name="messages" options={{ headerShown: false }} />
       <Stack.Screen name="wallet" options={{ headerShown: false }} />
-      <Stack.Screen name="trophy" options={{ headerShown: false }} />
       <Stack.Screen name="create-service-listing" options={{ headerShown: false }} />
       <Stack.Screen name="create-job-listing" options={{ headerShown: false }} />
       <Stack.Screen name="detailed-service-listing" options={{ headerShown: false }} />
       <Stack.Screen name="become-service-provider" options={{ headerShown: false }} />
+      <Stack.Screen name="bank-upload" options={{ headerShown: false }} />
       <Stack.Screen name="ekyc-verification" options={{ headerShown: false }} />
       <Stack.Screen name="malaysian-payment-gateway" options={{ headerShown: false }} />
       <Stack.Screen name="about-us" options={{ headerShown: false }} />

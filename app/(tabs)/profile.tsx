@@ -20,6 +20,7 @@ import { ReferralModal } from '@/components/ReferralModal';
 import { ReferralStatsInline } from '@/components/ReferralStatsInline';
 import { JobProposalNotifications } from '@/components/JobProposalNotifications';
 import { JobNotificationService, JobNotificationPayload } from '@/lib/job-notification-service';
+import { EKYCService, EKYCSubmission } from '@/lib/ekyc-service';
 
 
 
@@ -552,10 +553,53 @@ export default function ProfileScreen() {
             ) : (
               <TouchableOpacity
                 style={[styles.becomeServiceProviderButton, { backgroundColor: colors.primary.main }]}
-                onPress={() => router.push('/become-service-provider')}
+                onPress={async () => {
+                  try {
+                    const ekycSubmission = await EKYCService.getUserEKYCSubmission();
+                    
+                    if (!ekycSubmission) {
+                      Alert.alert(
+                        'eKYC Verification Required',
+                        'You must complete eKYC verification before becoming a service provider. This ensures your identity is verified.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Complete eKYC', onPress: () => router.push('/ekyc-verification') }
+                        ]
+                      );
+                      return;
+                    }
+
+                    if (ekycSubmission.status !== 'approved') {
+                      Alert.alert(
+                        'eKYC Verification Pending',
+                        `Your eKYC verification is currently ${ekycSubmission.status}. You must have an approved eKYC before uploading bank statements.`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Check Status', onPress: () => router.push('/ekyc-verification') }
+                        ]
+                      );
+                      return;
+                    }
+
+                    // eKYC is approved, proceed to bank upload
+                    router.push('/bank-upload');
+                  } catch (error) {
+                    console.error('Error checking eKYC status:', error);
+                    Alert.alert(
+                      'Error',
+                      'Failed to verify your eKYC status. Please try again.',
+                      [{ text: 'OK' }]
+                    );
+                  }
+                }}
               >
                 <Text style={[styles.becomeServiceProviderButtonText, { color: colors.text.white }]}>Become a Service Provider</Text>
-                <Text style={[styles.becomeServiceProviderButtonSubtext, { color: colors.text.white }]}>Start offering your services and earn money</Text>
+                <Text style={[styles.becomeServiceProviderButtonSubtext, { color: colors.text.white }]}>
+                  {ekycSubmission?.status === 'approved' 
+                    ? 'Upload bank statement to verify your account' 
+                    : 'Complete eKYC verification first'
+                  }
+                </Text>
               </TouchableOpacity>
             )}
             

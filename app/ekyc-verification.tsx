@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -72,6 +72,7 @@ export default function EKYCVerificationScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showStateDropdown, setShowStateDropdown] = useState(false);
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<any>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [isAnalyzingDocument, setIsAnalyzingDocument] = useState(false);
@@ -94,6 +95,34 @@ export default function EKYCVerificationScreen() {
     'Kuala Lumpur',
     'Labuan',
     'Putrajaya'
+  ];
+
+  // List of Countries
+  const countries = [
+    'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
+    'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi',
+    'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czech Republic',
+    'Democratic Republic of the Congo', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic',
+    'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia',
+    'Fiji', 'Finland', 'France',
+    'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana',
+    'Haiti', 'Honduras', 'Hungary',
+    'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Ivory Coast',
+    'Jamaica', 'Japan', 'Jordan',
+    'Kazakhstan', 'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan',
+    'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg',
+    'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar',
+    'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway',
+    'Oman',
+    'Pakistan', 'Palau', 'Palestine', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal',
+    'Qatar',
+    'Romania', 'Russia', 'Rwanda',
+    'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria',
+    'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu',
+    'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan',
+    'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam',
+    'Yemen',
+    'Zambia', 'Zimbabwe'
   ];
 
   // Check current verification status when component mounts
@@ -272,33 +301,89 @@ export default function EKYCVerificationScreen() {
     }
   ]);
 
-  // Additional documents
-  const [additionalDocuments, setAdditionalDocuments] = useState<DocumentType[]>([
-    {
-      id: 'ic_back',
-      name: 'IC Back (MyKad)',
-      description: 'Back side of your Malaysian Identity Card',
-      required: true,
-      uploaded: false,
-      verified: false
-    },
-    {
-      id: 'selfie',
-      name: 'Selfie with IC',
-      description: 'Photo of yourself holding your IC',
-      required: true,
-      uploaded: false,
-      verified: false
-    },
-    {
-      id: 'bank_statement',
-      name: 'Bank Statement (Optional)',
-      description: 'Recent bank statement for payment verification',
-      required: false,
-      uploaded: false,
-      verified: false
+  // Function to get additional documents based on uploaded identity document
+  const getAdditionalDocuments = (): DocumentType[] => {
+    // Check what identity document was uploaded
+    const uploadedIC = identityDocuments.find(doc => doc.id === 'ic_front' && doc.uploaded);
+    const uploadedPassport = identityDocuments.find(doc => doc.id === 'passport_front' && doc.uploaded);
+    
+    console.log('🔍 Checking identity documents for additional docs:');
+    console.log('📄 Uploaded IC:', uploadedIC);
+    console.log('📄 Uploaded Passport:', uploadedPassport);
+    console.log('📄 All identity documents:', identityDocuments);
+    
+    if (uploadedPassport) {
+      console.log('✅ Passport detected - showing Selfie with Passport');
+      // If passport was uploaded, show "Selfie with Passport" instead of "IC Back"
+      return [
+        {
+          id: 'selfie_with_passport',
+          name: 'Selfie with Passport',
+          description: 'Photo of yourself holding your passport',
+          required: true,
+          uploaded: false,
+          verified: false
+        }
+      ];
+    } else if (uploadedIC) {
+      console.log('✅ IC detected - showing IC Back and Selfie with IC');
+      // If Malaysian IC was uploaded, show both IC Back and Selfie with IC
+      return [
+        {
+          id: 'ic_back',
+          name: 'IC Back (MyKad)',
+          description: 'Back side of your Malaysian Identity Card',
+          required: true,
+          uploaded: false,
+          verified: false
+        },
+        {
+          id: 'selfie',
+          name: 'Selfie with IC',
+          description: 'Photo of yourself holding your IC',
+          required: true,
+          uploaded: false,
+          verified: false
+        }
+      ];
+    } else {
+      console.log('⚠️ No identity document detected - showing default documents');
+      // Default state - no identity document uploaded yet
+      return [
+        {
+          id: 'ic_back',
+          name: 'IC Back (MyKad)',
+          description: 'Back side of your Malaysian Identity Card',
+          required: true,
+          uploaded: false,
+          verified: false
+        },
+        {
+          id: 'selfie',
+          name: 'Selfie with IC',
+          description: 'Photo of yourself holding your IC',
+          required: true,
+          uploaded: false,
+          verified: false
+        }
+      ];
     }
-  ]);
+  };
+
+  // Additional documents - dynamically updated based on uploaded identity document
+  const [additionalDocuments, setAdditionalDocuments] = useState<DocumentType[]>(getAdditionalDocuments());
+
+  // Function to update additional documents when identity document changes
+  const updateAdditionalDocuments = () => {
+    setAdditionalDocuments(getAdditionalDocuments());
+  };
+
+  // Update additional documents when navigating to documents step
+  useEffect(() => {
+    if (currentStep === 'documents') {
+      updateAdditionalDocuments();
+    }
+  }, [currentStep]);
 
   // Combined documents for backward compatibility
   const documents = [...identityDocuments, ...additionalDocuments];
@@ -368,6 +453,11 @@ export default function EKYCVerificationScreen() {
         passportNumber: '',
         dateOfBirth: value === 'foreigner' ? prev.dateOfBirth : ''
       }));
+      
+      // Update additional documents when nationality changes
+      setTimeout(() => {
+        updateAdditionalDocuments();
+      }, 100);
     } else {
       setPersonalInfo(prev => ({ ...prev, [field]: value }));
     }
@@ -433,30 +523,15 @@ export default function EKYCVerificationScreen() {
     }
   };
 
-  const handleAIAutoFill = async () => {
+  const handleAIAutoFillWithUri = async (documentUri: string) => {
     try {
       setIsAnalyzingDocument(true);
       
-      // Find the identity document (IC front or passport)
-      const identityDoc = identityDocuments.find(doc => 
-        doc.id === 'ic_front' || doc.id === 'passport_front'
-      );
+      console.log('🤖 Starting AI analysis with provided URI:', documentUri);
       
-      if (!identityDoc || !identityDoc.uploaded || !identityDoc.uri) {
-        Alert.alert(
-          'Document Required',
-          'Please upload your IC front or passport first before using AI auto-fill.'
-        );
-        return;
-      }
-
-      console.log('🤖 Starting AI analysis for document:', identityDoc.id);
-      
-      const documentType = personalInfo.nationality === 'malaysian' ? 'IC' : 'Passport';
-      
-      const result = await AIDocumentAnalysisService.analyzeIdentityDocument(
-        identityDoc.uri,
-        documentType
+      // Use the new type detection method to analyze the document
+      const result = await AIDocumentAnalysisService.analyzeDocumentWithTypeDetection(
+        documentUri
       );
 
       if (!result.success || !result.extractedInfo) {
@@ -473,7 +548,76 @@ export default function EKYCVerificationScreen() {
       // Check if AI analysis was successful or if it's fallback data
       const confidence = extracted.confidence || 0;
       const isFallback = confidence < 0.5;
-      
+
+      // Handle document type detection and validation
+      if (extracted.documentType === 'Passport') {
+        if (extracted.isMalaysianDocument) {
+          Alert.alert(
+            'Malaysian Passport Detected',
+            'You have uploaded a Malaysian passport. For eKYC verification, Malaysian citizens must use their Malaysian IC (MyKad, MyKid, etc.) instead of a passport. Please upload your Malaysian IC.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Upload IC', onPress: () => {
+                // Reset the passport document and go back to document upload
+                setIdentityDocuments(prev => prev.map(doc => 
+                  doc.id === 'passport_front' ? { ...doc, uploaded: false, uri: undefined } : doc
+                ));
+                // Update additional documents when identity document changes
+                setTimeout(() => {
+                  updateAdditionalDocuments();
+                }, 100);
+                setCurrentStep('identity_document');
+              }}
+            ]
+          );
+          return;
+        } else {
+          // Foreign passport detected - confirm with user
+          Alert.alert(
+            'Foreign Passport Detected',
+            `We detected a ${extracted.detectedCountry || 'foreign'} passport. Is this correct?`,
+            [
+              { text: 'No, Upload Different Document', style: 'cancel' },
+              { text: 'Yes, Continue', onPress: () => {
+                // Set nationality to foreigner and continue with auto-fill
+                setPersonalInfo(prev => ({ ...prev, nationality: 'foreigner' }));
+                // Auto-fill the form with extracted data but stay on current step
+                autoFillFormData(extracted);
+              }}
+            ]
+          );
+          return;
+        }
+      } else if (extracted.documentType === 'IC') {
+        // Malaysian IC detected - validate IC type
+        if (!extracted.isMalaysianDocument) {
+          Alert.alert(
+            'Invalid IC Detected',
+            'The uploaded document does not appear to be a valid Malaysian IC. Please upload a valid Malaysian IC (MyKad, MyKid, MyTentera, MyPolis, MyPR, MyKAS, or MyPoca).',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+
+        // Show IC type confirmation
+        const icType = extracted.detectedICType || 'Unknown';
+        Alert.alert(
+          'Malaysian IC Detected',
+          `We detected a ${icType} (Malaysian IC). Is this correct?`,
+          [
+            { text: 'No, Upload Different Document', style: 'cancel' },
+            { text: 'Yes, Continue', onPress: () => {
+              // Set nationality to Malaysian and continue with auto-fill
+              setPersonalInfo(prev => ({ ...prev, nationality: 'malaysian' }));
+              // Continue with the current extracted data but preserve Malaysian nationality
+              continueWithExtractedDataForMalaysianIC(extracted);
+            }}
+          ]
+        );
+        return;
+      }
+
+      // If we reach here, no special handling needed, proceed with auto-fill
       if (isFallback) {
         Alert.alert(
           'Manual Entry Required',
@@ -482,39 +626,8 @@ export default function EKYCVerificationScreen() {
         );
       }
 
-      // Auto-fill the form with extracted information (even if it's fallback data)
-      const updatedInfo = { ...personalInfo };
-      
-      if (extracted.fullName && extracted.fullName !== 'Manual entry required') {
-        updatedInfo.fullName = extracted.fullName;
-      }
-      
-      if (documentType === 'IC' && extracted.icNumber && extracted.icNumber !== 'Manual entry required') {
-        updatedInfo.icNumber = extracted.icNumber;
-      } else if (documentType === 'Passport' && extracted.passportNumber && extracted.passportNumber !== 'Manual entry required') {
-        updatedInfo.passportNumber = extracted.passportNumber;
-      }
-      
-      if (extracted.dateOfBirth && extracted.dateOfBirth !== 'Manual entry required') {
-        updatedInfo.dateOfBirth = extracted.dateOfBirth;
-      }
-      
-      if (extracted.nationality && extracted.nationality !== 'Manual entry required') {
-        updatedInfo.nationality = extracted.nationality.toLowerCase() === 'malaysian' ? 'malaysian' : 'foreigner';
-      }
-
-      // Extract and parse address if available
-      if (extracted.address && extracted.address !== 'Manual entry required' && extracted.address !== 'null') {
-        const parsedAddress = parseAddress(extracted.address);
-        if (parsedAddress) {
-          updatedInfo.address = parsedAddress.street || '';
-          updatedInfo.city = parsedAddress.city || '';
-          updatedInfo.postcode = parsedAddress.postcode || '';
-          updatedInfo.state = parsedAddress.state || '';
-        }
-      }
-
-      setPersonalInfo(updatedInfo);
+      // Use the extracted data to auto-fill the form
+      continueWithExtractedData(extracted);
 
       // Show appropriate message based on confidence
       if (isFallback) {
@@ -522,6 +635,166 @@ export default function EKYCVerificationScreen() {
       } else {
         console.log(`✅ AI auto-fill completed with ${Math.round(confidence * 100)}% confidence`);
       }
+
+    } catch (error: any) {
+      console.error('❌ AI auto-fill error:', error);
+      Alert.alert(
+        'Auto-fill Error',
+        'An error occurred while analyzing your document. Please fill in the information manually.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsAnalyzingDocument(false);
+    }
+  };
+
+  const autoFillFormData = (extracted: any) => {
+    // Auto-fill the form with extracted information but stay on current step
+    const updatedInfo = { ...personalInfo };
+    
+    if (extracted.fullName && extracted.fullName !== 'Manual entry required') {
+      updatedInfo.fullName = extracted.fullName;
+    }
+    
+    if (extracted.documentType === 'IC' && extracted.icNumber && extracted.icNumber !== 'Manual entry required') {
+      updatedInfo.icNumber = extracted.icNumber;
+    } else if (extracted.documentType === 'Passport' && extracted.passportNumber && extracted.passportNumber !== 'Manual entry required') {
+      updatedInfo.passportNumber = extracted.passportNumber;
+    }
+    
+    if (extracted.dateOfBirth && extracted.dateOfBirth !== 'Manual entry required') {
+      updatedInfo.dateOfBirth = extracted.dateOfBirth;
+    }
+    
+    if (extracted.nationality && extracted.nationality !== 'Manual entry required') {
+      updatedInfo.nationality = extracted.nationality.toLowerCase() === 'malaysian' ? 'malaysian' : 'foreigner';
+    }
+
+    // Extract and parse address if available
+    if (extracted.address && extracted.address !== 'Manual entry required' && extracted.address !== 'null') {
+      const parsedAddress = parseAddress(extracted.address);
+      if (parsedAddress) {
+        updatedInfo.address = parsedAddress.street || '';
+        updatedInfo.city = parsedAddress.city || '';
+        updatedInfo.postcode = parsedAddress.postcode || '';
+        updatedInfo.state = parsedAddress.state || '';
+      }
+    }
+
+    setPersonalInfo(updatedInfo);
+    console.log('✅ Auto-fill completed with extracted data (staying on current step)');
+  };
+
+  const continueWithExtractedDataForMalaysianIC = (extracted: any) => {
+    // Auto-fill the form with extracted information for Malaysian IC (preserve nationality)
+    const updatedInfo = { ...personalInfo };
+    
+    if (extracted.fullName && extracted.fullName !== 'Manual entry required') {
+      updatedInfo.fullName = extracted.fullName;
+    }
+    
+    if (extracted.documentType === 'IC' && extracted.icNumber && extracted.icNumber !== 'Manual entry required') {
+      updatedInfo.icNumber = extracted.icNumber;
+    } else if (extracted.documentType === 'Passport' && extracted.passportNumber && extracted.passportNumber !== 'Manual entry required') {
+      updatedInfo.passportNumber = extracted.passportNumber;
+    }
+    
+    if (extracted.dateOfBirth && extracted.dateOfBirth !== 'Manual entry required') {
+      updatedInfo.dateOfBirth = extracted.dateOfBirth;
+    }
+    
+    // For Malaysian IC, always keep nationality as 'malaysian'
+    updatedInfo.nationality = 'malaysian';
+
+    // Extract and parse address if available
+    if (extracted.address && extracted.address !== 'Manual entry required' && extracted.address !== 'null') {
+      const parsedAddress = parseAddress(extracted.address);
+      if (parsedAddress) {
+        updatedInfo.address = parsedAddress.street || '';
+        updatedInfo.city = parsedAddress.city || '';
+        updatedInfo.postcode = parsedAddress.postcode || '';
+        updatedInfo.state = parsedAddress.state || '';
+      }
+    }
+
+    setPersonalInfo(updatedInfo);
+    console.log('✅ Auto-fill completed with extracted data for Malaysian IC');
+    
+    // Move to next step after successful auto-fill
+    setCurrentStep('personal');
+  };
+
+  const continueWithExtractedData = (extracted: any) => {
+    // Auto-fill the form with extracted information
+    const updatedInfo = { ...personalInfo };
+    
+    if (extracted.fullName && extracted.fullName !== 'Manual entry required') {
+      updatedInfo.fullName = extracted.fullName;
+    }
+    
+    if (extracted.documentType === 'IC' && extracted.icNumber && extracted.icNumber !== 'Manual entry required') {
+      updatedInfo.icNumber = extracted.icNumber;
+    } else if (extracted.documentType === 'Passport' && extracted.passportNumber && extracted.passportNumber !== 'Manual entry required') {
+      updatedInfo.passportNumber = extracted.passportNumber;
+    }
+    
+    if (extracted.dateOfBirth && extracted.dateOfBirth !== 'Manual entry required') {
+      updatedInfo.dateOfBirth = extracted.dateOfBirth;
+    }
+    
+    if (extracted.nationality && extracted.nationality !== 'Manual entry required') {
+      updatedInfo.nationality = extracted.nationality.toLowerCase() === 'malaysian' ? 'malaysian' : 'foreigner';
+    }
+
+    // Extract and parse address if available
+    if (extracted.address && extracted.address !== 'Manual entry required' && extracted.address !== 'null') {
+      const parsedAddress = parseAddress(extracted.address);
+      if (parsedAddress) {
+        updatedInfo.address = parsedAddress.street || '';
+        updatedInfo.city = parsedAddress.city || '';
+        updatedInfo.postcode = parsedAddress.postcode || '';
+        updatedInfo.state = parsedAddress.state || '';
+      }
+    }
+
+    setPersonalInfo(updatedInfo);
+    console.log('✅ Auto-fill completed with extracted data');
+    
+    // Move to next step after successful auto-fill
+    setCurrentStep('personal');
+  };
+
+  const handleAIAutoFill = async () => {
+    try {
+      setIsAnalyzingDocument(true);
+      
+      // Find the identity document (IC front or passport)
+      console.log('🔍 Current identity documents state:', identityDocuments);
+      
+      const identityDoc = identityDocuments.find(doc => 
+        (doc.id === 'ic_front' || doc.id === 'passport_front') && doc.uploaded && doc.uri
+      );
+      
+      console.log('🔍 Found identity document:', identityDoc);
+      
+      if (!identityDoc) {
+        console.log('❌ No uploaded identity document found');
+        console.log('❌ Available documents:', identityDocuments.map(doc => ({
+          id: doc.id,
+          uploaded: doc.uploaded,
+          hasUri: !!doc.uri,
+          uri: doc.uri || 'no-uri'
+        })));
+        
+        Alert.alert(
+          'Document Required',
+          'Please upload your IC front or passport first before using AI auto-fill.'
+        );
+        return;
+      }
+
+      // Use the newer function that takes URI directly
+      await handleAIAutoFillWithUri(identityDoc.uri);
 
     } catch (error: any) {
       console.error('❌ AI auto-fill error:', error);
@@ -687,6 +960,11 @@ export default function EKYCVerificationScreen() {
             console.log('🔄 Updated identity documents:', updated);
             return updated;
           });
+          
+          // Update additional documents when identity document changes
+          setTimeout(() => {
+            updateAdditionalDocuments();
+          }, 100);
         } else {
           setAdditionalDocuments(prev => {
             const updated = prev.map(doc => 
@@ -699,11 +977,20 @@ export default function EKYCVerificationScreen() {
           });
         }
         
-        Alert.alert(
-          'Success',
-          'Document uploaded successfully',
-          [{ text: 'OK' }]
-        );
+        // For identity documents, trigger AI analysis automatically
+        if (documentType === 'identity' && (documentId === 'ic_front' || documentId === 'passport_front')) {
+          console.log('🤖 Triggering automatic AI analysis for identity document');
+          // Use the uploaded URL directly instead of relying on state update
+          setTimeout(() => {
+            handleAIAutoFillWithUri(uploadedUrl);
+          }, 500);
+        } else {
+          Alert.alert(
+            'Success',
+            'Document uploaded successfully',
+            [{ text: 'OK' }]
+          );
+        }
       } catch (uploadError: any) {
         console.error('❌ Upload to storage failed:', uploadError);
         console.error('❌ Upload error details:', {
@@ -750,22 +1037,45 @@ export default function EKYCVerificationScreen() {
 
   const handleNextStep = () => {
     if (currentStep === 'identity_document') {
-      // Check if identity document is uploaded
-      const requiredIdentityDoc = personalInfo.nationality === 'malaysian' ? 'ic_front' : 'passport_front';
-      const identityDoc = identityDocuments.find(doc => doc.id === requiredIdentityDoc);
+      // Check if ANY identity document is uploaded (IC or Passport)
+      const uploadedIdentityDoc = identityDocuments.find(doc => 
+        (doc.id === 'ic_front' || doc.id === 'passport_front') && doc.uploaded
+      );
       
-      if (!identityDoc || !identityDoc.uploaded) {
-        Alert.alert('Identity Document Required', `Please upload your ${personalInfo.nationality === 'malaysian' ? 'IC front' : 'passport front'} first.`);
+      if (!uploadedIdentityDoc) {
+        Alert.alert('Identity Document Required', 'Please upload either your IC front or passport front first.');
         return;
       }
       
-      // Auto-fill personal information with AI after document upload
-      handleAIAutoFill();
+      // Check if AI analysis has already been triggered automatically
+      // If not, trigger it manually
+      const hasUploadedDoc = identityDocuments.find(doc => 
+        (doc.id === 'ic_front' || doc.id === 'passport_front') && doc.uploaded && doc.uri
+      );
+      
+      if (hasUploadedDoc && !isAnalyzingDocument) {
+        console.log('🤖 Triggering manual AI analysis from Next button');
+        handleAIAutoFill();
+      } else if (hasUploadedDoc && isAnalyzingDocument) {
+        console.log('🤖 AI analysis already in progress, skipping manual trigger');
+      } else {
+        console.log('❌ No uploaded document found for AI analysis');
+      }
       
       setCurrentStep('personal');
     } else if (currentStep === 'personal') {
-      // Validate personal information based on nationality
-      let requiredFields = ['fullName', 'dateOfBirth', 'phoneNumber', 'email', 'address', 'city', 'postcode', 'state'];
+      // Validate personal information - ALL fields are compulsory
+      let requiredFields = [
+        'fullName', 
+        'dateOfBirth', 
+        'phoneNumber', 
+        'email', 
+        'address', 
+        'city', 
+        'postcode', 
+        'state',
+        'country'
+      ];
       
       if (personalInfo.nationality === 'malaysian') {
         requiredFields.push('icNumber');
@@ -773,10 +1083,33 @@ export default function EKYCVerificationScreen() {
         requiredFields.push('passportNumber');
       }
       
-      const missingFields = requiredFields.filter(field => !personalInfo[field as keyof typeof personalInfo]);
+      const missingFields = requiredFields.filter(field => {
+        const value = personalInfo[field as keyof typeof personalInfo];
+        return !value || value.trim() === '';
+      });
       
       if (missingFields.length > 0) {
-        Alert.alert('Missing Information', 'Please fill in all required fields.');
+        const missingFieldNames = missingFields.map(field => {
+          switch (field) {
+            case 'fullName': return 'Full Name';
+            case 'dateOfBirth': return 'Date of Birth';
+            case 'phoneNumber': return 'Phone Number';
+            case 'email': return 'Email Address';
+            case 'address': return 'Address';
+            case 'city': return 'City';
+            case 'postcode': return 'Postcode';
+            case 'state': return 'State';
+            case 'country': return 'Country';
+            case 'icNumber': return 'IC Number';
+            case 'passportNumber': return 'Passport Number';
+            default: return field;
+          }
+        });
+        
+        Alert.alert(
+          'Missing Information', 
+          `Please fill in all required fields:\n\n${missingFieldNames.join('\n')}`
+        );
         return;
       }
       setCurrentStep('documents');
@@ -1043,11 +1376,26 @@ export default function EKYCVerificationScreen() {
 
       {/* AI Analysis Status */}
       {isAnalyzingDocument && (
-        <View style={[styles.aiAnalysisStatus, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
-          <ActivityIndicator size="small" color={colors.primary.main} />
-          <Text style={[styles.aiAnalysisStatusText, { color: colors.text.primary }]}>
-            AI is analyzing your document and extracting information...
-          </Text>
+        <View style={styles.aiAnalysisOverlay}>
+          <View style={styles.aiAnalysisContent}>
+            <View style={styles.aiAnalysisIconContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+            </View>
+            <Text style={styles.aiAnalysisTitle}>
+              AI Analysis in Progress
+            </Text>
+            <Text style={styles.aiAnalysisSubtitle}>
+              Our AI is carefully analyzing your document and extracting information...
+            </Text>
+            <View style={styles.aiAnalysisProgress}>
+              <View style={styles.aiAnalysisProgressBar}>
+                <View style={styles.aiAnalysisProgressFill} />
+              </View>
+              <Text style={styles.aiAnalysisProgressText}>
+                Processing document...
+              </Text>
+            </View>
+          </View>
         </View>
       )}
 
@@ -1090,7 +1438,7 @@ export default function EKYCVerificationScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Full Name {personalInfo.nationality === 'malaysian' ? '(as per IC)' : '(as per Passport)'}</Text>
+        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Full Name {personalInfo.nationality === 'malaysian' ? '(as per IC)' : '(as per Passport)'} <Text style={{ color: colors.status.error }}>*</Text></Text>
         <TextInput
           style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
           value={personalInfo.fullName}
@@ -1104,7 +1452,7 @@ export default function EKYCVerificationScreen() {
       {/* Conditional IC/Passport Field */}
       {personalInfo.nationality === 'malaysian' ? (
         <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: colors.text.primary }]}>IC Number</Text>
+          <Text style={[styles.inputLabel, { color: colors.text.primary }]}>IC Number <Text style={{ color: colors.status.error }}>*</Text></Text>
           <TextInput
             style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
             value={personalInfo.icNumber}
@@ -1117,19 +1465,57 @@ export default function EKYCVerificationScreen() {
         </View>
       ) : (
         <>
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Country</Text>
-            <TextInput
-              style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
-              value={personalInfo.country}
-              onChangeText={(text) => handlePersonalInfoChange('country', text)}
-              placeholder="Enter your country"
-              placeholderTextColor={colors.text.tertiary}
-              autoCapitalize="words"
-            />
+          <View style={[styles.inputGroup, { position: 'relative', zIndex: 1001, marginBottom: showCountryDropdown ? 220 : 20 }]}>
+            <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Country <Text style={{ color: colors.status.error }}>*</Text></Text>
+            <TouchableOpacity
+              style={[styles.dropdownContainer, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}
+              onPress={() => setShowCountryDropdown(!showCountryDropdown)}
+            >
+              <Text style={[
+                styles.dropdownText, 
+                { 
+                  color: personalInfo.country ? colors.text.primary : colors.text.tertiary 
+                }
+              ]}>
+                {personalInfo.country || 'Select your country'}
+              </Text>
+              <Text style={styles.dropdownArrow}>▼</Text>
+            </TouchableOpacity>
+            
+            {showCountryDropdown && (
+              <View style={[styles.dropdownOptions, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
+                <ScrollView style={styles.dropdownScrollView} showsVerticalScrollIndicator={false}>
+                  {countries.map((country) => (
+                    <TouchableOpacity
+                      key={country}
+                      style={[
+                        styles.dropdownOption,
+                        { 
+                          backgroundColor: personalInfo.country === country ? colors.primary.main : colors.background.tertiary,
+                          borderBottomColor: colors.border.light 
+                        }
+                      ]}
+                      onPress={() => {
+                        handlePersonalInfoChange('country', country);
+                        setShowCountryDropdown(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.dropdownOptionText,
+                        { 
+                          color: personalInfo.country === country ? 'white' : colors.text.primary 
+                        }
+                      ]}>
+                        {country}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
           </View>
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Passport Number</Text>
+            <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Passport Number <Text style={{ color: colors.status.error }}>*</Text></Text>
             <TextInput
               style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
               value={personalInfo.passportNumber}
@@ -1143,7 +1529,7 @@ export default function EKYCVerificationScreen() {
       )}
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Date of Birth</Text>
+        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Date of Birth <Text style={{ color: colors.status.error }}>*</Text></Text>
         <TextInput
           style={[
             styles.textInput, 
@@ -1162,7 +1548,7 @@ export default function EKYCVerificationScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Phone Number</Text>
+        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Phone Number <Text style={{ color: colors.status.error }}>*</Text></Text>
         <TextInput
           style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
           value={personalInfo.phoneNumber.startsWith('+60') ? personalInfo.phoneNumber : `+60${personalInfo.phoneNumber}`}
@@ -1237,7 +1623,7 @@ export default function EKYCVerificationScreen() {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.inputLabel, { color: colors.text.primary }]}>
-          {personalInfo.addressType === 'current' ? 'Current Address' : 'Registered Address'}
+          {personalInfo.addressType === 'current' ? 'Current Address' : 'Registered Address'} <Text style={{ color: colors.status.error }}>*</Text>
         </Text>
         <TextInput
           style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
@@ -1251,7 +1637,7 @@ export default function EKYCVerificationScreen() {
 
       <View style={styles.row}>
         <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-          <Text style={[styles.inputLabel, { color: colors.text.primary }]}>City</Text>
+          <Text style={[styles.inputLabel, { color: colors.text.primary }]}>City <Text style={{ color: colors.status.error }}>*</Text></Text>
           <TextInput
             style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
             value={personalInfo.city}
@@ -1261,7 +1647,7 @@ export default function EKYCVerificationScreen() {
           />
         </View>
         <View style={[styles.inputGroup, { flex: 1, marginLeft: 10 }]}>
-          <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Postcode</Text>
+          <Text style={[styles.inputLabel, { color: colors.text.primary }]}>Postcode <Text style={{ color: colors.status.error }}>*</Text></Text>
           <TextInput
             style={[styles.textInput, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light, color: colors.text.primary }]}
             value={personalInfo.postcode}
@@ -1274,7 +1660,7 @@ export default function EKYCVerificationScreen() {
       </View>
 
       <View style={[styles.inputGroup, { position: 'relative', zIndex: 1000, marginBottom: showStateDropdown ? 220 : 20 }]}>
-        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>State</Text>
+        <Text style={[styles.inputLabel, { color: colors.text.primary }]}>State <Text style={{ color: colors.status.error }}>*</Text></Text>
         <TouchableOpacity
           style={[styles.dropdownContainer, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}
           onPress={() => setShowStateDropdown(!showStateDropdown)}
@@ -2348,5 +2734,82 @@ const styles = StyleSheet.create({
   aiAnalysisStatusText: {
     fontSize: 14,
     flex: 1,
+  },
+  aiAnalysisOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  aiAnalysisContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 32,
+    margin: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  aiAnalysisIconContainer: {
+    marginBottom: 20,
+  },
+  aiAnalysisTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1D1D1F',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  aiAnalysisSubtitle: {
+    fontSize: 16,
+    color: '#8E8E93',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  aiAnalysisProgress: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  aiAnalysisProgressBar: {
+    width: 200,
+    height: 4,
+    backgroundColor: '#E5E5EA',
+    borderRadius: 2,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  aiAnalysisProgressFill: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderRadius: 2,
+    width: '60%',
+    // Add a subtle animation effect
+    transform: [{ scaleX: 1 }],
+  },
+  aiAnalysisProgressText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    fontWeight: '500',
+  },
+  infoContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
   },
 });
