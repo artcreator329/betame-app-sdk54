@@ -133,6 +133,9 @@ export class EKYCService {
       // Map document URLs from the frontend format to database format
         const documentUrls = submission.document_urls || {};
         
+        console.log('📎 EKYCService: Received document URLs:', documentUrls);
+        console.log('📎 EKYCService: Available document keys:', Object.keys(documentUrls));
+        
         // Format date from DD/MM/YYYY to YYYY-MM-DD for database
         const formatDateForDatabase = (dateString: string): string => {
           if (!dateString) return '';
@@ -180,11 +183,16 @@ export class EKYCService {
           city: submission.city,
           postcode: submission.postcode,
           state: submission.state,
-          identity_document_url: documentUrls.ic_front || documentUrls.ic || documentUrls.passport,
-          proof_of_address_url: documentUrls.ic_back || documentUrls.address || documentUrls.proof_of_address,
-          additional_document_url: documentUrls.selfie || documentUrls.additional,
+          identity_document_url: documentUrls.ic_front || documentUrls.passport_front,
+          proof_of_address_url: documentUrls.ic_back || documentUrls.selfie_with_passport,
+          additional_document_url: documentUrls.selfie,
           status: 'pending'
         };
+
+        console.log('📎 EKYCService: Mapped document URLs:');
+        console.log('📎 - identity_document_url:', documentUrls.ic_front || documentUrls.passport_front);
+        console.log('📎 - proof_of_address_url:', documentUrls.ic_back || documentUrls.selfie_with_passport);
+        console.log('📎 - additional_document_url:', documentUrls.selfie);
 
       console.log('📤 EKYCService: Submitting eKYC data:', submissionData);
 
@@ -502,7 +510,7 @@ export class EKYCService {
           new_verification_status: newStatus,
           trigger_source: source
         });
-    } catch (error) {
+    } catch (error: any) {
       console.warn('⚠️ Failed to log sync operation:', error);
     }
   }
@@ -528,7 +536,7 @@ export class EKYCService {
           trigger_source: 'service_update_failed',
           sync_timestamp: new Date().toISOString()
         });
-    } catch (error) {
+    } catch (error: any) {
       console.warn('⚠️ Failed to log sync failure:', error);
     }
   }

@@ -56,6 +56,8 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [ekycSubmission, setEkycSubmission] = useState<any>(null);
   const [loadingEkyc, setLoadingEkyc] = useState(true);
+  const [bankStatement, setBankStatement] = useState<any>(null);
+  const [loadingBankStatement, setLoadingBankStatement] = useState(true);
   const router = useRouter();
   const { user, userProfile, updateProfile, refreshProfile, checkAdminStatus: contextCheckAdminStatus, isAdmin } = useAuth();
   const colors = useColors();
@@ -91,79 +93,102 @@ export default function ProfileScreen() {
     }
   }, [user]);
 
+  // Load bank statement status
+  const loadBankStatement = useCallback(async () => {
+    try {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('bank_statements')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+        console.error('Error loading bank statement:', error);
+      } else {
+        console.log('🔄 Bank statement loaded:', data);
+        console.log('🔄 User profile is_service_provider:', userProfile?.is_service_provider);
+        console.log('🔄 Bank statement status:', data?.status);
+        setBankStatement(data);
+      }
+    } catch (error) {
+      console.error('Error loading bank statement:', error);
+    } finally {
+      setLoadingBankStatement(false);
+    }
+  }, [user, userProfile?.is_service_provider]);
+
   // Set up real-time subscription to user profile changes
-  // useEffect(() => {
-  //   if (!user) return;
+  useEffect(() => {
+    if (!user) return;
 
-  //   console.log('🔄 Setting up real-time subscription for user profile changes');
+    console.log('🔄 Setting up real-time subscription for bank statement changes');
     
-  //   const channel = supabase
-  //     .channel(`user_profile_${user.id}`)
-  //     .on(
-  //       'postgres_changes',
-  //       {
-  //         event: 'UPDATE',
-  //         schema: 'public',
-  //         table: 'user_profiles',
-  //         filter: `user_id=eq.${user.id}`
-  //       },
-  //       (payload) => {
-  //         console.log('🔄 User profile updated:', payload.new);
-  //         // Refresh the user profile data when it changes
-  //         refreshProfile().catch(error => {
-  //           console.error('❌ Error refreshing profile after update:', error);
-  //         });
-  //       }
-  //     )
-  //     .on(
-  //       'postgres_changes',
-  //       {
-  //         event: 'INSERT',
-  //         schema: 'public',
-  //         table: 'ekyc_submissions',
-  //         filter: `user_id=eq.${user.id}`
-  //       },
-  //       (payload) => {
-  //         console.log('🔄 New eKYC submission:', payload.new);
-  //         // Refresh eKYC submission data
-  //         loadEkycSubmission().catch(error => {
-  //           console.error('❌ Error loading eKYC submission after insert:', error);
-  //         });
-  //       }
-  //     )
-  //     .on(
-  //       'postgres_changes',
-  //       {
-  //         event: 'UPDATE',
-  //         schema: 'public',
-  //         table: 'ekyc_submissions',
-  //         filter: `user_id=eq.${user.id}`
-  //       },
-  //       (payload) => {
-  //         console.log('🔄 eKYC submission updated:', payload.new);
-  //         // Refresh both user profile and eKYC submission data
-  //         Promise.all([
-  //           refreshProfile(),
-  //           loadEkycSubmission()
-  //         ]).catch(error => {
-  //           console.error('❌ Error refreshing data after eKYC update:', error);
-  //         });
-  //       }
-  //     )
-  //     .subscribe((status) => {
-  //       console.log('🔄 Real-time subscription status:', status);
-  //       if (status === 'SUBSCRIBED') {
-  //         console.log('✅ Real-time subscription established successfully');
-  //       } else if (status === 'CHANNEL_ERROR') {
-  //         console.error('❌ Real-time subscription error');
-  //       }
-  //     });
+    const channel = supabase
+      .channel(`bank-statement-changes:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'bank_statements',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 Bank statement updated:', payload.new);
+          // Refresh profile data when bank statement status changes
+          refreshProfile();
+          loadBankStatement();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'bank_statements',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 New bank statement submitted:', payload.new);
+          // Refresh profile data when new bank statement is submitted
+          refreshProfile();
+          loadBankStatement();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 Profile updated via real-time:', payload.new);
+          console.log('🔄 Profile old data:', payload.old);
+          console.log('🔄 is_service_provider changed from', payload.old?.is_service_provider, 'to', payload.new?.is_service_provider);
+          // Refresh profile data when profile is updated (including is_service_provider status)
+          refreshProfile();
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔄 Bank statement subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Bank statement real-time subscription established');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Bank statement subscription error');
+        }
+      });
 
-  //   return () => {
-  //     console.log('🔄 Cleaning up real-time subscription for user profile');
-  //     supabase.removeChannel(channel);
-  //   };
-  // }, [user]); // Remove refreshProfile and loadEkycSubmission from dependencies
+    return () => {
+      console.log('🔄 Cleaning up bank statement subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [user, refreshProfile, loadBankStatement]);
 
   // Fetch user's services and reviews from Supabase
   const handleProfileVisibilityChange = useCallback(async (serviceId: string, isVisible: boolean) => {
@@ -286,11 +311,15 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (user) {
+      console.log('🔄 User profile in profile page:', userProfile);
+      console.log('🔄 User profile is_service_provider:', userProfile?.is_service_provider);
       fetchProfileData();
       contextCheckAdminStatus();
       setupJobNotifications();
+      loadEkycSubmission();
+      loadBankStatement();
     }
-  }, [user, fetchProfileData, contextCheckAdminStatus, setupJobNotifications]);
+  }, [user, fetchProfileData, contextCheckAdminStatus, setupJobNotifications, loadEkycSubmission, loadBankStatement]);
 
 
 
@@ -310,12 +339,13 @@ export default function ProfileScreen() {
       await refreshProfile(); // Refresh profile from AuthContext
       await fetchProfileData(); // Refresh local data
       await loadEkycSubmission(); // Refresh eKYC submission data
+      await loadBankStatement(); // Refresh bank statement data
     } catch (error) {
       console.error('Error refreshing profile:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshProfile]);
+  }, [refreshProfile, loadEkycSubmission, loadBankStatement]);
 
   // Refetch profile data when screen comes into focus
   useFocusEffect(
@@ -324,8 +354,9 @@ export default function ProfileScreen() {
         refreshProfile(); // Refresh user profile data (including verification status)
         fetchProfileData();
         loadEkycSubmission();
+        loadBankStatement();
       }
-    }, [user, refreshProfile])
+    }, [user, refreshProfile, loadEkycSubmission, loadBankStatement])
   );
 
   const handleShareProfile = () => {
@@ -552,11 +583,57 @@ export default function ProfileScreen() {
               </View>
             ) : (
               <TouchableOpacity
-                style={[styles.becomeServiceProviderButton, { backgroundColor: colors.primary.main }]}
+                style={[
+                  styles.becomeServiceProviderButton, 
+                  { 
+                    backgroundColor: userProfile?.is_service_provider 
+                      ? colors.status.success 
+                      : bankStatement?.status === 'pending' 
+                        ? colors.text.secondary 
+                        : colors.primary.main,
+                    opacity: userProfile?.is_service_provider 
+                      ? 1 
+                      : bankStatement?.status === 'pending' 
+                        ? 0.7 
+                        : 1
+                  }
+                ]}
                 onPress={async () => {
                   try {
-                    const ekycSubmission = await EKYCService.getUserEKYCSubmission();
-                    
+                    // If user is already a service provider, show success message
+                    if (userProfile?.is_service_provider) {
+                      Alert.alert(
+                        'Service Provider Verified',
+                        'You are already a verified service provider. You can now create service listings.',
+                        [{ text: 'OK' }]
+                      );
+                      return;
+                    }
+
+                    // If bank statement is pending, show status message
+                    if (bankStatement?.status === 'pending') {
+                      Alert.alert(
+                        'Bank Statement Under Review',
+                        'Your bank statement has been submitted and is currently being reviewed. We will notify you once the review is complete.',
+                        [{ text: 'OK' }]
+                      );
+                      return;
+                    }
+
+                    // Check if user is logged in
+                    if (!user) {
+                      Alert.alert(
+                        'Sign In Required',
+                        'You need to sign in to become a service provider. Would you like to sign in now?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Sign In', onPress: () => router.push('/auth/login') }
+                        ]
+                      );
+                      return;
+                    }
+
+                    // Check eKYC status
                     if (!ekycSubmission) {
                       Alert.alert(
                         'eKYC Verification Required',
@@ -593,11 +670,22 @@ export default function ProfileScreen() {
                   }
                 }}
               >
-                <Text style={[styles.becomeServiceProviderButtonText, { color: colors.text.white }]}>Become a Service Provider</Text>
+                <Text style={[styles.becomeServiceProviderButtonText, { color: colors.text.white }]}>
+                  {userProfile?.is_service_provider 
+                    ? 'Verified Service Provider' 
+                    : bankStatement?.status === 'pending' 
+                      ? 'In Review' 
+                      : 'Become a Service Provider'
+                  }
+                </Text>
                 <Text style={[styles.becomeServiceProviderButtonSubtext, { color: colors.text.white }]}>
-                  {ekycSubmission?.status === 'approved' 
-                    ? 'Upload bank statement to verify your account' 
-                    : 'Complete eKYC verification first'
+                  {userProfile?.is_service_provider 
+                    ? 'You can now create service listings' 
+                    : bankStatement?.status === 'pending' 
+                      ? 'Your bank statement is being reviewed' 
+                      : ekycSubmission?.status === 'approved' 
+                        ? 'Upload bank statement to verify your account' 
+                        : 'Complete eKYC verification first'
                   }
                 </Text>
               </TouchableOpacity>
@@ -877,6 +965,19 @@ export default function ProfileScreen() {
       </SafeAreaView>
     );
   }
+
+  // Manual refresh function for debugging
+  const manualRefresh = useCallback(async () => {
+    console.log('🔄 Manual refresh triggered');
+    console.log('🔄 Current userProfile:', userProfile);
+    console.log('🔄 Current userProfile.is_service_provider:', userProfile?.is_service_provider);
+    
+    await refreshProfile();
+    await loadBankStatement();
+    
+    console.log('🔄 After refresh - userProfile:', userProfile);
+    console.log('🔄 After refresh - userProfile.is_service_provider:', userProfile?.is_service_provider);
+  }, [refreshProfile, loadBankStatement, userProfile]);
 
   return (
     <SafeAreaView

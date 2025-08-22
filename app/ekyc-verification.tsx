@@ -301,7 +301,7 @@ export default function EKYCVerificationScreen() {
     }
   ]);
 
-  // Function to get additional documents based on uploaded identity document
+  // Function to get additional documents based on uploaded identity document and nationality
   const getAdditionalDocuments = (): DocumentType[] => {
     // Check what identity document was uploaded
     const uploadedIC = identityDocuments.find(doc => doc.id === 'ic_front' && doc.uploaded);
@@ -311,9 +311,26 @@ export default function EKYCVerificationScreen() {
     console.log('📄 Uploaded IC:', uploadedIC);
     console.log('📄 Uploaded Passport:', uploadedPassport);
     console.log('📄 All identity documents:', identityDocuments);
+    console.log('🌍 User nationality:', personalInfo.nationality);
     
+    // For foreigners, always require selfie with passport regardless of what's uploaded
+    if (personalInfo.nationality === 'foreigner') {
+      console.log('✅ Foreigner detected - showing Selfie with Passport');
+      return [
+        {
+          id: 'selfie_with_passport',
+          name: 'Selfie with Passport',
+          description: 'Photo of yourself holding your passport',
+          required: true,
+          uploaded: false,
+          verified: false
+        }
+      ];
+    }
+    
+    // For Malaysian nationals, check what document was uploaded
     if (uploadedPassport) {
-      console.log('✅ Passport detected - showing Selfie with Passport');
+      console.log('✅ Passport detected for Malaysian - showing Selfie with Passport');
       // If passport was uploaded, show "Selfie with Passport" instead of "IC Back"
       return [
         {
@@ -326,7 +343,7 @@ export default function EKYCVerificationScreen() {
         }
       ];
     } else if (uploadedIC) {
-      console.log('✅ IC detected - showing IC Back and Selfie with IC');
+      console.log('✅ IC detected for Malaysian - showing IC Back and Selfie with IC');
       // If Malaysian IC was uploaded, show both IC Back and Selfie with IC
       return [
         {
@@ -347,7 +364,7 @@ export default function EKYCVerificationScreen() {
         }
       ];
     } else {
-      console.log('⚠️ No identity document detected - showing default documents');
+      console.log('⚠️ No identity document detected for Malaysian - showing default documents');
       // Default state - no identity document uploaded yet
       return [
         {
@@ -451,7 +468,9 @@ export default function EKYCVerificationScreen() {
         nationality: value,
         icNumber: '',
         passportNumber: '',
-        dateOfBirth: value === 'foreigner' ? prev.dateOfBirth : ''
+        dateOfBirth: value === 'foreigner' ? prev.dateOfBirth : '',
+        // Auto-set country to Malaysia when nationality is Malaysian
+        country: value === 'malaysian' ? 'Malaysia' : prev.country
       }));
       
       // Update additional documents when nationality changes
@@ -556,8 +575,7 @@ export default function EKYCVerificationScreen() {
             'Malaysian Passport Detected',
             'You have uploaded a Malaysian passport. For eKYC verification, Malaysian citizens must use their Malaysian IC (MyKad, MyKid, etc.) instead of a passport. Please upload your Malaysian IC.',
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Upload IC', onPress: () => {
+              { text: 'OK', onPress: () => {
                 // Reset the passport document and go back to document upload
                 setIdentityDocuments(prev => prev.map(doc => 
                   doc.id === 'passport_front' ? { ...doc, uploaded: false, uri: undefined } : doc
@@ -566,6 +584,7 @@ export default function EKYCVerificationScreen() {
                 setTimeout(() => {
                   updateAdditionalDocuments();
                 }, 100);
+                // Always navigate back to first step for invalid documents
                 setCurrentStep('identity_document');
               }}
             ]
@@ -577,7 +596,18 @@ export default function EKYCVerificationScreen() {
             'Foreign Passport Detected',
             `We detected a ${extracted.detectedCountry || 'foreign'} passport. Is this correct?`,
             [
-              { text: 'No, Upload Different Document', style: 'cancel' },
+              { text: 'No, Upload Different Document', onPress: () => {
+                // Reset the passport document and go back to document upload
+                setIdentityDocuments(prev => prev.map(doc => 
+                  doc.id === 'passport_front' ? { ...doc, uploaded: false, uri: undefined } : doc
+                ));
+                // Update additional documents when identity document changes
+                setTimeout(() => {
+                  updateAdditionalDocuments();
+                }, 100);
+                // Always navigate back to first step for invalid documents
+                setCurrentStep('identity_document');
+              }},
               { text: 'Yes, Continue', onPress: () => {
                 // Set nationality to foreigner and continue with auto-fill
                 setPersonalInfo(prev => ({ ...prev, nationality: 'foreigner' }));
@@ -594,7 +624,18 @@ export default function EKYCVerificationScreen() {
           Alert.alert(
             'Invalid IC Detected',
             'The uploaded document does not appear to be a valid Malaysian IC. Please upload a valid Malaysian IC (MyKad, MyKid, MyTentera, MyPolis, MyPR, MyKAS, or MyPoca).',
-            [{ text: 'OK' }]
+            [{ text: 'OK', onPress: () => {
+              // Reset the IC document and go back to document upload
+              setIdentityDocuments(prev => prev.map(doc => 
+                doc.id === 'ic_front' ? { ...doc, uploaded: false, uri: undefined } : doc
+              ));
+              // Update additional documents when identity document changes
+              setTimeout(() => {
+                updateAdditionalDocuments();
+              }, 100);
+              // Always navigate back to first step for invalid documents
+              setCurrentStep('identity_document');
+            }}]
           );
           return;
         }
@@ -605,7 +646,18 @@ export default function EKYCVerificationScreen() {
           'Malaysian IC Detected',
           `We detected a ${icType} (Malaysian IC). Is this correct?`,
           [
-            { text: 'No, Upload Different Document', style: 'cancel' },
+            { text: 'No, Upload Different Document', onPress: () => {
+              // Reset the IC document and go back to document upload
+              setIdentityDocuments(prev => prev.map(doc => 
+                doc.id === 'ic_front' ? { ...doc, uploaded: false, uri: undefined } : doc
+              ));
+              // Update additional documents when identity document changes
+              setTimeout(() => {
+                updateAdditionalDocuments();
+              }, 100);
+              // Always navigate back to first step for invalid documents
+              setCurrentStep('identity_document');
+            }},
             { text: 'Yes, Continue', onPress: () => {
               // Set nationality to Malaysian and continue with auto-fill
               setPersonalInfo(prev => ({ ...prev, nationality: 'malaysian' }));
@@ -668,6 +720,10 @@ export default function EKYCVerificationScreen() {
     
     if (extracted.nationality && extracted.nationality !== 'Manual entry required') {
       updatedInfo.nationality = extracted.nationality.toLowerCase() === 'malaysian' ? 'malaysian' : 'foreigner';
+      // Auto-set country to Malaysia for Malaysian nationals
+      if (updatedInfo.nationality === 'malaysian') {
+        updatedInfo.country = 'Malaysia';
+      }
     }
 
     // Extract and parse address if available
@@ -683,6 +739,11 @@ export default function EKYCVerificationScreen() {
 
     setPersonalInfo(updatedInfo);
     console.log('✅ Auto-fill completed with extracted data (staying on current step)');
+    
+    // Update additional documents when nationality changes
+    setTimeout(() => {
+      updateAdditionalDocuments();
+    }, 100);
   };
 
   const continueWithExtractedDataForMalaysianIC = (extracted: any) => {
@@ -705,6 +766,8 @@ export default function EKYCVerificationScreen() {
     
     // For Malaysian IC, always keep nationality as 'malaysian'
     updatedInfo.nationality = 'malaysian';
+    // Auto-set country to Malaysia for Malaysian nationals
+    updatedInfo.country = 'Malaysia';
 
     // Extract and parse address if available
     if (extracted.address && extracted.address !== 'Manual entry required' && extracted.address !== 'null') {
@@ -719,6 +782,11 @@ export default function EKYCVerificationScreen() {
 
     setPersonalInfo(updatedInfo);
     console.log('✅ Auto-fill completed with extracted data for Malaysian IC');
+    
+    // Update additional documents when nationality changes
+    setTimeout(() => {
+      updateAdditionalDocuments();
+    }, 100);
     
     // Move to next step after successful auto-fill
     setCurrentStep('personal');
@@ -744,6 +812,10 @@ export default function EKYCVerificationScreen() {
     
     if (extracted.nationality && extracted.nationality !== 'Manual entry required') {
       updatedInfo.nationality = extracted.nationality.toLowerCase() === 'malaysian' ? 'malaysian' : 'foreigner';
+      // Auto-set country to Malaysia for Malaysian nationals
+      if (updatedInfo.nationality === 'malaysian') {
+        updatedInfo.country = 'Malaysia';
+      }
     }
 
     // Extract and parse address if available
@@ -759,6 +831,11 @@ export default function EKYCVerificationScreen() {
 
     setPersonalInfo(updatedInfo);
     console.log('✅ Auto-fill completed with extracted data');
+    
+    // Update additional documents when nationality changes
+    setTimeout(() => {
+      updateAdditionalDocuments();
+    }, 100);
     
     // Move to next step after successful auto-fill
     setCurrentStep('personal');
@@ -794,7 +871,9 @@ export default function EKYCVerificationScreen() {
       }
 
       // Use the newer function that takes URI directly
-      await handleAIAutoFillWithUri(identityDoc.uri);
+      if (identityDoc.uri) {
+        await handleAIAutoFillWithUri(identityDoc.uri);
+      }
 
     } catch (error: any) {
       console.error('❌ AI auto-fill error:', error);
@@ -1224,7 +1303,7 @@ export default function EKYCVerificationScreen() {
           }
         ]
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error submitting eKYC verification:', error);
       console.error('❌ Error details:', {
         message: error.message,
@@ -2025,7 +2104,7 @@ export default function EKYCVerificationScreen() {
       } else {
         Alert.alert('Success', 'PDF generated successfully!');
       }
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert('Error', 'Failed to generate PDF. Please try again.');
     }
   };

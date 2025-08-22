@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 import { BankStatement, BankStatementFormData } from '@/types/bank-statement';
+import { decode } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system';
 
 export class BankStatementService {
   private static instance: BankStatementService;
@@ -14,6 +16,73 @@ export class BankStatementService {
   }
 
   /**
+   * Helper function to detect file type from URI
+   */
+  private detectFileType(uri: string): { fileType: string; fileExtension: string; fileName: string } {
+    let fileType = 'image/jpeg'; // default
+    let fileExtension = 'jpg';
+    let fileName = 'bank-statement.jpg';
+
+    // Check for data URLs first
+    if (uri.startsWith('data:')) {
+      if (uri.includes('data:image/png')) {
+        fileType = 'image/png';
+        fileExtension = 'png';
+        fileName = 'bank-statement.png';
+      } else if (uri.includes('data:image/jpeg') || uri.includes('data:image/jpg')) {
+        fileType = 'image/jpeg';
+        fileExtension = 'jpg';
+        fileName = 'bank-statement.jpg';
+      } else if (uri.includes('data:application/pdf')) {
+        fileType = 'application/pdf';
+        fileExtension = 'pdf';
+        fileName = 'bank-statement.pdf';
+      }
+      return { fileType, fileExtension, fileName };
+    }
+
+    // Extract file extension from URI
+    const uriParts = uri.split('.');
+    if (uriParts.length > 1) {
+      const extension = uriParts[uriParts.length - 1].toLowerCase();
+      
+      // Map extensions to MIME types
+      switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+          fileType = 'image/jpeg';
+          fileExtension = 'jpg';
+          fileName = 'bank-statement.jpg';
+          break;
+        case 'png':
+          fileType = 'image/png';
+          fileExtension = 'png';
+          fileName = 'bank-statement.png';
+          break;
+        case 'pdf':
+          fileType = 'application/pdf';
+          fileExtension = 'pdf';
+          fileName = 'bank-statement.pdf';
+          break;
+        default:
+          // Default to JPEG if unknown extension
+          fileType = 'image/jpeg';
+          fileExtension = 'jpg';
+          fileName = 'bank-statement.jpg';
+      }
+    }
+
+    // Additional check for PDF files by looking at the URI path
+    if (uri.toLowerCase().includes('.pdf') || uri.toLowerCase().includes('pdf')) {
+      fileType = 'application/pdf';
+      fileExtension = 'pdf';
+      fileName = 'bank-statement.pdf';
+    }
+
+    return { fileType, fileExtension, fileName };
+  }
+
+  /**
    * Upload a bank statement
    */
   async uploadBankStatement(
@@ -22,24 +91,35 @@ export class BankStatementService {
     imageUri: string
   ): Promise<{ success: boolean; error?: string; data?: BankStatement }> {
     try {
-      // Upload image to Supabase Storage
-      const fileName = `bank-statements/${userId}/${Date.now()}.jpg`;
+      // Detect file type from URI
+      const { fileType, fileExtension, fileName } = this.detectFileType(imageUri);
+
+      // Read file as base64
+      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Convert base64 to array buffer
+      const arrayBuffer = decode(base64);
+
+      // Upload file to Supabase Storage
+      const storageFileName = `bank-statements/${userId}/${Date.now()}.${fileExtension}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(fileName, {
-          uri: imageUri,
-          type: 'image/jpeg',
-          name: 'bank-statement.jpg',
+        .upload(storageFileName, arrayBuffer, {
+          contentType: fileType,
+          upsert: true,
         });
 
       if (uploadError) {
+        console.error('Upload error details:', uploadError);
         throw uploadError;
       }
 
       // Get public URL
       const { data: urlData } = supabase.storage
         .from('documents')
-        .getPublicUrl(fileName);
+        .getPublicUrl(storageFileName);
 
       // Save to database
       const { data, error: dbError } = await supabase
@@ -51,6 +131,7 @@ export class BankStatementService {
           bank_name: formData.bank_name.trim(),
           bank_account_number: formData.bank_account_number.trim(),
           statement_file_url: urlData.publicUrl,
+          status: 'pending', // Set status to pending for review
         })
         .select()
         .single();

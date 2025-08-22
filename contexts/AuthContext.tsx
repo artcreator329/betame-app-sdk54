@@ -56,6 +56,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const fetchUserProfile = async (userId: string) => {
     try {
       const profile = await authService.getUserProfile(userId);
+      console.log('🔄 AuthContext: Fetched user profile:', profile);
+      console.log('🔄 AuthContext: is_service_provider:', profile?.is_service_provider);
       setUserProfile(profile);
       
       // Don't automatically check admin status during sign-in

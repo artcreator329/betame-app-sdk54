@@ -407,9 +407,10 @@ class AuthService {
       // to avoid data inconsistency
       const mergedProfile = {
         ...profileData,
+        // Get is_service_provider from profiles table where we added it
+        is_service_provider: profileData?.is_service_provider || false,
         // Only take service provider-specific fields from user_profiles
-        is_service_provider: userProfileData?.is_service_provider || userProfileData?.is_seller || false,
-        service_provider_badge: userProfileData?.service_provider_badge || userProfileData?.seller_badge,
+        service_provider_badge: userProfileData?.service_provider_badge || userProfileData?.is_seller || false,
         service_provider_badge_subtitle: userProfileData?.service_provider_badge_subtitle || userProfileData?.seller_badge_subtitle,
         service_provider_description: userProfileData?.service_provider_description || userProfileData?.seller_description,
         rating: userProfileData?.rating || profileData?.rating || 0,

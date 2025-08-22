@@ -121,14 +121,15 @@ export default function BankStatementUploadScreen() {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
+        base64: true,
       });
 
       if (!result.canceled && result.assets[0]) {
         setSelectedImage(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      console.error('Error picking file:', error);
+      Alert.alert('Error', 'Failed to pick file. Please try again.');
     }
   };
 
@@ -150,7 +151,7 @@ export default function BankStatementUploadScreen() {
       return false;
     }
     if (!selectedImage) {
-      Alert.alert('Error', 'Please upload your bank statement');
+      Alert.alert('Error', 'Please upload your bank statement image');
       return false;
     }
     return true;
@@ -234,7 +235,7 @@ export default function BankStatementUploadScreen() {
               Bank Statement Verification
             </Text>
             <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-              Your eKYC verification is complete. Now please upload a clear bank statement showing your name and account number to complete service provider verification.
+              Your eKYC verification is complete. Now please upload a clear image of your bank statement showing your name and account number to complete service provider verification.
             </Text>
             {ekycData && (
               <View style={[styles.ekycVerifiedContainer, { backgroundColor: colors.background.primary }]}>
@@ -329,10 +330,10 @@ export default function BankStatementUploadScreen() {
             {/* Upload Section */}
             <View style={styles.uploadSection}>
               <Text style={[styles.uploadTitle, { color: colors.text.primary }]}>
-                Upload Bank Statement
+                Upload Bank Statement File
               </Text>
               <Text style={[styles.uploadSubtitle, { color: colors.text.secondary }]}>
-                Please upload a clear image of your bank statement showing your name and account number
+                Please upload a clear image or PDF of your bank statement showing your name and account number
               </Text>
 
               <TouchableOpacity
@@ -345,17 +346,17 @@ export default function BankStatementUploadScreen() {
                     <Image source={{ uri: selectedImage }} style={styles.previewImage} />
                     <View style={styles.imageOverlay}>
                       <CheckCircle size={24} color="white" />
-                      <Text style={styles.imageText}>Image Selected</Text>
+                      <Text style={styles.imageText}>File Selected</Text>
                     </View>
                   </View>
                 ) : (
                   <View style={styles.uploadContent}>
                     <Upload size={32} color={colors.text.secondary} />
                     <Text style={[styles.uploadText, { color: colors.text.primary }]}>
-                      Tap to upload
+                      Tap to select file
                     </Text>
                     <Text style={[styles.uploadHint, { color: colors.text.secondary }]}>
-                      JPG, PNG up to 10MB
+                      JPG, PNG, PDF up to 10MB
                     </Text>
                   </View>
                 )}
