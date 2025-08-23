@@ -16,10 +16,32 @@ export function useRecentSearches() {
       const stored = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
       if (stored) {
         const searches = JSON.parse(stored);
-        setRecentSearches(searches);
+        // Validate that searches is an array of strings
+        if (Array.isArray(searches)) {
+          const validSearches = searches.filter(term => 
+            term && typeof term === 'string' && term.trim().length > 0
+          );
+          setRecentSearches(validSearches);
+          
+          // If we filtered out invalid data, save the cleaned version
+          if (validSearches.length !== searches.length) {
+            await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(validSearches));
+          }
+        } else {
+          // Invalid data format, clear it
+          await AsyncStorage.removeItem(RECENT_SEARCHES_KEY);
+          setRecentSearches([]);
+        }
       }
     } catch (error) {
       console.error('Error loading recent searches:', error);
+      // Clear corrupted data
+      try {
+        await AsyncStorage.removeItem(RECENT_SEARCHES_KEY);
+        setRecentSearches([]);
+      } catch (clearError) {
+        console.error('Error clearing corrupted recent searches:', clearError);
+      }
     }
   };
 

@@ -72,8 +72,8 @@ export class SearchService {
           suggestions.push({
             id: service.id,
             type: 'service',
-            title: service.title,
-            subtitle: `${service.currency} ${service.price} • ${service.category_name}`,
+            title: service.title || 'Untitled Service',
+            subtitle: `${service.currency || 'RM'} ${service.price || 0} • ${service.category_name || 'General'}`,
             image_url: service.image_url,
             category: service.category_name,
             location: service.location,
@@ -107,8 +107,8 @@ export class SearchService {
           suggestions.push({
             id: job.id,
             type: 'job',
-            title: job.title,
-            subtitle: job.budget_amount ? `${job.currency} ${job.budget_amount} • Job` : 'Job Opportunity',
+            title: job.title || 'Untitled Job',
+            subtitle: job.budget_amount ? `${job.currency || 'RM'} ${job.budget_amount} • Job` : 'Job Opportunity',
             image_url: job.cover_photo,
             location: job.location_address,
             user_id: job.user_id
@@ -128,7 +128,7 @@ export class SearchService {
           suggestions.push({
             id: user.id,
             type: 'user',
-            title: user.full_name || 'User',
+            title: user.full_name || 'Anonymous User',
             subtitle: user.bio || 'Service Provider',
             image_url: user.avatar_url,
             user_id: user.id
@@ -151,7 +151,7 @@ export class SearchService {
             suggestions.push({
               id: `category-${category}`,
               type: 'category',
-              title: category,
+              title: category || 'Unknown Category',
               subtitle: 'Category'
             });
           }
@@ -184,7 +184,7 @@ export class SearchService {
           suggestions.push({
             id: `location-${location}`,
             type: 'location',
-            title: location,
+            title: location || 'Unknown Location',
             subtitle: 'Location'
           });
         }
@@ -341,8 +341,8 @@ export class SearchService {
             result.services = fallbackServices.map(service => ({
               id: service.id,
               type: 'service' as const,
-              title: service.title,
-              subtitle: `${service.currency} ${service.price} • ${service.category_name}`,
+              title: service.title || 'Untitled Service',
+              subtitle: `${service.currency || 'RM'} ${service.price || 0} • ${service.category_name || 'General'}`,
               image_url: service.image_url,
               category: service.category_name,
               location: service.location,
@@ -386,8 +386,8 @@ export class SearchService {
             result.services = allCategoryServices.map(service => ({
               id: service.id,
               type: 'service' as const,
-              title: service.title,
-              subtitle: `${service.currency} ${service.price} • ${service.category_name}`,
+              title: service.title || 'Untitled Service',
+              subtitle: `${service.currency || 'RM'} ${service.price || 0} • ${service.category_name || 'General'}`,
               image_url: service.image_url,
               category: service.category_name,
               location: service.location,
@@ -402,8 +402,8 @@ export class SearchService {
         result.services = services.map(service => ({
           id: service.id,
           type: 'service' as const,
-          title: service.title,
-          subtitle: `${service.currency} ${service.price} • ${service.category_name}`,
+          title: service.title || 'Untitled Service',
+          subtitle: `${service.currency || 'RM'} ${service.price || 0} • ${service.category_name || 'General'}`,
           image_url: service.image_url,
           category: service.category_name,
           location: service.location,
@@ -441,8 +441,8 @@ export class SearchService {
           result.jobs = jobs.map(job => ({
             id: job.id,
             type: 'job' as const,
-            title: job.title,
-            subtitle: job.budget_amount ? `${job.currency} ${job.budget_amount} • Job` : 'Job Opportunity',
+            title: job.title || 'Untitled Job',
+            subtitle: job.budget_amount ? `${job.currency || 'RM'} ${job.budget_amount} • Job` : 'Job Opportunity',
             image_url: job.cover_photo,
             location: job.location_address,
             user_id: job.user_id
@@ -462,7 +462,7 @@ export class SearchService {
           result.users = users.map(user => ({
             id: user.id,
             type: 'user' as const,
-            title: user.full_name || 'User',
+            title: user.full_name || 'Anonymous User',
             subtitle: user.bio || 'Service Provider',
             image_url: user.avatar_url,
             user_id: user.id
