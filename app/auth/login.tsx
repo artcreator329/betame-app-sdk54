@@ -82,8 +82,8 @@ export default function LoginScreen() {
       if (result.error) {
         Alert.alert('Error', result.error.message);
       } else {
-        // All users go to regular tabs, admin status is checked in profile page
-        router.replace('/(tabs)');
+        // Show success page before navigating to tabs
+        router.replace('/auth/signin-success');
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'An unexpected error occurred');

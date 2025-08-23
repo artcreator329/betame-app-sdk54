@@ -106,7 +106,7 @@ export default function VerifyEmailScreen() {
             if (isAdmin) {
               router.replace('/admin');
             } else {
-              router.replace('/(tabs)');
+              router.replace('/auth/signin-success');
             }
           }, 2000);
         }

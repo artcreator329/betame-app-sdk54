@@ -364,7 +364,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = FK3KJ2BT3H;
+				DEVELOPMENT_TEAM = T72JDH8ZL6;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -383,7 +383,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.artcreator329.boltexponativewind;
+				PRODUCT_BUNDLE_IDENTIFIER = com.betame.app;
 				PRODUCT_NAME = BetaMe;
 				SWIFT_OBJC_BRIDGING_HEADER = "BetaMe/BetaMe-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -403,7 +403,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = FK3KJ2BT3H;
+				DEVELOPMENT_TEAM = T72JDH8ZL6;
 				INFOPLIST_FILE = BetaMe/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -417,7 +417,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.artcreator329.boltexponativewind;
+				PRODUCT_BUNDLE_IDENTIFIER = com.betame.app;
 				PRODUCT_NAME = BetaMe;
 				SWIFT_OBJC_BRIDGING_HEADER = "BetaMe/BetaMe-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

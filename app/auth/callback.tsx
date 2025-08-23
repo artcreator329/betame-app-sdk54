@@ -54,7 +54,7 @@ export default function AuthCallback() {
 
         // Fallback: proceed to app or login
         setTimeout(() => {
-          if (user) router.replace('/(tabs)');
+          if (user) router.replace('/auth/signin-success');
           else router.replace('/auth/login');
         }, 500);
       } catch (error) {

@@ -30,7 +30,7 @@
       "config": {
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
-      "bundleIdentifier": "com.artcreator329.boltexponativewind"
+      "bundleIdentifier": "com.betame.app"
     },
     "android": {
       "config": {
@@ -65,8 +65,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "61606867-ad42-470c-9ce7-2299e2485f73"
+        "projectId": "205a3431-8510-43a6-8801-b21297ac679e"
       }
-    }
+    },
+    "owner": "betame-sdn-bhd"
   }
 }
