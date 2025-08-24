@@ -162,6 +162,10 @@ export default function TabLayout() {
           <Tabs screenOptions={{ 
             headerShown: false,
             tabBarStyle: { display: 'none' }, // Hide the tab bar on desktop
+            // Smooth tab transitions
+            animation: 'fade' as const,
+            // Enable smooth animations
+            animationEnabled: true,
           }}>
             <Tabs.Screen name="index" />
             <Tabs.Screen name="services" />
@@ -180,6 +184,9 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: '#8E8E93',
+        // Smooth tab transitions
+        animation: 'fade' as const,
+        animationEnabled: true,
         tabBarStyle: {
           backgroundColor: 'white',
           borderTopWidth: 0,
@@ -211,6 +218,9 @@ export default function TabLayout() {
             overflow: 'hidden',
           }} />
         ),
+        // Enhanced tab press feedback
+        tabBarPressColor: 'rgba(0, 122, 255, 0.1)',
+        tabBarPressOpacity: 0.8,
       }}>
       <Tabs.Screen
         name="index"

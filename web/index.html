@@ -32,30 +32,49 @@
             background-color: #f8f9fa;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            opacity: 0;
+            animation: bodyFadeIn 0.8s ease-out forwards;
         }
         
-        /* Loading screen */
+        @keyframes bodyFadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        /* Enhanced loading screen */
         #loading-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #ffffff;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #loading-screen.fade-out {
+            opacity: 0;
+            transform: scale(1.1);
         }
         
         .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #2196F3;
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #ffffff;
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            margin-bottom: 20px;
         }
         
         @keyframes spin {
@@ -65,13 +84,57 @@
         
         .loading-text {
             margin-top: 16px;
-            color: #666;
-            font-size: 16px;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 500;
+            opacity: 0;
+            animation: textFadeIn 0.8s ease-out 0.3s forwards;
+        }
+        
+        @keyframes textFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .loading-dots {
+            display: inline-block;
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
         }
         
         /* Hide loading screen when app loads */
         .app-loaded #loading-screen {
             display: none;
+        }
+        
+        /* App root animations */
+        #root {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: appFadeIn 0.8s ease-out 0.4s forwards;
+        }
+        
+        @keyframes appFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         /* Desktop optimizations */
@@ -80,7 +143,7 @@
                 overflow-x: hidden;
             }
             
-            /* Custom scrollbar */
+            /* Custom scrollbar with smooth animations */
             ::-webkit-scrollbar {
                 width: 8px;
             }
@@ -93,6 +156,7 @@
             ::-webkit-scrollbar-thumb {
                 background: #c1c1c1;
                 border-radius: 4px;
+                transition: background 0.3s ease;
             }
             
             ::-webkit-scrollbar-thumb:hover {
@@ -114,11 +178,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .custom-map-control-button:hover {
             background-color: #f8f9fa;
             border-color: #999;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,.4);
         }
         
         /* Map container styles */
@@ -128,6 +195,7 @@
             min-height: 400px;
             border-radius: 12px;
             overflow: hidden;
+            transition: all 0.3s ease;
         }
         
         /* Desktop layout optimizations */
@@ -136,6 +204,19 @@
                 display: flex;
                 flex-direction: row;
                 height: calc(100vh - 120px);
+                opacity: 0;
+                animation: desktopFadeIn 0.8s ease-out 0.6s forwards;
+            }
+            
+            @keyframes desktopFadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
             }
             
             .desktop-list-container {
@@ -143,11 +224,13 @@
                 max-width: 50%;
                 border-right: 1px solid #E5E5EA;
                 overflow-y: auto;
+                transition: all 0.3s ease;
             }
             
             .desktop-map-container {
                 flex: 1;
                 max-width: 50%;
+                transition: all 0.3s ease;
             }
             
             .desktop-map-container .map-container {
@@ -167,17 +250,12 @@
             .desktop-list-container::-webkit-scrollbar-thumb {
                 background: #c1c1c1;
                 border-radius: 3px;
+                transition: background 0.3s ease;
             }
             
             .desktop-list-container::-webkit-scrollbar-thumb:hover {
                 background: #a8a8a8;
             }
-        }
-        
-        /* Map loading animation */
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
         
         /* Custom service marker styles */
@@ -196,7 +274,7 @@
             max-width: 200px !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
-            transition: all 0.2s ease !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
             z-index: 1000 !important;
         }
         
@@ -210,6 +288,7 @@
             padding: 0 !important;
             border-radius: 8px !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+            transition: all 0.3s ease !important;
         }
         
         .gm-style .gm-style-iw-d {
@@ -219,28 +298,107 @@
         .gm-style .gm-style-iw-t::after {
             background: linear-gradient(45deg, rgba(255,255,255,1) 50%, rgba(255,255,255,0) 51%, rgba(255,255,255,0) 100%) !important;
         }
+        
+        /* Page transition animations */
+        .page-transition {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9998;
+            transform: translateX(-100%);
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .page-transition.active {
+            transform: translateX(0);
+        }
+        
+        .page-transition.complete {
+            transform: translateX(100%);
+        }
+        
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
+    <!-- Page transition overlay -->
+    <div class="page-transition" id="pageTransition"></div>
+    
+    <!-- Enhanced Loading Screen -->
     <div id="loading-screen">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Loading BetaMe Admin Dashboard...</div>
+        <div class="loading-text">
+            Loading BetaMe Admin Dashboard<span class="loading-dots"></span>
+        </div>
     </div>
     
     <!-- App Root -->
     <div id="root"></div>
     
     <script>
+        // Enhanced loading screen management
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loading-screen');
+            loadingScreen.classList.add('fade-out');
+            
+            setTimeout(() => {
+                document.body.classList.add('app-loaded');
+            }, 600);
+        }
+        
+        // Show page transition
+        function showPageTransition() {
+            const transition = document.getElementById('pageTransition');
+            transition.classList.add('active');
+            
+            setTimeout(() => {
+                transition.classList.add('complete');
+            }, 300);
+        }
+        
         // Hide loading screen when app loads
         window.addEventListener('load', function() {
-            document.body.classList.add('app-loaded');
+            // Add a small delay to ensure smooth transition
+            setTimeout(hideLoadingScreen, 800);
         });
         
         // Fallback to hide loading screen after 5 seconds
         setTimeout(function() {
-            document.body.classList.add('app-loaded');
+            hideLoadingScreen();
         }, 5000);
+        
+        // Add smooth scroll behavior
+        document.documentElement.style.scrollBehavior = 'smooth';
+        
+        // Listen for navigation events to add page transitions
+        window.addEventListener('beforeunload', function() {
+            showPageTransition();
+        });
+        
+        // Add smooth animations for any dynamic content
+        function animateElement(element, animation) {
+            element.style.opacity = '0';
+            element.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                element.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                element.style.opacity = '1';
+                element.style.transform = 'translateY(0)';
+            }, 100);
+        }
+        
+        // Expose animation function globally for use by the app
+        window.animateElement = animateElement;
     </script>
 </body>
 </html>

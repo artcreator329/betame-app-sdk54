@@ -1,47 +1,133 @@
 /* Desktop-optimized styles for admin dashboard and main app */
 @media (min-width: 1024px) {
-  /* Smooth transitions for hover effects */
+  /* Enhanced smooth transitions for all elements */
   * {
-    transition: all 0.2s ease-in-out;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Card hover effects */
+  /* Staggered card animations */
+  .admin-card,
+  .service-card,
+  .job-card {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: cardSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .admin-card:nth-child(1) { animation-delay: 0.1s; }
+  .admin-card:nth-child(2) { animation-delay: 0.2s; }
+  .admin-card:nth-child(3) { animation-delay: 0.3s; }
+  .admin-card:nth-child(4) { animation-delay: 0.4s; }
+
+  .service-card:nth-child(1) { animation-delay: 0.1s; }
+  .service-card:nth-child(2) { animation-delay: 0.2s; }
+  .service-card:nth-child(3) { animation-delay: 0.3s; }
+  .service-card:nth-child(4) { animation-delay: 0.4s; }
+
+  .job-card:nth-child(1) { animation-delay: 0.1s; }
+  .job-card:nth-child(2) { animation-delay: 0.2s; }
+  .job-card:nth-child(3) { animation-delay: 0.3s; }
+  .job-card:nth-child(4) { animation-delay: 0.4s; }
+
+  @keyframes cardSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Enhanced card hover effects */
   .admin-card:hover,
   .service-card:hover,
   .job-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
   }
 
-  /* Button hover effects */
+  /* Enhanced button hover effects */
   .admin-button:hover,
   .app-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
   }
 
-  /* Sidebar hover effects */
+  .admin-button:active,
+  .app-button:active {
+    transform: translateY(0) scale(0.98);
+    transition: transform 0.1s ease;
+  }
+
+  /* Enhanced sidebar hover effects */
+  .admin-nav-item {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .admin-nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .admin-nav-item:hover::before {
+    left: 100%;
+  }
+
   .admin-nav-item:hover {
     background-color: #f0f8ff;
-    transform: translateX(4px);
+    transform: translateX(6px);
   }
 
-  /* Table hover effects */
+  /* Enhanced table hover effects */
+  .admin-table-row {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
   .admin-table-row:hover {
     background-color: #f8f9fa;
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
-  /* Main app optimizations */
+  /* Main app optimizations with animations */
   .app-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 40px;
+    opacity: 0;
+    animation: containerFadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+  }
+
+  @keyframes containerFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .app-section {
     margin-bottom: 32px;
     padding: 24px;
     border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .app-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
   }
 
   .app-grid-2 {
@@ -60,17 +146,44 @@
     height: 200px;
     border-radius: 16px;
     margin: 40px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .app-banner:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   }
 
   .app-service-card {
-    transition: transform 0.2s ease-in-out;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    animation: serviceCardSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .app-service-card:nth-child(1) { animation-delay: 0.1s; }
+  .app-service-card:nth-child(2) { animation-delay: 0.2s; }
+  .app-service-card:nth-child(3) { animation-delay: 0.3s; }
+  .app-service-card:nth-child(4) { animation-delay: 0.4s; }
+  .app-service-card:nth-child(5) { animation-delay: 0.5s; }
+  .app-service-card:nth-child(6) { animation-delay: 0.6s; }
+
+  @keyframes serviceCardSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(30px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
 
   .app-service-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
   }
 
-  /* Custom scrollbar */
+  /* Enhanced custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
   }
@@ -83,20 +196,24 @@
   ::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 4px;
+    transition: all 0.3s ease;
   }
 
   ::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
+    transform: scaleX(1.2);
   }
 
-  /* Focus styles for accessibility */
+  /* Enhanced focus styles for accessibility */
   .admin-focusable:focus,
   .app-focusable:focus {
     outline: 2px solid #2196F3;
     outline-offset: 2px;
+    transform: scale(1.02);
+    transition: all 0.2s ease;
   }
 
-  /* Grid layouts */
+  /* Enhanced grid layouts with animations */
   .admin-grid-2 {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -115,10 +232,52 @@
     gap: 16px;
   }
 
-  /* Responsive breakpoints */
+  /* Modal and overlay animations */
+  .admin-modal,
+  .app-modal {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .admin-modal.show,
+  .app-modal.show {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  .admin-overlay,
+  .app-overlay {
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .admin-overlay.show,
+  .app-overlay.show {
+    opacity: 1;
+  }
+
+  /* Loading state animations */
+  .loading-state {
+    opacity: 0.7;
+    pointer-events: none;
+    transition: all 0.3s ease;
+  }
+
+  .loading-spinner {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Responsive breakpoints with smooth transitions */
   @media (max-width: 1440px) {
     .admin-grid-4 {
       grid-template-columns: repeat(3, 1fr);
+      transition: all 0.3s ease;
     }
     
     .app-container {
@@ -130,10 +289,12 @@
   @media (max-width: 1200px) {
     .admin-grid-3 {
       grid-template-columns: repeat(2, 1fr);
+      transition: all 0.3s ease;
     }
     
     .app-grid-3 {
       grid-template-columns: repeat(2, 1fr);
+      transition: all 0.3s ease;
     }
     
     .app-container {
@@ -143,21 +304,24 @@
   }
 }
 
-/* Dark mode support */
+/* Dark mode support with smooth transitions */
 @media (prefers-color-scheme: dark) {
   .admin-container {
     background-color: #1a1a1a;
     color: #ffffff;
+    transition: all 0.3s ease;
   }
 
   .admin-card {
     background-color: #2d2d2d;
     border-color: #404040;
+    transition: all 0.3s ease;
   }
 
   .admin-sidebar {
     background-color: #2d2d2d;
     border-color: #404040;
+    transition: all 0.3s ease;
   }
 }
 
@@ -172,5 +336,14 @@
   .admin-main-content {
     margin-left: 0 !important;
     width: 100% !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -31,6 +31,19 @@
             justify-content: center;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            opacity: 0;
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .container {
@@ -41,6 +54,20 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             max-width: 400px;
             width: 90%;
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+            animation: slideInUp 0.6s ease-out 0.2s forwards;
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
         
         .logo {
@@ -55,6 +82,20 @@
             color: white;
             font-size: 32px;
             font-weight: bold;
+            opacity: 0;
+            transform: scale(0.8);
+            animation: logoPop 0.6s ease-out 0.4s forwards;
+        }
+        
+        @keyframes logoPop {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
         
         h1 {
@@ -62,6 +103,9 @@
             margin: 0 0 10px 0;
             font-size: 24px;
             font-weight: 700;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeInUp 0.6s ease-out 0.6s forwards;
         }
         
         .subtitle {
@@ -69,6 +113,20 @@
             margin: 0 0 30px 0;
             font-size: 16px;
             line-height: 1.5;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeInUp 0.6s ease-out 0.8s forwards;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .install-button {
@@ -80,17 +138,45 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             width: 100%;
             margin-bottom: 16px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease-out 1s forwards;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .install-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .install-button:hover::before {
+            left: 100%;
         }
         
         .install-button:hover {
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
         }
         
         .install-button:active {
-            transform: translateY(0);
+            transform: translateY(-1px);
+            transition: transform 0.1s ease;
+        }
+        
+        .install-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
         
         .store-icon {
@@ -98,17 +184,32 @@
             height: 20px;
             margin-right: 8px;
             vertical-align: middle;
+            transition: transform 0.2s ease;
+        }
+        
+        .install-button:hover .store-icon {
+            transform: scale(1.1);
         }
         
         .fallback-text {
             color: #999;
             font-size: 14px;
             margin-top: 20px;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeInUp 0.6s ease-out 1.2s forwards;
         }
         
         .loading {
             display: none;
             margin-top: 20px;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+        
+        .loading.show {
+            display: block;
         }
         
         .spinner {
@@ -125,9 +226,64 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* Page transition animations */
+        .page-transition {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
+            transform: translateX(-100%);
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .page-transition.active {
+            transform: translateX(0);
+        }
+        
+        .page-transition.complete {
+            transform: translateX(100%);
+        }
+        
+        /* Responsive animations */
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+                margin: 20px;
+            }
+            
+            .logo {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+            
+            .subtitle {
+                font-size: 14px;
+            }
+        }
+        
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Page transition overlay -->
+    <div class="page-transition" id="pageTransition"></div>
+    
     <div class="container">
         <div class="logo">BM</div>
         <h1>Install BetaMe</h1>
@@ -171,15 +327,35 @@
             }
         }
         
+        function showPageTransition() {
+            const transition = document.getElementById('pageTransition');
+            transition.classList.add('active');
+            
+            setTimeout(() => {
+                transition.classList.add('complete');
+            }, 300);
+        }
+        
         function installApp() {
             const platform = detectPlatform();
             const button = document.getElementById('installButton');
             const buttonText = document.getElementById('buttonText');
             const loading = document.getElementById('loading');
             
-            // Show loading state
-            button.style.display = 'none';
-            loading.style.display = 'block';
+            // Add button click animation
+            button.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                button.style.transform = '';
+            }, 150);
+            
+            // Show loading state with smooth transition
+            button.style.opacity = '0';
+            button.style.transform = 'translateY(10px)';
+            
+            setTimeout(() => {
+                button.style.display = 'none';
+                loading.classList.add('show');
+            }, 200);
             
             // Try to open app first, then redirect to store if it fails
             if (platform === 'ios' || platform === 'android') {
@@ -188,18 +364,25 @@
                 
                 // If app doesn't open within 2 seconds, redirect to store
                 setTimeout(() => {
-                    if (platform === 'ios') {
-                        window.location.href = APP_STORE_URL;
-                    } else if (platform === 'android') {
-                        window.location.href = PLAY_STORE_URL;
-                    }
+                    showPageTransition();
+                    setTimeout(() => {
+                        if (platform === 'ios') {
+                            window.location.href = APP_STORE_URL;
+                        } else if (platform === 'android') {
+                            window.location.href = PLAY_STORE_URL;
+                        }
+                    }, 300);
                 }, 2000);
             } else {
-                // For web users, show a message
-                button.style.display = 'block';
-                loading.style.display = 'none';
-                buttonText.textContent = 'Please use your mobile device';
-                button.disabled = true;
+                // For web users, show a message with smooth animation
+                setTimeout(() => {
+                    button.style.display = 'block';
+                    button.style.opacity = '1';
+                    button.style.transform = 'translateY(0)';
+                    loading.classList.remove('show');
+                    buttonText.textContent = 'Please use your mobile device';
+                    button.disabled = true;
+                }, 500);
             }
         }
         
@@ -207,8 +390,8 @@
         window.onload = function() {
             const platform = detectPlatform();
             if (platform === 'ios' || platform === 'android') {
-                // Small delay to let the page load
-                setTimeout(installApp, 500);
+                // Small delay to let the page load and animations complete
+                setTimeout(installApp, 1000);
             }
         };
         
@@ -217,6 +400,9 @@
             // You can add analytics tracking here
             console.log('Referral code detected:', referralCode);
         }
+        
+        // Add smooth scroll behavior
+        document.documentElement.style.scrollBehavior = 'smooth';
     </script>
 </body>
 </html>

@@ -12,13 +12,14 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Search, MessageCircle, Trash2, User, Send } from 'lucide-react-native';
+import { ArrowLeft, Search, MessageCircle, Trash2, User, Send, Bot, Sparkles } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { UserChat } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserChats } from '@/hooks/useSupabaseChat';
 import { supabase } from '@/lib/supabase';
 import { Alert } from 'react-native';
+import AIChatSection from '@/components/AIChatSection';
 
 export default function MessagesScreen() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function MessagesScreen() {
   const [selectedChat, setSelectedChat] = useState<UserChat | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
   const [message, setMessage] = useState('');
+  const [showAIChat, setShowAIChat] = useState(false);
 
   // Check if we're on desktop web
   useEffect(() => {
@@ -175,12 +177,17 @@ export default function MessagesScreen() {
         <View style={styles.desktopLeftColumn}>
           <View style={styles.desktopHeader}>
             <Text style={styles.desktopHeaderTitle}>Messages</Text>
-            <TouchableOpacity>
-              <Search size={24} color="#1D1D1F" />
-            </TouchableOpacity>
+            {!showAIChat && (
+              <TouchableOpacity>
+                <Search size={24} color="#1D1D1F" />
+              </TouchableOpacity>
+            )}
           </View>
 
-          <ScrollView style={styles.desktopChatList} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.desktopChatList} 
+            showsVerticalScrollIndicator={false}
+          >
             {isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#007AFF" />
@@ -249,7 +256,11 @@ export default function MessagesScreen() {
 
         {/* Right Column - Chat Detail */}
         <View style={styles.desktopRightColumn}>
-          {selectedChat ? (
+          {showAIChat ? (
+            <View style={styles.desktopAiChatContainer}>
+              <AIChatSection />
+            </View>
+          ) : selectedChat ? (
             <View style={styles.desktopChatContainer}>
               {/* Chat Header */}
               <View style={styles.desktopChatHeader}>
@@ -323,6 +334,32 @@ export default function MessagesScreen() {
             </View>
           )}
         </View>
+        
+        {/* Floating AI Chat Button - Desktop */}
+        {!showAIChat && (
+          <View style={styles.floatingAiContainer}>
+            <Text style={styles.floatingAiText}>Got question? Chat with our BetaME AI Assistant</Text>
+            <TouchableOpacity 
+              style={styles.floatingAiButton}
+              onPress={() => setShowAIChat(!showAIChat)}
+            >
+              <View style={styles.betameLogoContainer}>
+                <Text style={styles.betameLogoText}>B</Text>
+              </View>
+              <Sparkles size={12} color="#FFD700" style={styles.floatingSparkleIcon} />
+            </TouchableOpacity>
+          </View>
+        )}
+        
+        {/* Floating Close Button when AI Chat is active - Desktop */}
+        {showAIChat && (
+          <TouchableOpacity 
+            style={styles.floatingCloseButton}
+            onPress={() => setShowAIChat(false)}
+          >
+            <Text style={styles.floatingCloseButtonText}>✕</Text>
+          </TouchableOpacity>
+        )}
       </SafeAreaView>
     );
   }
@@ -332,17 +369,29 @@ export default function MessagesScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#1D1D1F" />
-        </TouchableOpacity>
+        {!showAIChat && (
+          <TouchableOpacity onPress={() => router.back()}>
+            <ArrowLeft size={24} color="#1D1D1F" />
+          </TouchableOpacity>
+        )}
         <Text style={styles.headerTitle}>Messages</Text>
-        <TouchableOpacity>
-          <Search size={24} color="#1D1D1F" />
-        </TouchableOpacity>
+        {!showAIChat && (
+          <TouchableOpacity>
+            <Search size={24} color="#1D1D1F" />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Chat List */}
-      <ScrollView style={styles.chatList} showsVerticalScrollIndicator={false}>
+      {/* AI Chat Section or Chat List */}
+      {showAIChat ? (
+        <View style={styles.aiChatSection}>
+          <AIChatSection />
+        </View>
+      ) : (
+        <ScrollView 
+          style={styles.chatList} 
+          showsVerticalScrollIndicator={false}
+        >
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#007AFF" />
@@ -404,6 +453,33 @@ export default function MessagesScreen() {
           ))
         )}
       </ScrollView>
+      )}
+      
+      {/* Floating AI Chat Button */}
+      {!showAIChat && (
+        <View style={styles.floatingAiContainer}>
+          <Text style={styles.floatingAiText}>Got question? Chat with our BetaME AI Assistant</Text>
+          <TouchableOpacity 
+            style={styles.floatingAiButton}
+            onPress={() => setShowAIChat(!showAIChat)}
+          >
+            <View style={styles.betameLogoContainer}>
+              <Text style={styles.betameLogoText}>B</Text>
+            </View>
+            <Sparkles size={12} color="#FFD700" style={styles.floatingSparkleIcon} />
+          </TouchableOpacity>
+        </View>
+      )}
+      
+      {/* Floating Close Button when AI Chat is active */}
+      {showAIChat && (
+        <TouchableOpacity 
+          style={styles.floatingCloseButton}
+          onPress={() => setShowAIChat(false)}
+        >
+          <Text style={styles.floatingCloseButtonText}>✕</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }
@@ -744,5 +820,147 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  aiChatButton: {
+    position: 'relative',
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E0E8FF',
+  },
+  aiChatButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  sparkleIcon: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+  },
+  aiChatSection: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  desktopHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  desktopAiChatButton: {
+    position: 'relative',
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E0E8FF',
+  },
+  desktopAiChatButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  desktopSparkleIcon: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+  },
+  desktopAiChatContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  floatingAiButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+  },
+  floatingAiButtonActive: {
+    backgroundColor: '#0056CC',
+  },
+  betameLogoContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  betameLogoText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    fontFamily: 'LeagueSpartan-Bold',
+  },
+  floatingSparkleIcon: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+  },
+  floatingAiContainer: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  floatingAiText: {
+    fontSize: 12,
+    color: '#8E8E93',
+    textAlign: 'left',
+    maxWidth: 120,
+    lineHeight: 16,
+  },
+  aiChatOutline: {
+    flex: 1,
+    borderWidth: 3,
+    borderColor: '#007AFF',
+    borderRadius: 12,
+    margin: 8,
+    overflow: 'hidden',
+  },
+  chatListDisabled: {
+    opacity: 0.3,
+  },
+  aiChatOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1000,
+  },
+  floatingCloseButton: {
+    position: 'absolute',
+    top: 65,
+    right: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#8E8E93',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1001,
+  },
+  floatingCloseButtonText: {
+    fontSize: 14,
+    color: 'white',
+    fontWeight: 'bold',
   },
 });

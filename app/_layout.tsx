@@ -245,52 +245,255 @@ function RootLayoutNav() {
     return <CustomSplashScreen />;
   }
 
+  // Enhanced Stack screen options with smooth animations
+  const stackScreenOptions = {
+    headerShown: false,
+    // Smooth slide transitions
+    animation: 'slide_from_right' as const,
+    // Enable gesture-based navigation
+    gestureEnabled: true,
+    // Card style for smooth shadows and rounded corners
+    cardStyle: {
+      backgroundColor: '#ffffff',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    // Card overlay for smooth transitions
+    cardOverlayEnabled: true,
+  };
+
+  // Special animation for modal-like screens
+  const modalScreenOptions = {
+    ...stackScreenOptions,
+    animation: 'slide_from_bottom' as const,
+    presentation: 'modal' as const,
+    gestureEnabled: true,
+    gestureDirection: 'vertical' as const,
+  };
+
+  // Special animation for tab transitions
+  const tabScreenOptions = {
+    ...stackScreenOptions,
+    animation: 'fade' as const,
+    gestureEnabled: false,
+  };
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="auth" options={{ headerShown: false }} />
-      <Stack.Screen name="admin" options={{ headerShown: false }} />
-      <Stack.Screen name="admin-dashboard" options={{ headerShown: false }} />
-      <Stack.Screen name="chat/[participantId]" options={{ headerShown: false }} />
-      <Stack.Screen name="job/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="service/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="profile/[userId]" options={{ headerShown: false }} />
-      <Stack.Screen name="user-profile/[userId]" options={{ headerShown: false }} />
-      <Stack.Screen name="edit-service/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="job-acceptance/[jobId]" options={{ headerShown: false }} />
-      <Stack.Screen name="job-progress/[jobId]" options={{ headerShown: false }} />
-      <Stack.Screen name="job-completion/[jobId]" options={{ headerShown: false }} />
-      <Stack.Screen name="job-review/[jobId]" options={{ headerShown: false }} />
-      <Stack.Screen name="check-in" options={{ headerShown: false }} />
-      <Stack.Screen name="nearby" options={{ headerShown: false }} />
-      <Stack.Screen name="search" options={{ headerShown: false }} />
-      <Stack.Screen name="trending" options={{ headerShown: false }} />
-      <Stack.Screen name="favorites" options={{ headerShown: false }} />
-      <Stack.Screen name="orders" options={{ headerShown: false }} />
-      <Stack.Screen name="messages" options={{ headerShown: false }} />
-      <Stack.Screen name="wallet" options={{ headerShown: false }} />
-      <Stack.Screen name="create-service-listing" options={{ headerShown: false }} />
-      <Stack.Screen name="create-job-listing" options={{ headerShown: false }} />
-      <Stack.Screen name="detailed-service-listing" options={{ headerShown: false }} />
-      <Stack.Screen name="become-service-provider" options={{ headerShown: false }} />
-      <Stack.Screen name="bank-upload" options={{ headerShown: false }} />
-      <Stack.Screen name="ekyc-verification" options={{ headerShown: false }} />
-      <Stack.Screen name="malaysian-payment-gateway" options={{ headerShown: false }} />
-      <Stack.Screen name="about-us" options={{ headerShown: false }} />
-      <Stack.Screen name="contact-us" options={{ headerShown: false }} />
-      <Stack.Screen name="faq" options={{ headerShown: false }} />
-      <Stack.Screen name="legal" options={{ headerShown: false }} />
-      <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
-      <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
-      <Stack.Screen name="safety-security" options={{ headerShown: false }} />
-      <Stack.Screen name="payment-help" options={{ headerShown: false }} />
-      <Stack.Screen name="support" options={{ headerShown: false }} />
-      <Stack.Screen name="user-guide" options={{ headerShown: false }} />
-      <Stack.Screen name="settings" options={{ headerShown: false }} />
-      <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-      <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
-      <Stack.Screen name="test-map" options={{ headerShown: false }} />
-      <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
+    <Stack screenOptions={stackScreenOptions}>
+      {/* Tab screens with fade animation */}
+      <Stack.Screen 
+        name="(tabs)" 
+        options={tabScreenOptions}
+      />
+      
+      {/* Auth screens with slide animation */}
+      <Stack.Screen 
+        name="auth" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Admin screens with slide animation */}
+      <Stack.Screen 
+        name="admin" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="admin-dashboard" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Chat screens with slide animation */}
+      <Stack.Screen 
+        name="chat/[participantId]" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Job-related screens with slide animation */}
+      <Stack.Screen 
+        name="job/[id]" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="job-acceptance/[jobId]" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="job-progress/[jobId]" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="job-completion/[jobId]" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="job-review/[jobId]" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Service-related screens with slide animation */}
+      <Stack.Screen 
+        name="service/[id]" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="edit-service/[id]" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="detailed-service-listing" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Profile screens with slide animation */}
+      <Stack.Screen 
+        name="profile/[userId]" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="user-profile/[userId]" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Location and search screens with slide animation */}
+      <Stack.Screen 
+        name="check-in" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="nearby" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="search" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="trending" 
+        options={stackScreenOptions}
+      />
+      
+      {/* User action screens with slide animation */}
+      <Stack.Screen 
+        name="favorites" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="orders" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="messages" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="wallet" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Creation screens with slide animation */}
+      <Stack.Screen 
+        name="create-service-listing" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="create-job-listing" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Authentication and verification screens with slide animation */}
+      <Stack.Screen 
+        name="become-service-provider" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="bank-upload" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="ekyc-verification" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="malaysian-payment-gateway" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Settings screens with slide animation */}
+      <Stack.Screen 
+        name="settings" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="edit-profile" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="notification-settings" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Information pages with slide animation */}
+      <Stack.Screen 
+        name="about-us" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="contact-us" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="faq" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="legal" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="privacy-policy" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="terms-of-service" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="safety-security" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="payment-help" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="support" 
+        options={stackScreenOptions}
+      />
+      <Stack.Screen 
+        name="user-guide" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Test and utility screens */}
+      <Stack.Screen 
+        name="test-map" 
+        options={stackScreenOptions}
+      />
+      
+      {/* Error screen */}
+      <Stack.Screen 
+        name="+not-found" 
+        options={{ 
+          title: 'Oops!',
+          ...stackScreenOptions
+        }} 
+      />
     </Stack>
   );
 }
