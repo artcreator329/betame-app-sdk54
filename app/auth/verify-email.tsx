@@ -15,20 +15,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { adminService } from '@/lib/admin-service';
 
-// Simple Android Blue Gradient Background Component
-function AndroidGradientBackground() {
-  return (
-    <View style={styles.gradientContainer}>
-      <LinearGradient
-        colors={['#4facfe', '#00f2fe']}
-        style={styles.gradientBackground}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      <View style={styles.gradientOverlay} />
-    </View>
-  );
-}
+// Import Android Video Background Component
+const AndroidVideoBackground = Platform.OS === 'android' 
+  ? require('@/components/AndroidVideoBackground').AndroidVideoBackground 
+  : null;
 
 export default function VerifyEmailScreen() {
   const [loading, setLoading] = useState(true);
@@ -161,7 +151,11 @@ export default function VerifyEmailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {Platform.OS === 'android' && <AndroidGradientBackground />}
+      {Platform.OS === 'android' && AndroidVideoBackground && (
+        <AndroidVideoBackground
+          onVideoError={(error: any) => console.log('Android video error:', error)}
+        />
+      )}
       {Platform.OS === 'ios' && (
         <View style={styles.videoContainer}>
           <Video
@@ -277,28 +271,5 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
     paddingHorizontal: 20,
-  },
-  gradientContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: -1,
-  },
-  gradientBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
 });

@@ -25,20 +25,10 @@ const BackgroundVideoPlayer = Platform.OS === 'ios'
   ? require('@/components/BackgroundVideoPlayer').BackgroundVideoPlayer 
   : null;
 
-// Simple Android Blue Gradient Background Component
-function AndroidGradientBackground() {
-  return (
-    <View style={styles.gradientContainer}>
-      <LinearGradient
-        colors={['#4facfe', '#00f2fe']}
-        style={styles.gradientBackground}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      <View style={styles.gradientOverlay} />
-    </View>
-  );
-}
+// Import Android Video Background Component
+const AndroidVideoBackground = Platform.OS === 'android' 
+  ? require('@/components/AndroidVideoBackground').AndroidVideoBackground 
+  : null;
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -251,7 +241,11 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {Platform.OS === 'android' && <AndroidGradientBackground />}
+      {Platform.OS === 'android' && AndroidVideoBackground && (
+        <AndroidVideoBackground
+          onVideoError={handleVideoError}
+        />
+      )}
       {Platform.OS === 'ios' && BackgroundVideoPlayer && (
         <BackgroundVideoPlayer
           videos={videos}
@@ -779,28 +773,5 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
-  },
-  gradientContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: -1,
-  },
-  gradientBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Overlay for better text readability
   },
 });

@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, Briefcase, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet } from 'lucide-react-native';
+import { ArrowLeft, Heart, Briefcase, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet, Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme, useColors } from '@/contexts/ThemeContext';
@@ -291,6 +291,29 @@ export default function SettingsScreen() {
             onPress={handleInviteFriends}
           />
           
+          {/* AI Assistant Button */}
+          <TouchableOpacity 
+            style={[styles.aiAssistantButton, { backgroundColor: colors.background.secondary, borderBottomColor: colors.background.secondary }]} 
+            onPress={() => router.push('/messages?showAI=true')}
+          >
+            <View style={styles.aiAssistantLeft}>
+              <View style={styles.betameLogoContainer}>
+                <Text style={[styles.betameLogoText, { color: colors.primary.main }]}>B</Text>
+              </View>
+              <Text 
+                style={[styles.aiAssistantTitle, { fontSize: 16, fontWeight: '600', color: '#007AFF' }]}
+              >
+                Chat with AI Assistant
+              </Text>
+            </View>
+            <View style={styles.aiAssistantRight}>
+              <Sparkles size={16} color="#FFD700" />
+              <View style={styles.arrow}>
+                <Text style={[styles.arrowText, { color: colors.text.secondary }]}>›</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+          
           <SettingItem
             icon={<User size={20} color={colors.text.primary} />}
             title="My account"
@@ -492,6 +515,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 16,
     fontWeight: '400',
+  },
+  aiAssistantButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  aiAssistantLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  aiAssistantRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  betameLogoContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  betameLogoText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'web' ? 'League Spartan, system-ui, -apple-system, sans-serif' : 'System',
+  },
+  aiAssistantTitle: {
+    marginLeft: 16,
   },
   logoutText: {
   },

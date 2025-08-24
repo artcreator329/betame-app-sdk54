@@ -10,20 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// Simple Android Blue Gradient Background Component
-function AndroidGradientBackground() {
-  return (
-    <View style={styles.gradientContainer}>
-      <LinearGradient
-        colors={['#4facfe', '#00f2fe']}
-        style={styles.gradientBackground}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      <View style={styles.gradientOverlay} />
-    </View>
-  );
-}
+// Import Android Video Background Component
+const AndroidVideoBackground = Platform.OS === 'android' 
+  ? require('@/components/AndroidVideoBackground').AndroidVideoBackground 
+  : null;
 
 interface SignInSuccessPageProps {
   onComplete: () => void;
@@ -168,7 +158,11 @@ export default function SignInSuccessPage({ onComplete, delay = 2000 }: SignInSu
 
   return (
     <SafeAreaView style={styles.container}>
-      {Platform.OS === 'android' && <AndroidGradientBackground />}
+      {Platform.OS === 'android' && AndroidVideoBackground && (
+        <AndroidVideoBackground
+          onVideoError={(error: any) => console.log('Android video error:', error)}
+        />
+      )}
       {Platform.OS === 'ios' && (
         <LinearGradient
           colors={['#4facfe', '#00f2fe']}
@@ -251,29 +245,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-  },
-  gradientContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: -1,
-  },
-  gradientBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   iosGradient: {
     position: 'absolute',

@@ -42,8 +42,9 @@
       "package": "com.betame.app",
       "enableProguardInReleaseBuilds": false,
       "enableSeparateBuildPerCPUArchitecture": false,
-      "versionCode": 1,
-      "versionName": "1.0.0"
+              "versionCode": 4,
+      "versionName": "1.0.0",
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "bundler": "metro",

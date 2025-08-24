@@ -25,14 +25,15 @@ export default function MessagesScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { width } = useWindowDimensions();
-  const { participantId } = useLocalSearchParams();
+  const { participantId, showAI } = useLocalSearchParams();
   const { chats, isLoading, error, loadChats } = useUserChats(user?.id || '');
   
   // State for desktop two-column layout
   const [selectedChat, setSelectedChat] = useState<UserChat | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
   const [message, setMessage] = useState('');
-  const [showAIChat, setShowAIChat] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(showAI === 'true');
+  const [cameFromSettings, setCameFromSettings] = useState(showAI === 'true');
 
   // Check if we're on desktop web
   useEffect(() => {
@@ -369,12 +370,20 @@ export default function MessagesScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        {!showAIChat && (
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1D1D1F" />
-          </TouchableOpacity>
-        )}
-        <Text style={styles.headerTitle}>Messages</Text>
+        <TouchableOpacity onPress={() => {
+          if (showAIChat) {
+            if (cameFromSettings) {
+              router.back(); // Go back to settings
+            } else {
+              setShowAIChat(false); // Go back to messages list
+            }
+          } else {
+            router.back();
+          }
+        }}>
+          <ArrowLeft size={24} color="#1D1D1F" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{showAIChat ? 'AI Assistant' : 'Messages'}</Text>
         {!showAIChat && (
           <TouchableOpacity>
             <Search size={24} color="#1D1D1F" />

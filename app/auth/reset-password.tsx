@@ -23,20 +23,10 @@ const BackgroundVideoPlayer = Platform.OS === 'ios'
   ? require('@/components/BackgroundVideoPlayer').BackgroundVideoPlayer 
   : null;
 
-// Simple Android Blue Gradient Background Component
-function AndroidGradientBackground() {
-  return (
-    <View style={styles.gradientContainer}>
-      <LinearGradient
-        colors={['#4facfe', '#00f2fe']}
-        style={styles.gradientBackground}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      <View style={styles.gradientOverlay} />
-    </View>
-  );
-}
+// Import Android Video Background Component
+const AndroidVideoBackground = Platform.OS === 'android' 
+  ? require('@/components/AndroidVideoBackground').AndroidVideoBackground 
+  : null;
 
 export default function ResetPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -168,7 +158,11 @@ export default function ResetPasswordScreen() {
   if (!isValidToken) {
     return (
       <SafeAreaView style={styles.container}>
-        {Platform.OS === 'android' && <AndroidGradientBackground />}
+        {Platform.OS === 'android' && AndroidVideoBackground && (
+          <AndroidVideoBackground
+            onVideoError={handleVideoError}
+          />
+        )}
         {Platform.OS === 'ios' && (
           <BackgroundVideoPlayer
             videos={videos}
@@ -270,7 +264,11 @@ export default function ResetPasswordScreen() {
   // Show password reset form if token or session is valid
   return (
     <SafeAreaView style={styles.container}>
-      {Platform.OS === 'android' && <AndroidGradientBackground />}
+      {Platform.OS === 'android' && AndroidVideoBackground && (
+        <AndroidVideoBackground
+          onVideoError={handleVideoError}
+        />
+      )}
       {Platform.OS === 'ios' && (
         <BackgroundVideoPlayer
           videos={videos}
@@ -493,28 +491,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.5,
-  },
-  gradientContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: -1,
-  },
-  gradientBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
   },
 });

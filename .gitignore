@@ -28,6 +28,9 @@ web-report/
 .env.test.local
 .env.production.local
 
+# Android signing
+keystore.properties
+
 # Build artifacts
 build/
 dist/

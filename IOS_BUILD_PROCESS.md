@@ -157,6 +157,7 @@ eas init
 - **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
 - **Provisioning Profile**: iOS Team Store Provisioning Profile
 - **Created**: August 24, 2025
+- **Rebuilt**: August 24, 2025 (13:50)
 
 ## Apple Developer Account Setup
 
