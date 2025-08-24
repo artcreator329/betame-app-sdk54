@@ -157,8 +157,12 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
           <Text style={styles.statLabel}>Total Referrals</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{stats?.totalCreditsEarned || 0}</Text>
-          <Text style={styles.statLabel}>Credits Earned</Text>
+          <Text style={styles.statNumber}>{stats?.totalBetaCoinsEarned || 0}</Text>
+          <Text style={styles.statLabel}>BetaCoins Earned</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>RM{((stats?.totalCashEarned || 0) / 100).toFixed(2)}</Text>
+          <Text style={styles.statLabel}>Cash Earned</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{stats?.pendingReferrals || 0}</Text>
@@ -182,14 +186,14 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
         <Text style={styles.sectionTitle}>How it works:</Text>
         <View style={styles.rewardItem}>
           <Ionicons name="person-add-outline" size={20} color="#34C759" />
-          <Text style={styles.rewardText}>Friend signs up: +15 credits</Text>
+          <Text style={styles.rewardText}>Friend signs up: +15 BetaCoins</Text>
         </View>
         <View style={styles.rewardItem}>
           <Ionicons name="checkmark-circle-outline" size={20} color="#34C759" />
-          <Text style={styles.rewardText}>Friend completes first job: +25 credits</Text>
+          <Text style={styles.rewardText}>Friend completes first job: +RM4.90</Text>
         </View>
         <View style={styles.totalReward}>
-          <Text style={styles.totalRewardText}>Total potential: 40 credits per referral</Text>
+          <Text style={styles.totalRewardText}>Total potential: 15 BetaCoins + RM4.90 per referral</Text>
         </View>
       </View>
 

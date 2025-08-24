@@ -10,6 +10,7 @@ import {
   ScrollView,
   Image,
   TextInput,
+  Platform,
 } from 'react-native';
 import { X, CreditCard, Wallet, Clock, FileText, Shield } from 'lucide-react-native';
 import { useColors } from '../contexts/ThemeContext';
@@ -539,6 +540,8 @@ const styles = StyleSheet.create({
   },
   timelineText: {
     fontSize: 14,
+    fontFamily: Platform.OS === 'web' ? 'League Spartan, system-ui, -apple-system, sans-serif' : 'System',
+    fontWeight: '600',
     color: '#6B7280',
     marginLeft: 8,
   },

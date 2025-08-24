@@ -1,11 +1,9 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function IndexScreen() {
   const router = useRouter();
-  const { user, loading } = useAuth();
 
   useEffect(() => {
     // Add a small delay to ensure the Root Layout is mounted before navigation

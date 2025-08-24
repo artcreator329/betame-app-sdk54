@@ -5,6 +5,7 @@ export interface WalletData {
   user_id: string;
   betame_diamonds: number;
   betame_betacoins: number;
+  cash: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -115,6 +116,7 @@ export class WalletService {
         user_id: userId,
         betame_diamonds: 0, // New users start with zero diamonds
         betame_betacoins: 0, // New users start with zero BetaCoins
+        cash: 0, // New users start with zero cash
       };
 
       // Use admin client to bypass RLS when creating wallets for other users
@@ -1022,6 +1024,104 @@ export class WalletService {
     } catch (error) {
       console.error('Error in addBetaCoins:', error);
       return { success: false, error: 'Failed to add BetaCoins' };
+    }
+  }
+
+  /**
+   * Add cash to user's wallet (for service payments, refunds, etc.)
+   */
+  static async addCash(
+    userId: string,
+    cashAmount: number,
+    description?: string
+  ): Promise<{ success: boolean; wallet?: WalletData; error?: string }> {
+    try {
+      // Get current wallet
+      const wallet = await this.getWallet(userId);
+      if (!wallet) {
+        return { success: false, error: 'Wallet not found' };
+      }
+
+      // Update wallet with new cash
+      const updatedWallet = await this.updateWallet({
+        ...wallet,
+        cash: wallet.cash + cashAmount,
+      });
+
+      if (!updatedWallet) {
+        return { success: false, error: 'Failed to update wallet' };
+      }
+
+      // Record transaction
+      await this.recordTransaction({
+        user_id: userId,
+        type: 'service_payment_received',
+        amount: cashAmount,
+        description: description || `Added RM${cashAmount.toFixed(2)} to wallet`,
+      });
+
+      return { success: true, wallet: updatedWallet };
+    } catch (error) {
+      console.error('Error in addCash:', error);
+      return { success: false, error: 'Failed to add cash' };
+    }
+  }
+
+  /**
+   * Withdraw cash from user's wallet
+   */
+  static async withdrawCash(
+    userId: string,
+    cashAmount: number,
+    description?: string
+  ): Promise<{ success: boolean; wallet?: WalletData; error?: string }> {
+    try {
+      // Get current wallet
+      const wallet = await this.getWallet(userId);
+      if (!wallet) {
+        return { success: false, error: 'Wallet not found' };
+      }
+
+      // Check if user has enough cash
+      if (wallet.cash < cashAmount) {
+        return { success: false, error: 'Insufficient cash balance' };
+      }
+
+      // Update wallet with reduced cash
+      const updatedWallet = await this.updateWallet({
+        ...wallet,
+        cash: wallet.cash - cashAmount,
+      });
+
+      if (!updatedWallet) {
+        return { success: false, error: 'Failed to update wallet' };
+      }
+
+      // Record transaction
+      await this.recordTransaction({
+        user_id: userId,
+        type: 'service_payment',
+        amount: cashAmount,
+        description: description || `Withdrew RM${cashAmount.toFixed(2)} from wallet`,
+      });
+
+      return { success: true, wallet: updatedWallet };
+    } catch (error) {
+      console.error('Error in withdrawCash:', error);
+      return { success: false, error: 'Failed to withdraw cash' };
+    }
+  }
+
+  /**
+   * Get cash balance for user
+   */
+  static async getCashBalance(userId: string): Promise<number> {
+    try {
+      const wallet = await this.getWallet(userId);
+      return wallet?.cash || 0;
+    } catch (error) {
+      console.error('Error in getCashBalance:', error);
+      return 0;
     }
   }
 }

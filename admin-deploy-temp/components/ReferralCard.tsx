@@ -132,7 +132,7 @@ export const ReferralCard: React.FC<ReferralCardProps> = ({ userId }) => {
             <Text style={styles.title}>Referral Program</Text>
             {!isExpanded && (
               <Text style={styles.collapsedStats}>
-                {stats.totalReferrals} referrals • {stats.totalCreditsEarned} credits earned
+                {stats.totalReferrals} referrals • {stats.totalBetaCoinsEarned} BetaCoins + RM{(stats.totalCashEarned / 100).toFixed(2)} earned
               </Text>
             )}
           </View>
@@ -162,8 +162,12 @@ export const ReferralCard: React.FC<ReferralCardProps> = ({ userId }) => {
             <Text style={styles.statLabel}>Total Referrals</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.totalCreditsEarned}</Text>
-            <Text style={styles.statLabel}>Credits Earned</Text>
+            <Text style={styles.statNumber}>{stats.totalBetaCoinsEarned}</Text>
+            <Text style={styles.statLabel}>BetaCoins Earned</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>RM{(stats.totalCashEarned / 100).toFixed(2)}</Text>
+            <Text style={styles.statLabel}>Cash Earned</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{stats.pendingReferrals}</Text>
@@ -185,11 +189,11 @@ export const ReferralCard: React.FC<ReferralCardProps> = ({ userId }) => {
           <Text style={styles.rewardTitle}>How it works:</Text>
           <View style={styles.rewardItem}>
             <Ionicons name="person-add-outline" size={16} color="#34C759" />
-            <Text style={styles.rewardText}>Friend signs up: +15 credits</Text>
+            <Text style={styles.rewardText}>Friend signs up: +15 BetaCoins</Text>
           </View>
           <View style={styles.rewardItem}>
             <Ionicons name="checkmark-circle-outline" size={16} color="#34C759" />
-            <Text style={styles.rewardText}>Friend completes first job: +25 credits</Text>
+            <Text style={styles.rewardText}>Friend completes first job: +RM4.90</Text>
           </View>
         </View>
 

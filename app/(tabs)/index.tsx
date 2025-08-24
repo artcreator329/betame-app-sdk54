@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MessageCircle, Heart, ChevronRight, Wallet, MapPin, Calendar } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
+
 import ServiceCard from '@/components/ServiceCard';
 import SearchBarWithAutoComplete from '@/components/SearchBarWithAutoComplete';
 import NearbyCategoryIcon from '@/components/NearbyCategoryIcon';
@@ -205,7 +206,11 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={[styles.logoText, { color: colors.text.primary }]}>BetaMe</Text>
+            <Image 
+              source={require('../../assets/images/text-logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           {user ? (
             <View style={styles.headerIcons}>
@@ -481,10 +486,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  logoText: {
-    fontSize: isDesktop ? 28 : 24,
-    fontWeight: '700',
-    letterSpacing: 1,
+  logoImage: {
+    height: isDesktop ? 32 : 28,
+    width: isDesktop ? 120 : 100,
   },
   searchContainer: {
     flex: 1,

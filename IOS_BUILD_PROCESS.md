@@ -59,6 +59,37 @@ This document outlines the complete iOS build process for the BetaMe app, includ
 
 ## Build Process Steps
 
+### Local Build Process (Version 1.0.0 Build 2)
+
+#### 1. Update Build Numbers
+- **app.json**: Added `"buildNumber": "2"` to iOS configuration
+- **Info.plist**: Updated `CFBundleVersion` to `2`
+- **project.pbxproj**: Updated `CURRENT_PROJECT_VERSION` to `2` in both Debug and Release configurations
+
+#### 2. Update Encryption Compliance
+- **Info.plist**: Added `ITSAppUsesNonExemptEncryption = false`
+- **Bundle Identifier**: Fixed URL schemes to use `com.betame.app`
+
+#### 3. Local Build Commands
+```bash
+# Clean project
+xcodebuild clean -workspace BetaMe.xcworkspace -scheme BetaMe
+
+# Archive for App Store
+xcodebuild -workspace BetaMe.xcworkspace -scheme BetaMe -configuration Release -destination 'generic/platform=iOS' -archivePath ./build/BetaMe.xcarchive archive -allowProvisioningUpdates
+
+# Export IPA
+xcodebuild -exportArchive -archivePath ./build/BetaMe.xcarchive -exportPath ./build/ipa -exportOptionsPlist exportOptions.plist -allowProvisioningUpdates
+```
+
+#### 4. Export Configuration
+- **exportOptions.plist**: Created with App Store Connect distribution settings
+- **Team ID**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Method**: app-store-connect
+- **Signing**: Automatic
+
+### EAS Build Process Steps
+
 ### 1. Initial Setup Issues
 **Problem**: Project was configured under personal account with wrong bundle identifier
 - **Original Bundle ID**: `com.artcreator329.boltexponativewind`
@@ -100,11 +131,21 @@ eas init
 - **Distribution**: Internal (Ad Hoc)
 - **Installation**: Available via QR code for registered devices
 
-### Production Build (App Store)
+### Production Build (App Store) - EAS
 - **Build ID**: 5cd8bc49-edae-4c7c-860f-c6e749df663e
 - **Status**: ✅ Completed
 - **Distribution**: Store
 - **Artifact**: https://expo.dev/artifacts/eas/csYzYxQ3CGWDHiAkvgbmBy.ipa
+
+### Local Production Build (App Store) - Version 1.0.0 (2)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (69.3 MB)
+- **Build Number**: 2
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
 
 ## Apple Developer Account Setup
 
@@ -191,13 +232,19 @@ eas submit --platform ios --latest
 ### Immediate Actions
 1. **Complete App Store Connect Submission**
    - Use Transporter app or web interface
-   - Upload production build artifact
+   - Upload local production build: `ios/build/ipa/BetaMe.ipa`
    - Configure app metadata
 
 2. **TestFlight Distribution**
    - Add internal testers
    - Submit for beta review
    - Distribute to testers
+
+3. **Local Build Ready for Submission**
+   - **IPA Location**: `ios/build/ipa/BetaMe.ipa`
+   - **Size**: 69.3 MB
+   - **Version**: 1.0.0 (2)
+   - **Ready for**: App Store Connect upload
 
 ### Future Improvements
 1. **API Key Permissions**

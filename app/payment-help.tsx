@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, CreditCard, Wallet, HelpCircle, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react-native';
@@ -269,6 +270,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
+    fontFamily: Platform.OS === 'web' ? 'League Spartan, system-ui, -apple-system, sans-serif' : 'System',
     fontWeight: '700',
     marginBottom: 8,
   },

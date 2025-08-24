@@ -1022,10 +1022,11 @@ const styles = StyleSheet.create({
   },
   protectionText: {
     fontSize: 14,
+    fontFamily: Platform.OS === 'web' ? 'League Spartan, system-ui, -apple-system, sans-serif' : 'System',
+    fontWeight: '600',
     color: Colors.text.primary,
     flex: 1,
     lineHeight: 18,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   termsSection: {
     marginBottom: 15,

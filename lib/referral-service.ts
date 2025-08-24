@@ -17,8 +17,9 @@ export interface Referral {
   referred_user_id: string;
   status: 'pending' | 'signup_completed' | 'first_job_completed' | 'completed';
   signup_betacoins_awarded: number;
-  first_job_betacoins_awarded: number;
+  first_job_cash_awarded: number;
   total_betacoins_earned: number;
+  total_cash_earned: number;
   first_job_completed_at?: string;
   created_at: string;
   updated_at?: string;
@@ -27,6 +28,7 @@ export interface Referral {
 export interface ReferralStats {
   totalReferrals: number;
   totalBetaCoinsEarned: number;
+  totalCashEarned: number;
   pendingReferrals: number;
   completedReferrals: number;
   referralCode: string;
@@ -169,7 +171,8 @@ class ReferralService {
       }
 
       const totalReferrals = referrals.length;
-      const totalBetaCoinsEarned = referrals.reduce((sum, ref) => sum + ref.total_betacoins_earned, 0);
+      const totalBetaCoinsEarned = referrals.reduce((sum, ref) => sum + (ref.total_betacoins_earned || 0), 0);
+      const totalCashEarned = referrals.reduce((sum, ref) => sum + (ref.total_cash_earned || 0), 0);
       const pendingReferrals = referrals.filter(ref => 
         ref.status === 'pending' || ref.status === 'signup_completed'
       ).length;
@@ -180,6 +183,7 @@ class ReferralService {
       return {
         totalReferrals,
         totalBetaCoinsEarned,
+        totalCashEarned,
         pendingReferrals,
         completedReferrals,
         referralCode: referralCode.referral_code
@@ -240,8 +244,10 @@ class ReferralService {
 
   // Generate referral link
   generateReferralLink(referralCode: string): string {
-    const baseUrl = process.env.EXPO_PUBLIC_APP_URL || 'https://yourapp.com';
-    return `${baseUrl}/signup?ref=${referralCode}`;
+    // Use a smart link that can handle both app installation and deep linking
+    // This will redirect to app store if app not installed, or open app if installed
+    const baseUrl = process.env.EXPO_PUBLIC_APP_URL || 'https://betame.com.my';
+    return `${baseUrl}/install?ref=${referralCode}`;
   }
 
   // Check if user was referred

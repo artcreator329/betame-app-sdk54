@@ -112,7 +112,7 @@ export default function WalletScreen() {
         WalletService.getPurchasedFeatures(user.id)
       ]);
       
-      setWalletData(wallet || { user_id: user.id, betame_diamonds: 0, betame_betacoins: 0 });
+      setWalletData(wallet || { user_id: user.id, betame_diamonds: 0, betame_betacoins: 0, cash: 0 });
       setPurchasedFeatures(features);
     } catch (error) {
       console.error('Error loading wallet data:', error);
@@ -171,6 +171,80 @@ export default function WalletScreen() {
     const newAmount = Math.max(10, currentAmount - 1);
     console.log('Decrementing diamonds:', currentAmount, '->', newAmount);
     setConvertAmount(newAmount.toString());
+  };
+
+  const handleWithdrawCash = () => {
+    if (!walletData || walletData.cash <= 0) {
+      Alert.alert('No Cash Available', 'You don\'t have any cash to withdraw.');
+      return;
+    }
+
+    Alert.prompt(
+      'Withdraw Cash',
+      `Enter amount to withdraw (max: RM${walletData.cash.toFixed(2)})`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Withdraw',
+          onPress: async (amount) => {
+            if (!amount || !user?.id) return;
+            
+            const withdrawAmount = parseFloat(amount);
+            if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
+              Alert.alert('Invalid Amount', 'Please enter a valid amount.');
+              return;
+            }
+
+            if (withdrawAmount > walletData.cash) {
+              Alert.alert('Insufficient Balance', `You only have RM${walletData.cash.toFixed(2)} available.`);
+              return;
+            }
+
+            const result = await WalletService.withdrawCash(user.id, withdrawAmount, 'Cash withdrawal');
+            if (result.success) {
+              await loadWalletData();
+              Alert.alert('Withdrawal Successful', `RM${withdrawAmount.toFixed(2)} has been withdrawn from your wallet.`);
+            } else {
+              Alert.alert('Withdrawal Failed', result.error || 'Failed to withdraw cash');
+            }
+          }
+        }
+      ],
+      'plain-text',
+      walletData.cash.toString()
+    );
+  };
+
+  const handleAddCash = () => {
+    Alert.prompt(
+      'Add Cash',
+      'Enter amount to add to your wallet',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Add',
+          onPress: async (amount) => {
+            if (!amount || !user?.id) return;
+            
+            const addAmount = parseFloat(amount);
+            if (isNaN(addAmount) || addAmount <= 0) {
+              Alert.alert('Invalid Amount', 'Please enter a valid amount.');
+              return;
+            }
+
+            const result = await WalletService.addCash(user.id, addAmount, 'Cash deposit');
+            if (result.success) {
+              await loadWalletData();
+              Alert.alert('Cash Added', `RM${addAmount.toFixed(2)} has been added to your wallet.`);
+            } else {
+              Alert.alert('Failed to Add Cash', result.error || 'Failed to add cash to wallet');
+            }
+          }
+        }
+      ],
+      'plain-text',
+      '0'
+    );
   };
 
   const handleFeaturePurchase = (feature: Feature) => {
@@ -376,6 +450,36 @@ export default function WalletScreen() {
                </TouchableOpacity>
              </View>
           </ImageBackground>
+
+          <ImageBackground 
+            source={require('../assets/images/cash-background.png')}
+            style={styles.balanceCard}
+            imageStyle={styles.balanceCardImage}
+          >
+            <View style={styles.balanceOverlay}>
+               <View style={styles.balanceHeader}>
+                 <Text style={styles.balanceLabelWithBg}>Cash Balance</Text>
+                 <TouchableOpacity 
+                   style={styles.marketplaceButton}
+                 >
+                   <CreditCard size={20} color="white" />
+                 </TouchableOpacity>
+               </View>
+               <Text style={styles.balanceAmountWithBg}>RM {walletData?.cash || 0}</Text>
+               <TouchableOpacity 
+                 onPress={() => handleWithdrawCash()}
+                 style={styles.buyMoreButton}
+               >
+                 <Text style={styles.buyMoreText}>Withdraw Cash</Text>
+               </TouchableOpacity>
+               <TouchableOpacity 
+                 onPress={() => handleAddCash()}
+                 style={[styles.buyMoreButton, { marginTop: 8 }]}
+               >
+                 <Text style={styles.buyMoreText}>Add Cash</Text>
+               </TouchableOpacity>
+             </View>
+          </ImageBackground>
         </View>
 
         {/* Transaction History Quick Access */}
@@ -403,7 +507,7 @@ export default function WalletScreen() {
                   Transaction History
                 </Text>
                 <Text style={[styles.transactionQuickSubtitle, { color: colors.text.secondary }]}>
-                  View all your Diamonds, BetaCoins, and real currency transactions
+                  View all your Diamonds, BetaCoins, and cash transactions
                 </Text>
               </View>
               <ArrowLeft size={20} color={colors.text.secondary} style={{ transform: [{ rotate: '180deg' }] }} />

@@ -41,7 +41,7 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { View, Text, ActivityIndicator, Image, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ActivityIndicator, Image, StyleSheet, Dimensions, Platform } from 'react-native';
 import { useEffect, useState } from 'react';
 import { configureLocalNotifications } from '@/lib/local-notifications';
 import { useDeepLinking } from '@/hooks/useDeepLinking';
@@ -75,7 +75,11 @@ function CustomSplashScreen() {
           style={styles.splashImage}
           resizeMode="contain"
         />
-        <Text style={styles.splashText}>BetaMe</Text>
+        <Image 
+          source={require('../assets/images/text-logo.png')}
+          style={styles.splashTextLogo}
+          resizeMode="contain"
+        />
         <Text style={styles.splashSubtext}>Connecting People & Services</Text>
       </View>
       <ActivityIndicator 
@@ -366,12 +370,10 @@ const styles = StyleSheet.create({
     height: height * 0.15,
     marginBottom: 30,
   },
-  splashText: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#007AFF',
+  splashTextLogo: {
+    height: 42,
+    width: 180,
     marginBottom: 8,
-    letterSpacing: 1,
   },
   splashSubtext: {
     fontSize: 16,

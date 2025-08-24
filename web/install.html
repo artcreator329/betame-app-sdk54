@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    
+    <title>Install BetaMe - Earn Extra Income</title>
+    <meta name="description" content="Join BetaMe and earn extra income by listing your service. Download the app now!" />
+    
+    <!-- Favicon -->
+    <link rel="icon" href="/favicon.ico" />
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        
+        h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin: 0 0 30px 0;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .install-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        
+        .install-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .install-button:active {
+            transform: translateY(0);
+        }
+        
+        .store-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        .fallback-text {
+            color: #999;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+        
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">BM</div>
+        <h1>Install BetaMe</h1>
+        <p class="subtitle">Join BetaMe and earn extra income by listing your service</p>
+        
+        <button id="installButton" class="install-button" onclick="installApp()">
+            <span id="buttonText">Install BetaMe</span>
+        </button>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Redirecting to app store...</p>
+        </div>
+        
+        <p class="fallback-text">
+            If the app doesn't open automatically, please use the button above to install BetaMe from your app store.
+        </p>
+    </div>
+
+    <script>
+        // Get referral code from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const referralCode = urlParams.get('ref');
+        
+        // App store URLs (replace with actual URLs when app is published)
+        const APP_STORE_URL = 'https://apps.apple.com/app/betame/id123456789'; // Replace with actual App Store URL
+        const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.betame.app'; // Replace with actual Play Store URL
+        
+        // Deep link to open app if installed
+        const DEEP_LINK = `betame://signup${referralCode ? `?ref=${referralCode}` : ''}`;
+        
+        function detectPlatform() {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            
+            if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+                return 'ios';
+            } else if (/android/i.test(userAgent)) {
+                return 'android';
+            } else {
+                return 'web';
+            }
+        }
+        
+        function installApp() {
+            const platform = detectPlatform();
+            const button = document.getElementById('installButton');
+            const buttonText = document.getElementById('buttonText');
+            const loading = document.getElementById('loading');
+            
+            // Show loading state
+            button.style.display = 'none';
+            loading.style.display = 'block';
+            
+            // Try to open app first, then redirect to store if it fails
+            if (platform === 'ios' || platform === 'android') {
+                // Try to open the app with deep link
+                window.location.href = DEEP_LINK;
+                
+                // If app doesn't open within 2 seconds, redirect to store
+                setTimeout(() => {
+                    if (platform === 'ios') {
+                        window.location.href = APP_STORE_URL;
+                    } else if (platform === 'android') {
+                        window.location.href = PLAY_STORE_URL;
+                    }
+                }, 2000);
+            } else {
+                // For web users, show a message
+                button.style.display = 'block';
+                loading.style.display = 'none';
+                buttonText.textContent = 'Please use your mobile device';
+                button.disabled = true;
+            }
+        }
+        
+        // Auto-trigger installation on page load for mobile devices
+        window.onload = function() {
+            const platform = detectPlatform();
+            if (platform === 'ios' || platform === 'android') {
+                // Small delay to let the page load
+                setTimeout(installApp, 500);
+            }
+        };
+        
+        // Track referral if code is present
+        if (referralCode) {
+            // You can add analytics tracking here
+            console.log('Referral code detected:', referralCode);
+        }
+    </script>
+</body>
+</html>

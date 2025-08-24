@@ -30,7 +30,8 @@
       "config": {
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
-      "bundleIdentifier": "com.betame.app"
+      "bundleIdentifier": "com.betame.app",
+      "buildNumber": "2"
     },
     "android": {
       "config": {

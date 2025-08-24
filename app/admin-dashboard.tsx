@@ -9,6 +9,7 @@ import {
   Alert,
   RefreshControl,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -345,6 +346,8 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
+    fontFamily: Platform.OS === 'web' ? 'League Spartan, system-ui, -apple-system, sans-serif' : 'System',
+    fontWeight: '600',
     color: Colors.textSecondary,
     marginTop: 2,
   },

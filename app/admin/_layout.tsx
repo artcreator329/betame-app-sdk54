@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -280,6 +281,7 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: 20,
+    fontFamily: Platform.OS === 'web' ? 'League Spartan, system-ui, -apple-system, sans-serif' : 'System',
     fontWeight: '600',
     color: '#333',
     marginLeft: 12,

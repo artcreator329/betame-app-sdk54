@@ -45,13 +45,13 @@ export const ReferralStatsInline: React.FC<ReferralStatsInlineProps> = ({ userId
 
   if (!stats) {
     return (
-      <Text style={[styles.statsText, { color: colors.text.secondary }]}>0 referrals • 0 BetaCoins earned</Text>
+      <Text style={[styles.statsText, { color: colors.text.secondary }]}>0 referrals • 0 BetaCoins + RM0.00 earned</Text>
     );
   }
 
   return (
     <Text style={[styles.statsText, { color: colors.text.secondary }]}>
-      {String(stats.totalReferrals)} referrals • {String(stats.totalBetaCoinsEarned)} BetaCoins earned
+      {String(stats.totalReferrals)} referrals • {stats.totalBetaCoinsEarned} BetaCoins + RM{((stats.totalCashEarned || 0) / 100).toFixed(2)} earned
     </Text>
   );
 };

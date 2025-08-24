@@ -140,20 +140,20 @@ export const ReferralHistoryModal: React.FC<ReferralHistoryModalProps> = ({
         <View style={styles.creditItem}>
           <Ionicons name="person-add-outline" size={16} color="#34C759" />
           <Text style={styles.creditText}>
-            Signup: +{item.signup_credits_awarded} credits
+            Signup: +{item.signup_betacoins_awarded || 0} BetaCoins
           </Text>
         </View>
-        {item.first_job_credits_awarded > 0 && (
+        {(item.first_job_cash_awarded || 0) > 0 && (
           <View style={styles.creditItem}>
             <Ionicons name="checkmark-circle-outline" size={16} color="#34C759" />
             <Text style={styles.creditText}>
-              First Job: +{item.first_job_credits_awarded} credits
+              First Job: +RM{((item.first_job_cash_awarded || 0) / 100).toFixed(2)}
             </Text>
           </View>
         )}
         <View style={styles.totalCredits}>
           <Text style={styles.totalCreditsText}>
-            Total: {item.total_credits_earned} credits
+            Total: {item.total_betacoins_earned || 0} BetaCoins + RM{((item.total_cash_earned || 0) / 100).toFixed(2)}
           </Text>
         </View>
       </View>
@@ -185,7 +185,7 @@ export const ReferralHistoryModal: React.FC<ReferralHistoryModalProps> = ({
             <Ionicons name="people-outline" size={64} color="#8E8E93" />
             <Text style={styles.emptyTitle}>No Referrals Yet</Text>
             <Text style={styles.emptyText}>
-              Share your referral code to start earning credits when friends join!
+              Share your referral code to start earning BetaCoins and cash when friends join!
             </Text>
           </View>
         ) : (

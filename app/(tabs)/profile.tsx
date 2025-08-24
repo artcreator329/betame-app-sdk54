@@ -1101,7 +1101,7 @@ export default function ProfileScreen() {
                     )}
                     <View style={styles.ratingContainer}>
                       <Text style={[styles.ratingText, { color: isDarkMode ? 'white' : 'black' }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
-                      {renderVerificationTick()}
+                      {/* {renderVerificationTick()} */}
                       {averageRating > 0 && renderStars(averageRating)}
                       <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({reviews.length} reviews)</Text>
                     </View>
@@ -1205,7 +1205,6 @@ export default function ProfileScreen() {
                   >
                     <View style={styles.referralButtonContent}>
                       <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Referral Program</Text>
-                      <ReferralStatsInline userId={user?.id} />
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -1338,7 +1337,6 @@ export default function ProfileScreen() {
                 >
                   <View style={styles.referralButtonContent}>
                     <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Referral Program</Text>
-                    <ReferralStatsInline userId={user?.id} />
                   </View>
                 </TouchableOpacity>
 

@@ -10,6 +10,7 @@ import {
   Switch,
   Share,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, Briefcase, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet } from 'lucide-react-native';
@@ -507,6 +508,8 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 14,
+    fontFamily: Platform.OS === 'web' ? 'League Spartan, system-ui, -apple-system, sans-serif' : 'System',
+    fontWeight: '600',
     marginBottom: 4,
   },
   copyrightText: {

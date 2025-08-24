@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import React, { useEffect } from 'react';
 import { Platform, View, Text, Dimensions, TouchableOpacity, StyleSheet } from 'react-native';
 import { Home, Users, FileText, Bell, User, Briefcase } from 'lucide-react-native';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 // Removed animation imports to prevent flashing
@@ -52,7 +53,11 @@ function DesktopSidebar() {
     <View style={styles.sidebar}>
       <View style={styles.sidebarHeader}>
         <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>BETAME</Text>
+          <Image 
+            source={require('../../assets/images/text-logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
       </View>
 
@@ -300,11 +305,9 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
   },
-  logoText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#007AFF',
-    letterSpacing: 1,
+  logoImage: {
+    height: 28,
+    width: 100,
   },
   navContainer: {
     flex: 1,
