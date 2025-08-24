@@ -147,6 +147,17 @@ eas init
 - **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
 - **Provisioning Profile**: iOS Team Store Provisioning Profile
 
+### Local Production Build (App Store) - Version 1.0.0 (3)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (69.6 MB)
+- **Build Number**: 3
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: August 24, 2025
+
 ## Apple Developer Account Setup
 
 ### Credentials Created
@@ -242,8 +253,8 @@ eas submit --platform ios --latest
 
 3. **Local Build Ready for Submission**
    - **IPA Location**: `ios/build/ipa/BetaMe.ipa`
-   - **Size**: 69.3 MB
-   - **Version**: 1.0.0 (2)
+   - **Size**: 69.6 MB
+   - **Version**: 1.0.0 (3)
    - **Ready for**: App Store Connect upload
 
 ### Future Improvements

@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Send, Bot, Trash2, Sparkles, MessageCircle } from 'lucide-react-native';
+import { Send, Bot, Trash2, Sparkles, MessageCircle, Clock } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { AIChatService } from '@/lib/ai-chat-service';
 
@@ -32,7 +32,9 @@ export default function AIChatSection() {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [conversationEnded, setConversationEnded] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -40,12 +42,49 @@ export default function AIChatSection() {
     }
   }, [user?.id]);
 
+  // Auto-timeout functionality
+  useEffect(() => {
+    if (messages.length > 0 && !isLoading) {
+      // Clear existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set new timeout for 5 minutes (300000ms)
+      timeoutRef.current = setTimeout(() => {
+        setConversationEnded(true);
+      }, 300000);
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [messages, isLoading]);
+
+  const resetConversation = () => {
+    setMessages([]);
+    setConversationEnded(false);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  };
+
   const loadConversationHistory = async () => {
     try {
       setIsLoadingHistory(true);
       const result = await AIChatService.getChatHistory(user!.id);
       if (result.success && result.messages) {
         setMessages(result.messages);
+              // Check if conversation should be ended based on last message time
+      if (result.messages.length > 0) {
+        const timeoutCheck = await AIChatService.checkConversationTimeout(user!.id);
+        if (timeoutCheck.timedOut) {
+          setConversationEnded(true);
+        }
+      }
       }
     } catch (error) {
       console.error('Error loading conversation history:', error);
@@ -60,6 +99,11 @@ export default function AIChatSection() {
     const messageText = inputMessage.trim();
     setInputMessage('');
     setIsLoading(true);
+
+    // Reset conversation ended state when user sends a new message
+    if (conversationEnded) {
+      setConversationEnded(false);
+    }
 
     try {
       const response = await AIChatService.sendMessage(user.id, messageText);
@@ -107,7 +151,7 @@ export default function AIChatSection() {
             if (user?.id) {
               const result = await AIChatService.clearChatHistory(user.id);
               if (result.success) {
-                setMessages([]);
+                resetConversation();
               } else {
                 Alert.alert('Error', result.error || 'Failed to clear conversation');
               }
@@ -127,10 +171,22 @@ export default function AIChatSection() {
     });
   };
 
+  const handleChatPress = () => {
+    scrollToBottom();
+  };
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
   const renderWelcomeMessage = () => (
     <View style={styles.welcomeContainer}>
       <View style={styles.welcomeIconContainer}>
-        <Bot size={48} color="#007AFF" />
+        <View style={styles.welcomeBetameLogo}>
+          <Text style={styles.welcomeBetameLogoText}>B</Text>
+        </View>
         <Sparkles size={20} color="#FFD700" style={styles.sparkleIcon} />
       </View>
       <Text style={styles.welcomeTitle}>AI Assistant</Text>
@@ -161,6 +217,24 @@ export default function AIChatSection() {
           onPress={() => setInputMessage("Tell me about the app features")}
         >
           <Text style={styles.suggestionText}>Tell me about the app features</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderConversationEndedMessage = () => (
+    <View style={styles.conversationEndedContainer}>
+      <View style={styles.conversationEndedDivider} />
+      <View style={styles.conversationEndedContent}>
+        <Clock size={20} color="#8E8E93" />
+        <Text style={styles.conversationEndedText}>
+          Conversation ended due to inactivity
+        </Text>
+        <TouchableOpacity 
+          style={styles.startNewConversationButton}
+          onPress={resetConversation}
+        >
+          <Text style={styles.startNewConversationText}>Start New</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -211,11 +285,13 @@ export default function AIChatSection() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Bot size={24} color="#007AFF" />
+          <View style={styles.headerBetameLogo}>
+            <Text style={styles.headerBetameLogoText}>B</Text>
+          </View>
           <Text style={styles.headerTitle}>AI Assistant</Text>
           <Sparkles size={16} color="#FFD700" />
         </View>
-        {messages.length > 0 && (
+        {messages.length > 0 && !conversationEnded && (
           <TouchableOpacity onPress={clearConversation} style={styles.clearButton}>
             <Trash2 size={20} color="#FF3B30" />
           </TouchableOpacity>
@@ -223,16 +299,24 @@ export default function AIChatSection() {
       </View>
 
       {/* Messages */}
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
-        showsVerticalScrollIndicator={false}
+      <TouchableOpacity 
+        style={styles.messagesTouchable}
+        activeOpacity={1}
+        onPress={handleChatPress}
       >
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+          showsVerticalScrollIndicator={false}
+        >
         {messages.length === 0 ? (
           renderWelcomeMessage()
         ) : (
-          messages.map((message, index) => renderMessage(message, index))
+          <>
+            {messages.map((message, index) => renderMessage(message, index))}
+            {conversationEnded && renderConversationEndedMessage()}
+          </>
         )}
         
         {isLoading && (
@@ -248,7 +332,8 @@ export default function AIChatSection() {
             </View>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </TouchableOpacity>
 
       {/* Input Section */}
       <View style={styles.inputContainer}>
@@ -257,19 +342,19 @@ export default function AIChatSection() {
             style={styles.textInput}
             value={inputMessage}
             onChangeText={setInputMessage}
-            placeholder="Message AI Assistant..."
+            placeholder={conversationEnded ? "Start a new conversation..." : "Message AI Assistant..."}
             placeholderTextColor="#8E8E93"
             multiline
             maxLength={1000}
-            editable={!isLoading}
+            editable={!isLoading && !conversationEnded}
           />
           <TouchableOpacity
             style={[
               styles.sendButton,
-              (!inputMessage.trim() || isLoading) && styles.sendButtonDisabled
+              (!inputMessage.trim() || isLoading || conversationEnded) && styles.sendButtonDisabled
             ]}
             onPress={sendMessage}
-            disabled={!inputMessage.trim() || isLoading}
+            disabled={!inputMessage.trim() || isLoading || conversationEnded}
           >
             {isLoading ? (
               <ActivityIndicator size="small" color="white" />
@@ -326,6 +411,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
+  messagesTouchable: {
+    flex: 1,
+  },
   messagesContent: {
     paddingVertical: 8,
     flexGrow: 1,
@@ -339,6 +427,46 @@ const styles = StyleSheet.create({
   welcomeIconContainer: {
     position: 'relative',
     marginBottom: 16,
+  },
+  welcomeBetameLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 6,
+    borderColor: '#007AFF',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+  },
+  welcomeBetameLogoText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    fontFamily: 'LeagueSpartan-Bold',
+  },
+  headerBetameLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 6,
+    borderColor: '#007AFF',
+  },
+  headerBetameLogoText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    fontFamily: 'LeagueSpartan-Bold',
   },
   sparkleIcon: {
     position: 'absolute',
@@ -407,10 +535,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F0F8FF',
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
+    borderWidth: 4,
+    borderColor: '#007AFF',
   },
   aiAvatarText: {
     fontSize: 16,
@@ -485,5 +615,41 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#C7C7CC',
+  },
+  conversationEndedContainer: {
+    marginTop: 16,
+    marginHorizontal: 16,
+  },
+  conversationEndedDivider: {
+    height: 1,
+    backgroundColor: '#E5E5EA',
+    marginBottom: 16,
+  },
+  conversationEndedContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
+  },
+  conversationEndedText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    fontStyle: 'italic',
+  },
+  startNewConversationButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  startNewConversationText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
