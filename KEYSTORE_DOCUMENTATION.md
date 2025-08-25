@@ -4,19 +4,21 @@
 
 This document contains sensitive information about the Android app signing keystore. Keep this information secure and confidential.
 
+**IMPORTANT**: This documentation contains placeholder values. The actual keystore information is stored securely and should never be committed to version control.
+
 ---
 
 ## 📋 Keystore Summary
 
 | Property | Value |
 |----------|-------|
-| **Keystore File** | `betame-release-key-new.jks` |
-| **Location** | `/Users/christopher/Desktop/Project/betame-app/android/app/betame-release-key-new.jks` |
-| **Key Alias** | `betame-key` |
-| **Store Password** | `Betame##888` |
-| **Key Password** | `Betame##888` |
+| **Keystore File** | `[KEYSTORE_FILENAME]` |
+| **Location** | `[KEYSTORE_PATH]` |
+| **Key Alias** | `[KEY_ALIAS]` |
+| **Store Password** | `[STORE_PASSWORD]` |
+| **Key Password** | `[KEY_PASSWORD]` |
 | **Algorithm** | RSA 2048-bit |
-| **Validity** | 10,000 days (until January 9, 2053) |
+| **Validity** | 10,000 days |
 | **Certificate Type** | Self-signed |
 
 ---
@@ -24,22 +26,22 @@ This document contains sensitive information about the Android app signing keyst
 ## 🔐 Keystore Details
 
 ### File Information
-- **Size**: 2,267 bytes
-- **Created**: August 24, 2025 at 20:43
+- **Size**: [SIZE] bytes
+- **Created**: [CREATION_DATE]
 - **Format**: JKS (Java KeyStore)
 - **Status**: ✅ Production Ready
 
 ### Certificate Information
-- **Serial Number**: 318dc72ad16a0029
-- **Issuer**: CN=BetaMe App, OU=Development, O=BetaMe, L=Kuala Lumpur, ST=Selangor, C=MY
-- **Subject**: CN=BetaMe App, OU=Development, O=BetaMe, L=Kuala Lumpur, ST=Selangor, C=MY
-- **Valid From**: August 24, 2025 at 20:43:41 MYT
-- **Valid Until**: January 9, 2053 at 20:43:41 MYT
+- **Serial Number**: [SERIAL_NUMBER]
+- **Issuer**: [ISSUER_DETAILS]
+- **Subject**: [SUBJECT_DETAILS]
+- **Valid From**: [VALID_FROM_DATE]
+- **Valid Until**: [VALID_UNTIL_DATE]
 
 ### Fingerprints
-- **MD5**: `4D:EA:CF:B0:7B:38:6B:DB:EA:53:E3:BE:7E:ED:FF:4F`
-- **SHA1**: `B1:C5:97:26:15:BF:6C:8F:63:6F:A0:6E:1F:99:60:65:A4:97:71:D5`
-- **SHA256**: `C2:2B:CD:99:54:C3:73:A9:60:5A:1D:2A:76:4E:6D:DA:3A:F8:CA:FA:4B:24:28:C4:25:B1:49:10:F7:DD:8F:C1`
+- **MD5**: `[MD5_FINGERPRINT]`
+- **SHA1**: `[SHA1_FINGERPRINT]`
+- **SHA256**: `[SHA256_FINGERPRINT]`
 
 ---
 
@@ -48,24 +50,24 @@ This document contains sensitive information about the Android app signing keyst
 ### Keystore Files
 ```
 betame-app/
-├── keystore.properties                           # Keystore configuration
-├── betame-release-certificate.pem                # Google Play certificate
+├── keystore.properties                           # Keystore configuration (NOT in version control)
+├── [CERTIFICATE_FILE]                            # Google Play certificate
 └── android/
     └── app/
-        └── betame-release-key-new.jks            # Production keystore
+        └── [KEYSTORE_FILE]                       # Production keystore (NOT in version control)
 ```
 
 ### Configuration Files
-- **keystore.properties** (Project Root):
+- **keystore.properties** (Project Root - NOT in version control):
   ```properties
-  storePassword=Betame##888
-  keyPassword=Betame##888
-  keyAlias=betame-key
-  storeFile=betame-release-key-new.jks
+  storePassword=[STORE_PASSWORD]
+  keyPassword=[KEY_PASSWORD]
+  keyAlias=[KEY_ALIAS]
+  storeFile=[KEYSTORE_FILE]
   ```
 
-- **betame-release-certificate.pem** (Project Root):
-  - Size: 1,307 bytes
+- **[CERTIFICATE_FILE]** (Project Root):
+  - Size: [SIZE] bytes
   - Format: RFC format (PEM)
   - Purpose: Google Play Console upload
 
@@ -75,24 +77,24 @@ betame-app/
 
 ### Generate Keystore
 ```bash
-cd /Users/christopher/Desktop/Project/betame-app/android/app
-keytool -genkey -v -keystore betame-release-key-new.jks -keyalg RSA -keysize 2048 -validity 10000 -alias betame-key -storetype JKS -dname "CN=BetaMe App, OU=Development, O=BetaMe, L=Kuala Lumpur, S=Selangor, C=MY"
+cd [PROJECT_PATH]/android/app
+keytool -genkey -v -keystore [KEYSTORE_FILE] -keyalg RSA -keysize 2048 -validity 10000 -alias [KEY_ALIAS] -storetype JKS -dname "[DISTINGUISHED_NAME]"
 ```
 
 ### Verify Keystore
 ```bash
-keytool -list -v -keystore betame-release-key-new.jks -alias betame-key
+keytool -list -v -keystore [KEYSTORE_FILE] -alias [KEY_ALIAS]
 ```
 
 ### Export Certificate
 ```bash
-keytool -export -rfc -keystore betame-release-key-new.jks -alias betame-key -file betame-release-certificate.pem
+keytool -export -rfc -keystore [KEYSTORE_FILE] -alias [KEY_ALIAS] -file [CERTIFICATE_FILE]
 ```
 
 ### Test Keystore Password
 ```bash
-keytool -list -v -keystore betame-release-key-new.jks
-# Enter password when prompted: Betame##888
+keytool -list -v -keystore [KEYSTORE_FILE]
+# Enter password when prompted: [STORE_PASSWORD]
 ```
 
 ---
@@ -134,7 +136,7 @@ cd android
 
 ### 1. Clean Build
 ```bash
-cd /Users/christopher/Desktop/Project/betame-app/android
+cd [PROJECT_PATH]/android
 ./gradlew clean
 ```
 
@@ -159,17 +161,17 @@ ls -la app/build/outputs/bundle/release/
 
 ### Play App Signing (Recommended)
 1. Go to Google Play Console → Setup → App Signing
-2. Upload `betame-release-certificate.pem`
+2. Upload [CERTIFICATE_FILE]
 3. Google manages the app signing key securely
 
 ### Manual Signing (Alternative)
-- Use SHA1 fingerprint: `B1:C5:97:26:15:BF:6C:8F:63:6F:A0:6E:1F:99:60:65:A4:97:71:D5`
+- Use SHA1 fingerprint: `[SHA1_FINGERPRINT]`
 - Keep keystore file secure - losing it means you cannot update your app
 
 ### Upload Requirements
 - **AAB File**: `app/build/outputs/bundle/release/app-release.aab`
-- **Certificate**: `betame-release-certificate.pem`
-- **Validity**: ✅ Valid until 2053 (meets Google Play requirements)
+- **Certificate**: [CERTIFICATE_FILE]
+- **Validity**: ✅ Valid until [VALID_UNTIL_DATE] (meets Google Play requirements)
 
 ---
 
@@ -182,7 +184,7 @@ ls -la app/build/outputs/bundle/release/
 - ❌ **Never commit** keystore or keystore.properties to version control
 
 ### Password Management
-- ✅ **Strong Password**: `Betame##888` (meets complexity requirements)
+- ✅ **Strong Password**: [PASSWORD_COMPLEXITY_INFO]
 - ✅ **Secure Storage**: Store in password manager
 - ✅ **Documentation**: Record in secure location
 - 🔄 **Periodic Rotation**: Consider rotating passwords annually
@@ -200,10 +202,10 @@ ls -la app/build/outputs/bundle/release/
 If you lose the keystore file, you **cannot update your app** on Google Play Store. Users will need to uninstall and reinstall.
 
 ### ⚠️ BACKUP REQUIREMENTS
-- **Keystore File**: `betame-release-key-new.jks`
-- **Passwords**: `Betame##888`
-- **Certificate**: `betame-release-certificate.pem`
-- **Documentation**: This file
+- **Keystore File**: [KEYSTORE_FILE]
+- **Passwords**: [PASSWORD_INFO]
+- **Certificate**: [CERTIFICATE_FILE]
+- **Documentation**: This file (with actual values stored securely)
 
 ### ⚠️ SECURITY REQUIREMENTS
 - Never share passwords in plain text
@@ -218,19 +220,19 @@ If you lose the keystore file, you **cannot update your app** on Google Play Sto
 ### Verify Keystore Integrity
 ```bash
 # Check keystore details
-keytool -list -v -keystore android/app/betame-release-key-new.jks -alias betame-key
+keytool -list -v -keystore [KEYSTORE_PATH] -alias [KEY_ALIAS]
 
 # Verify certificate
-openssl x509 -in betame-release-certificate.pem -text -noout
+openssl x509 -in [CERTIFICATE_FILE] -text -noout
 
 # Check AAB signing
 jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab
 ```
 
 ### Expected Outputs
-- **Keystore**: Should show BetaMe App certificate
+- **Keystore**: Should show [APP_NAME] certificate
 - **Certificate**: Should show valid dates and fingerprints
-- **AAB**: Should show "CN=BetaMe App" as signer
+- **AAB**: Should show "[APP_NAME]" as signer
 
 ---
 
@@ -255,16 +257,16 @@ jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.a
 
 | Date | Version | Action | Keystore Status |
 |------|---------|--------|-----------------|
-| Aug 24, 2025 | 1.0.0 (Code 4) | Initial Production Build | ✅ Created & Used |
-| Aug 24, 2025 | - | Keystore Creation | ✅ Generated |
-| Aug 24, 2025 | - | Certificate Export | ✅ Generated |
+| [DATE] | [VERSION] | Initial Production Build | ✅ Created & Used |
+| [DATE] | - | Keystore Creation | ✅ Generated |
+| [DATE] | - | Certificate Export | ✅ Generated |
 
 ---
 
 ## ✅ Checklist
 
 - [x] Keystore created with RSA 2048-bit
-- [x] Validity set to 10,000 days (until 2053)
+- [x] Validity set to 10,000 days
 - [x] Certificate exported for Google Play Console
 - [x] keystore.properties configured
 - [x] Build.gradle updated with signing config
@@ -275,7 +277,18 @@ jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.a
 
 ---
 
+## 🔐 Secure Storage
+
+The actual keystore information is stored securely in:
+- **Password Manager**: [PASSWORD_MANAGER_INFO]
+- **Encrypted Backup**: [BACKUP_LOCATION]
+- **Team Secure Channel**: [TEAM_CHANNEL_INFO]
+
+**NEVER** store actual passwords, file paths, or sensitive data in this documentation file.
+
+---
+
 *This document should be updated whenever keystore information changes or new builds are created.*
 
-**Last Updated**: August 24, 2025  
-**Next Review**: January 2026
+**Last Updated**: [LAST_UPDATED_DATE]  
+**Next Review**: [NEXT_REVIEW_DATE]
