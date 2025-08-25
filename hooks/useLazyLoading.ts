@@ -39,3 +39,4 @@ export function useLazyLoading(options: UseLazyLoadingOptions = {}) {
 
   return { elementRef, isVisible };
 }
+

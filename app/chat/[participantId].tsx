@@ -20,6 +20,7 @@ import MapView, { Marker } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MoveVertical as MoreVertical, Smile, Send, Shield, Flag, Ban, Trash2, Package, X, MapPin } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSmartNavigation } from '@/hooks/useSmartNavigation';
 import { ChatMessage, LiveChatMessage } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupabaseChat, useUserChats } from '@/hooks/useSupabaseChat';
@@ -48,6 +49,7 @@ interface ModeratedMessage extends ChatMessage {
 
 export default function ChatScreen() {
   const router = useRouter();
+  const { smartBack } = useSmartNavigation();
   const { 
     participantId,
     chatId: routeChatId,
@@ -1699,7 +1701,7 @@ export default function ChatScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity onPress={smartBack}>
               <ArrowLeft size={24} color="#1D1D1F" />
             </TouchableOpacity>
             

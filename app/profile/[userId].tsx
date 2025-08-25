@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSmartNavigation } from '@/hooks/useSmartNavigation';
 import { ArrowLeft, Star, MapPin, Calendar, User, Share2, MessageCircle } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors, useTheme } from '@/contexts/ThemeContext';
@@ -57,6 +58,7 @@ interface Review {
 export default function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const router = useRouter();
+  const { smartBack } = useSmartNavigation();
   const { user } = useAuth();
   const colors = useColors();
   const { isDarkMode } = useTheme();
@@ -210,7 +212,7 @@ export default function UserProfileScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.backButton, { backgroundColor: colors.primary.main }]}
-            onPress={() => router.back()}
+            onPress={smartBack}
           >
             <Text style={[styles.backButtonText, { color: colors.text.white }]}>
               Go Back
@@ -227,7 +229,7 @@ export default function UserProfileScreen() {
       
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background.primary }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+        <TouchableOpacity onPress={smartBack} style={styles.headerButton}>
           <ArrowLeft size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>

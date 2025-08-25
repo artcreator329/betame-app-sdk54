@@ -10,12 +10,15 @@ import {
   ImageBackground,
   Animated,
   Pressable,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X, ShoppingCart } from 'lucide-react-native';
 import { useColors } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { WalletService } from '@/lib/wallet-service';
+import CurlecPaymentService from '@/lib/curlec-payment-service';
 
 interface BetaCoinBundle {
   id: string;
@@ -118,36 +121,43 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
     setIsProcessing(true);
     
     try {
-      // Simulate payment processing with fees
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Record the transaction with no additional fees
-      const result = await WalletService.addBetaCoins(user.id, bundle.betacoins, {
-        transactionAmount: fees.totalAmount,
-        processingFee: 0,
-        baseAmount: fees.baseAmount
+      const paymentService = CurlecPaymentService.getInstance();
+
+      // Create Curlec payment session
+      const response = await paymentService.createCheckoutSession({
+        user_id: user.id,
+        payment_type: 'betacoin_purchase',
+        amount: bundle.priceValue * 100, // Convert to cents
+        currency: 'MYR',
+        success_url: 'betame://payment/success',
+        cancel_url: 'betame://payment/cancel',
+        metadata: {
+          betacoin_amount: bundle.betacoins,
+          package_id: bundle.id,
+          package_name: `${bundle.betacoins} BetaCoins`,
+        },
       });
-      
-      if (result.success) {
-        Alert.alert(
-          'Purchase Successful!',
-          `${bundle.betacoins} BetaCoins have been added to your wallet.\nTotal paid: RM${fees.totalAmount.toFixed(2)}`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                onPurchaseSuccess();
-                onClose();
-              }
-            }
-          ]
-        );
+
+      if (!response.success) {
+        Alert.alert('Payment Error', response.error || 'Failed to create payment session');
+        return;
+      }
+
+      // Open Curlec payment page in browser
+      if (response.checkout_url) {
+        const supported = await Linking.canOpenURL(response.checkout_url);
+        if (supported) {
+          await Linking.openURL(response.checkout_url);
+          onClose(); // Close the modal after redirecting
+        } else {
+          Alert.alert('Error', 'Cannot open payment page. Please try again.');
+        }
       } else {
-        Alert.alert('Purchase Failed', result.error || 'Something went wrong');
+        Alert.alert('Error', 'No payment URL received');
       }
     } catch (error) {
-      console.error('Purchase error:', error);
-      Alert.alert('Purchase Failed', 'Something went wrong. Please try again.');
+      console.error('Payment error:', error);
+      Alert.alert('Payment Failed', 'Something went wrong. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -162,7 +172,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
             { borderColor: colors.border.main },
             {
               transform: [{ scale: pressed ? 0.98 : 1 }],
-              opacity: pressed ? 0.9 : 1,
+              opacity: pressed ? 0.9 : isProcessing ? 0.5 : 1,
             }
           ]}
           onPress={() => handlePurchase(bundle)}
@@ -204,10 +214,10 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
       <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
         <View style={[styles.header, { borderBottomColor: colors.border.main }]}>
           <Text style={[styles.title, { color: colors.text.primary }]}>
-            Purchase BetaCoins
+            {isProcessing ? 'Processing Payment...' : 'Purchase BetaCoins'}
           </Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <X size={24} color={colors.text.primary} />
+          <TouchableOpacity onPress={onClose} style={styles.closeButton} disabled={isProcessing}>
+            <X size={24} color={isProcessing ? colors.text.secondary : colors.text.primary} />
           </TouchableOpacity>
         </View>
 
@@ -309,7 +319,11 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
                   onPress={handleConfirmPurchase}
                   disabled={isProcessing}
                 >
-                  <ShoppingCart size={20} color="white" />
+                  {isProcessing ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <ShoppingCart size={20} color="white" />
+                  )}
                   <Text style={styles.confirmButtonText}>
                     {isProcessing ? 'Processing...' : 'Confirm Purchase'}
                   </Text>
@@ -321,6 +335,27 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
       </View>
     </Modal>
 
+    {/* Loading Overlay */}
+    {isProcessing && (
+      <Modal
+        visible={isProcessing}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.loadingOverlay}>
+          <View style={[styles.loadingContainer, { backgroundColor: colors.background.secondary }]}>
+            <ActivityIndicator size="large" color={colors.primary.main} />
+            <Text style={[styles.loadingText, { color: colors.text.primary }]}>
+              Processing Payment...
+            </Text>
+            <Text style={[styles.loadingSubtext, { color: colors.text.secondary }]}>
+              Please wait while we redirect you to the payment gateway
+            </Text>
+          </View>
+        </View>
+      </Modal>
+    )}
 
     </>
   );
@@ -566,5 +601,37 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    padding: 30,
+    borderRadius: 20,
+    alignItems: 'center',
+    minWidth: 280,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

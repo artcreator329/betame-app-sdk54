@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Star, MessageCircle, X, Package, ShoppingCart, FileText } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSmartNavigation } from '@/hooks/useSmartNavigation';
 import { ServiceService, Service } from '@/lib/service-service';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +51,7 @@ const getServicePlans = (serviceId: string): SubPlan[] => {
 
 export default function ServiceDetailsScreen() {
   const router = useRouter();
+  const { smartBack } = useSmartNavigation();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
   const colors = useColors();
@@ -438,7 +440,7 @@ export default function ServiceDetailsScreen() {
           )}
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={smartBack}
           >
             <ArrowLeft size={24} color={Colors.text.white} />
           </TouchableOpacity>

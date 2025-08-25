@@ -21,7 +21,10 @@
       "config": {
         "screens": {
           "profile/[userId]": "profile/:userId",
-          "auth/reset-password": "auth/reset-password"
+          "auth/reset-password": "auth/reset-password",
+          "payment/success": "payment/success",
+          "payment/cancel": "payment/cancel",
+          "payment/failed": "payment/failed"
         }
       }
     },
@@ -31,7 +34,7 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-      "buildNumber": "4"
+      "buildNumber": "5"
     },
     "android": {
       "config": {

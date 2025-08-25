@@ -90,6 +90,46 @@ export class DeepLinkService {
             }
           };
         }
+
+        // Handle payment callbacks
+        if (pathSegments[0] === 'payment') {
+          if (pathSegments[1] === 'success') {
+            return {
+              type: 'payment_success',
+              params: {
+                transaction_id: parsedUrl.searchParams.get('transaction_id') || parsedUrl.searchParams.get('razorpay_payment_link_reference_id'),
+                razorpay_payment_id: parsedUrl.searchParams.get('razorpay_payment_id'),
+                razorpay_payment_link_id: parsedUrl.searchParams.get('razorpay_payment_link_id'),
+                razorpay_payment_link_status: parsedUrl.searchParams.get('razorpay_payment_link_status'),
+                razorpay_signature: parsedUrl.searchParams.get('razorpay_signature'),
+                error_code: parsedUrl.searchParams.get('error_code'),
+                error_description: parsedUrl.searchParams.get('error_description'),
+                error_reason: parsedUrl.searchParams.get('error_reason'),
+                error_source: parsedUrl.searchParams.get('error_source'),
+                error_step: parsedUrl.searchParams.get('error_step'),
+              }
+            };
+          }
+          
+          if (pathSegments[1] === 'cancel') {
+            return {
+              type: 'payment_cancel',
+              params: {
+                transaction_id: parsedUrl.searchParams.get('transaction_id') || parsedUrl.searchParams.get('razorpay_payment_link_reference_id'),
+              }
+            };
+          }
+          
+          if (pathSegments[1] === 'failed') {
+            return {
+              type: 'payment_failed',
+              params: {
+                transaction_id: parsedUrl.searchParams.get('transaction_id') || parsedUrl.searchParams.get('razorpay_payment_link_reference_id'),
+                error_message: parsedUrl.searchParams.get('error_message'),
+              }
+            };
+          }
+        }
       }
 
       // Handle universal links

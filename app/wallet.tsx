@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles, ShoppingBag, History, Plus, Minus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useSmartNavigation } from '@/hooks/useSmartNavigation';
 import { WalletService, WalletData, PurchasedFeature } from '../lib/wallet-service';
 import { useAuth } from '../contexts/AuthContext';
 import { useColors, useTheme } from '@/contexts/ThemeContext';
@@ -80,6 +81,7 @@ const getAvailableFeatures = (colors: any): Feature[] => [
 
 export default function WalletScreen() {
   const router = useRouter();
+  const { smartBack } = useSmartNavigation();
   const { user } = useAuth();
   const colors = useColors();
   const { isDarkMode } = useTheme();
@@ -392,7 +394,7 @@ export default function WalletScreen() {
         {/* Header */}
         <View style={[styles.headerContainer, { backgroundColor: colors.background.primary }]}>
           <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity onPress={smartBack}>
               <ArrowLeft size={24} color={colors.text.primary} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Wallet</Text>

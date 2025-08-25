@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { useSmartNavigation } from '@/hooks/useSmartNavigation';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,7 @@ const adminNavItems: AdminNavItem[] = [
 function DesktopSidebar() {
   const router = useRouter();
   const segments = useSegments();
+  const { smartBack } = useSmartNavigation();
   const currentRoute = segments[segments.length - 1] || 'index';
 
   return (
@@ -76,14 +78,7 @@ function DesktopSidebar() {
       <View style={styles.sidebarFooter}>
         <TouchableOpacity 
           style={styles.logoutButton}
-          onPress={() => {
-            // Try to go back first, if that fails, go to profile
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.push('/(tabs)/profile');
-            }
-          }}
+          onPress={smartBack}
         >
           <Ionicons name="arrow-back-outline" size={20} color="#666" />
           <Text style={styles.logoutText}>Back to App</Text>
@@ -97,6 +92,7 @@ function MobileHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
   const segments = useSegments();
+  const { smartBack } = useSmartNavigation();
   const currentRoute = segments[segments.length - 1] || 'index';
   const currentItem = adminNavItems.find(item => item.name === currentRoute);
 
@@ -115,14 +111,7 @@ function MobileHeader() {
         </Text>
         
         <TouchableOpacity 
-          onPress={() => {
-            // Try to go back first, if that fails, go to profile
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.push('/(tabs)/profile');
-            }
-          }}
+          onPress={smartBack}
           style={styles.headerButton}
         >
           <Ionicons name="arrow-back-outline" size={24} color="#333" />

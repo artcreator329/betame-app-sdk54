@@ -69,6 +69,30 @@ export function useDeepLinking() {
           }
           break;
         
+        case 'payment_success':
+          // Navigate to payment success page
+          router.push({
+            pathname: '/payment/success',
+            params: linkData.params
+          });
+          break;
+        
+        case 'payment_cancel':
+          // Navigate to payment cancel page
+          router.push({
+            pathname: '/payment/cancel',
+            params: linkData.params
+          });
+          break;
+        
+        case 'payment_failed':
+          // Navigate to payment failed page
+          router.push({
+            pathname: '/payment/failed',
+            params: linkData.params
+          });
+          break;
+        
         default:
           console.log('Unhandled deep link type:', linkData.type);
       }

@@ -29,6 +29,7 @@ import {
   ArrowLeft,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useSmartNavigation } from '@/hooks/useSmartNavigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminService, DashboardStats, UserManagement } from '@/lib/admin-service';
 import { Colors } from '@/constants/Colors';
@@ -81,6 +82,7 @@ function QuickAction({ title, icon, onPress, color }: QuickActionProps) {
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { smartBack } = useSmartNavigation();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -183,14 +185,7 @@ export default function AdminDashboard() {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => {
-              // Try to go back first, if that fails, go to profile
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.push('/(tabs)/profile');
-              }
-            }}
+            onPress={smartBack}
           >
             <ArrowLeft size={24} color={Colors.text} />
           </TouchableOpacity>

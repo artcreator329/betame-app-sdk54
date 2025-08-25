@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Search, MessageCircle, Trash2, User, Send, Bot, Sparkles } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSmartNavigation } from '@/hooks/useSmartNavigation';
 import { UserChat } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserChats } from '@/hooks/useSupabaseChat';
@@ -23,6 +24,7 @@ import AIChatSection from '@/components/AIChatSection';
 
 export default function MessagesScreen() {
   const router = useRouter();
+  const { smartBack } = useSmartNavigation();
   const { user } = useAuth();
   const { width } = useWindowDimensions();
   const { participantId, showAI } = useLocalSearchParams();
@@ -54,7 +56,7 @@ export default function MessagesScreen() {
     if (isDesktop && selectedChat) {
       setSelectedChat(null);
     } else {
-      router.back();
+      smartBack();
     }
   };
 
@@ -373,12 +375,12 @@ export default function MessagesScreen() {
         <TouchableOpacity onPress={() => {
           if (showAIChat) {
             if (cameFromSettings) {
-              router.back(); // Go back to settings
+              smartBack(); // Go back to settings
             } else {
               setShowAIChat(false); // Go back to messages list
             }
           } else {
-            router.back();
+            smartBack();
           }
         }}>
           <ArrowLeft size={24} color="#1D1D1F" />

@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Plus, Clock, CheckCircle, AlertCircle, MessageCircle, Star, Flag } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSmartNavigation } from '@/hooks/useSmartNavigation';
 import { Colors } from '../../constants/Colors';
 import { ActiveJobService, ActiveJob, JobProgress } from '../../lib/active-job-service';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,6 +27,7 @@ interface JobProgressProps {
 
 export default function JobProgressScreen() {
   const router = useRouter();
+  const { smartBack } = useSmartNavigation();
   const { jobId } = useLocalSearchParams<JobProgressProps>();
   const { user, userProfile } = useAuth();
   const [job, setJob] = useState<ActiveJob | null>(null);
@@ -256,9 +258,9 @@ export default function JobProgressScreen() {
           <Text style={styles.errorDescription}>
             The job you're looking for doesn't exist or you don't have permission to view it.
           </Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
+                  <TouchableOpacity style={styles.backButton} onPress={smartBack}>
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -268,7 +270,7 @@ export default function JobProgressScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={smartBack}>
           <ArrowLeft size={24} color={Colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Job Progress</Text>
