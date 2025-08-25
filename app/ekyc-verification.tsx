@@ -44,6 +44,9 @@ import { supabase } from '@/lib/supabase';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { SERVICE_PROVIDER_TERMS_OF_SERVICE, generateToSPDF } from '@/constants/ServiceProviderToS';
+import { PDPAConsentModal } from '@/components/PDPAConsentModal';
+import { RealNameInputModal } from '@/components/RealNameInputModal';
+import { PDPAConsentPDFService, PDPAConsentData } from '@/lib/pdpa-consent-pdf-service';
 
 interface VerificationStep {
   id: string;
@@ -76,6 +79,11 @@ export default function EKYCVerificationScreen() {
   const [submissionStatus, setSubmissionStatus] = useState<any>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [isAnalyzingDocument, setIsAnalyzingDocument] = useState(false);
+  const [showPDPAConsent, setShowPDPAConsent] = useState(false);
+  const [pdpaConsentGiven, setPDPAConsentGiven] = useState(false);
+  const [showRealNameInput, setShowRealNameInput] = useState(false);
+  const [realName, setRealName] = useState('');
+  const [pdpaConsentPdfUrl, setPDPAConsentPdfUrl] = useState<string>('');
 
   // Malaysian States and Federal Territories
   const malaysianStates = [
@@ -166,25 +174,25 @@ export default function EKYCVerificationScreen() {
             if (existingSubmission.status === 'approved') {
               setCurrentStep('complete');
             } else if (existingSubmission.status === 'rejected') {
-              // Allow user to resubmit
-              setCurrentStep('identity_document');
+              // Allow user to resubmit - show real name input first
+              setShowRealNameInput(true);
             } else {
               // Pending review
               setCurrentStep('verification');
             }
           } else {
-            // No submission yet, start from beginning
-            console.log('🆕 No existing submission, starting from beginning');
-            setCurrentStep('identity_document');
+            // No submission yet, show real name input first
+            console.log('🆕 No existing submission, showing real name input');
+            setShowRealNameInput(true);
           }
         } else {
-          console.log('⚠️ No user profile found, starting from beginning');
-          setCurrentStep('identity_document');
+          console.log('⚠️ No user profile found, showing real name input');
+          setShowRealNameInput(true);
         }
       } catch (error) {
         console.error('❌ Error checking verification status:', error);
-        // If error, start from beginning
-        setCurrentStep('identity_document');
+        // If error, show real name input
+        setShowRealNameInput(true);
       } finally {
         setLoadingStatus(false);
       }
@@ -1207,6 +1215,16 @@ export default function EKYCVerificationScreen() {
         Alert.alert('Terms Required', 'Please accept the Terms of Service to continue.');
         return;
       }
+      if (!realName.trim()) {
+        Alert.alert('Real Name Required', 'You must provide your real name before proceeding with eKYC verification.');
+        setShowRealNameInput(true);
+        return;
+      }
+      if (!pdpaConsentGiven) {
+        Alert.alert('PDPA Consent Required', 'You must provide PDPA consent before proceeding with eKYC verification.');
+        setShowPDPAConsent(true);
+        return;
+      }
       setCurrentStep('verification');
       setIsProcessing(true);
       
@@ -1232,6 +1250,80 @@ export default function EKYCVerificationScreen() {
     } else if (currentStep === 'review') {
       setCurrentStep('verification');
     }
+  };
+
+  const handleRealNameSubmit = () => {
+    if (!realName.trim()) {
+      Alert.alert('Real Name Required', 'Please enter your real name to continue with eKYC verification.');
+      return;
+    }
+    
+    // Validate that it's a reasonable name (at least 2 characters, no numbers)
+    const nameRegex = /^[a-zA-Z\s]{2,50}$/;
+    if (!nameRegex.test(realName.trim())) {
+      Alert.alert(
+        'Invalid Name Format', 
+        'Please enter your real name using only letters and spaces (2-50 characters).'
+      );
+      return;
+    }
+    
+    setShowRealNameInput(false);
+    setShowPDPAConsent(true);
+  };
+
+  const handleRealNameCancel = () => {
+    setShowRealNameInput(false);
+    router.back();
+  };
+
+  const handlePDPAConsentAccept = async () => {
+    try {
+      if (!user) {
+        Alert.alert('Error', 'User not authenticated');
+        return;
+      }
+
+      console.log('🔄 Processing PDPA consent for user:', user.id);
+
+      // Prepare consent data
+      const consentData: PDPAConsentData = {
+        userName: realName,
+        userEmail: user.email || '',
+        consentGivenAt: new Date().toISOString(),
+        // Note: IP address and user agent would be captured from the request in a real implementation
+      };
+
+      // Generate PDF and save consent record
+      const result = await PDPAConsentPDFService.processPDPAConsent(user.id, consentData);
+      
+      console.log('✅ PDPA consent processed successfully:', result);
+
+      // Update state with PDF URL
+      setPDPAConsentPdfUrl(result.pdfUrl);
+      setPDPAConsentGiven(true);
+      setShowPDPAConsent(false);
+      setCurrentStep('identity_document');
+
+      Alert.alert(
+        'PDPA Consent Recorded',
+        'Your PDPA consent has been recorded and a signed PDF document has been generated for your records.',
+        [{ text: 'OK' }]
+      );
+
+    } catch (error: any) {
+      console.error('❌ Error processing PDPA consent:', error);
+      Alert.alert(
+        'Error',
+        'Failed to process PDPA consent. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handlePDPAConsentDecline = () => {
+    setShowPDPAConsent(false);
+    router.back();
   };
 
   const handleSubmitVerification = async () => {
@@ -1279,7 +1371,10 @@ export default function EKYCVerificationScreen() {
         state: personalInfo.state,
         document_urls: documentUrls,
         terms_accepted: tosAccepted,
-        terms_accepted_at: new Date().toISOString()
+        terms_accepted_at: new Date().toISOString(),
+        pdpa_consent_given: pdpaConsentGiven,
+        pdpa_consent_given_at: pdpaConsentGiven ? new Date().toISOString() : undefined,
+        pdpa_consent_pdf_url: pdpaConsentPdfUrl
       };
 
       console.log('📤 Submitting eKYC data:', submissionData);
@@ -1888,7 +1983,7 @@ export default function EKYCVerificationScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.submitButton, { backgroundColor: colors.primary.main }]}
-            onPress={() => setCurrentStep('identity_document')}
+            onPress={() => setShowRealNameInput(true)}
           >
             <Text style={[styles.submitButtonText, { color: colors.text.white }]}>Start Verification</Text>
           </TouchableOpacity>
@@ -2146,6 +2241,87 @@ export default function EKYCVerificationScreen() {
         </Text>
       </View>
 
+      {/* Real Name Status */}
+      <View style={styles.pdpaConsentSection}>
+        <View style={styles.pdpaConsentHeader}>
+          <User size={20} color={realName ? colors.status.success : colors.status.warning} />
+          <Text style={[styles.pdpaConsentTitle, { color: colors.text.primary }]}>
+            Real Name Status
+          </Text>
+        </View>
+        
+        {realName ? (
+          <View style={[styles.pdpaConsentStatus, { backgroundColor: colors.status.success + '15', borderColor: colors.status.success }]}>
+            <CheckCircle size={16} color={colors.status.success} />
+            <Text style={[styles.pdpaConsentStatusText, { color: colors.status.success }]}>
+              Real name provided: {realName}
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.pdpaConsentStatus, { backgroundColor: colors.status.warning + '15', borderColor: colors.status.warning }]}>
+            <AlertCircle size={16} color={colors.status.warning} />
+            <Text style={[styles.pdpaConsentStatusText, { color: colors.status.warning }]}>
+              Real name is required
+            </Text>
+            <TouchableOpacity
+              style={[styles.pdpaConsentButton, { backgroundColor: colors.primary.main }]}
+              onPress={() => setShowRealNameInput(true)}
+            >
+              <Text style={[styles.pdpaConsentButtonText, { color: 'white' }]}>
+                Enter Real Name
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* PDPA Consent Status */}
+      <View style={styles.pdpaConsentSection}>
+        <View style={styles.pdpaConsentHeader}>
+          <Shield size={20} color={pdpaConsentGiven ? colors.status.success : colors.status.warning} />
+          <Text style={[styles.pdpaConsentTitle, { color: colors.text.primary }]}>
+            PDPA Consent Status
+          </Text>
+        </View>
+        
+        {pdpaConsentGiven ? (
+          <View style={[styles.pdpaConsentStatus, { backgroundColor: colors.status.success + '15', borderColor: colors.status.success }]}>
+            <CheckCircle size={16} color={colors.status.success} />
+            <Text style={[styles.pdpaConsentStatusText, { color: colors.status.success }]}>
+              PDPA consent has been provided
+            </Text>
+            {pdpaConsentPdfUrl && (
+              <TouchableOpacity
+                style={[styles.downloadButton, { backgroundColor: colors.primary.main }]}
+                onPress={() => {
+                  Linking.openURL(pdpaConsentPdfUrl);
+                }}
+              >
+                <Download size={16} color="white" />
+                <Text style={[styles.downloadButtonText, { color: 'white' }]}>
+                  Download Consent PDF
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <View style={[styles.pdpaConsentStatus, { backgroundColor: colors.status.warning + '15', borderColor: colors.status.warning }]}>
+            <AlertCircle size={16} color={colors.status.warning} />
+            <Text style={[styles.pdpaConsentStatusText, { color: colors.status.warning }]}>
+              PDPA consent is required
+            </Text>
+            <TouchableOpacity
+              style={[styles.pdpaConsentButton, { backgroundColor: colors.primary.main }]}
+              onPress={() => setShowPDPAConsent(true)}
+            >
+              <Text style={[styles.pdpaConsentButtonText, { color: 'white' }]}>
+                Provide Consent
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
       {!tosAccepted && (
         <View style={[styles.infoBox, { backgroundColor: colors.status.warning + '20', borderColor: colors.status.warning }]}>
           <AlertCircle size={20} color={colors.status.warning} />
@@ -2210,6 +2386,23 @@ export default function EKYCVerificationScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      {/* Real Name Input Modal */}
+      <RealNameInputModal
+        visible={showRealNameInput}
+        onSubmit={handleRealNameSubmit}
+        onCancel={handleRealNameCancel}
+        realName={realName}
+        setRealName={setRealName}
+      />
+
+      {/* PDPA Consent Modal */}
+      <PDPAConsentModal
+        visible={showPDPAConsent}
+        onAccept={handlePDPAConsentAccept}
+        onDecline={handlePDPAConsentDecline}
+        userName={realName || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+      />
+
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -2890,5 +3083,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+  },
+  pdpaConsentSection: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  pdpaConsentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pdpaConsentTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  pdpaConsentStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  pdpaConsentStatusText: {
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+  },
+  pdpaConsentButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  pdpaConsentButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  downloadButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
   },
 });

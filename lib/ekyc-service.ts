@@ -22,6 +22,12 @@ export interface EKYCSubmission {
   identity_document_url?: string;
   proof_of_address_url?: string;
   additional_document_url?: string;
+  document_urls?: Record<string, string>;
+  terms_accepted?: boolean;
+  terms_accepted_at?: string;
+  pdpa_consent_given?: boolean;
+  pdpa_consent_given_at?: string;
+  pdpa_consent_pdf_url?: string;
   status: 'pending' | 'approved' | 'rejected';
   admin_notes?: string;
   reviewed_by?: string;

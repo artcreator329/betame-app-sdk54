@@ -4,9 +4,13 @@
 
 - **Keystore File**: `android/app/betame-release-key-new.jks`
 - **Key Alias**: `betame-key`
+- **Store Password**: `Betame##888`
+- **Key Password**: `Betame##888`
 - **Validity**: 10,000 days (until January 9, 2053)
 - **Key Algorithm**: RSA 2048-bit
 - **Certificate**: Self-signed
+- **File Size**: 2,267 bytes
+- **Created**: August 24, 2025 at 20:43
 
 ## Certificate Information
 
@@ -28,14 +32,16 @@
 
 ### 1. Configure keystore.properties
 
-Edit the `keystore.properties` file in the project root and replace the placeholder values:
+The `keystore.properties` file in the project root is already configured:
 
 ```properties
-storePassword=your_actual_keystore_password
-keyPassword=your_actual_key_password
+storePassword=Betame##888
+keyPassword=Betame##888
 keyAlias=betame-key
-storeFile=android/app/betame-release-key-new.jks
+storeFile=betame-release-key-new.jks
 ```
+
+**⚠️ IMPORTANT**: These are the actual production passwords. Keep them secure!
 
 ### 2. Security Best Practices
 
@@ -95,3 +101,36 @@ If you choose to use Play App Signing (recommended):
 - **This setup follows Android Developer best practices** for secure app signing
 - **Certificate file ready** - `betame-release-certificate.pem` is ready for Google Play Console upload
 - **Play App Signing recommended** - Google manages your app signing key securely
+
+## 🚨 CRITICAL SECURITY INFORMATION
+
+### Keystore Credentials
+- **Keystore File**: `betame-release-key-new.jks`
+- **Store Password**: `Betame##888`
+- **Key Password**: `Betame##888`
+- **Key Alias**: `betame-key`
+
+### Backup Requirements
+- **Keystore File**: Must be backed up securely
+- **Passwords**: Store in password manager
+- **Certificate**: `betame-release-certificate.pem`
+- **Documentation**: This file
+
+### Emergency Recovery
+If keystore is lost:
+1. Check all backup locations
+2. Contact team members
+3. If unrecoverable, app must be re-released with new keystore
+4. Users will need to uninstall and reinstall
+
+### Verification Commands
+```bash
+# Verify keystore
+keytool -list -v -keystore android/app/betame-release-key-new.jks -alias betame-key
+
+# Verify certificate
+openssl x509 -in betame-release-certificate.pem -text -noout
+
+# Verify AAB signing
+jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab
+```
