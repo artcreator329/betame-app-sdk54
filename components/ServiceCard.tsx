@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Alert, Switch, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Platform, Dimensions } from 'react-native';
 import { Star, ChevronDown, ChevronUp, Edit3, Eye, EyeOff, Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Service } from '@/types/service';
@@ -10,6 +10,20 @@ import { FavoritesService } from '@/lib/favorites-service';
 import { supabase } from '@/lib/supabase';
 import { FeatureService, ServiceFeatureApplication } from '@/lib/feature-service';
 import FeatureIcons from './FeatureIcons';
+import OptimizedImage from './OptimizedImage';
+import { imageCacheService } from '@/lib/image-cache-service';
+
+// Helper function to format joined date
+const formatJoinedDate = (createdAt: string): string => {
+  try {
+    const date = new Date(createdAt);
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `Joined ${month} ${year}`;
+  } catch (error) {
+    return 'Joined recently';
+  }
+};
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -185,13 +199,13 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
 
   const getServiceImage = () => {
     if (service.image_url) {
-      return service.image_url;
+      return imageCacheService.getMediumUrl(service.image_url);
     }
     if (userCoverPhoto) {
-      return userCoverPhoto;
+      return imageCacheService.getMediumUrl(userCoverPhoto);
     }
     if (userProfileAvatar) {
-      return userProfileAvatar;
+      return imageCacheService.getThumbnailUrl(userProfileAvatar);
     }
     // Return null to show no image instead of placeholder
     return null;
@@ -265,14 +279,13 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
           />
         </View>
       )}
-        {getServiceImage() && (
-          <Image 
-            source={{ 
-              uri: getServiceImage()!
-            }} 
-            style={styles.image} 
-          />
-        )}
+        <OptimizedImage
+          source={getServiceImage()}
+          style={styles.image}
+          priority="normal"
+          cachePolicy="memory-disk"
+          showLoadingIndicator={false}
+        />
         <View style={styles.content}>
           <View style={styles.ratingContainer}>
             <Star size={12} color="#FFD700" fill="#FFD700" />
@@ -286,7 +299,14 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
               />
             )}
           </View>
-          <Text style={styles.provider}>{service.provider_name || 'Unknown Provider'}</Text>
+          <View style={styles.providerContainer}>
+            <Text style={styles.provider}>{service.provider_name || 'Unknown Provider'}</Text>
+            {service.provider_created_at && (
+              <Text style={styles.joinedDate}>
+                {formatJoinedDate(service.provider_created_at)}
+              </Text>
+            )}
+          </View>
           <Text style={styles.title} numberOfLines={showVariants ? undefined : 2}>
             {service.title}
           </Text>
@@ -415,14 +435,25 @@ const styles = StyleSheet.create({
   featureIcons: {
     marginLeft: 'auto',
   },
+  providerContainer: {
+    marginBottom: 2,
+  },
   provider: {
     fontSize: 13,
     fontWeight: '600',
     color: '#000000',
-    marginBottom: 2,
+    marginBottom: 1,
     ...(isWeb && {
       fontSize: 12,
       marginBottom: 1,
+    }),
+  },
+  joinedDate: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '400',
+    ...(isWeb && {
+      fontSize: 10,
     }),
   },
   title: {

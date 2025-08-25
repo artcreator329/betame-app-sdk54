@@ -24,6 +24,7 @@ export interface Service {
   review_count?: number;
   provider_name?: string;
   provider_avatar?: string;
+  provider_created_at?: string;
   created_at?: string;
   updated_at?: string;
   parent_service_id?: string; // For service variants
@@ -77,7 +78,7 @@ export class ServiceService {
       // Get profiles for these users
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url')
+        .select('id, full_name, avatar_url, created_at')
         .in('id', userIds);
 
       if (profilesError) {
@@ -110,7 +111,8 @@ export class ServiceService {
           return {
             ...variant,
             provider_name: variantProfile?.full_name || 'Service Provider',
-            provider_avatar: variantProfile?.avatar_url
+            provider_avatar: variantProfile?.avatar_url,
+            provider_created_at: variantProfile?.created_at
           };
         });
 
@@ -118,6 +120,7 @@ export class ServiceService {
           ...service,
           provider_name: profile?.full_name || 'Service Provider',
           provider_avatar: profile?.avatar_url,
+          provider_created_at: profile?.created_at,
           service_variants: variantsWithProfiles,
           active_features: activeFeatures
         };

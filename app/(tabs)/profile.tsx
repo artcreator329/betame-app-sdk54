@@ -22,8 +22,17 @@ import { JobProposalNotifications } from '@/components/JobProposalNotifications'
 import { JobNotificationService, JobNotificationPayload } from '@/lib/job-notification-service';
 import { EKYCService, EKYCSubmission } from '@/lib/ekyc-service';
 
-
-
+// Helper function to format joined date
+const formatJoinedDate = (createdAt: string): string => {
+  try {
+    const date = new Date(createdAt);
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `Joined ${month} ${year}`;
+  } catch (error) {
+    return 'Joined recently';
+  }
+};
 
 interface Review {
   id: string;
@@ -1099,6 +1108,11 @@ export default function ProfileScreen() {
                     {userProfile?.bio && (
                       <Text style={[styles.userBio, { color: isDarkMode ? 'white' : 'black' }, isDesktop && styles.userBioDesktop]}>{userProfile.bio}</Text>
                     )}
+                    {userProfile?.created_at && (
+                      <Text style={[styles.joinedDate, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)' }, isDesktop && styles.joinedDateDesktop]}>
+                        {formatJoinedDate(userProfile.created_at)}
+                      </Text>
+                    )}
                     <View style={styles.ratingContainer}>
                       <Text style={[styles.ratingText, { color: isDarkMode ? 'white' : 'black' }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
                       {/* {renderVerificationTick()} */}
@@ -1700,6 +1714,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'right',
     color: 'white',
+    maxWidth: '70%',
+  },
+  joinedDate: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 8,
+    textAlign: 'right',
+    color: 'rgba(255,255,255,0.8)',
+    maxWidth: '70%',
+  },
+  joinedDateDesktop: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 8,
+    textAlign: 'right',
+    color: 'rgba(255,255,255,0.8)',
     maxWidth: '70%',
   },
   ratingContainer: {

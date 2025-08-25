@@ -28,6 +28,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import { useColors } from '@/contexts/ThemeContext';
+import { imageCacheService } from '@/lib/image-cache-service';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -161,6 +162,18 @@ export default function HomeScreen() {
       setBanners(bannersData);
       setNearbyServices(nearby.map(convertToUIService));
       setTrendingServices(trending.map(convertToUIService));
+
+      // Preload images for better performance
+      const imageUrls = [
+        ...bannersData.map(banner => banner.image_url).filter(Boolean),
+        ...nearby.map(service => service.image_url).filter(Boolean),
+        ...trending.map(service => service.image_url).filter(Boolean)
+      ];
+
+      // Preload images in background
+      if (imageUrls.length > 0) {
+        imageCacheService.preloadImages(imageUrls);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {

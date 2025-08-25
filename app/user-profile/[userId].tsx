@@ -51,6 +51,18 @@ interface Review {
   };
 }
 
+// Helper function to format joined date
+const formatJoinedDate = (createdAt: string): string => {
+  try {
+    const date = new Date(createdAt);
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `Joined ${month} ${year}`;
+  } catch (error) {
+    return 'Joined recently';
+  }
+};
+
 export default function UserProfileScreen() {
   const router = useRouter();
   const { userId } = useLocalSearchParams();
@@ -553,6 +565,9 @@ export default function UserProfileScreen() {
                     {userProfile.bio && (
                       <Text style={[styles.userBio, { color: '#3B82F6' }, isDesktop && styles.userBioDesktop]}>{userProfile.bio}</Text>
                     )}
+                    <Text style={[styles.joinedDate, { color: 'white' }, isDesktop && styles.joinedDateDesktop]}>
+                      {formatJoinedDate(userProfile.created_at)}
+                    </Text>
                     <View style={styles.ratingContainer}>
                       <Text style={[styles.ratingText, { color: 'black' }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
                       {renderVerificationTick()}
@@ -880,6 +895,17 @@ const styles = StyleSheet.create({
   },
   userBioDesktop: {
     fontSize: 16,
+    marginBottom: 8,
+  },
+  joinedDate: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 8,
+    textAlign: 'right',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  joinedDateDesktop: {
+    fontSize: 14,
     marginBottom: 8,
   },
   ratingContainer: {

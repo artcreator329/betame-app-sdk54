@@ -21,6 +21,18 @@ import ServiceCard from '@/components/ServiceCard';
 import ProfileShareModal from '@/components/ProfileShareModal';
 import { LinearGradient } from 'expo-linear-gradient';
 
+// Helper function to format joined date
+const formatJoinedDate = (createdAt: string): string => {
+  try {
+    const date = new Date(createdAt);
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `Joined ${month} ${year}`;
+  } catch (error) {
+    return 'Joined recently';
+  }
+};
+
 interface UserProfile {
   id: string;
   full_name: string;
@@ -276,6 +288,11 @@ export default function UserProfileScreen() {
                     {profile.bio}
                   </Text>
                 )}
+                {profile.created_at && (
+                  <Text style={[styles.joinedDate, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)' }]}>
+                    {formatJoinedDate(profile.created_at)}
+                  </Text>
+                )}
                 <View style={styles.ratingContainer}>
                   <Text style={[styles.ratingText, { color: isDarkMode ? 'white' : 'black' }]}>
                     {averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}
@@ -508,6 +525,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
     lineHeight: 22,
+  },
+  joinedDate: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 8,
+    color: 'rgba(0,0,0,0.6)',
   },
   ratingContainer: {
     flexDirection: 'row',

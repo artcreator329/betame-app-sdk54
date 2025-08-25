@@ -53,6 +53,7 @@ const convertToUIService = (dbService: DBService): Service => ({
   updated_at: dbService.updated_at,
   provider_name: dbService.provider_name || 'Service Provider',
   provider_avatar: dbService.provider_avatar,
+  provider_created_at: dbService.provider_created_at,
 });
 
 // Trending Service Card Component

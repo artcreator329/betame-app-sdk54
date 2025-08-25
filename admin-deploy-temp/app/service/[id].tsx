@@ -23,6 +23,18 @@ import { authService } from '@/lib/auth-service';
 import { DirectOrderModal } from '@/components/DirectOrderModal';
 import { supabase } from '@/lib/supabase';
 
+// Helper function to format joined date
+const formatJoinedDate = (createdAt: string): string => {
+  try {
+    const date = new Date(createdAt);
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `Joined ${month} ${year}`;
+  } catch (error) {
+    return 'Joined recently';
+  }
+};
+
 interface SubPlan {
   id: string;
   name: string;
@@ -446,9 +458,16 @@ export default function ServiceDetailsScreen() {
               <View style={styles.providerDetails}>
                 <Text style={[styles.listedBy, { color: colors.text.secondary }]}>Listed by</Text>
                 <View style={styles.providerNameRow}>
-                  <Text style={[styles.providerName, { color: colors.text.primary }]}>
-                  {serviceOwnerProfile?.full_name || 'Service Provider'}
-                </Text>
+                  <View style={styles.providerNameContainer}>
+                    <Text style={[styles.providerName, { color: colors.text.primary }]}>
+                      {serviceOwnerProfile?.full_name || 'Service Provider'}
+                    </Text>
+                    {serviceOwnerProfile?.created_at && (
+                      <Text style={[styles.joinedDate, { color: colors.text.secondary }]}>
+                        {formatJoinedDate(serviceOwnerProfile.created_at)}
+                      </Text>
+                    )}
+                  </View>
                   <TouchableOpacity onPress={() => service?.user_id && router.push(`/user-profile/${service.user_id}`)}>
                       <Text style={[styles.checkProfile, { color: colors.primary.main }]}>Check provider's profile!</Text>
                     </TouchableOpacity>
@@ -743,10 +762,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 4,
   },
+  providerNameContainer: {
+    marginBottom: 4,
+  },
   providerName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  joinedDate: {
+    fontSize: 12,
+    fontWeight: '400',
+    marginBottom: 2,
   },
   checkProfile: {
     fontSize: 12,

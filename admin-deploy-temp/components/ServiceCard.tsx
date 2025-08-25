@@ -11,6 +11,18 @@ import { supabase } from '@/lib/supabase';
 import { FeatureService, ServiceFeatureApplication } from '@/lib/feature-service';
 import FeatureIcons from './FeatureIcons';
 
+// Helper function to format joined date
+const formatJoinedDate = (createdAt: string): string => {
+  try {
+    const date = new Date(createdAt);
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `Joined ${month} ${year}`;
+  } catch (error) {
+    return 'Joined recently';
+  }
+};
+
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
@@ -286,7 +298,14 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
               />
             )}
           </View>
-          <Text style={styles.provider}>{service.provider_name || 'Unknown Provider'}</Text>
+          <View style={styles.providerContainer}>
+            <Text style={styles.provider}>{service.provider_name || 'Unknown Provider'}</Text>
+            {service.provider_created_at && (
+              <Text style={styles.joinedDate}>
+                {formatJoinedDate(service.provider_created_at)}
+              </Text>
+            )}
+          </View>
           <Text style={styles.title} numberOfLines={showVariants ? undefined : 2}>
             {service.title}
           </Text>
@@ -415,14 +434,25 @@ const styles = StyleSheet.create({
   featureIcons: {
     marginLeft: 'auto',
   },
+  providerContainer: {
+    marginBottom: 2,
+  },
   provider: {
     fontSize: 13,
     fontWeight: '600',
     color: '#000000',
-    marginBottom: 2,
+    marginBottom: 1,
     ...(isWeb && {
       fontSize: 12,
       marginBottom: 1,
+    }),
+  },
+  joinedDate: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '400',
+    ...(isWeb && {
+      fontSize: 10,
     }),
   },
   title: {

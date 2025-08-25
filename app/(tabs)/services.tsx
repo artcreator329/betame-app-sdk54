@@ -41,6 +41,7 @@ const convertToUIService = (dbService: DBService): Service => ({
   updated_at: dbService.updated_at,
   provider_name: dbService.provider_name || 'Unknown Provider',
   provider_avatar: dbService.provider_avatar,
+  provider_created_at: dbService.provider_created_at,
   parent_service_id: dbService.parent_service_id,
   service_variants: dbService.service_variants?.map(convertToUIService) || [],
 });
