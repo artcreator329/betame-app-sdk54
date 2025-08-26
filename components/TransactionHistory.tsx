@@ -179,14 +179,19 @@ export function TransactionHistory({ visible, onClose, userId }: TransactionHist
     const { type, amount } = transaction;
     const prefix = amount > 0 ? '+' : '';
     
-    if (type === 'betacoin_purchase' || type === 'service_payment_received') {
+    if (type === 'betacoin_purchase') {
       return `${prefix}${amount} BetaCoins`;
     } else if (type === 'conversion') {
       return `+${Math.floor(amount / 10)} BetaCoins`;
     } else if (type === 'daily_checkin' || type === 'referral_bonus') {
       return `${prefix}${amount} Diamonds`;
-    } else if (type === 'service_payment' || type === 'feature_purchase') {
+    } else if (type === 'feature_purchase') {
       return `${amount} BetaCoins`;
+    } else if (type === 'service_payment' || type === 'service_payment_received') {
+      // Convert cents to RM currency format
+      const amountInRM = Math.abs(amount) / 100;
+      const formattedAmount = amountInRM.toFixed(2);
+      return `${prefix}RM ${formattedAmount}`;
     }
     
     return `${prefix}${amount}`;

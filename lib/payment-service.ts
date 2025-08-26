@@ -69,7 +69,7 @@ export class PaymentService {
       await WalletService.recordTransaction({
         user_id: buyerId,
         type: 'service_payment',
-        amount: -finalPrice,
+        amount: -Math.round(finalPrice * 100), // Convert to cents (integer)
         description: `Payment for service: ${orderData.title}`
       });
 
@@ -104,7 +104,7 @@ export class PaymentService {
       await WalletService.recordTransaction({
         user_id: serviceProviderId,
         type: 'service_payment_received',
-        amount: finalPrice,
+        amount: Math.round(finalPrice * 100), // Convert to cents (integer)
         description: `Payment received for service: ${orderData.title}`
       });
 
@@ -214,7 +214,7 @@ export class PaymentService {
       await WalletService.recordTransaction({
         user_id: buyerId,
         type: 'service_payment',
-        amount: -finalPrice,
+        amount: -Math.round(finalPrice * 100), // Convert to cents (integer)
         description: `Payment for service: ${serviceData.title}`
       });
 
@@ -249,7 +249,7 @@ export class PaymentService {
       await WalletService.recordTransaction({
         user_id: serviceProviderId,
         type: 'service_payment_received',
-        amount: finalPrice,
+        amount: Math.round(finalPrice * 100), // Convert to cents (integer)
         description: `Payment received for service: ${serviceData.title}`
       });
 
