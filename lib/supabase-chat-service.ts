@@ -428,15 +428,20 @@ export class SupabaseChatService {
       // Add notification for the other participant (only if message is not hidden)
       if (!moderation.isHidden) {
         try {
-          // Get the other participant in the chat
-          const { data: participants } = await supabase
-            .from('chat_participants')
-            .select('user_id')
-            .eq('chat_id', chatId)
-            .neq('user_id', senderId);
+          // Get the other participant in the chat using the chats table
+          const { data: chat } = await supabase
+            .from('chats')
+            .select('participant1_id, participant2_id')
+            .eq('id', chatId)
+            .single();
 
-          if (participants && participants.length > 0) {
-            const otherParticipantId = participants[0].user_id;
+          if (chat) {
+            // Determine the other participant
+            const otherParticipantId = senderId === chat.participant1_id 
+              ? chat.participant2_id 
+              : chat.participant1_id;
+            
+            console.log('🔔 SupabaseChatService: Creating notification for participant:', otherParticipantId);
             
             // Add notification for incoming message (to the recipient)
             await notificationService.addChatNotification({
@@ -447,9 +452,13 @@ export class SupabaseChatService {
               chatId: chatId,
               senderId: senderId, // Add sender ID for navigation
             });
+            
+            console.log('✅ SupabaseChatService: Chat notification created successfully');
+          } else {
+            console.log('⚠️ SupabaseChatService: Chat not found for notification:', chatId);
           }
         } catch (notificationError) {
-          console.error('Error adding chat notification:', notificationError);
+          console.error('❌ SupabaseChatService: Error adding chat notification:', notificationError);
           // Don't fail the message sending if notification fails
         }
       }
@@ -1915,6 +1924,156 @@ export class SupabaseChatService {
     this.messageSubscriptions.clear();
     this.channels.forEach(channel => channel.unsubscribe());
     this.channels.clear();
+  }
+  // Accept a service offer and create an order
+  async acceptServiceOffer(offerId: string, buyerId: string): Promise<{ success: boolean; orderId?: string; error?: string }> {
+    try {
+      console.log('🔔 SupabaseChatService: Accepting service offer:', offerId, 'by buyer:', buyerId);
+      
+      // Get the offer details
+      const { data: offer, error: offerError } = await supabase
+        .from('service_offers')
+        .select('*')
+        .eq('id', offerId)
+        .eq('status', 'pending')
+        .single();
+
+      if (offerError || !offer) {
+        console.error('❌ SupabaseChatService: Offer not found or not pending:', offerError);
+        return { success: false, error: 'Offer not found or already processed' };
+      }
+
+      console.log('🔔 SupabaseChatService: Found offer:', offer);
+
+      // Verify the buyer is correct
+      if (offer.buyer_id !== buyerId) {
+        console.error('❌ SupabaseChatService: Buyer ID mismatch:', offer.buyer_id, 'vs', buyerId);
+        return { success: false, error: 'Unauthorized to accept this offer' };
+      }
+
+      // Import order management service
+      const { orderManagementService } = await import('./order-management-service');
+
+      // Create the order
+      const orderData = {
+        service_offer_id: offerId,
+        buyer_id: offer.buyer_id,
+        service_provider_id: offer.service_provider_id || offer.seller_id, // Handle both field names
+        seller_id: offer.seller_id, // Keep for backward compatibility
+        amount: offer.custom_price || offer.original_price,
+        platform_fee: Math.round((offer.custom_price || offer.original_price) * 0.1), // 10% platform fee
+        service_title: offer.custom_description || 'Service Order',
+        service_description: offer.custom_description,
+      };
+
+      console.log('🔔 SupabaseChatService: Creating order with data:', orderData);
+
+      const order = await orderManagementService.createOrder(orderData);
+
+      if (!order) {
+        console.error('❌ SupabaseChatService: Failed to create order');
+        return { success: false, error: 'Failed to create order' };
+      }
+
+      console.log('✅ SupabaseChatService: Order created successfully:', order.id);
+
+      // Update offer status to accepted
+      const { error: updateError } = await supabase
+        .from('service_offers')
+        .update({ 
+          status: 'accepted',
+          accepted_at: new Date().toISOString()
+        })
+        .eq('id', offerId);
+
+      if (updateError) {
+        console.error('❌ SupabaseChatService: Failed to update offer status:', updateError);
+        // Don't return error here as order was created successfully
+      }
+
+      // Update chat message status
+      const { error: messageUpdateError } = await supabase
+        .from('chat_messages')
+        .update({ offer_status: 'accepted' })
+        .eq('offer_id', offerId);
+
+      if (messageUpdateError) {
+        console.error('❌ SupabaseChatService: Failed to update message status:', messageUpdateError);
+      }
+
+      // Send order notification to service provider
+      try {
+        // Get buyer profile for notification
+        const { data: buyerProfile } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', buyerId)
+          .single();
+
+        const buyerName = buyerProfile?.full_name || 'Customer';
+        const buyerImage = buyerProfile?.avatar_url || '';
+
+        console.log('🔔 SupabaseChatService: Creating order notification for service provider:', offer.service_provider_id || offer.seller_id);
+
+        // Use direct database insert for order notifications
+        const orderNotificationData = {
+          user_id: offer.service_provider_id || offer.seller_id,
+          type: 'order',
+          title: `New Order from ${buyerName}`,
+          message: `Payment received for "${orderData.service_title}" - $${orderData.amount}`,
+          data: {
+            orderId: order.id,
+            chatId: offer.chat_id,
+            participantId: buyerId,
+            participantName: buyerName,
+            participantImage: buyerImage,
+            serviceTitle: orderData.service_title,
+            amount: orderData.amount,
+            currency: 'USD',
+            orderStatus: 'payment_received',
+          },
+          created_at: new Date().toISOString(),
+          is_read: false
+        };
+
+        const { data: notificationResult, error: notificationError } = await supabase
+          .from('notifications')
+          .insert(orderNotificationData)
+          .select()
+          .single();
+
+        if (notificationError) {
+          console.error('❌ SupabaseChatService: Direct notification insert failed:', notificationError.message);
+          
+          // Fallback to RPC method
+          const { data: rpcResult, error: rpcError } = await supabase.rpc('create_notification', {
+            p_user_id: offer.service_provider_id || offer.seller_id,
+            p_type: 'order',
+            p_title: `New Order from ${buyerName}`,
+            p_message: `Payment received for "${orderData.service_title}" - $${orderData.amount}`,
+            p_data: orderNotificationData.data,
+            p_sender_id: buyerId
+          });
+
+          if (rpcError) {
+            console.error('❌ SupabaseChatService: RPC notification also failed:', rpcError.message);
+          } else {
+            console.log('✅ SupabaseChatService: Order notification sent via RPC:', rpcResult);
+          }
+        } else {
+          console.log('✅ SupabaseChatService: Order notification sent via direct insert:', notificationResult.id);
+        }
+
+      } catch (notificationError) {
+        console.error('❌ SupabaseChatService: Failed to send order notification:', notificationError);
+        // Don't fail the whole operation for notification errors
+      }
+
+      return { success: true, orderId: order.id };
+    } catch (error) {
+      console.error('❌ SupabaseChatService: Error accepting service offer:', error);
+      return { success: false, error: 'Failed to accept offer' };
+    }
   }
 }
 

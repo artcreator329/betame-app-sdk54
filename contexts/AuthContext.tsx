@@ -186,12 +186,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Check if this message belongs to a chat involving this user
             const { data: chat } = await supabase
               .from('chats')
-              .select('id')
+              .select('participant1_id, participant2_id')
               .eq('id', payload.new.chat_id)
-              .or(`participant1_id.eq.${userId},participant2_id.eq.${userId}`)
               .single();
 
-            if (chat) {
+            if (chat && (chat.participant1_id === userId || chat.participant2_id === userId)) {
               console.log('🔔 AuthContext: Message is for this user, creating notification...');
               
               // Get participant info
@@ -200,7 +199,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               if (participant) {
                 console.log('🔔 AuthContext: Creating notification from:', participant.name);
                 await notificationService.addChatNotification({
-                  participantId: payload.new.sender_id,
+                  participantId: userId, // Send notification TO the current user
                   participantName: participant.name,
                   participantImage: participant.image,
                   message: payload.new.message,
