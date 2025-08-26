@@ -2,28 +2,27 @@ import { WalletService } from './wallet-service';
 import { ActiveJobService } from './active-job-service';
 import { ServiceOffer, ServiceOfferData } from '../types/chat';
 import { supabase } from './supabase';
-
-export interface PaymentResult {
-  success: boolean;
-  error?: string;
-  activeJobId?: string;
-}
+import { FeeService } from './fee-service';
 
 export interface DirectOrderData {
-  serviceId: string;
+  id: string;
   title: string;
   description: string;
   price: number;
   currency: string;
-  image_url?: string;
-  category_name?: string;
-  customDescription?: string;
   customDeliveryTime?: number;
+}
+
+export interface PaymentResult {
+  success: boolean;
+  activeJobId?: string;
+  error?: string;
 }
 
 export class PaymentService {
   /**
    * Process payment for a direct order from service listing
+   * New flow: User pays Order Price + 2.2%, payment held in escrow
    */
   static async processDirectOrderPayment(
     orderData: DirectOrderData,
@@ -31,9 +30,17 @@ export class PaymentService {
     serviceProviderId: string
   ): Promise<PaymentResult> {
     try {
-      // Calculate the final price
-      const finalPrice = orderData.price;
+      // Calculate fees using FeeService
+      const feeCalculation = FeeService.calculateFees(orderData.price, orderData.currency);
+      const buyerTotal = feeCalculation.buyerTotal; // Order Price + 2.2%
       
+      console.log('💰 Processing direct order payment:', {
+        orderPrice: orderData.price,
+        buyerFee: feeCalculation.buyerFee,
+        buyerTotal,
+        serviceProviderId
+      });
+
       // Get buyer's wallet
       const buyerWallet = await WalletService.getWallet(buyerId);
       if (!buyerWallet) {
@@ -43,18 +50,18 @@ export class PaymentService {
         };
       }
 
-      // Check if buyer has sufficient BetaCoins
-      if (buyerWallet.betame_betacoins < finalPrice) {
+      // Check if buyer has sufficient BetaCoins (including 2.2% fee)
+      if (buyerWallet.betame_betacoins < buyerTotal) {
         return {
           success: false,
-          error: `Insufficient BetaCoins. You need ${finalPrice} BetaCoins but only have ${buyerWallet.betame_betacoins} BetaCoins.`
+          error: `Insufficient BetaCoins. You need ${buyerTotal} BetaCoins (${orderData.price} service + ${feeCalculation.buyerFee} processing fee) but only have ${buyerWallet.betame_betacoins} BetaCoins.`
         };
       }
 
-      // Deduct BetaCoins from buyer
+      // Deduct total amount (Order Price + 2.2%) from buyer
       const updatedBuyerWallet = {
         ...buyerWallet,
-        betame_betacoins: buyerWallet.betame_betacoins - finalPrice
+        betame_betacoins: buyerWallet.betame_betacoins - buyerTotal
       };
 
       const buyerUpdateResult = await WalletService.updateWallet(updatedBuyerWallet);
@@ -65,47 +72,12 @@ export class PaymentService {
         };
       }
 
-      // Record transaction for buyer (payment)
+      // Record transaction for buyer (payment with fee)
       await WalletService.recordTransaction({
         user_id: buyerId,
         type: 'service_payment',
-        amount: -Math.round(finalPrice * 100), // Convert to cents (integer)
-        description: `Payment for service: ${orderData.title}`
-      });
-
-      // Get service provider's wallet
-      const serviceProviderWallet = await WalletService.getWallet(serviceProviderId);
-      if (!serviceProviderWallet) {
-        // Rollback buyer transaction if service provider wallet fails
-        await WalletService.updateWallet(buyerWallet);
-        return {
-          success: false,
-          error: 'Unable to access service provider wallet'
-        };
-      }
-
-      // Add BetaCoins to service provider (escrow - will be released when job is completed)
-      const updatedServiceProviderWallet = {
-        ...serviceProviderWallet,
-        betame_betacoins: serviceProviderWallet.betame_betacoins + finalPrice
-      };
-
-      const serviceProviderUpdateResult = await WalletService.updateWallet(updatedServiceProviderWallet);
-      if (!serviceProviderUpdateResult) {
-        // Rollback buyer transaction if service provider update fails
-        await WalletService.updateWallet(buyerWallet);
-        return {
-          success: false,
-          error: 'Failed to process payment to service provider wallet'
-        };
-      }
-
-      // Record transaction for service provider (payment received)
-      await WalletService.recordTransaction({
-        user_id: serviceProviderId,
-        type: 'service_payment_received',
-        amount: Math.round(finalPrice * 100), // Convert to cents (integer)
-        description: `Payment received for service: ${orderData.title}`
+        amount: -Math.round(buyerTotal * 100), // Convert to cents (integer)
+        description: `Payment for service: ${orderData.title} (including ${feeCalculation.buyerFee} processing fee)`
       });
 
       // Create active job after successful payment
@@ -116,14 +88,26 @@ export class PaymentService {
       );
 
       if (!activeJob) {
-        // Rollback both transactions if job creation fails
+        // Rollback buyer transaction if job creation fails
         await WalletService.updateWallet(buyerWallet);
-        await WalletService.updateWallet(serviceProviderWallet);
         return {
           success: false,
           error: 'Failed to create job after payment. Payment has been refunded.'
         };
       }
+
+      // Update job with payment details for admin release
+      await supabase
+        .from('active_jobs')
+        .update({
+          payment_amount: orderData.price, // Original order price
+          buyer_fee: feeCalculation.buyerFee, // 2.2% fee
+          platform_fee: feeCalculation.platformFee, // 11% or RM4.90, whichever higher
+          total_paid: buyerTotal, // Total amount buyer paid
+          payment_status: 'paid_escrow', // New status: paid and held in escrow
+          escrow_ready_for_release: false // Will be set to true when admin confirms
+        })
+        .eq('id', activeJob.id);
 
       // Fallback: Ensure notification is created even if ActiveJobService fails
       try {
@@ -140,8 +124,8 @@ export class PaymentService {
             buyerName: buyerProfile.full_name,
             buyerImage: buyerProfile.avatar_url || '',
             serviceTitle: orderData.title,
-            price: finalPrice,
-            currency: orderData.currency || 'RM',
+            price: orderData.price,
+            currency: orderData.currency,
             orderId: activeJob.id,
             orderType: 'direct'
           });
@@ -168,6 +152,7 @@ export class PaymentService {
 
   /**
    * Process payment for an accepted service offer
+   * New flow: User pays Order Price + 2.2%, payment held in escrow
    */
   static async processOfferPayment(
     offer: ServiceOffer,
@@ -176,9 +161,19 @@ export class PaymentService {
     serviceProviderId: string
   ): Promise<PaymentResult> {
     try {
-      // Calculate the final price
       const finalPrice = offer.customPrice || serviceData.customPrice || serviceData.price;
       
+      // Calculate fees using FeeService
+      const feeCalculation = FeeService.calculateFees(finalPrice, serviceData.currency);
+      const buyerTotal = feeCalculation.buyerTotal; // Order Price + 2.2%
+      
+      console.log('💰 Processing offer payment:', {
+        offerPrice: finalPrice,
+        buyerFee: feeCalculation.buyerFee,
+        buyerTotal,
+        serviceProviderId
+      });
+
       // Get buyer's wallet
       const buyerWallet = await WalletService.getWallet(buyerId);
       if (!buyerWallet) {
@@ -188,18 +183,18 @@ export class PaymentService {
         };
       }
 
-      // Check if buyer has sufficient BetaCoins
-      if (buyerWallet.betame_betacoins < finalPrice) {
+      // Check if buyer has sufficient BetaCoins (including 2.2% fee)
+      if (buyerWallet.betame_betacoins < buyerTotal) {
         return {
           success: false,
-          error: `Insufficient BetaCoins. You need ${finalPrice} BetaCoins but only have ${buyerWallet.betame_betacoins} BetaCoins.`
+          error: `Insufficient BetaCoins. You need ${buyerTotal} BetaCoins (${finalPrice} service + ${feeCalculation.buyerFee} processing fee) but only have ${buyerWallet.betame_betacoins} BetaCoins.`
         };
       }
 
-      // Deduct BetaCoins from buyer
+      // Deduct total amount (Order Price + 2.2%) from buyer
       const updatedBuyerWallet = {
         ...buyerWallet,
-        betame_betacoins: buyerWallet.betame_betacoins - finalPrice
+        betame_betacoins: buyerWallet.betame_betacoins - buyerTotal
       };
 
       const buyerUpdateResult = await WalletService.updateWallet(updatedBuyerWallet);
@@ -210,47 +205,12 @@ export class PaymentService {
         };
       }
 
-      // Record transaction for buyer (payment)
+      // Record transaction for buyer (payment with fee)
       await WalletService.recordTransaction({
         user_id: buyerId,
         type: 'service_payment',
-        amount: -Math.round(finalPrice * 100), // Convert to cents (integer)
-        description: `Payment for service: ${serviceData.title}`
-      });
-
-      // Get service provider's wallet
-      const serviceProviderWallet = await WalletService.getWallet(serviceProviderId);
-      if (!serviceProviderWallet) {
-        // Rollback buyer transaction if service provider wallet fails
-        await WalletService.updateWallet(buyerWallet);
-        return {
-          success: false,
-          error: 'Unable to access service provider wallet'
-        };
-      }
-
-      // Add BetaCoins to service provider (escrow - will be released when job is completed)
-      const updatedServiceProviderWallet = {
-        ...serviceProviderWallet,
-        betame_betacoins: serviceProviderWallet.betame_betacoins + finalPrice
-      };
-
-      const serviceProviderUpdateResult = await WalletService.updateWallet(updatedServiceProviderWallet);
-      if (!serviceProviderUpdateResult) {
-        // Rollback buyer transaction if service provider update fails
-        await WalletService.updateWallet(buyerWallet);
-        return {
-          success: false,
-          error: 'Failed to process payment to service provider wallet'
-        };
-      }
-
-      // Record transaction for service provider (payment received)
-      await WalletService.recordTransaction({
-        user_id: serviceProviderId,
-        type: 'service_payment_received',
-        amount: Math.round(finalPrice * 100), // Convert to cents (integer)
-        description: `Payment received for service: ${serviceData.title}`
+        amount: -Math.round(buyerTotal * 100), // Convert to cents (integer)
+        description: `Payment for service: ${serviceData.title} (including ${feeCalculation.buyerFee} processing fee)`
       });
 
       // Create active job after successful payment
@@ -262,14 +222,26 @@ export class PaymentService {
       );
 
       if (!activeJob) {
-        // Rollback both transactions if job creation fails
+        // Rollback buyer transaction if job creation fails
         await WalletService.updateWallet(buyerWallet);
-        await WalletService.updateWallet(serviceProviderWallet);
         return {
           success: false,
           error: 'Failed to create job after payment. Payment has been refunded.'
         };
       }
+
+      // Update job with payment details for admin release
+      await supabase
+        .from('active_jobs')
+        .update({
+          payment_amount: finalPrice, // Original offer price
+          buyer_fee: feeCalculation.buyerFee, // 2.2% fee
+          platform_fee: feeCalculation.platformFee, // 11% or RM4.90, whichever higher
+          total_paid: buyerTotal, // Total amount buyer paid
+          payment_status: 'paid_escrow', // New status: paid and held in escrow
+          escrow_ready_for_release: false // Will be set to true when admin confirms
+        })
+        .eq('id', activeJob.id);
 
       return {
         success: true,
@@ -287,6 +259,7 @@ export class PaymentService {
 
   /**
    * Get payment summary for a direct order
+   * Shows Order Price + 2.2% processing fee
    */
   static getPaymentSummaryForDirectOrder(
     orderData: DirectOrderData
@@ -296,20 +269,19 @@ export class PaymentService {
     serviceFee: number;
     totalAmount: number;
   } {
-    const finalPrice = orderData.price;
-    const buyerFee = Math.round((finalPrice * 0.022) * 100) / 100; // 2.2% processing fee
-    const totalAmount = finalPrice + buyerFee;
-
+    const feeCalculation = FeeService.calculateFees(orderData.price, orderData.currency);
+    
     return {
-      finalPrice,
-      currency: orderData.currency || 'RM',
-      serviceFee: buyerFee,
-      totalAmount
+      finalPrice: orderData.price,
+      currency: orderData.currency,
+      serviceFee: feeCalculation.buyerFee, // 2.2% processing fee
+      totalAmount: feeCalculation.buyerTotal // Order Price + 2.2%
     };
   }
 
   /**
    * Get payment summary for an offer
+   * Shows Order Price + 2.2% processing fee
    */
   static getPaymentSummary(
     offer: ServiceOffer,
@@ -321,14 +293,33 @@ export class PaymentService {
     totalAmount: number;
   } {
     const finalPrice = offer.customPrice || serviceData.customPrice || serviceData.price;
-    const buyerFee = Math.round((finalPrice * 0.022) * 100) / 100; // 2.2% processing fee
-    const totalAmount = finalPrice + buyerFee;
-
+    const feeCalculation = FeeService.calculateFees(finalPrice, serviceData.currency);
+    
     return {
       finalPrice,
       currency: serviceData.currency || 'RM',
-      serviceFee: buyerFee,
-      totalAmount
+      serviceFee: feeCalculation.buyerFee, // 2.2% processing fee
+      totalAmount: feeCalculation.buyerTotal // Order Price + 2.2%
+    };
+  }
+
+  /**
+   * Calculate service provider payout after admin release
+   * Formula: Order Price - 2.2% - 11% = Order Price - 13.2%
+   */
+  static calculateServiceProviderPayout(orderPrice: number): {
+    orderPrice: number;
+    buyerFee: number; // 2.2%
+    platformFee: number; // 11% or RM4.90, whichever higher
+    serviceProviderPayout: number;
+  } {
+    const feeCalculation = FeeService.calculateFees(orderPrice);
+    
+    return {
+      orderPrice,
+      buyerFee: feeCalculation.buyerFee, // 2.2%
+      platformFee: feeCalculation.platformFee, // 11% or RM4.90, whichever higher
+      serviceProviderPayout: feeCalculation.sellerReceives // Order Price - platform fee
     };
   }
 }

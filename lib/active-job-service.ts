@@ -52,7 +52,7 @@ export class ActiveJobService {
         service_provider_id: serviceProviderId,
         // service_offer_id: null, // Commented out - might be causing constraint issues
         title: orderData.title,
-        description: orderData.customDescription || orderData.description,
+        description: orderData.description,
         price: orderData.price,
         currency: orderData.currency,
         delivery_time: orderData.customDeliveryTime ? `${orderData.customDeliveryTime} days` : '7 days',
@@ -97,28 +97,18 @@ export class ActiveJobService {
     orderType: 'direct' | 'offer'
   ): Promise<void> {
     try {
-      console.log('🔔 ActiveJobService: Starting notification process for job:', jobId);
-      
       // Get buyer profile for notification
-      const { data: buyerProfile, error: profileError } = await supabase
+      const { data: buyerProfile } = await supabase
         .from('profiles')
         .select('full_name, avatar_url')
         .eq('id', buyerId)
         .single();
 
-      if (profileError) {
-        console.error('❌ ActiveJobService: Error fetching buyer profile:', profileError);
-      }
-
       const buyerName = buyerProfile?.full_name || 'A customer';
       const buyerImage = buyerProfile?.avatar_url || '';
 
-      console.log('🔔 ActiveJobService: Buyer details - Name:', buyerName, 'Image:', buyerImage ? 'Yes' : 'No');
-
       // Import notification service dynamically to avoid circular dependencies
       const { notificationService } = await import('./notification-service');
-      
-      console.log('🔔 ActiveJobService: Sending order notification to service provider:', serviceProviderId);
       
       // Send order notification using the proper notification service
       await notificationService.addOrderNotification({
@@ -132,22 +122,9 @@ export class ActiveJobService {
         orderType
       });
 
-      console.log('✅ ActiveJobService: Order notification sent successfully to service provider:', serviceProviderId);
+      console.log('✅ Order notification sent to service provider:', serviceProviderId);
     } catch (error) {
-      console.error('❌ ActiveJobService: Error notifying service provider:', error);
-      console.error('❌ ActiveJobService: Error details:', {
-        serviceProviderId,
-        buyerId,
-        serviceTitle,
-        price,
-        currency,
-        jobId,
-        orderType,
-        error: error instanceof Error ? error.message : String(error)
-      });
-      
-      // Don't throw the error to prevent job creation from failing
-      // but log it for debugging
+      console.error('Error notifying service provider:', error);
     }
   }
 
@@ -166,7 +143,7 @@ export class ActiveJobService {
         service_provider_id: serviceProviderId,
         service_offer_id: offer.id,
         title: serviceData.title,
-        description: offer.customDescription || serviceData.description,
+        description: serviceData.description,
         price: offer.customPrice || serviceData.customPrice || serviceData.price,
         currency: serviceData.currency || 'RM',
         delivery_time: offer.customDeliveryTime ? `${offer.customDeliveryTime} days` : '7 days',
@@ -497,6 +474,7 @@ export class ActiveJobService {
 
   /**
    * Confirm job completion (buyer confirms the job is complete)
+   * New flow: Set status to 'payment_release_in_progress' for admin manual release
    */
   static async confirmJobCompletion(
     jobId: string, 
@@ -519,12 +497,14 @@ export class ActiveJobService {
         return false;
       }
 
-      // Update job status to confirmed completion
+      // Update job status to payment release in progress (for admin manual release)
       const { error: updateError } = await supabase
         .from('active_jobs')
         .update({
-          status: 'completed_confirmed',
-          payment_status: 'released',
+          status: 'payment_release_in_progress',
+          payment_status: 'ready_for_admin_release',
+          escrow_ready_for_release: true, // Flag for admin to see
+          buyer_confirmation_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', jobId);
@@ -535,70 +515,52 @@ export class ActiveJobService {
       }
 
       // Create a review record if rating and feedback are provided
-      if (rating && rating > 0) {
+      if (rating && feedback) {
         try {
-          const { error: reviewError } = await supabase
-            .from('reviews')
+          await supabase
+            .from('job_reviews')
             .insert({
+              job_id: jobId,
               reviewer_id: buyerId,
-              reviewee_id: job.service_provider_id,
-              service_id: null, // For direct orders, there's no specific service_id
-              order_id: jobId, // Using the active job id as the order reference
-              rating: rating,
-              comment: feedback || null,
+              reviewed_id: job.service_provider_id,
+              rating,
+              feedback,
+              created_at: new Date().toISOString()
             });
-
-          if (reviewError) {
-            console.error('Error creating review:', reviewError);
-            // Don't fail the entire operation if review creation fails
-          } else {
-            console.log('✅ Review created successfully for job:', jobId);
-            
-            // Update service provider's overall rating
-            await this.updateServiceProviderRating(job.service_provider_id);
-          }
-        } catch (error) {
-          console.error('Error in review creation process:', error);
+        } catch (reviewError) {
+          console.error('Error creating job review:', reviewError);
+          // Don't fail the confirmation if review creation fails
         }
       }
 
-      // Send notification to service provider about payment release
+      // Send notification to service provider about payment release status
       try {
-        const { data: providerProfile } = await supabase
-          .from('user_profiles')
-          .select('full_name, avatar_url')
-          .eq('user_id', job.service_provider_id)
-          .single();
-
-        const providerName = providerProfile?.full_name || 'Service Provider';
-        const providerImage = providerProfile?.avatar_url;
-
-        // Get buyer profile for notification
+        const { notificationService } = await import('./notification-service');
         const { data: buyerProfile } = await supabase
           .from('profiles')
           .select('full_name, avatar_url')
           .eq('id', buyerId)
           .single();
 
-        const buyerName = buyerProfile?.full_name || 'Buyer';
-        const buyerImage = buyerProfile?.avatar_url;
-
-        await notificationService.addJobCompletionConfirmationNotification({
-          serviceProviderId: job.service_provider_id,
-          buyerName,
-          buyerImage,
-          serviceTitle: job.title,
-          jobId: jobId,
-          rating: rating || 5,
-          feedback: feedback || 'Job completed successfully',
-        });
-
-        console.log('✅ Direct job completion confirmation notification sent to service provider:', job.service_provider_id);
-      } catch (error) {
-        console.error('Error sending completion confirmation notification:', error);
+        if (buyerProfile) {
+          await notificationService.addNotification({
+            type: 'system',
+            title: 'Payment Release Pending',
+            message: `${buyerProfile.full_name} has confirmed job completion. Payment release is pending admin approval.`,
+            data: {
+              orderId: jobId,
+              serviceTitle: job.title,
+              actionType: 'payment_release_pending'
+            }
+          }, job.service_provider_id);
+        }
+      } catch (notificationError) {
+        console.error('Error sending payment release notification:', notificationError);
       }
 
+      console.log('✅ Job completion confirmed, payment release pending admin approval:', jobId);
       return true;
+
     } catch (error) {
       console.error('Error in confirmJobCompletion:', error);
       return false;
