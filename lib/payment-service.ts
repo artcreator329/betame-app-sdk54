@@ -1,6 +1,7 @@
 import { WalletService } from './wallet-service';
 import { ActiveJobService } from './active-job-service';
 import { ServiceOffer, ServiceOfferData } from '../types/chat';
+import { supabase } from './supabase';
 
 export interface PaymentResult {
   success: boolean;
@@ -122,6 +123,33 @@ export class PaymentService {
           success: false,
           error: 'Failed to create job after payment. Payment has been refunded.'
         };
+      }
+
+      // Fallback: Ensure notification is created even if ActiveJobService fails
+      try {
+        const { notificationService } = await import('./notification-service');
+        const { data: buyerProfile } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', buyerId)
+          .single();
+
+        if (buyerProfile) {
+          await notificationService.addOrderNotification({
+            serviceProviderId,
+            buyerName: buyerProfile.full_name,
+            buyerImage: buyerProfile.avatar_url || '',
+            serviceTitle: orderData.title,
+            price: finalPrice,
+            currency: orderData.currency || 'RM',
+            orderId: activeJob.id,
+            orderType: 'direct'
+          });
+          console.log('✅ PaymentService: Fallback notification created for order:', activeJob.id);
+        }
+      } catch (notificationError) {
+        console.error('❌ PaymentService: Fallback notification failed:', notificationError);
+        // Don't fail the payment if notification fails
       }
 
       return {
