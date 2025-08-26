@@ -3,7 +3,7 @@ import { WalletService } from './wallet-service';
 
 export interface PaymentStatusUpdate {
   transaction_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'refunded';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'expired' | 'refunded';
   payment_id?: string;
   error_message?: string;
 }

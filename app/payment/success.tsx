@@ -11,6 +11,7 @@ export default function PaymentSuccessScreen() {
   const searchParams = useLocalSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Processing payment...');
+  const [transaction, setTransaction] = useState<any>(null);
 
   const transactionId = searchParams.transaction_id as string;
   const paymentId = searchParams.razorpay_payment_id as string;
@@ -36,41 +37,8 @@ export default function PaymentSuccessScreen() {
 
       // Check if payment was successful or failed
       if (paymentStatus === 'paid') {
-        // Check for error fields in the URL params
-        const errorCode = searchParams.error_code as string;
-        const errorDescription = searchParams.error_description as string;
-        const errorReason = searchParams.error_reason as string;
-        
-        if (errorCode || errorDescription || errorReason) {
-          // Payment failed
-          setStatus('error');
-          setMessage(errorDescription || errorReason || 'Payment failed');
-          
-          // Update transaction status to failed
-          if (transactionId) {
-            await supabase
-              .from('payment_transactions')
-              .update({
-                status: 'failed',
-                error_message: errorDescription || errorReason || 'Payment failed',
-                error_code: errorCode,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', transactionId);
-          }
-          
-          // Redirect to failed page after 2 seconds
-          setTimeout(() => {
-            router.replace({
-              pathname: '/payment/failed',
-              params: {
-                transaction_id: transactionId,
-                error_message: errorDescription || errorReason || 'Payment failed'
-              }
-            });
-          }, 2000);
-          return;
-        }
+        // For successful payments, we'll verify the transaction status
+        // Failed payments will be handled by webhooks or by checking transaction status
         // Verify the transaction in our database
         const { data: transaction, error } = await supabase
           .from('payment_transactions')
@@ -85,15 +53,88 @@ export default function PaymentSuccessScreen() {
           return;
         }
 
+        // Store transaction in state for display
+        setTransaction(transaction);
+
+        // Check transaction status and handle accordingly
+        if (transaction.status === 'failed') {
+          setStatus('error');
+          setMessage(transaction.error_message || 'Payment failed');
+          
+          // Redirect to failed page after 2 seconds
+          setTimeout(() => {
+            router.replace({
+              pathname: '/payment/failed',
+              params: {
+                transaction_id: transactionId,
+                error_message: transaction.error_message || 'Payment failed'
+              }
+            });
+          }, 2000);
+          return;
+        }
+
+        if (transaction.status === 'cancelled') {
+          setStatus('error');
+          setMessage('Payment was cancelled');
+          
+          // Redirect to cancel page after 2 seconds
+          setTimeout(() => {
+            router.replace({
+              pathname: '/payment/cancel',
+              params: { transaction_id: transactionId }
+            });
+          }, 2000);
+          return;
+        }
+
+        if (transaction.status === 'expired') {
+          setStatus('error');
+          setMessage('Payment link expired');
+          
+          // Redirect to failed page after 2 seconds
+          setTimeout(() => {
+            router.replace({
+              pathname: '/payment/failed',
+              params: {
+                transaction_id: transactionId,
+                error_message: 'Payment link expired'
+              }
+            });
+          }, 2000);
+          return;
+        }
+
         // Check if transaction is already completed
         if (transaction.status === 'completed') {
           setStatus('success');
-          setMessage('Payment completed successfully!');
           
-          // Redirect to wallet after 2 seconds
-          setTimeout(() => {
-            router.replace('/wallet');
-          }, 2000);
+          // Set appropriate message based on payment type
+          if (transaction.payment_type === 'betacoin_purchase') {
+            setMessage('BetaCoins purchased successfully!');
+          } else if (transaction.payment_type === 'service_payment') {
+            setMessage('Order placed successfully! Your service provider will be notified.');
+          } else {
+            setMessage('Payment completed successfully!');
+          }
+          
+          // Redirect based on payment type
+          if (transaction.payment_type === 'betacoin_purchase') {
+            // Redirect to wallet for BetaCoin purchases
+            setTimeout(() => {
+              router.replace('/wallet');
+            }, 2000);
+          } else if (transaction.payment_type === 'service_payment') {
+            // Redirect to active jobs for service payments
+            setTimeout(() => {
+              router.replace('/profile');
+            }, 2000);
+          } else {
+            // Default redirect to wallet
+            setTimeout(() => {
+              router.replace('/wallet');
+            }, 2000);
+          }
           return;
         }
 
@@ -195,6 +236,12 @@ export default function PaymentSuccessScreen() {
                 <Text style={styles.detailsTitle}>Transaction Details</Text>
                 <Text style={styles.detailText}>Transaction ID: {transactionId}</Text>
                 {paymentId && <Text style={styles.detailText}>Payment ID: {paymentId}</Text>}
+                {transaction?.payment_type === 'service_payment' && (
+                  <Text style={styles.detailText}>Payment Type: Service Order</Text>
+                )}
+                {transaction?.payment_type === 'betacoin_purchase' && (
+                  <Text style={styles.detailText}>Payment Type: BetaCoin Purchase</Text>
+                )}
               </View>
             )}
             

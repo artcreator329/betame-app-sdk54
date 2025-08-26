@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Base64 encoding function for Deno
+function base64Encode(str: string): string {
+  return btoa(str)
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -92,7 +97,7 @@ async function handleCreateCheckoutSession(request: CreateCheckoutSessionRequest
 
   // Create payment link with Curlec/Razorpay
   const credentials = `${config.apiKey}:${config.secretKey}`
-  const authHeader = `Basic ${btoa(credentials)}`
+  const authHeader = `Basic ${base64Encode(credentials)}`
 
   const paymentLinkResponse = await fetch('https://api.razorpay.com/v1/payment_links', {
     method: 'POST',
@@ -108,6 +113,11 @@ async function handleCreateCheckoutSession(request: CreateCheckoutSessionRequest
       description: getPaymentDescription(request.payment_type, request.amount),
       callback_url: `betame://payment/success?transaction_id=${transaction.id}`,
       callback_method: 'get',
+      notify: {
+        sms: false,
+        email: false,
+        whatsapp: false
+      },
       options: {
         checkout: {
           name: 'BetaMe SDN BHD',

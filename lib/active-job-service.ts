@@ -97,18 +97,28 @@ export class ActiveJobService {
     orderType: 'direct' | 'offer'
   ): Promise<void> {
     try {
+      console.log('🔔 ActiveJobService: Starting notification process for job:', jobId);
+      
       // Get buyer profile for notification
-      const { data: buyerProfile } = await supabase
+      const { data: buyerProfile, error: profileError } = await supabase
         .from('profiles')
         .select('full_name, avatar_url')
         .eq('id', buyerId)
         .single();
 
+      if (profileError) {
+        console.error('❌ ActiveJobService: Error fetching buyer profile:', profileError);
+      }
+
       const buyerName = buyerProfile?.full_name || 'A customer';
       const buyerImage = buyerProfile?.avatar_url || '';
 
+      console.log('🔔 ActiveJobService: Buyer details - Name:', buyerName, 'Image:', buyerImage ? 'Yes' : 'No');
+
       // Import notification service dynamically to avoid circular dependencies
       const { notificationService } = await import('./notification-service');
+      
+      console.log('🔔 ActiveJobService: Sending order notification to service provider:', serviceProviderId);
       
       // Send order notification using the proper notification service
       await notificationService.addOrderNotification({
@@ -122,9 +132,22 @@ export class ActiveJobService {
         orderType
       });
 
-      console.log('✅ Order notification sent to service provider:', serviceProviderId);
+      console.log('✅ ActiveJobService: Order notification sent successfully to service provider:', serviceProviderId);
     } catch (error) {
-      console.error('Error notifying service provider:', error);
+      console.error('❌ ActiveJobService: Error notifying service provider:', error);
+      console.error('❌ ActiveJobService: Error details:', {
+        serviceProviderId,
+        buyerId,
+        serviceTitle,
+        price,
+        currency,
+        jobId,
+        orderType,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
+      // Don't throw the error to prevent job creation from failing
+      // but log it for debugging
     }
   }
 

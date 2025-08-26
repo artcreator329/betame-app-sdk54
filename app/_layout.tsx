@@ -196,7 +196,7 @@ function RootLayoutNav() {
       'favorites', 'orders', 'create-service-listing', 'create-job-listing',
       'become-service-provider', 'ekyc-verification', 'malaysian-payment-gateway',
       'edit-service', 'job-acceptance', 'job-progress', 'job-completion', 'job-review',
-      'bank-upload'
+      'bank-upload', 'payment'
     ];
     
     // Pages that require authentication for actions but allow viewing

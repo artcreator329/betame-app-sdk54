@@ -102,11 +102,6 @@ export class DeepLinkService {
                 razorpay_payment_link_id: parsedUrl.searchParams.get('razorpay_payment_link_id'),
                 razorpay_payment_link_status: parsedUrl.searchParams.get('razorpay_payment_link_status'),
                 razorpay_signature: parsedUrl.searchParams.get('razorpay_signature'),
-                error_code: parsedUrl.searchParams.get('error_code'),
-                error_description: parsedUrl.searchParams.get('error_description'),
-                error_reason: parsedUrl.searchParams.get('error_reason'),
-                error_source: parsedUrl.searchParams.get('error_source'),
-                error_step: parsedUrl.searchParams.get('error_step'),
               }
             };
           }

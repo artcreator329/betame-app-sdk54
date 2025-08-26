@@ -17,6 +17,8 @@ import { useColors } from '../contexts/ThemeContext';
 import { DirectOrderData } from '../lib/payment-service';
 import { PaymentService } from '../lib/payment-service';
 import { WalletService } from '../lib/wallet-service';
+import { CurlecPaymentService } from '../lib/curlec-payment-service';
+import { Linking } from 'react-native';
 
 interface DirectOrderModalProps {
   visible: boolean;
@@ -27,15 +29,7 @@ interface DirectOrderModalProps {
   onPaymentSuccess: (activeJobId: string) => void;
 }
 
-type PaymentMethod = 'betacoins' | 'fpx' | 'tng' | 'grabpay' | 'boost';
 
-interface MalaysianPaymentGateway {
-  id: PaymentMethod;
-  name: string;
-  icon: string;
-  description: string;
-  processingFee: number;
-}
 
 export function DirectOrderModal({
   visible,
@@ -49,41 +43,8 @@ export function DirectOrderModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [walletData, setWalletData] = useState<any>(null);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('fpx');
   const [customDescription, setCustomDescription] = useState('');
   const [customDeliveryTime, setCustomDeliveryTime] = useState('7');
-
-  const malaysianPaymentGateways: MalaysianPaymentGateway[] = [
-
-    {
-      id: 'fpx',
-      name: 'FPX Online Banking',
-      icon: '🏦',
-      description: 'Direct bank transfer via FPX',
-      processingFee: 0,
-    },
-    {
-      id: 'tng',
-      name: 'Touch \'n Go eWallet',
-      icon: '📱',
-      description: 'Pay with TnG eWallet',
-      processingFee: 0,
-    },
-    {
-      id: 'grabpay',
-      name: 'GrabPay',
-      icon: '🚗',
-      description: 'Pay with GrabPay wallet',
-      processingFee: 0,
-    },
-    {
-      id: 'boost',
-      name: 'Boost',
-      icon: '🚀',
-      description: 'Pay with Boost wallet',
-      processingFee: 0,
-    },
-  ];
 
   useEffect(() => {
     if (visible) {
@@ -106,54 +67,28 @@ export function DirectOrderModal({
     setPaymentSummary(summary);
   };
 
-  const getSelectedGateway = () => {
-    return malaysianPaymentGateways.find(gateway => gateway.id === selectedPaymentMethod) || malaysianPaymentGateways[0];
-  };
-
   const getTotalWithProcessingFee = () => {
     if (!paymentSummary) return 0;
     return paymentSummary.totalAmount;
   };
 
   const handlePayment = async () => {
-    if (!walletData || !paymentSummary) {
+    if (!paymentSummary) {
       Alert.alert('Error', 'Unable to process payment. Please try again.');
       return;
     }
 
     const totalAmount = getTotalWithProcessingFee();
-    const gateway = getSelectedGateway();
 
-    // For BetaCoins payment, check balance
-    if (selectedPaymentMethod === 'betacoins' && walletData.betame_betacoins < totalAmount) {
-      Alert.alert(
-        'Insufficient BetaCoins',
-        `You need ${totalAmount} BetaCoins but only have ${walletData.betame_betacoins} BetaCoins. Please purchase more BetaCoins to continue.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Purchase BetaCoins', onPress: () => {
-            onClose();
-            // Navigate to wallet/BetaCoins purchase screen
-          }}
-        ]
-      );
-      return;
-    }
-
-    // For other payment methods, show processing message
-    if (selectedPaymentMethod !== 'betacoins') {
-      Alert.alert(
-        'Redirecting to Payment',
-        `You will be redirected to ${gateway.name} to complete your payment of RM ${totalAmount.toFixed(2)}.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Continue', onPress: () => processPayment() }
-        ]
-      );
-      return;
-    }
-
-    await processPayment();
+    // Show payment confirmation
+    Alert.alert(
+      'Confirm Payment',
+      `You will be redirected to our secure payment gateway to complete your payment of RM ${totalAmount.toFixed(2)}.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue', onPress: () => processPayment() }
+      ]
+    );
   };
 
   const processPayment = async () => {
@@ -162,46 +97,49 @@ export function DirectOrderModal({
     setIsProcessing(true);
 
     try {
+      const totalAmount = getTotalWithProcessingFee();
+      
+      // Use Curlec payment gateway for all payments
+      const curlecService = CurlecPaymentService.getInstance();
+      
       // Prepare order data with custom fields
       const enhancedOrderData = {
         ...orderData,
         customDescription: customDescription.trim() || undefined,
         customDeliveryTime: customDeliveryTime ? parseInt(customDeliveryTime) : undefined,
       };
-
-      // Import ActiveJobService dynamically
-      const { ActiveJobService } = await import('@/lib/active-job-service');
       
-      // Create the job record for external payment
-      const activeJob = await ActiveJobService.createJobFromDirectOrder(
-        enhancedOrderData,
-        buyerId,
-        serviceProviderId
-      );
+      // Create checkout session with Curlec
+      const response = await curlecService.createCheckoutSession({
+        user_id: buyerId,
+        payment_type: 'service_payment',
+        amount: Math.round(totalAmount * 100), // Convert to cents and round to avoid floating point issues
+        currency: 'MYR',
+        order_id: `ORDER_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        success_url: 'betame://payment/success',
+        cancel_url: 'betame://payment/cancel',
+        metadata: {
+          service_name: orderData.title,
+          service_provider_id: serviceProviderId,
+          payment_method: 'curlec',
+          order_data: JSON.stringify(enhancedOrderData),
+        },
+      });
 
-      if (activeJob) {
-        Alert.alert(
-          'Order Successful!',
-          'Your order has been placed successfully. The service provider will be notified to confirm your order.',
-          [
-            {
-              text: 'View Orders',
-              onPress: () => {
-                onClose();
-                onPaymentSuccess(activeJob.id || '');
-              }
-            },
-            {
-              text: 'OK',
-              onPress: () => {
-                onClose();
-                onPaymentSuccess(activeJob.id || '');
-              }
-            }
-          ]
-        );
-      } else {
-        Alert.alert('Order Creation Failed', 'Failed to create order. Please try again.');
+      if (!response.success) {
+        Alert.alert('Payment Error', response.error || 'Failed to create payment session');
+        return;
+      }
+
+      // Open payment URL
+      if (response.checkout_url) {
+        const supported = await Linking.canOpenURL(response.checkout_url);
+        if (supported) {
+          await Linking.openURL(response.checkout_url);
+          onClose();
+        } else {
+          Alert.alert('Error', 'Cannot open payment page. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Error processing payment:', error);
@@ -337,35 +275,7 @@ export function DirectOrderModal({
               </View>
             </View>
 
-            {/* Payment Methods */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Payment Method</Text>
-              <View style={styles.paymentMethods}>
-                {malaysianPaymentGateways.map((gateway) => (
-                  <TouchableOpacity
-                    key={gateway.id}
-                    style={[
-                      styles.paymentMethodItem,
-                      selectedPaymentMethod === gateway.id && styles.selectedPaymentMethod
-                    ]}
-                    onPress={() => setSelectedPaymentMethod(gateway.id)}
-                  >
-                    <View style={styles.paymentMethodInfo}>
-                      <Text style={styles.paymentMethodIcon}>{gateway.icon}</Text>
-                      <View style={styles.paymentMethodDetails}>
-                        <Text style={styles.paymentMethodName}>{gateway.name}</Text>
-                        <Text style={styles.paymentMethodDescription}>{gateway.description}</Text>
-                      </View>
-                    </View>
-                    {selectedPaymentMethod === gateway.id && (
-                      <View style={styles.selectedIndicator}>
-                        <Text style={styles.selectedIndicatorText}>✓</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+
 
 
           </ScrollView>

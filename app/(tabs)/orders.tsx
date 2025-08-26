@@ -120,6 +120,8 @@ export default function OrdersScreen() {
   const fetchOrders = async () => {
     if (!user?.id) return;
     
+    console.log('🔄 fetchOrders called for user:', user.id);
+    
     try {
       // Import ActiveJobService dynamically
       const { ActiveJobService } = await import('@/lib/active-job-service');
@@ -202,12 +204,114 @@ export default function OrdersScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      console.log('🔄 Orders page focused - fetching orders');
+      // Force refresh when page is focused
+      setRefreshing(true);
       fetchOrders();
     }, [user?.id])
   );
 
+  // Set up real-time subscriptions for orders
+  useEffect(() => {
+    if (!user?.id) return;
+
+    console.log('🔄 Setting up real-time subscription for orders');
+
+    // Subscribe to active_jobs changes
+    const activeJobsSubscription = supabase
+      .channel('active_jobs_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'active_jobs',
+          filter: `buyer_id=eq.${user.id} OR service_provider_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 Active jobs real-time update:', payload);
+          console.log('🔄 Payload event:', payload.eventType);
+          console.log('🔄 Payload table:', payload.table);
+          console.log('🔄 Payload record:', payload.new);
+          // Refresh orders when there's a change
+          fetchOrders();
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔄 Active jobs subscription status:', status);
+      });
+
+    // Subscribe to escrow_jobs changes (if using escrow system)
+    const escrowJobsSubscription = supabase
+      .channel('escrow_jobs_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'escrow_jobs',
+          filter: `buyer_id=eq.${user.id} OR service_provider_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 Escrow jobs real-time update:', payload);
+          // Refresh orders when there's a change
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to job_status changes (for escrow orders)
+    const jobStatusSubscription = supabase
+      .channel('job_status_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'job_status',
+          filter: `buyer_id=eq.${user.id} OR service_provider_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 Job status real-time update:', payload);
+          // Refresh orders when there's a change
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to payment_transactions changes (for new orders)
+    const paymentTransactionsSubscription = supabase
+      .channel('payment_transactions_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payment_transactions',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 Payment transactions real-time update:', payload);
+          // Refresh orders when there's a payment update
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      console.log('🔄 Cleaning up real-time subscriptions for orders');
+      activeJobsSubscription.unsubscribe();
+      escrowJobsSubscription.unsubscribe();
+      jobStatusSubscription.unsubscribe();
+      paymentTransactionsSubscription.unsubscribe();
+    };
+  }, [user?.id]);
+
   const onRefresh = () => {
+    console.log('🔄 Manual refresh triggered');
     setRefreshing(true);
+    setLoading(true); // Force loading state
     fetchOrders();
   };
 
@@ -1576,7 +1680,7 @@ export default function OrdersScreen() {
             
             return (
               <Animated.View
-                key={order.id}
+                key={`${order.id}-${perspective}-${(order as any).orderType || 'direct'}`}
                 style={[
                   styles.orderCard, 
                   { 

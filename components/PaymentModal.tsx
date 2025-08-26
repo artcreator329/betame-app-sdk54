@@ -16,6 +16,8 @@ import { useColors } from '../contexts/ThemeContext';
 import { ServiceOffer, ServiceOfferData } from '../types/chat';
 import { PaymentService } from '../lib/payment-service';
 import { WalletService } from '../lib/wallet-service';
+import { CurlecPaymentService } from '../lib/curlec-payment-service';
+import { Linking } from 'react-native';
 
 interface PaymentModalProps {
   visible: boolean;
@@ -27,15 +29,7 @@ interface PaymentModalProps {
   onPaymentSuccess: (activeJobId: string) => void;
 }
 
-type PaymentMethod = 'betacoins' | 'fpx' | 'tng' | 'grabpay' | 'boost';
 
-interface MalaysianPaymentGateway {
-  id: PaymentMethod;
-  name: string;
-  icon: string;
-  description: string;
-  processingFee: number;
-}
 
 export function PaymentModal({
   visible,
@@ -50,38 +44,7 @@ export function PaymentModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [walletData, setWalletData] = useState<any>(null);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('fpx');
 
-  const malaysianPaymentGateways: MalaysianPaymentGateway[] = [
-    {
-      id: 'fpx',
-      name: 'FPX Online Banking',
-      icon: '🏦',
-      description: 'Direct bank transfer via FPX',
-      processingFee: 0,
-    },
-    {
-      id: 'tng',
-      name: 'Touch \'n Go eWallet',
-      icon: '📱',
-      description: 'Pay with TnG eWallet',
-      processingFee: 0,
-    },
-    {
-      id: 'grabpay',
-      name: 'GrabPay',
-      icon: '🚗',
-      description: 'Pay with GrabPay wallet',
-      processingFee: 0,
-    },
-    {
-      id: 'boost',
-      name: 'Boost',
-      icon: '🚀',
-      description: 'Pay with Boost wallet',
-      processingFee: 0,
-    },
-  ];
 
   useEffect(() => {
     if (visible) {
@@ -100,10 +63,6 @@ export function PaymentModal({
     setPaymentSummary(summary);
   };
 
-  const getSelectedGateway = () => {
-    return malaysianPaymentGateways.find(gateway => gateway.id === selectedPaymentMethod) || malaysianPaymentGateways[0];
-  };
-
   const getTotalWithProcessingFee = () => {
     if (!paymentSummary) return 0;
     return paymentSummary.totalAmount;
@@ -116,53 +75,62 @@ export function PaymentModal({
     }
 
     const totalAmount = getTotalWithProcessingFee();
-    const gateway = getSelectedGateway();
 
-    // For other payment methods, show processing message
-    if (selectedPaymentMethod !== 'betacoins') {
-      Alert.alert(
-        'Redirecting to Payment',
-        `You will be redirected to ${gateway.name} to complete your payment of RM ${totalAmount.toFixed(2)}.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Continue', onPress: () => processPayment() }
-        ]
-      );
-      return;
-    }
-
-    await processPayment();
+    // Show payment confirmation
+    Alert.alert(
+      'Confirm Payment',
+      `You will be redirected to our secure payment gateway to complete your payment of RM ${totalAmount.toFixed(2)}.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue', onPress: () => processPayment() }
+      ]
+    );
   };
 
   const processPayment = async () => {
-    if (!walletData || !paymentSummary || !serviceData) return;
+    if (!paymentSummary || !serviceData) return;
 
     setIsProcessing(true);
 
     try {
-      const result = await PaymentService.processOfferPayment(
-        offer,
-        serviceData,
-        buyerId,
-        serviceProviderId
-      );
+      const totalAmount = getTotalWithProcessingFee();
+      
+      // Use Curlec payment gateway for all external payments
+      const curlecService = CurlecPaymentService.getInstance();
+      
+      // Create checkout session with Curlec
+      const response = await curlecService.createCheckoutSession({
+        user_id: buyerId,
+        payment_type: 'service_payment',
+        amount: Math.round(totalAmount * 100), // Convert to cents and round to avoid floating point issues
+        currency: 'MYR',
+        order_id: `ORDER_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        success_url: 'betame://payment/success',
+        cancel_url: 'betame://payment/cancel',
+        metadata: {
+          service_name: serviceData.title,
+          service_provider_id: serviceProviderId,
+          offer_id: offer.id,
+          payment_method: 'curlec',
+          service_data: JSON.stringify(serviceData),
+          offer_data: JSON.stringify(offer),
+        },
+      });
 
-      if (result.success && result.activeJobId) {
-        Alert.alert(
-          'Payment Successful!',
-          'Your payment has been processed and the job has been created. You can now track the progress in your profile.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                onClose();
-                onPaymentSuccess(result.activeJobId || '');
-              }
-            }
-          ]
-        );
-      } else {
-        Alert.alert('Payment Failed', result.error || 'An unexpected error occurred.');
+      if (!response.success) {
+        Alert.alert('Payment Error', response.error || 'Failed to create payment session');
+        return;
+      }
+
+      // Open payment URL
+      if (response.checkout_url) {
+        const supported = await Linking.canOpenURL(response.checkout_url);
+        if (supported) {
+          await Linking.openURL(response.checkout_url);
+          onClose();
+        } else {
+          Alert.alert('Error', 'Cannot open payment page. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Error processing payment:', error);
@@ -287,40 +255,7 @@ export function PaymentModal({
 
 
 
-            {/* Payment Method Selection */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Choose Payment Method</Text>
-              {malaysianPaymentGateways.map((gateway) => {
-                const isSelected = selectedPaymentMethod === gateway.id;
-                
-                return (
-                  <TouchableOpacity
-                    key={gateway.id}
-                    style={[
-                      styles.paymentMethodOption,
-                      isSelected && styles.paymentMethodSelected
-                    ]}
-                    onPress={() => setSelectedPaymentMethod(gateway.id)}
-                  >
-                    <View style={styles.paymentMethodLeft}>
-                      <Text style={styles.paymentMethodIcon}>{gateway.icon}</Text>
-                      <View style={styles.paymentMethodInfo}>
-                        <Text style={styles.paymentMethodName}>
-                          {gateway.name}
-                        </Text>
-                        <Text style={styles.paymentMethodDescription}>
-                          {gateway.description}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={[
-                      styles.radioButton,
-                      isSelected && styles.radioButtonSelected
-                    ]} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+
           </ScrollView>
 
           {/* Footer */}
@@ -618,70 +553,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
   },
-  // Payment method selection styles
-  paymentMethodOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.background.secondary,
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  paymentMethodSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: Colors.primary.light,
-  },
-  paymentMethodDisabled: {
-    opacity: 0.5,
-    backgroundColor: Colors.interactive.disabled,
-  },
-  paymentMethodLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  paymentMethodIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  paymentMethodInfo: {
-    flex: 1,
-  },
-  paymentMethodName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 2,
-  },
-  paymentMethodNameDisabled: {
-    color: '#6B7280',
-  },
-  paymentMethodDescription: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  paymentMethodDescriptionDisabled: {
-    color: Colors.text.tertiary,
-  },
   insufficientBetaCoinsText: {
     fontSize: 11,
     color: Colors.status.error,
     fontWeight: '500',
     marginTop: 2,
-  },
-  radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: Colors.border.light,
-    backgroundColor: 'transparent',
-  },
-  radioButtonSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#007AFF',
   },
 });

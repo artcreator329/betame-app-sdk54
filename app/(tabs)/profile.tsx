@@ -949,6 +949,19 @@ export default function ProfileScreen() {
     );
   };
 
+  // Manual refresh function for debugging
+  const manualRefresh = useCallback(async () => {
+    console.log('🔄 Manual refresh triggered');
+    console.log('🔄 Current userProfile:', userProfile);
+    console.log('🔄 Current userProfile.is_service_provider:', userProfile?.is_service_provider);
+    
+    await refreshProfile();
+    await loadBankStatement();
+    
+    console.log('🔄 After refresh - userProfile:', userProfile);
+    console.log('🔄 After refresh - userProfile.is_service_provider:', userProfile?.is_service_provider);
+  }, [refreshProfile, loadBankStatement, userProfile]);
+
   // Show login prompt for non-authenticated users
   if (!user) {
     return (
@@ -974,19 +987,6 @@ export default function ProfileScreen() {
       </SafeAreaView>
     );
   }
-
-  // Manual refresh function for debugging
-  const manualRefresh = useCallback(async () => {
-    console.log('🔄 Manual refresh triggered');
-    console.log('🔄 Current userProfile:', userProfile);
-    console.log('🔄 Current userProfile.is_service_provider:', userProfile?.is_service_provider);
-    
-    await refreshProfile();
-    await loadBankStatement();
-    
-    console.log('🔄 After refresh - userProfile:', userProfile);
-    console.log('🔄 After refresh - userProfile.is_service_provider:', userProfile?.is_service_provider);
-  }, [refreshProfile, loadBankStatement, userProfile]);
 
   return (
     <SafeAreaView

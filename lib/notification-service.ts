@@ -839,6 +839,41 @@ export class NotificationService {
     await this.addNotification(notification, participantId);
   }
 
+  // Helper method to add order notification (when payment is received) - DEPRECATED
+  // This method is kept for backward compatibility but should not be used
+  // Use the method below instead
+  async addOrderNotificationLegacy({
+    serviceProviderId,
+    buyerName,
+    buyerImage,
+    orderId,
+    serviceTitle,
+    amount,
+    currency,
+    chatId,
+  }: {
+    serviceProviderId: string;
+    buyerName: string;
+    buyerImage: string;
+    orderId: string;
+    serviceTitle: string;
+    amount: number;
+    currency: string;
+    chatId: string;
+  }): Promise<void> {
+    console.warn('⚠️ NotificationService: Using deprecated addOrderNotificationLegacy method');
+    return this.addOrderNotification({
+      serviceProviderId,
+      buyerName,
+      buyerImage: buyerImage || '',
+      serviceTitle,
+      price: amount,
+      currency,
+      orderId,
+      orderType: 'direct'
+    });
+  }
+
   // Helper method to add offer rejection notification
   async addOfferRejectedNotification({
     participantId,
@@ -950,24 +985,81 @@ export class NotificationService {
       orderType
     });
 
-    const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
-      type: 'order' as const,
-      title: 'New Order Received!',
-      message: `${buyerName} placed a new order for "${serviceTitle}" (${currency} ${price}). Please review and confirm.`,
-      data: {
-        orderId,
-        serviceTitle,
-        buyerName,
-        buyerImage,
-        price,
-        currency,
-        orderType,
-        action_required: true
-      }
-    };
+    try {
+      // First try direct database insert for better performance
+      const notificationData = {
+        user_id: serviceProviderId,
+        type: 'order',
+        title: 'New Order Received!',
+        message: `${buyerName} placed a new order for "${serviceTitle}" (${currency} ${price}). Please review and confirm.`,
+        data: {
+          orderId,
+          serviceTitle,
+          buyerName,
+          buyerImage: buyerImage || '',
+          price,
+          currency,
+          orderType,
+          action_required: true
+        },
+        created_at: new Date().toISOString(),
+        is_read: false
+      };
 
-    await this.addNotification(notification, serviceProviderId);
-    console.log('🔔 NotificationService: addOrderNotification completed');
+      console.log('🔔 NotificationService: Attempting direct database insert for order notification');
+      
+      const { data: insertResult, error: insertError } = await supabase
+        .from('notifications')
+        .insert(notificationData)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('❌ NotificationService: Direct insert failed, trying RPC method:', insertError.message);
+        
+        // Fallback to RPC method
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('create_notification', {
+          p_user_id: serviceProviderId,
+          p_type: 'order',
+          p_title: 'New Order Received!',
+          p_message: `${buyerName} placed a new order for "${serviceTitle}" (${currency} ${price}). Please review and confirm.`,
+          p_data: notificationData.data,
+          p_sender_id: serviceProviderId
+        });
+
+        if (rpcError) {
+          console.error('❌ NotificationService: RPC method also failed:', rpcError.message);
+          throw rpcError;
+        }
+
+        console.log('✅ NotificationService: Order notification created via RPC:', rpcResult);
+      } else {
+        console.log('✅ NotificationService: Order notification created via direct insert:', insertResult.id);
+      }
+
+      // Show local notification if this is for the current user
+      if (serviceProviderId === this.currentUserId) {
+        try {
+          await showLocalNotification({
+            id: insertResult?.id || `order-${Date.now()}`,
+            userId: serviceProviderId,
+            type: 'order',
+            title: 'New Order Received!',
+            message: `${buyerName} placed a new order for "${serviceTitle}" (${currency} ${price}). Please review and confirm.`,
+            timestamp: new Date().toISOString(),
+            isRead: false,
+            data: notificationData.data
+          });
+        } catch (localNotifError) {
+          console.error('❌ NotificationService: Failed to show local notification:', localNotifError);
+        }
+      }
+
+      console.log('✅ NotificationService: Order notification sent successfully to service provider:', serviceProviderId);
+    } catch (error) {
+      console.error('❌ NotificationService: Error sending order notification:', error);
+      throw error;
+    }
   }
 
   // Helper method to add marketing notification

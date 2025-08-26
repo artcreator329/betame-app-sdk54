@@ -37,3 +37,4 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({ message: 'Curlec webhook endpoint is active' });
 }
+
