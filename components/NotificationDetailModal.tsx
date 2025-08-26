@@ -11,6 +11,7 @@ import {
 import { X, Bell, Megaphone, Settings, Clock, MapPin } from 'lucide-react-native';
 import { useColors } from '@/contexts/ThemeContext';
 import { Notification } from '@/types/notification';
+import { formatMalaysianDateTime } from '@/lib/malaysian-time-utils';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -47,14 +48,7 @@ function getNotificationColor(type: string, colors: any) {
 }
 
 function formatNotificationTime(timestamp: string): string {
-  const notificationTime = new Date(timestamp);
-  return notificationTime.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatMalaysianDateTime(timestamp);
 }
 
 export default function NotificationDetailModal({

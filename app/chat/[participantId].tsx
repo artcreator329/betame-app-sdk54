@@ -39,6 +39,7 @@ import { QuotedMessage } from '../../components/QuotedMessage';
 import { LocationShareModal } from '../../components/LocationShareModal';
 import { LocationRequestModal } from '../../components/LocationRequestModal';
 import { notificationService } from '@/lib/notification-service';
+import { formatMalaysianTime, formatMalaysianDate } from '@/lib/malaysian-time-utils';
 
 interface ModeratedMessage extends ChatMessage {
   isHidden?: boolean;
@@ -857,18 +858,22 @@ export default function ChatScreen() {
 
   const handlePaymentSuccess = async (activeJobId: string) => {
     try {
-      // Update the offer status to accepted
-      if (selectedOfferForPayment) {
-        await supabaseChatService.acceptServiceOffer(selectedOfferForPayment.offer.id);
+      // Accept the offer and create order using the new chat service method
+      if (selectedOfferForPayment && user?.id) {
+        console.log('🔔 Processing payment success for offer:', selectedOfferForPayment.offer.id);
         
-        // Create job record for the service offer
-        const { ActiveJobService } = await import('@/lib/active-job-service');
-        const activeJob = await ActiveJobService.createJobFromOffer(
-          selectedOfferForPayment.offer,
-          selectedOfferForPayment.serviceData,
-          user!.id,
-          selectedOfferForPayment.sellerId
+        const result = await supabaseChatService.acceptServiceOffer(
+          selectedOfferForPayment.offer.id,
+          user.id
         );
+        
+        if (!result.success) {
+          console.error('❌ Failed to accept offer:', result.error);
+          Alert.alert('Error', result.error || 'Failed to accept offer');
+          return;
+        }
+        
+        console.log('✅ Offer accepted and order created:', result.orderId);
         
         // Add notification for offer acceptance (to the seller)
         await notificationService.addOfferAcceptedNotification({
@@ -881,16 +886,6 @@ export default function ChatScreen() {
           price: selectedOfferForPayment.serviceData.customPrice || selectedOfferForPayment.serviceData.price,
           currency: selectedOfferForPayment.serviceData.currency,
           isAcceptedByMe: false,
-        });
-
-        // Add location request notification to the service provider
-        await notificationService.addLocationRequestNotification({
-          serviceProviderId: selectedOfferForPayment.sellerId,
-          buyerName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
-          buyerImage: userProfile?.avatar_url || '',
-          serviceTitle: selectedOfferForPayment.serviceData.title,
-          chatId: chatId || '',
-          offerId: selectedOfferForPayment.offer.id,
         });
 
         // Show location request modal for the service provider (seller)

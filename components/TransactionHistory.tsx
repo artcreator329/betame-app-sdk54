@@ -26,6 +26,7 @@ import {
 } from 'lucide-react-native';
 import { WalletService, Transaction } from '../lib/wallet-service';
 import { useColors } from '../contexts/ThemeContext';
+import { formatMalaysianDate, formatMalaysianTime, formatTimelineDate } from '../lib/malaysian-time-utils';
 
 interface TransactionHistoryProps {
   visible: boolean;
@@ -98,11 +99,15 @@ export function TransactionHistory({ visible, onClose, userId }: TransactionHist
     const groups: { [key: string]: Transaction[] } = {};
     
     transactions.forEach(transaction => {
-      const date = new Date(transaction.created_at || '').toDateString();
-      if (!groups[date]) {
-        groups[date] = [];
+      const date = new Date(transaction.created_at || '');
+      // Use Malaysian timezone for grouping
+      const dateInMY = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+      const dateKey = dateInMY.toDateString();
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
       }
-      groups[date].push(transaction);
+      groups[dateKey].push(transaction);
     });
 
     return Object.entries(groups)
@@ -219,31 +224,11 @@ export function TransactionHistory({ visible, onClose, userId }: TransactionHist
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-    }
+    return formatTimelineDate(dateString);
   };
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
+    return formatMalaysianTime(dateString);
   };
 
   if (!visible) return null;
