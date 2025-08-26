@@ -16,6 +16,8 @@ This Agreement governs the relationship between Providers and the Platform. Prov
 
 ●	Successfully complete identity verification (eKYC), as required.
 
+●	For foreign passport holders: Provide Nomad Visa or equivalent residency permit during bank statement verification.
+
 ●	Maintain accurate, complete, and updated profile and service information.
 2.2 Where the Provider is a company, partnership, or other legal entity, the Provider must:
 •	Be duly incorporated, registered, or otherwise validly existing under the laws of Malaysia (or its place of incorporation, if foreign) and authorised to carry on business in Malaysia, where applicable.

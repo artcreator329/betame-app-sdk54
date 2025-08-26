@@ -6,6 +6,9 @@ export interface BankStatement {
   bank_name: string;
   bank_account_number: string;
   statement_file_url: string;
+  nomad_visa_file_url?: string;
+  nomad_visa_required: boolean;
+  nomad_visa_uploaded: boolean;
   status: 'pending' | 'approved' | 'rejected';
   admin_notes?: string;
   reviewed_by?: string;
@@ -19,6 +22,7 @@ export interface BankStatementFormData {
   ic_number: string;
   bank_name: string;
   bank_account_number: string;
+  nomad_visa_required?: boolean;
 }
 
 export interface BankStatementWithUser extends BankStatement {

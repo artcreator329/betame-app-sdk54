@@ -27,6 +27,7 @@ interface BankStatementData {
   ic_number: string;
   bank_name: string;
   bank_account_number: string;
+  nomad_visa_required?: boolean;
 }
 
 export default function BankStatementUploadScreen() {
@@ -36,11 +37,13 @@ export default function BankStatementUploadScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedNomadVisa, setSelectedNomadVisa] = useState<string | null>(null);
   const [formData, setFormData] = useState<BankStatementData>({
     name: userProfile?.full_name || '',
     ic_number: '',
     bank_name: '',
     bank_account_number: '',
+    nomad_visa_required: false,
   });
   const [ekycData, setEkycData] = useState<EKYCSubmission | null>(null);
   const [ekycLoading, setEkycLoading] = useState(true);
@@ -90,10 +93,15 @@ export default function BankStatementUploadScreen() {
 
         // eKYC is approved, auto-fill the form
         setEkycData(ekycSubmission);
+        
+        // Determine if nomad visa is required based on document type
+        const isPassportUser = Boolean(ekycSubmission.passport_number && !ekycSubmission.ic_number);
+        
         setFormData(prev => ({
           ...prev,
           name: ekycSubmission.full_name,
           ic_number: ekycSubmission.ic_number || ekycSubmission.passport_number || '',
+          nomad_visa_required: isPassportUser,
         }));
 
       } catch (error) {
@@ -133,6 +141,25 @@ export default function BankStatementUploadScreen() {
     }
   };
 
+  const pickNomadVisa = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setSelectedNomadVisa(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking nomad visa file:', error);
+      Alert.alert('Error', 'Failed to pick nomad visa file. Please try again.');
+    }
+  };
+
   const validateForm = (): boolean => {
     if (!formData.name.trim()) {
       Alert.alert('Error', 'Please enter your full name as shown on IC');
@@ -154,6 +181,10 @@ export default function BankStatementUploadScreen() {
       Alert.alert('Error', 'Please upload your bank statement image');
       return false;
     }
+    if (formData.nomad_visa_required && !selectedNomadVisa) {
+      Alert.alert('Error', 'Please upload your Nomad Visa document');
+      return false;
+    }
     return true;
   };
 
@@ -165,7 +196,8 @@ export default function BankStatementUploadScreen() {
       const result = await bankStatementService.uploadBankStatement(
         user.id,
         formData as BankStatementFormData,
-        selectedImage!
+        selectedImage!,
+        selectedNomadVisa || undefined
       );
 
       if (result.success) {
@@ -229,23 +261,25 @@ export default function BankStatementUploadScreen() {
 
         {/* Content */}
         <View style={styles.content}>
-          {/* Info Section */}
-          <View style={[styles.infoContainer, { backgroundColor: colors.background.secondary }]}>
-            <Text style={[styles.infoTitle, { color: colors.text.primary }]}>
-              Bank Statement Verification
-            </Text>
-            <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-              Your eKYC verification is complete. Now please upload a clear image of your bank statement showing your name and account number to complete service provider verification.
-            </Text>
-            {ekycData && (
-              <View style={[styles.ekycVerifiedContainer, { backgroundColor: colors.background.primary }]}>
-                <CheckCircle size={16} color={colors.status.success} />
-                <Text style={[styles.ekycVerifiedText, { color: colors.text.secondary }]}>
-                  ✓ eKYC verified: {ekycData.full_name} ({ekycData.ic_number || ekycData.passport_number})
-                </Text>
-              </View>
-            )}
-          </View>
+                      {/* Info Section */}
+            <View style={[styles.infoContainer, { backgroundColor: colors.background.secondary }]}>
+              <Text style={[styles.infoTitle, { color: colors.text.primary }]}>
+                Bank Statement Verification
+              </Text>
+              <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+                Your eKYC verification is complete. Now please upload a clear image of your bank statement showing your name and account number to complete service provider verification.
+                {formData.nomad_visa_required && ' As you are using a passport, you will also need to upload your Nomad Visa document.'}
+              </Text>
+              {ekycData && (
+                <View style={[styles.ekycVerifiedContainer, { backgroundColor: colors.background.primary }]}>
+                  <CheckCircle size={16} color={colors.status.success} />
+                  <Text style={[styles.ekycVerifiedText, { color: colors.text.secondary }]}>
+                    ✓ eKYC verified: {ekycData.full_name} ({ekycData.ic_number || ekycData.passport_number})
+                    {formData.nomad_visa_required && ' • Passport user - Nomad Visa required'}
+                  </Text>
+                </View>
+              )}
+            </View>
 
           {/* Form */}
           <View style={styles.formContainer}>
@@ -362,6 +396,44 @@ export default function BankStatementUploadScreen() {
                 )}
               </TouchableOpacity>
             </View>
+
+            {/* Nomad Visa Upload Section - Only show for passport users */}
+            {formData.nomad_visa_required && (
+              <View style={styles.uploadSection}>
+                <Text style={[styles.uploadTitle, { color: colors.text.primary }]}>
+                  Upload Nomad Visa Document
+                </Text>
+                <Text style={[styles.uploadSubtitle, { color: colors.text.secondary }]}>
+                  As you are using a passport for verification, please upload your Nomad Visa document
+                </Text>
+
+                <TouchableOpacity
+                  style={[styles.uploadButton, { borderColor: colors.border.main }]}
+                  onPress={pickNomadVisa}
+                  disabled={isUploading}
+                >
+                  {selectedNomadVisa ? (
+                    <View style={styles.imagePreview}>
+                      <Image source={{ uri: selectedNomadVisa }} style={styles.previewImage} />
+                      <View style={styles.imageOverlay}>
+                        <CheckCircle size={24} color="white" />
+                        <Text style={styles.imageText}>Nomad Visa Selected</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.uploadContent}>
+                      <Upload size={32} color={colors.text.secondary} />
+                      <Text style={[styles.uploadText, { color: colors.text.primary }]}>
+                        Tap to select Nomad Visa
+                      </Text>
+                      <Text style={[styles.uploadHint, { color: colors.text.secondary }]}>
+                        JPG, PNG, PDF up to 10MB
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Submit Button */}
             <TouchableOpacity

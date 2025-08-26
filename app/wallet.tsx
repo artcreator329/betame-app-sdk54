@@ -197,6 +197,11 @@ export default function WalletScreen() {
               return;
             }
 
+            if (withdrawAmount < 10) {
+              Alert.alert('Minimum Withdrawal', 'Minimum withdrawal amount is RM10.');
+              return;
+            }
+
             if (withdrawAmount > walletData.cash) {
               Alert.alert('Insufficient Balance', `You only have RM${walletData.cash.toFixed(2)} available.`);
               return;
@@ -217,37 +222,7 @@ export default function WalletScreen() {
     );
   };
 
-  const handleAddCash = () => {
-    Alert.prompt(
-      'Add Cash',
-      'Enter amount to add to your wallet',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Add',
-          onPress: async (amount) => {
-            if (!amount || !user?.id) return;
-            
-            const addAmount = parseFloat(amount);
-            if (isNaN(addAmount) || addAmount <= 0) {
-              Alert.alert('Invalid Amount', 'Please enter a valid amount.');
-              return;
-            }
 
-            const result = await WalletService.addCash(user.id, addAmount, 'Cash deposit');
-            if (result.success) {
-              await loadWalletData();
-              Alert.alert('Cash Added', `RM${addAmount.toFixed(2)} has been added to your wallet.`);
-            } else {
-              Alert.alert('Failed to Add Cash', result.error || 'Failed to add cash to wallet');
-            }
-          }
-        }
-      ],
-      'plain-text',
-      '0'
-    );
-  };
 
   const handleFeaturePurchase = (feature: Feature) => {
     if (!walletData) return;
@@ -461,24 +436,14 @@ export default function WalletScreen() {
             <View style={styles.balanceOverlay}>
                <View style={styles.balanceHeader}>
                  <Text style={styles.balanceLabelWithBg}>Cash Balance</Text>
-                 <TouchableOpacity 
-                   style={styles.marketplaceButton}
-                 >
-                   <CreditCard size={20} color="white" />
-                 </TouchableOpacity>
                </View>
                <Text style={styles.balanceAmountWithBg}>RM {walletData?.cash || 0}</Text>
+               <Text style={styles.withdrawalNotice}>Minimum withdrawal amount: RM10</Text>
                <TouchableOpacity 
                  onPress={() => handleWithdrawCash()}
                  style={styles.buyMoreButton}
                >
                  <Text style={styles.buyMoreText}>Withdraw Cash</Text>
-               </TouchableOpacity>
-               <TouchableOpacity 
-                 onPress={() => handleAddCash()}
-                 style={[styles.buyMoreButton, { marginTop: 8 }]}
-               >
-                 <Text style={styles.buyMoreText}>Add Cash</Text>
                </TouchableOpacity>
              </View>
           </ImageBackground>
@@ -940,6 +905,15 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  withdrawalNotice: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   conversionSection: {
     padding: 20,

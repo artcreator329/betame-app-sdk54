@@ -88,7 +88,8 @@ export class BankStatementService {
   async uploadBankStatement(
     userId: string,
     formData: BankStatementFormData,
-    imageUri: string
+    imageUri: string,
+    nomadVisaUri?: string
   ): Promise<{ success: boolean; error?: string; data?: BankStatement }> {
     try {
       // Detect file type from URI
@@ -121,6 +122,50 @@ export class BankStatementService {
         .from('documents')
         .getPublicUrl(storageFileName);
 
+      // Handle nomad visa upload if provided
+      let nomadVisaUrl: string | undefined;
+      let nomadVisaUploaded = false;
+      
+      if (nomadVisaUri && formData.nomad_visa_required) {
+        try {
+          // Detect nomad visa file type
+          const nomadVisaFileType = this.detectFileType(nomadVisaUri);
+          
+          // Read nomad visa file as base64
+          const nomadVisaBase64 = await FileSystem.readAsStringAsync(nomadVisaUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+
+          // Convert base64 to array buffer
+          const nomadVisaArrayBuffer = decode(nomadVisaBase64);
+
+          // Upload nomad visa file to Supabase Storage
+          const nomadVisaStorageFileName = `nomad-visas/${userId}/${Date.now()}.${nomadVisaFileType.fileExtension}`;
+          const { data: nomadVisaUploadData, error: nomadVisaUploadError } = await supabase.storage
+            .from('documents')
+            .upload(nomadVisaStorageFileName, nomadVisaArrayBuffer, {
+              contentType: nomadVisaFileType.fileType,
+              upsert: true,
+            });
+
+          if (nomadVisaUploadError) {
+            console.error('Nomad visa upload error details:', nomadVisaUploadError);
+            throw nomadVisaUploadError;
+          }
+
+          // Get nomad visa public URL
+          const { data: nomadVisaUrlData } = supabase.storage
+            .from('documents')
+            .getPublicUrl(nomadVisaStorageFileName);
+
+          nomadVisaUrl = nomadVisaUrlData.publicUrl;
+          nomadVisaUploaded = true;
+        } catch (error) {
+          console.error('Error uploading nomad visa:', error);
+          throw new Error('Failed to upload nomad visa document');
+        }
+      }
+
       // Save to database
       const { data, error: dbError } = await supabase
         .from('bank_statements')
@@ -131,6 +176,9 @@ export class BankStatementService {
           bank_name: formData.bank_name.trim(),
           bank_account_number: formData.bank_account_number.trim(),
           statement_file_url: urlData.publicUrl,
+          nomad_visa_file_url: nomadVisaUrl,
+          nomad_visa_required: formData.nomad_visa_required || false,
+          nomad_visa_uploaded: nomadVisaUploaded,
           status: 'pending', // Set status to pending for review
         })
         .select()

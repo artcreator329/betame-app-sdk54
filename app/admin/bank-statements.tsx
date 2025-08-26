@@ -227,6 +227,16 @@ export default function AdminBankStatementsScreen() {
                   </Text>
                 </View>
 
+                {/* Nomad Visa Indicator */}
+                {statement.nomad_visa_required && (
+                  <View style={styles.statementDetails}>
+                    <Text style={[styles.detailLabel, { color: colors.text.secondary }]}>Nomad Visa:</Text>
+                    <Text style={[styles.detailValue, { color: statement.nomad_visa_uploaded ? '#34C759' : '#FF9500' }]}>
+                      {statement.nomad_visa_uploaded ? 'Uploaded' : 'Required'}
+                    </Text>
+                  </View>
+                )}
+
                 <View style={styles.statementFooter}>
                   <Text style={[styles.dateText, { color: colors.text.tertiary }]}>
                     Submitted: {formatDate(statement.created_at)}
@@ -298,6 +308,26 @@ export default function AdminBankStatementsScreen() {
                   resizeMode="contain"
                 />
               </View>
+
+              {/* Nomad Visa Section - Only show if required */}
+              {selectedStatement.nomad_visa_required && (
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>
+                    Nomad Visa Document {selectedStatement.nomad_visa_uploaded ? '(Uploaded)' : '(Required)'}
+                  </Text>
+                  {selectedStatement.nomad_visa_uploaded && selectedStatement.nomad_visa_file_url ? (
+                    <Image
+                      source={{ uri: selectedStatement.nomad_visa_file_url }}
+                      style={styles.statementImage}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={styles.missingDocument}>
+                      <Text style={styles.missingDocumentText}>Nomad Visa document not uploaded</Text>
+                    </View>
+                  )}
+                </View>
+              )}
 
               {selectedStatement.status === 'pending' && (
                 <View style={styles.modalSection}>
@@ -563,5 +593,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1D1D1F',
     lineHeight: 20,
+  },
+  missingDocument: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E5EA',
+    borderStyle: 'dashed',
+  },
+  missingDocumentText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 });
