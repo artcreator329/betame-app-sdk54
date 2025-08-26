@@ -20,6 +20,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import JobCompletionPhotoUpload from '@/components/JobCompletionPhotoUpload';
 import { supabase } from '@/lib/supabase';
+import { formatMalaysianDate, formatMalaysianTime, formatMalaysianDateTime } from '@/lib/malaysian-time-utils';
 
 export default function OrdersScreen() {
   const colors = useColors();
@@ -696,7 +697,7 @@ export default function OrdersScreen() {
           'Order Acknowledged!', 
           startNow 
             ? 'You have started working on this order. The buyer has been notified.'
-            : `You have scheduled to start this order on ${new Date(scheduledStartDate).toLocaleDateString()}. The buyer has been notified.`
+            : `You have scheduled to start this order on ${formatMalaysianDate(scheduledStartDate)}. The buyer has been notified.`
         );
         setShowAcknowledgmentModal(false);
         setScheduledStartDate('');
@@ -1741,7 +1742,7 @@ export default function OrdersScreen() {
                         )}
                         <View style={styles.collapsedMeta}>
                           <Text style={[styles.collapsedMetaText, { color: colors.text.secondary }]}>
-                            {new Date(order.created_at!).toLocaleDateString()}
+                            {formatMalaysianDate(order.created_at!)}
                           </Text>
                           {escrowTransaction?.work_start_date && (
                             <Text style={[styles.collapsedMetaText, { color: getCountdownColor(escrowTransaction.work_start_date) }]}>
@@ -1787,7 +1788,14 @@ export default function OrdersScreen() {
                         <View style={styles.detailRow}>
                           <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
                           <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                            Created: {new Date(order.created_at!).toLocaleDateString()} at {new Date(order.created_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            Created: {formatMalaysianDateTime(order.created_at!, { 
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
                           </Text>
                         </View>
                         
@@ -1795,7 +1803,14 @@ export default function OrdersScreen() {
                           <View style={styles.detailRow}>
                             <Ionicons name="play-outline" size={16} color={colors.text.secondary} />
                             <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                              Started: {new Date(order.work_started_at).toLocaleDateString()} at {new Date(order.work_started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              Started: {formatMalaysianDateTime(order.work_started_at, { 
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                              })}
                             </Text>
                           </View>
                         )}
@@ -1804,7 +1819,14 @@ export default function OrdersScreen() {
                           <View style={styles.detailRow}>
                             <Ionicons name="checkmark-outline" size={16} color="#32CD32" />
                             <Text style={[styles.detailText, { color: '#32CD32' }]}>
-                              Completed: {new Date(order.work_completed_at).toLocaleDateString()} at {new Date(order.work_completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              Completed: {formatMalaysianDateTime(order.work_completed_at, { 
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                              })}
                             </Text>
                           </View>
                         )}
@@ -1813,7 +1835,7 @@ export default function OrdersScreen() {
                           <View style={styles.detailRow}>
                             <Ionicons name="time-outline" size={16} color="#FFA500" />
                             <Text style={[styles.detailText, { color: '#FFA500' }]}>
-                              Auto-release: {new Date(order.auto_release_date).toLocaleDateString()} ({getDaysRemaining(order.auto_release_date)} days left)
+                              Auto-release: {formatMalaysianDate(order.auto_release_date)} ({getDaysRemaining(order.auto_release_date)} days left)
                             </Text>
                           </View>
                         )}
@@ -1869,7 +1891,7 @@ export default function OrdersScreen() {
                             </View>
                             <View style={styles.jobDateContainer}>
                               <Text style={[styles.detailText, { color: colors.text.primary, fontWeight: '600' }]}>
-                                Job Date: {new Date(escrowTransaction.work_start_date).toLocaleDateString()}
+                                Job Date: {formatMalaysianDate(escrowTransaction.work_start_date)}
                               </Text>
                               <View style={styles.countdownContainer}>
                                 <View style={[styles.countdownBadge, { backgroundColor: getCountdownColor(escrowTransaction.work_start_date) + '20' }]}>
@@ -2271,7 +2293,7 @@ export default function OrdersScreen() {
                     {((selectedOrder as any).escrow_transactions)?.service_title || (selectedOrder as any).title}
                   </Text>
                   <Text style={[styles.summaryAmount, { color: colors.primary.main }]}>
-                    Completed on: {new Date((selectedOrder as any).completion_confirmed_at || (selectedOrder as any).completed_at || (selectedOrder as any).updated_at).toLocaleDateString()}
+                    Completed on: {formatMalaysianDate((selectedOrder as any).completion_confirmed_at || (selectedOrder as any).completed_at || (selectedOrder as any).updated_at)}
                   </Text>
                 </View>
 
