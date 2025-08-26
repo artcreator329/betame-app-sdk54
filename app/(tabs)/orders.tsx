@@ -1788,14 +1788,25 @@ export default function OrdersScreen() {
                         <View style={styles.detailRow}>
                           <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
                           <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                            Created: {formatMalaysianDateTime(order.created_at!, { 
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
+                            Created: {(() => {
+                              console.log('🔍 Debug timestamp:', order.created_at);
+                              console.log('🔍 Malaysian time result:', formatMalaysianDateTime(order.created_at!, { 
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                              }));
+                              return formatMalaysianDateTime(order.created_at!, { 
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                              });
+                            })()}
                           </Text>
                         </View>
                         
