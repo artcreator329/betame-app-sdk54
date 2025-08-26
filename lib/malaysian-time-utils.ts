@@ -229,9 +229,119 @@ export class MalaysianTimeUtils {
 }
 
 // Export commonly used functions for convenience
-export const formatMalaysianDate = MalaysianTimeUtils.formatDate.bind(MalaysianTimeUtils);
-export const formatMalaysianTime = MalaysianTimeUtils.formatTime.bind(MalaysianTimeUtils);
-export const formatMalaysianDateTime = MalaysianTimeUtils.formatDateTime.bind(MalaysianTimeUtils);
-export const formatTimelineDate = MalaysianTimeUtils.formatTimelineDate.bind(MalaysianTimeUtils);
-export const formatRelativeTime = MalaysianTimeUtils.formatRelativeTime.bind(MalaysianTimeUtils);
-export const getCurrentMalaysianTime = MalaysianTimeUtils.getCurrentMalaysianTime.bind(MalaysianTimeUtils);
+export const formatMalaysianDate = (date: Date | string, options?: Intl.DateTimeFormatOptions): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'Asia/Kuala_Lumpur',
+    ...options
+  };
+
+  return dateObj.toLocaleDateString('en-MY', defaultOptions);
+};
+
+export const formatMalaysianTime = (date: Date | string, options?: Intl.DateTimeFormatOptions): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kuala_Lumpur',
+    ...options
+  };
+
+  return dateObj.toLocaleTimeString('en-MY', defaultOptions);
+};
+
+export const formatMalaysianDateTime = (date: Date | string, options?: Intl.DateTimeFormatOptions): string => {
+  let dateObj: Date;
+  
+  if (typeof date === 'string') {
+    // Ensure the date string is treated as UTC if it doesn't have timezone info
+    if (date.endsWith('Z')) {
+      dateObj = new Date(date);
+    } else {
+      // If no timezone indicator, assume it's UTC and add Z
+      dateObj = new Date(date + 'Z');
+    }
+  } else {
+    dateObj = date;
+  }
+  
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kuala_Lumpur',
+    ...options
+  };
+
+  return dateObj.toLocaleString('en-MY', defaultOptions);
+};
+
+export const formatTimelineDate = (date: Date | string): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const now = new Date();
+  
+  // Set timezone for comparison
+  const dateInMY = new Date(dateObj.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+  const nowInMY = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+  
+  // Compare dates (ignoring time)
+  const dateDate = new Date(dateInMY.getFullYear(), dateInMY.getMonth(), dateInMY.getDate());
+  const nowDate = new Date(nowInMY.getFullYear(), nowInMY.getMonth(), nowInMY.getDate());
+  
+  const diffTime = nowDate.getTime() - dateDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return 'Today';
+  } else if (diffDays === 1) {
+    return 'Yesterday';
+  } else if (diffDays < 7) {
+    return formatMalaysianDate(dateObj, { weekday: 'long' });
+  } else {
+    return formatMalaysianDate(dateObj, { 
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+};
+
+export const formatRelativeTime = (date: Date | string): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const now = new Date();
+  
+  const diffMs = now.getTime() - dateObj.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSeconds < 60) {
+    return 'Just now';
+  } else if (diffMinutes < 60) {
+    return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+  } else if (diffHours < 24) {
+    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  } else if (diffDays < 7) {
+    return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+  } else {
+    return formatMalaysianDate(dateObj, { 
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+};
+
+export const getCurrentMalaysianTime = (): Date => {
+  return new Date();
+};
