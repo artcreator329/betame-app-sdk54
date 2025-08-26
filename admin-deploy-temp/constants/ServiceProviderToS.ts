@@ -1,157 +1,189 @@
 export const SERVICE_PROVIDER_TERMS_OF_SERVICE = {
-  title: "Service Provider Terms of Service",
-  lastUpdated: "January 2025",
+  title: "Service Provider Agreement",
+  lastUpdated: "January 1, 2025",
   content: `
-SERVICE PROVIDER TERMS OF SERVICE
+SERVICE PROVIDER AGREEMENT
+(BetaMe Platform)
 
-Last Updated: January 2025
+This Service Provider Agreement ("Agreement") is entered into between you ("Provider" or "Service Provider") and BetaMe ("Company," "Platform," "we," or "us"). By registering as a Provider on the Platform, you agree to the terms and conditions set forth herein.
 
-WELCOME TO BETAME
+1. SCOPE
 
-These Service Provider Terms of Service ("Terms") govern your use of BetaMe's platform as a service provider. By accepting these Terms, you agree to be bound by all provisions outlined herein.
+This Agreement governs the relationship between Providers and the Platform. Providers may offer both digital and physical services to customers ("Customers") through the Platform.
 
-1. DEFINITIONS
+The Platform serves solely as a marketplace to connect Customers with Providers and does not participate in the provision, supervision, or completion of services.
 
-1.1 "Platform" refers to the BetaMe mobile application and related services.
-1.2 "Service Provider" refers to individuals or entities offering services through the Platform.
-1.3 "Customer" refers to users who request and purchase services through the Platform.
-1.4 "Services" refers to any work, products, or assistance offered by Service Providers.
-1.5 "Company" refers to BetaMe and its affiliates.
+2. PROVIDER ELIGIBILITY
 
-2. ELIGIBILITY AND REGISTRATION
+2.1 Providers must:
+• Be at least eighteen (18) years old (the age of majority under Malaysian law), or the age of majority in their respective jurisdiction, whichever is higher.
+• Have legal capacity to enter into this Agreement.
+• Comply with all applicable local, state, and national laws, including any licensing or regulatory requirements relevant to the services offered.
+• Successfully complete identity verification (eKYC), as required.
+• Maintain accurate, complete, and updated profile and service information.
 
-2.1 You must be at least 18 years old and legally capable of entering into contracts.
-2.2 You must provide accurate, complete, and current information during registration.
-2.3 You must complete the eKYC (electronic Know Your Customer) verification process.
-2.4 You must maintain valid identification documents and business licenses where applicable.
-2.5 You represent that you have the right to offer the services you list on the Platform.
+2.2 Where the Provider is a company, partnership, or other legal entity, the Provider must:
+• Be duly incorporated, registered, or otherwise validly existing under the laws of Malaysia (or its place of incorporation, if foreign) and authorised to carry on business in Malaysia, where applicable.
+• Have the full corporate power and authority to enter into and perform this Agreement.
+• Ensure that any person acting on its behalf on the Platform (including employees, directors, officers, or authorised representatives) is duly authorised.
+• Maintain accurate, complete, and updated corporate, service, and contact information on the Platform.
+• Comply with all applicable laws, regulations, and licensing requirements, including those relating to consumer protection, data protection (Personal Data Protection Act 2010), and taxation.
 
-3. SERVICE PROVIDER OBLIGATIONS
+2.3 The Company reserves the right to request supporting documents to verify the Provider's eligibility, which may include, but is not limited to:
+• For individual Providers: national identification card, passport, or other government-issued identification, and any licences or permits required to provide the services.
+• For corporate or business Providers: business registration certificates, corporate resolutions, licences, or other relevant regulatory approvals.
 
-3.1 SERVICE QUALITY
-- Provide services with professional competence and in accordance with industry standards
-- Deliver services as described in your listings
-- Maintain appropriate qualifications, licenses, and certifications
-- Use suitable equipment and materials for service delivery
+3. PROVIDER OBLIGATIONS
 
-3.2 PROFESSIONAL CONDUCT
-- Treat all customers with respect and professionalism
-- Communicate clearly and promptly with customers
-- Arrive punctually for scheduled appointments
-- Maintain confidentiality of customer information
-- Comply with all applicable laws and regulations
+3.1 Providers must:
+• Deliver services as described in their listings and/or any other relevant documentation which sets out the agreed scope of work to be provided or delivered by the Providers.
+• Communicate professionally and promptly with Customers.
+• Honor commitments and deadlines.
+• Get Customer approval through the Platform before making any changes to agreed services.
 
-3.3 PLATFORM COMPLIANCE
-- Keep your profile and service listings accurate and up-to-date
-- Respond to customer inquiries within 24 hours
-- Accept or decline service requests within the specified timeframe
-- Complete services within agreed timelines
-- Provide accurate pricing and service descriptions
+3.2 If a Provider is unable to meet a service deadline, the Provider must:
+• Immediately notify the Customer, and
+• Agree on a revised timeline in writing through the Platform.
 
-4. PAYMENT TERMS
+3.3 The Platform is not a party to the contract between Provider and Customer and not responsible for the quality, completion, or outcome of services. All obligations, warranties, and liabilities are solely between the Provider and Customer.
 
-4.1 COMMISSION STRUCTURE
-- BetaMe charges a service fee on completed transactions
-- Commission rates are clearly displayed in your provider dashboard
-- Fees may vary based on service category and provider tier
+3.4 Providers shall comply with the Personal Data Protection Act 2010 when collecting, processing, or storing Customer personal data obtained via the Platform.
 
-4.2 PAYMENT PROCESSING
-- Payments are processed through secure third-party payment processors
-- Service providers receive payment after successful service completion
-- Payment timing may vary based on payment method and verification requirements
-- Refunds and disputes are handled according to our Refund Policy
+4. BOOKINGS
 
-4.3 TAXES AND COMPLIANCE
-- You are responsible for all applicable taxes on your earnings
-- You must comply with local tax laws and regulations
-- BetaMe may provide tax documentation as required by law
+• Providers must accurately represent the availability, nature, and scope of their services.
+• Services offered must comply with all applicable Malaysian laws and must not include illegal, harmful, offensive, or prohibited content.
+• Providers must not engage in fraudulent, misleading, or deceptive practices in relation to their listings.
+• The Platform reserves the right to review, suspend, or remove any service listings at its discretion, including for violations of this Agreement or applicable law.
 
-5. INTELLECTUAL PROPERTY
+5. PAYMENTS
 
-5.1 You retain ownership of your original content and intellectual property
-5.2 You grant BetaMe a license to use your content for platform operations
-5.3 You must respect the intellectual property rights of others
-5.4 BetaMe reserves all rights to its platform, trademarks, and proprietary technology
+5.1 Payment Processing
+• All payments for services must go through the Platform's payment system.
+• The Platform only facilitates payments and is not responsible for Provider–Customer agreements.
 
-6. PROHIBITED ACTIVITIES
+5.2 Payouts
+• Providers receive payment after the service is completed, subject to dispute resolution, refunds, and Platform fees.
 
-6.1 You may not:
-- Provide false or misleading information
-- Engage in fraudulent or deceptive practices
-- Violate any applicable laws or regulations
-- Discriminate against customers based on protected characteristics
-- Solicit customers to transact outside the platform
-- Share customer contact information without consent
-- Engage in price manipulation or anti-competitive practices
-- Use the platform for illegal activities
+5.3 Taxes and Duties
+• Providers are responsible for all taxes, duties, or other legal obligations related to their earnings.
+• Providers should seek advice on compliance with Malaysian law or laws in their jurisdiction.
 
-7. QUALITY ASSURANCE AND REVIEWS
+6. PLATFORM FEES
 
-7.1 Customer reviews and ratings are important for platform integrity
-7.2 You may not manipulate reviews or ratings
-7.3 BetaMe reserves the right to investigate and remove fraudulent reviews
-7.4 Consistently poor performance may result in account restrictions
+6.1 The Platform may charge transaction and/or service fees for the use of its services.
+• Fee structures may change with prior notice and shall be subject to applicable taxes, including SST or other statutory charges.
+• The Company reserves the right to determine and adjust final fee policies at its sole and absolute discretion.
 
-8. DATA PROTECTION AND PRIVACY
+7. INSURANCE & LIABILITY
 
-8.1 You must comply with applicable data protection laws
-8.2 Customer personal information must be handled securely and confidentially
-8.3 You may only use customer data for service delivery purposes
-8.4 Data breaches must be reported to BetaMe immediately
+7.1 Providers are solely responsible for their services they offer through the Platform.
 
-9. INSURANCE AND LIABILITY
+7.2 For physical services, Providers must:
+• Maintain general liability insurance of at least USD $100,000 (or local equivalent) where required by law or appropriate to the nature of services offered.
+• Provide proof of insurance upon request to the Platform upon request.
 
-9.1 You are encouraged to maintain appropriate insurance coverage
-9.2 You are liable for damages caused by your services or negligence
-9.3 BetaMe's liability is limited as outlined in our Terms of Use
-9.4 You agree to indemnify BetaMe against claims arising from your services
+7.3 Providers acknowledge that BetaMe is not responsible or liable for:
+• Any accidents, injuries, property damage, or losses resulting from Provider services; and
+• Any damage to property or claims by Customers or third parties relating to the services.
 
-10. ACCOUNT SUSPENSION AND TERMINATION
+8. DISPUTES
 
-10.1 BetaMe may suspend or terminate accounts for:
-- Violation of these Terms
-- Fraudulent or illegal activities
-- Consistently poor service quality
-- Customer safety concerns
-- Non-compliance with platform policies
+8.1 Disputes between Providers and Customers must first be attempted to resolve directly via the Platform's messaging system.
 
-10.2 You may terminate your account at any time with proper notice
-10.3 Certain obligations survive account termination
+8.2 If unresolved, the Platform may assist in mediating in good faith. Any resolution or payout recommendation made by the Platform is not binding on either party and does not prevent either party from pursuing further legal remedies in the courts of Malaysia.
 
-11. DISPUTE RESOLUTION
+9. REFUNDS & WITHHOLDING
 
-11.1 We encourage direct resolution of disputes between parties
-11.2 BetaMe provides mediation services for unresolved disputes
-11.3 Serious disputes may be subject to arbitration
-11.4 Legal proceedings are subject to the jurisdiction of Malaysian courts
+9.1 Payments may be withheld or refunded if:
+• The Provider fails to deliver the service as agreed,
+• Services materially deviate from the description provided, or
+• A dispute between the Provider and Customer is resolved and the fault is determined against the Provider.
 
-12. PLATFORM MODIFICATIONS
+10. TERM & TERMINATION
 
-12.1 BetaMe may modify platform features and policies with notice
-12.2 Continued use constitutes acceptance of modifications
-12.3 Material changes will be communicated with reasonable advance notice
+10.1 This Agreement remains in effect until terminated by either party in accordance with the provisions below.
 
-13. FORCE MAJEURE
+10.2 Providers may terminate this Agreement at any time by closing their account through the Platform.
 
-13.1 Neither party is liable for delays caused by circumstances beyond reasonable control
-13.2 This includes natural disasters, government actions, and technical failures
-13.3 Parties must make reasonable efforts to mitigate such circumstances
+10.3 The Platform may terminate this Agreement immediately, or suspend access immediately, if:
+• The Provider materially violates this Agreement and fails to remedy such violation within 7 days of receiving written notice,
+• The Platform reasonably suspects fraud, illegal activity, or misconduct, or
+• Termination is required to comply with Malaysian law, regulatory requirements, or government directives.
 
-14. GOVERNING LAW
+10.3A The Platform may, at its sole discretion, terminate this Agreement and/or the Provider's access to the Platform by giving the Provider not less than fourteen (14) days' prior written notice. The Platform shall not be required to provide any reason whatsoever for such termination.
 
-14.1 These Terms are governed by Malaysian law
-14.2 Disputes are subject to the exclusive jurisdiction of Malaysian courts
-14.3 If any provision is unenforceable, the remainder remains in effect
+10.4 Upon termination:
+• Pending payouts for undisputed completed services will still be processed in accordance with the payment terms.
+• Confidentiality, intellectual property, liability, and dispute resolution obligations will continue.
 
-15. CONTACT INFORMATION
+11. INDEPENDENT CONTRACTOR STATUS
 
-For questions about these Terms, contact us at:
-Email: support@betame.com
-Address: BetaMe Headquarters, Kuala Lumpur, Malaysia
+11.1 Providers act solely as independent contractors, and nothing in this Agreement shall be construed as creating any relationship of employment, partnership, agency, fiduciary duty, or joint venture between the Providers and the Company. For avoidance of doubt, the Platform does not employ or engage Providers as employees, agents, or representatives.
 
-BY ACCEPTING THESE TERMS, YOU ACKNOWLEDGE THAT YOU HAVE READ, UNDERSTOOD, AND AGREE TO BE BOUND BY ALL PROVISIONS HEREIN.
+11.2 Nothing in this Agreement shall be construed as creating an employment relationship. Providers are solely responsible for their own:
+• Taxes,
+• Business expenses, and
+• Compliance with applicable laws and regulations.
 
-Your acceptance constitutes a legally binding agreement between you and BetaMe.
+For avoidance of doubt, the Company shall not be liable for any failure by the Provider to comply with tax, statutory, or regulatory obligations.
+
+12. CONFIDENTIALITY
+
+12.1 Providers may gain access to confidential information of the Company, the Platform, or Customers, including Personal Data as defined under the Personal Data Protection Act 2010. Such information shall be used only by the Providers for the purpose of providing services under this Agreement, kept confidential and not be disclosed to any third party without written consent, except as required by law.
+
+12.2 Confidentiality obligations shall survive termination for two (2) years, the Provider shall retain such data only for as long as necessary to fulfil the purpose for which it was collected, in compliance with the Retention Principle under Section 10 of the PDPA, and shall securely delete or destroy the data once it is no longer required.
+
+13. INTELLECTUAL PROPERTY
+
+13.1 Providers retain ownership of their own content but grant the Platform a non-exclusive, worldwide, royalty-free license to use, display, and promote such content within the Platform for related marketing purposes only.
+
+13.2 All trademarks, trade names, logos, service marks, designs, and other branding elements associated with the Platform (collectively, "Marks") are the exclusive property of the Company. Nothing in this Agreement shall be construed as granting the Provider any rights, licence, or interest in or to the Marks, whether by implication or otherwise, without the prior written consent of the Company. The Provider shall not use, reproduce, or display the Marks in any manner that may mislead, cause confusion, or otherwise infringe upon the Company's intellectual property rights.
+
+14. LIMITATION OF LIABILITY
+
+14.1 The Platform is provided "as is" and "available" basis.
+
+14.2 To the maximum extent permitted by Malaysian law, the Company shall not be liable to the Provider for any indirect, incidental, special, or consequential losses, including loss of profits, data, goodwill, or claims arising from the Provider's services.
+
+14.3 Nothing in this Agreement shall exclude or limit liability for fraud, wilful misconduct, or any liability that cannot lawfully be excluded under Malaysian law.
+
+14.4 In any event, the Company's total maximum aggregate liability to any Provider, shall not exceed the total Platform fees paid by the Provider in the preceding six (6) months.
+
+14.5 The Provider shall fully indemnify, defend, and hold harmless the Company, its directors, officers, employees, and affiliates ("Indemnified Parties") from and against any and all claims, demands, actions, proceedings, losses, liabilities, damages, costs, and expenses (including reasonable legal fees) arising out of or in connection with:
+(a) the Provider's breach of this Agreement, applicable laws, or regulations;
+(b) any negligence, wilful misconduct, or fraud by the Provider;
+(c) any claim by a Customer or third party relating to the Provider's services, content, or conduct;
+(d) any infringement or alleged infringement of intellectual property rights or other rights of a third party by the Provider's services or content; and
+(e) any taxes, duties, or statutory charges arising from the Provider's activities on the Platform.
+
+14.6 The indemnity under this Clause shall survive the termination or expiry of this Agreement.
+
+15. FORCE MAJEURE
+
+15.1 Neither party shall be liable for any failure or delay in performing its obligations under this Agreement (other than payment obligations) if such failure or delay is caused by events beyond its reasonable control, including but not limited to acts of God, natural disasters, epidemics or pandemics, fire, flood, war, terrorism, strikes, lockouts, industrial disputes, governmental orders or restrictions, or failure of telecommunications, utilities, or internet services ("Force Majeure Event").
+
+15.2 The affected party shall notify the other party in writing as soon as reasonably practicable of the occurrence of a Force Majeure Event and take all reasonable steps to mitigate its effects.
+
+15.3 If a Force Majeure Event continues for a period of more than sixty (60) days, either party may terminate this Agreement by written notice to the other, without liability, save that any rights and obligations accrued up to the date of termination shall remain unaffected.
+
+16. AGREEMENT UPDATES
+
+16.1 The Company may amend this Agreement with at least fourteen (14) days' prior notice via the Platform.
+
+16.2 Continued use of the Platform after the effective date of such amendments shall constitute Provider's acceptance of the updated terms.
+
+16.3 If a Provider disagrees with changes, their sole remedy is to terminate their account.
+
+17. GOVERNING LAW & JURISDICTION
+
+This Agreement shall be governed by and construed under the laws of Malaysia. Any disputes arising out of or in connection with this Agreement shall be submitted exclusively to the courts of Malaysia, and the parties hereby submit to the exclusive jurisdiction of such courts.
+
+18. ENTIRE AGREEMENT
+
+This Agreement constitutes the entire agreement between Provider and Company and supersedes any prior understandings or representations, whether oral or written. No amendment or variation shall be effective unless made in writing and accepted by the Company.
+
+By registering as a Provider, you acknowledge that you have read, understood, and agreed to be bound by this Service Provider Agreement.
 `
 };
 
@@ -161,7 +193,7 @@ export const generateToSPDF = (fullName: string, icNumber: string, acceptanceDat
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Service Provider Terms of Service - ${fullName}</title>
+    <title>Service Provider Agreement - ${fullName}</title>
     <style>
         body {
             font-family: 'Times New Roman', serif;
@@ -216,9 +248,9 @@ export const generateToSPDF = (fullName: string, icNumber: string, acceptanceDat
 </head>
 <body>
     <div class="header">
-        <div class="title">SERVICE PROVIDER TERMS OF SERVICE</div>
+        <div class="title">SERVICE PROVIDER AGREEMENT</div>
         <div class="subtitle">BetaMe Platform Agreement</div>
-        <div class="subtitle">Last Updated: January 2025</div>
+        <div class="subtitle">Last Updated: January 1, 2025</div>
     </div>
     
     <div class="acceptance-section">
@@ -235,7 +267,7 @@ export const generateToSPDF = (fullName: string, icNumber: string, acceptanceDat
     
     <div class="signature-section">
         <h3>DIGITAL ACCEPTANCE RECORD</h3>
-        <p>This document serves as a record of digital acceptance of the Service Provider Terms of Service.</p>
+        <p>This document serves as a record of digital acceptance of the Service Provider Agreement.</p>
         <p><strong>Accepted by:</strong> ${fullName}</p>
         <p><strong>IC Number:</strong> ${icNumber}</p>
         <p><strong>Date & Time:</strong> ${acceptanceDate}</p>
@@ -245,7 +277,7 @@ export const generateToSPDF = (fullName: string, icNumber: string, acceptanceDat
     
     <div class="footer">
         <p>This document was generated electronically by the BetaMe platform.</p>
-        <p>For verification purposes, please contact support@betame.com</p>
+        <p>For verification purposes, please contact legal@betame.com</p>
         <p>© 2025 BetaMe. All rights reserved.</p>
     </div>
 </body>

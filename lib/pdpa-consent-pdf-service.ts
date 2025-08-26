@@ -189,7 +189,7 @@ export class PDPAConsentPDFService {
         <div class="footer">
           <p><strong>BetaMe eKYC Verification System</strong></p>
           <p>This document was automatically generated on ${new Date().toLocaleDateString('en-MY')} at ${new Date().toLocaleTimeString('en-MY')}</p>
-          <p>For questions about this consent, contact: privacy@betame.com.my</p>
+          <p>For questions about this consent, contact: privacy@betame.com</p>
           <p>Document ID: PDPA-${Date.now()}-${data.userName.replace(/\s+/g, '-')}</p>
         </div>
       </body>

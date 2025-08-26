@@ -181,6 +181,17 @@ eas init
 - **Provisioning Profile**: iOS Team Store Provisioning Profile
 - **Created**: August 25, 2025 (16:03)
 
+### Local Production Build (App Store) - Version 1.0.0 (6)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (70.4 MB)
+- **Build Number**: 6
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: August 26, 2025 (13:59)
+
 ## Apple Developer Account Setup
 
 ### Credentials Created

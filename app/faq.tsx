@@ -72,8 +72,8 @@ export default function FAQScreen() {
       answer: "BetaCoin is BetaMe's virtual currency that you can use to purchase services, boost your listings, or access premium features. You can buy BetaCoin through the wallet section using various payment methods."
     },
     {
-      question: "How do I contact customer support?",
-      answer: "You can contact our support team through the 'Contact Us' section in settings, email us at customer.service@betame.com.my, or use the in-app support chat feature."
+      question: "How can I contact customer support?",
+      answer: "You can contact our support team through the 'Contact Us' section in settings, email us at legal@betame.com, or use the in-app support chat feature."
     },
     {
       question: "Can I cancel a service booking?",
@@ -113,7 +113,7 @@ export default function FAQScreen() {
     },
     {
       question: "How do I delete my account?",
-      answer: "To delete your account, contact our support team at customer.service@betame.com.my. Please note that account deletion is permanent and cannot be undone."
+      answer: "To delete your account, contact our support team at legal@betame.com. Please note that account deletion is permanent and cannot be undone."
     }
   ];
 

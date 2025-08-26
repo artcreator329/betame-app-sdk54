@@ -50,7 +50,37 @@ export default function SupportScreen() {
   const [feedbackText, setFeedbackText] = useState('');
 
   const handleEmailSupport = () => {
-    Linking.openURL('mailto:customer.service@betame.com.my?subject=Support Request');
+    Linking.openURL('mailto:legal@betame.com?subject=Support Request');
+  };
+
+  const handleEmailSupportWithDetails = () => {
+    const subject = 'Support Request - BetaMe App';
+    const body = `Hello BetaMe Support Team,
+
+I am experiencing an issue with the BetaMe app and would like to request assistance.
+
+Issue Details:
+- App Version: [Please specify]
+- Device: [Please specify]
+- Operating System: [Please specify]
+- Description of the issue: [Please describe your issue in detail]
+
+Steps to reproduce:
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+
+Expected behavior: [What should happen]
+Actual behavior: [What actually happens]
+
+Additional information: [Any other relevant details]
+
+Thank you for your assistance.
+
+Best regards,
+[Your Name]`;
+
+    Linking.openURL(`mailto:legal@betame.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
   };
 
   const handleSubmitFeedback = () => {
@@ -121,12 +151,12 @@ export default function SupportScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Contact Us</Text>
           
-          <SupportOption
-            icon={<Mail size={24} color={colors.primary.main} />}
-            title="Email Support"
-            description="customer.service@betame.com.my"
-            onPress={handleEmailSupport}
-          />
+          <View style={styles.contactSection}>
+            <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Email Support</Text>
+            <TouchableOpacity onPress={handleEmailSupport}>
+              <Text style={[styles.contactValue, { color: colors.primary.main }]}>legal@betame.com</Text>
+            </TouchableOpacity>
+          </View>
 
           <SupportOption
             icon={<MessageCircle size={24} color={colors.primary.main} />}
@@ -171,7 +201,7 @@ export default function SupportScreen() {
           </Text>
           <TouchableOpacity onPress={handleEmailSupport}>
             <Text style={[styles.emergencyEmail, { color: colors.status.error }]}>
-              customer.service@betame.com.my
+              legal@betame.com
             </Text>
           </TouchableOpacity>
         </View>
@@ -307,5 +337,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     fontWeight: '500',
+  },
+  contactSection: {
+    marginBottom: 16,
+  },
+  contactLabel: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  contactValue: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

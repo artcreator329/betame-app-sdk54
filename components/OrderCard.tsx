@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { Order, orderManagementService } from '../lib/order-management-service';
+import { JobCompletionService, JobCompletionPhoto } from '../lib/job-completion-service';
+import JobCompletionPhotosViewer from './JobCompletionPhotosViewer';
 
 interface OrderCardProps {
   order: Order;
@@ -19,6 +21,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const router = useRouter();
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [canDispute, setCanDispute] = useState(false);
+  const [completionPhotos, setCompletionPhotos] = useState<JobCompletionPhoto[]>([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
 
   const isBuyer = order.buyer_id === currentUserId;
   const isServiceProvider = order.service_provider_id === currentUserId;
@@ -39,6 +43,39 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       return () => clearInterval(interval);
     }
   }, [order.status, order.id, isBuyer]);
+
+  // Load completion photos when order is in buyer_reviewing status
+  useEffect(() => {
+    if (order.status === 'buyer_reviewing' && isBuyer) {
+      loadCompletionPhotos();
+    }
+  }, [order.status, order.id, isBuyer]);
+
+  const loadCompletionPhotos = async () => {
+    try {
+      setLoadingPhotos(true);
+      
+      // Get the job status ID from the service offer
+      const { data: jobStatus, error } = await supabase
+        .from('job_status')
+        .select('id')
+        .eq('service_offer_id', order.service_offer_id)
+        .single();
+
+      if (error || !jobStatus) {
+        console.error('Error fetching job status:', error);
+        return;
+      }
+
+      // Fetch completion photos
+      const photos = await JobCompletionService.getCompletionPhotos(jobStatus.id);
+      setCompletionPhotos(photos);
+    } catch (error) {
+      console.error('Error loading completion photos:', error);
+    } finally {
+      setLoadingPhotos(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -248,6 +285,38 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         </View>
       )}
 
+      {/* Show completion photos for buyer during review */}
+      {order.status === 'buyer_reviewing' && isBuyer && (
+        <View style={styles.completionPhotosSection}>
+          <View style={styles.reviewHeader}>
+            <Ionicons name="checkmark-circle-outline" size={20} color="#9C27B0" />
+            <Text style={styles.reviewHeaderText}>Work Completed - Please Review</Text>
+          </View>
+          
+          {loadingPhotos ? (
+            <View style={styles.loadingPhotos}>
+              <Ionicons name="image-outline" size={16} color="#666" />
+              <Text style={styles.loadingPhotosText}>Loading completion photos...</Text>
+            </View>
+          ) : completionPhotos.length > 0 ? (
+            <View style={styles.photosContainer}>
+              <JobCompletionPhotosViewer 
+                photos={completionPhotos} 
+                title="Work Completion Photos"
+              />
+              <Text style={styles.photosInstructions}>
+                Review the completion photos above, then confirm the work or raise a dispute if needed.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.noPhotos}>
+              <Ionicons name="image-outline" size={16} color="#999" />
+              <Text style={styles.noPhotosText}>No completion photos provided by service provider</Text>
+            </View>
+          )}
+        </View>
+      )}
+
       {renderActionButtons()}
     </View>
   );
@@ -353,5 +422,67 @@ const styles = StyleSheet.create({
   disputeButton: {
     backgroundColor: '#F44336',
     flex: 1,
+  },
+  completionPhotosSection: {
+    marginTop: 12,
+    marginBottom: 8,
+    backgroundColor: '#F8F5FF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E1D5FF',
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reviewHeaderText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#9C27B0',
+  },
+  photosContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 8,
+  },
+  photosInstructions: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+    lineHeight: 16,
+  },
+  loadingPhotos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    padding: 12,
+    borderRadius: 8,
+  },
+  loadingPhotosText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  noPhotos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF9E6',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFE066',
+    borderStyle: 'dashed',
+  },
+  noPhotosText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#B8860B',
+    fontStyle: 'italic',
   },
 });

@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Mail, Globe, MapPin } from 'lucide-react-native';
+import { ArrowLeft, Mail, Globe, MapPin, Phone } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/contexts/ThemeContext';
 
@@ -19,6 +19,10 @@ export default function AboutUsScreen() {
 
   const handleEmailPress = (email: string) => {
     Linking.openURL(`mailto:${email}`);
+  };
+
+  const handlePhonePress = (phone: string) => {
+    Linking.openURL(`tel:${phone}`);
   };
 
   return (
@@ -88,32 +92,35 @@ export default function AboutUsScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Company Information</Text>
           <View style={styles.companyInfo}>
-            <View style={styles.infoRow}>
-              <MapPin size={20} color={colors.text.secondary} />
-              <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-                Betame Sdn. Bhd.{'\n'}Malaysia
-              </Text>
+            <View style={styles.contactItem}>
+              <Mail size={20} color={colors.primary.main} />
+              <View style={styles.contactText}>
+                <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Email</Text>
+                <TouchableOpacity onPress={() => handleEmailPress('legal@betame.com')}>
+                  <Text style={[styles.contactValue, { color: colors.primary.main }]}>legal@betame.com</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            
-            <TouchableOpacity 
-              style={styles.infoRow}
-              onPress={() => handleEmailPress('customer.service@betame.com.my')}
-            >
-              <Mail size={20} color={colors.primary.main} />
-              <Text style={[styles.infoText, styles.linkText, { color: colors.primary.main }]}>
-                customer.service@betame.com.my
-              </Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.infoRow}
-              onPress={() => handleEmailPress('developer@betame.com.my')}
-            >
-              <Mail size={20} color={colors.primary.main} />
-              <Text style={[styles.infoText, styles.linkText, { color: colors.primary.main }]}>
-                developer@betame.com.my
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.contactItem}>
+              <MapPin size={20} color={colors.primary.main} />
+              <View style={styles.contactText}>
+                <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Address</Text>
+                <Text style={[styles.contactValue, { color: colors.text.primary }]}>
+                  23, Jalan SB Indah 2/15, Taman Sungai Besi Indah, Seri Kembangan, 43300 Selangor
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.contactItem}>
+              <Phone size={20} color={colors.primary.main} />
+              <View style={styles.contactText}>
+                <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Phone</Text>
+                <TouchableOpacity onPress={() => handlePhonePress('016-6497179')}>
+                  <Text style={[styles.contactValue, { color: colors.primary.main }]}>016-6497179</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -179,17 +186,20 @@ const styles = StyleSheet.create({
   companyInfo: {
     marginTop: 8,
   },
-  infoRow: {
+  contactItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  infoText: {
-    fontSize: 16,
+  contactText: {
     marginLeft: 12,
-    flex: 1,
   },
-  linkText: {
+  contactLabel: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  contactValue: {
+    fontSize: 16,
     textDecorationLine: 'underline',
   },
   copyright: {

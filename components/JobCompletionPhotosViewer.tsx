@@ -26,7 +26,7 @@ interface JobCompletionPhotosViewerProps {
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-export default function JobCompletionPhotosViewer({
+function JobCompletionPhotosViewer({
   photos,
   title = 'Completion Photos',
 }: JobCompletionPhotosViewerProps) {
@@ -256,3 +256,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+
+export default JobCompletionPhotosViewer;
+export { JobCompletionPhotosViewer };

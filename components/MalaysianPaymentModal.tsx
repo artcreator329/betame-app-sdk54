@@ -18,7 +18,8 @@ import { Colors } from '../constants/Colors';
 import { ServiceOffer, ServiceOfferData } from '../types/chat';
 import { PaymentService } from '../lib/payment-service';
 import { WalletService } from '../lib/wallet-service';
-import { MalaysianPaymentGatewayService, MalaysianPaymentGateway, PaymentRequest, PaymentResponse } from '../lib/malaysian-payment-gateway';
+import { CurlecPaymentService } from '../lib/curlec-payment-service';
+import { FeeService } from '../lib/fee-service';
 
 interface MalaysianPaymentModalProps {
   visible: boolean;
@@ -53,7 +54,7 @@ export function MalaysianPaymentModal({
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('credits');
   const [selectedBank, setSelectedBank] = useState<string>('');
-  const [paymentResponse, setPaymentResponse] = useState<PaymentResponse | null>(null);
+  const [paymentResponse, setPaymentResponse] = useState<any>(null); // Changed to any as PaymentResponse type is removed
   const [transactionId, setTransactionId] = useState<string>('');
 
   const paymentSteps: PaymentStep[] = [
@@ -65,7 +66,14 @@ export function MalaysianPaymentModal({
     { id: 'failed', title: 'Payment Failed', description: 'There was an issue with your payment' },
   ];
 
-  const malaysianGateways = MalaysianPaymentGatewayService.getAvailableGateways();
+  const malaysianGateways = [
+    { id: 'fpx', name: 'Online Banking (FPX)', description: 'Pay using your local bank', icon: '🏦' },
+    { id: 'tng', name: 'Touch N Go', description: 'Pay using Touch N Go', icon: '💳' },
+    { id: 'grabpay', name: 'GrabPay', description: 'Pay using GrabPay', icon: '🚗' },
+    { id: 'boost', name: 'Boost', description: 'Pay using Boost', icon: '🚀' },
+    { id: 'shopee', name: 'ShopeePay', description: 'Pay using ShopeePay', icon: '🛍️' },
+    { id: 'paypal', name: 'PayPal', description: 'Pay using PayPal', icon: '💰' },
+  ];
 
   useEffect(() => {
     if (visible) {
@@ -181,44 +189,75 @@ export function MalaysianPaymentModal({
   const processExternalPayment = async () => {
     if (!paymentSummary || !serviceData) return;
 
-    const paymentRequest: PaymentRequest = {
-      amount: getTotalWithProcessingFee(),
-      currency: 'MYR',
-      orderId: `ORDER_${Date.now()}`,
-      description: `Payment for ${serviceData.title}`,
-      buyerId,
-      serviceProviderId,
-      serviceId: serviceData.id,
-      paymentMethod: selectedPaymentMethod,
-    };
+    try {
+      const paymentService = CurlecPaymentService.getInstance();
 
-    const response = await MalaysianPaymentGatewayService.initiatePayment(paymentRequest);
+      // Calculate fees using FeeService
+      const feeCalculation = FeeService.calculateFees(paymentSummary.finalPrice, 'MYR');
+      const totalAmount = feeCalculation.buyerTotal; // Service price + 2.2% processing fee
 
-    if (response.success && response.transactionId) {
-      setPaymentResponse(response);
-      setTransactionId(response.transactionId);
-      
-      if (response.redirectUrl) {
-        setCurrentStep('redirect');
-        // Simulate redirect to payment gateway
-        setTimeout(() => {
-          simulatePaymentCompletion(response.transactionId);
-        }, 3000);
-      } else {
-        setCurrentStep('success');
+      // Create checkout session with Curlec
+      const response = await paymentService.createCheckoutSession({
+        user_id: buyerId,
+        payment_type: 'service_payment',
+        amount: Math.round(totalAmount * 100), // Convert to cents
+        currency: 'MYR',
+        success_url: 'betame://payment/success',
+        cancel_url: 'betame://payment/cancel',
+        metadata: {
+          service_name: serviceData.title,
+          service_provider_id: serviceProviderId,
+          offer_id: offer.id,
+          payment_method: 'curlec',
+          service_data: JSON.stringify(serviceData),
+          offer_data: JSON.stringify(offer),
+          buyer_id: buyerId,
+          final_price: paymentSummary.finalPrice,
+          processing_fee: feeCalculation.buyerFee,
+          total_amount: totalAmount,
+        },
+      });
+
+      if (!response.success) {
+        console.error('Curlec payment creation failed:', response.error);
+        setCurrentStep('failed');
+        setIsProcessing(false);
+        return;
       }
-    } else {
+
+      // Store payment response for webhook processing
+      setPaymentResponse(response);
+      setTransactionId(response.checkout_id || '');
+
+      // Open Curlec payment page in browser
+      if (response.checkout_url) {
+        const supported = await Linking.canOpenURL(response.checkout_url);
+        if (supported) {
+          setCurrentStep('redirect');
+          await Linking.openURL(response.checkout_url);
+          
+          // Note: Payment completion will be handled by webhook
+          // For now, we'll simulate success after a delay
+          setTimeout(() => {
+            simulatePaymentCompletion(response.checkout_id || '');
+          }, 5000);
+        } else {
+          setCurrentStep('failed');
+        }
+      } else {
+        setCurrentStep('failed');
+      }
+    } catch (error) {
+      console.error('Error processing Curlec payment:', error);
       setCurrentStep('failed');
     }
     setIsProcessing(false);
   };
 
-  const simulatePaymentCompletion = async (txnId: string) => {
-    // In real implementation, this would be a webhook or polling mechanism
-    const status = await MalaysianPaymentGatewayService.simulatePaymentCompletion(txnId);
-    
-    if (status.status === 'completed') {
-      // Process the successful payment through our system
+  const simulatePaymentCompletion = async (checkoutId: string) => {
+    try {
+      // In a real implementation, this would check the payment status via webhook
+      // For now, we'll simulate successful payment and create the job
       const result = await PaymentService.processOfferPayment(
         offer,
         serviceData,
@@ -235,7 +274,8 @@ export function MalaysianPaymentModal({
       } else {
         setCurrentStep('failed');
       }
-    } else {
+    } catch (error) {
+      console.error('Error simulating payment completion:', error);
       setCurrentStep('failed');
     }
   };
@@ -500,7 +540,7 @@ export function MalaysianPaymentModal({
           <View style={styles.bankSelectionContainer}>
             <Text style={styles.bankSelectionTitle}>Select Your Bank</Text>
             <ScrollView style={styles.bankList} showsVerticalScrollIndicator={false}>
-              {MalaysianPaymentGatewayService.getSupportedBanks().map((bank) => (
+              {['Maybank', 'CIMB Bank', 'Public Bank', 'RHB Bank', 'Hong Leong Bank', 'AmBank', 'UOB Malaysia', 'OCBC Bank'].map((bank: string) => (
                 <TouchableOpacity
                   key={bank}
                   style={[
@@ -544,10 +584,10 @@ export function MalaysianPaymentModal({
       <Text style={styles.redirectDescription}>
         You will be redirected to {getSelectedGateway().name} to complete your payment.
       </Text>
-      {paymentResponse?.redirectUrl && (
+      {paymentResponse?.checkout_url && (
         <TouchableOpacity
           style={styles.openPaymentButton}
-          onPress={() => Linking.openURL(paymentResponse.redirectUrl!)}
+          onPress={() => Linking.openURL(paymentResponse.checkout_url)}
         >
           <Text style={styles.openPaymentButtonText}>Open Payment Gateway</Text>
         </TouchableOpacity>

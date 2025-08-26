@@ -59,6 +59,49 @@ export class JobCompletionService {
   }
 
   /**
+   * Upload completion photos for an active job
+   */
+  static async uploadActiveJobCompletionPhotos(
+    activeJobId: string,
+    serviceProviderId: string,
+    photos: Array<{ photo_url: string; photo_description?: string }>
+  ): Promise<JobCompletionPhoto[] | null> {
+    try {
+      const photoData = photos.map(photo => ({
+        active_job_id: activeJobId,
+        service_provider_id: serviceProviderId,
+        photo_url: photo.photo_url,
+        photo_description: photo.photo_description || null,
+      }));
+
+      const { data, error } = await supabase
+        .from('active_job_completion_photos')
+        .insert(photoData)
+        .select();
+
+      if (error) {
+        console.error('Error uploading active job completion photos:', error);
+        return null;
+      }
+
+      // Map the response to match JobCompletionPhoto interface
+      return data?.map(photo => ({
+        id: photo.id,
+        job_status_id: '', // Not applicable for active job photos
+        service_provider_id: photo.service_provider_id,
+        photo_url: photo.photo_url,
+        photo_description: photo.photo_description,
+        uploaded_at: photo.uploaded_at,
+        created_at: photo.created_at,
+        updated_at: photo.updated_at
+      })) || null;
+    } catch (error) {
+      console.error('Error in uploadActiveJobCompletionPhotos:', error);
+      return null;
+    }
+  }
+
+  /**
    * Get completion photos for a job
    */
   static async getCompletionPhotos(jobStatusId: string): Promise<JobCompletionPhoto[]> {
@@ -77,6 +120,73 @@ export class JobCompletionService {
       return data || [];
     } catch (error) {
       console.error('Error in getCompletionPhotos:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get completion photos for an active job by active job ID
+   */
+  static async getCompletionPhotosByActiveJobId(activeJobId: string): Promise<JobCompletionPhoto[]> {
+    try {
+      // First, try to get photos directly from active_job_completion_photos table
+      const { data: activeJobPhotos, error: activeJobPhotosError } = await supabase
+        .from('active_job_completion_photos')
+        .select('*')
+        .eq('active_job_id', activeJobId)
+        .order('created_at', { ascending: true });
+
+      if (!activeJobPhotosError && activeJobPhotos && activeJobPhotos.length > 0) {
+        console.log('Found completion photos in active_job_completion_photos table:', activeJobPhotos.length);
+        return activeJobPhotos.map(photo => ({
+          id: photo.id,
+          job_status_id: '', // Not applicable for active job photos, but required by interface
+          service_provider_id: photo.service_provider_id,
+          photo_url: photo.photo_url,
+          photo_description: photo.photo_description,
+          uploaded_at: photo.uploaded_at,
+          created_at: photo.created_at,
+          updated_at: photo.updated_at
+        }));
+      }
+
+      // If no active job photos found, try the old approach with job_status
+      console.log('No active job photos found, trying job_status approach...');
+      
+      // Get the active job to find the service_offer_id
+      const { data: activeJob, error: activeJobError } = await supabase
+        .from('active_jobs')
+        .select('service_offer_id')
+        .eq('id', activeJobId)
+        .single();
+
+      if (activeJobError || !activeJob) {
+        console.error('Error fetching active job:', activeJobError);
+        return [];
+      }
+
+      // If service_offer_id is null, there's no corresponding job_status
+      if (!activeJob.service_offer_id) {
+        console.log('Active job has no service_offer_id, no job_status photos available');
+        return [];
+      }
+
+      // Then, get the job_status_id using the service_offer_id
+      const { data: jobStatus, error: jobStatusError } = await supabase
+        .from('job_status')
+        .select('id')
+        .eq('service_offer_id', activeJob.service_offer_id)
+        .single();
+
+      if (jobStatusError || !jobStatus) {
+        console.error('Error fetching job status:', jobStatusError);
+        return [];
+      }
+
+      // Finally, get the completion photos using the job_status_id
+      return await this.getCompletionPhotos(jobStatus.id);
+    } catch (error) {
+      console.error('Error in getCompletionPhotosByActiveJobId:', error);
       return [];
     }
   }

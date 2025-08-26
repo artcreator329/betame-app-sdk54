@@ -284,22 +284,13 @@ export class CurlecPaymentService {
   }
 
   /**
-   * Process service payment
+   * Process service payment (both direct orders and service offers)
    */
   private async processServicePayment(transaction: PaymentTransaction): Promise<void> {
     try {
       console.log('💰 Processing service payment:', transaction.id);
       
-      // Parse order data from metadata
-      const orderData = transaction.metadata?.order_data ? 
-        JSON.parse(transaction.metadata.order_data) : null;
-      
-      if (!orderData) {
-        console.error('No order data found in transaction metadata');
-        throw new Error('Missing order data');
-      }
-
-      const { service_provider_id, service_name } = transaction.metadata;
+      const { service_provider_id, service_name, offer_id, service_data, offer_data } = transaction.metadata;
       const buyerId = transaction.user_id;
       const amount = transaction.amount / 100; // Convert cents to RM
 
@@ -308,84 +299,136 @@ export class CurlecPaymentService {
         serviceProviderId: service_provider_id,
         serviceName: service_name,
         amount,
-        orderData
+        offerId: offer_id,
+        hasServiceData: !!service_data,
+        hasOfferData: !!offer_data
       });
 
       // Import required services
       const { PaymentService } = await import('./payment-service');
       const { ActiveJobService } = await import('./active-job-service');
       const { WalletService } = await import('./wallet-service');
-
-      // Calculate fees using the new payment flow
-      const feeCalculation = await import('./fee-service').then(m => m.FeeService.calculateFees(amount));
-      const buyerTotal = feeCalculation.buyerTotal; // Order Price + 2.2%
-
-      console.log('💰 Fee calculation:', {
-        orderPrice: amount,
-        buyerFee: feeCalculation.buyerFee,
-        buyerTotal,
-        platformFee: feeCalculation.platformFee
-      });
-
-      // Deduct total amount (Order Price + 2.2%) from buyer's wallet
-      const buyerWallet = await WalletService.getWallet(buyerId);
-      if (!buyerWallet) {
-        throw new Error('Buyer wallet not found');
-      }
-
-      const updatedBuyerWallet = {
-        ...buyerWallet,
-        betame_betacoins: buyerWallet.betame_betacoins - buyerTotal
-      };
-
-      const buyerUpdateResult = await WalletService.updateWallet(updatedBuyerWallet);
-      if (!buyerUpdateResult) {
-        throw new Error('Failed to update buyer wallet');
-      }
-
-      // Record transaction for buyer (payment with fee)
-      await WalletService.recordTransaction({
-        user_id: buyerId,
-        type: 'service_payment',
-        amount: -Math.round(buyerTotal * 100), // Convert to cents (integer)
-        description: `Payment for service: ${service_name} (including ${feeCalculation.buyerFee} processing fee)`
-      });
-
-      // Create active job after successful payment
-      const activeJob = await ActiveJobService.createJobFromDirectOrder(
-        {
-          id: transaction.id, // Use transaction ID as order ID
-          title: service_name,
-          description: orderData.description || '',
-          price: amount,
-          currency: 'RM',
-          customDeliveryTime: orderData.customDeliveryTime
-        },
-        buyerId,
-        service_provider_id
-      );
-
-      if (!activeJob) {
-        // Rollback buyer transaction if job creation fails
-        await WalletService.updateWallet(buyerWallet);
-        throw new Error('Failed to create active job');
-      }
-
-      // Update job with payment details for admin release
       const { supabase } = await import('./supabase');
-      await supabase
-        .from('active_jobs')
-        .update({
-          payment_amount: amount, // Original order price
-          buyer_fee: feeCalculation.buyerFee, // 2.2% fee
-          platform_fee: feeCalculation.platformFee, // 11% or RM4.90, whichever higher
-          total_paid: buyerTotal, // Total amount buyer paid
-          payment_status: 'paid_escrow', // New status: paid and held in escrow
-          escrow_ready_for_release: false // Will be set to true when admin confirms
-        })
-        .eq('id', activeJob.id);
 
-      console.log(`✅ Service payment completed: Job ${activeJob.id} created for user ${buyerId}`);
+      // Check if this is a service offer payment
+      if (offer_id && service_data && offer_data) {
+        // This is a service offer payment
+        console.log('💰 Processing service offer payment');
+        
+        const serviceData = JSON.parse(service_data);
+        const offerData = JSON.parse(offer_data);
+        
+        // Use the existing PaymentService.processOfferPayment method
+        const result = await PaymentService.processOfferPayment(
+          offerData,
+          serviceData,
+          buyerId,
+          service_provider_id
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to process service offer payment');
+        }
+
+        // Update the service offer status to accepted (payment completed, job created)
+        await supabase
+          .from('service_offers')
+          .update({ 
+            status: 'accepted',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', offer_id);
+
+        // Also update the corresponding chat message status
+        await supabase
+          .from('chat_messages')
+          .update({ offer_status: 'accepted' })
+          .eq('offer_id', offer_id);
+
+        console.log(`✅ Service offer payment completed: Job ${result.activeJobId} created for user ${buyerId}`);
+      } else {
+        // This is a direct order payment
+        console.log('💰 Processing direct order payment');
+        
+        // Parse order data from metadata
+        const orderData = transaction.metadata?.order_data ? 
+          JSON.parse(transaction.metadata.order_data) : null;
+        
+        if (!orderData) {
+          console.error('No order data found in transaction metadata');
+          throw new Error('Missing order data');
+        }
+
+        // Calculate fees using the new payment flow
+        const feeCalculation = await import('./fee-service').then(m => m.FeeService.calculateFees(amount));
+        const buyerTotal = feeCalculation.buyerTotal; // Order Price + 2.2%
+
+        console.log('💰 Fee calculation:', {
+          orderPrice: amount,
+          buyerFee: feeCalculation.buyerFee,
+          buyerTotal,
+          platformFee: feeCalculation.platformFee
+        });
+
+        // Deduct total amount (Order Price + 2.2%) from buyer's wallet
+        const buyerWallet = await WalletService.getWallet(buyerId);
+        if (!buyerWallet) {
+          throw new Error('Buyer wallet not found');
+        }
+
+        const updatedBuyerWallet = {
+          ...buyerWallet,
+          betame_betacoins: buyerWallet.betame_betacoins - buyerTotal
+        };
+
+        const buyerUpdateResult = await WalletService.updateWallet(updatedBuyerWallet);
+        if (!buyerUpdateResult) {
+          throw new Error('Failed to update buyer wallet');
+        }
+
+        // Record transaction for buyer (payment with fee)
+        await WalletService.recordTransaction({
+          user_id: buyerId,
+          type: 'service_payment',
+          amount: -Math.round(buyerTotal * 100), // Convert to cents (integer)
+          description: `Payment for service: ${service_name} (including ${feeCalculation.buyerFee} processing fee)`
+        });
+
+        // Create active job after successful payment
+        const activeJob = await ActiveJobService.createJobFromDirectOrder(
+          {
+            id: transaction.id, // Use transaction ID as order ID
+            title: service_name,
+            description: orderData.description || '',
+            price: amount,
+            currency: 'RM',
+            customDeliveryTime: orderData.customDeliveryTime
+          },
+          buyerId,
+          service_provider_id
+        );
+
+        if (!activeJob) {
+          // Rollback buyer transaction if job creation fails
+          await WalletService.updateWallet(buyerWallet);
+          throw new Error('Failed to create active job');
+        }
+
+        // Update job with payment details for admin release
+        await supabase
+          .from('active_jobs')
+          .update({
+            payment_amount: amount, // Original order price
+            buyer_fee: feeCalculation.buyerFee, // 2.2% fee
+            platform_fee: feeCalculation.platformFee, // 11% or RM4.90, whichever higher
+            total_paid: buyerTotal, // Total amount buyer paid
+            payment_status: 'paid_escrow', // New status: paid and held in escrow
+            escrow_ready_for_release: false // Will be set to true when admin confirms
+          })
+          .eq('id', activeJob.id);
+
+        console.log(`✅ Direct order payment completed: Job ${activeJob.id} created for user ${buyerId}`);
+      }
     } catch (error) {
       console.error('Error processing service payment:', error);
       throw error;

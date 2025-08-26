@@ -214,7 +214,7 @@ export function PDPAConsentModal({
             </Text>
 
             <Text style={[styles.consentText, { color: colors.text.secondary }]}>
-              You may withdraw your consent at any time by contacting us at privacy@betame.com.my
+              You may withdraw your consent at any time by contacting us at privacy@betame.com
             </Text>
           </View>
 

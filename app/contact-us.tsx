@@ -36,7 +36,7 @@ export default function ContactUsScreen() {
     }
 
     const emailBody = `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`;
-    const mailtoUrl = `mailto:customer.service@betame.com.my?subject=${encodeURIComponent(formData.subject)}&body=${encodeURIComponent(emailBody)}`;
+    const mailtoUrl = `mailto:legal@betame.com?subject=${encodeURIComponent(formData.subject)}&body=${encodeURIComponent(emailBody)}`;
     
     Linking.openURL(mailtoUrl);
     
@@ -47,6 +47,10 @@ export default function ContactUsScreen() {
 
   const handleEmailPress = (email: string) => {
     Linking.openURL(`mailto:${email}`);
+  };
+
+  const handlePhonePress = (phone: string) => {
+    Linking.openURL(`tel:${phone}`);
   };
 
   return (
@@ -76,19 +80,9 @@ export default function ContactUsScreen() {
             <View style={styles.contactItem}>
               <Mail size={20} color={colors.primary.main} />
               <View style={styles.contactText}>
-                <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Customer Service</Text>
-                <TouchableOpacity onPress={() => handleEmailPress('customer.service@betame.com.my')}>
-                  <Text style={[styles.contactValue, { color: colors.primary.main }]}>customer.service@betame.com.my</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.contactItem}>
-              <Mail size={20} color={colors.primary.main} />
-              <View style={styles.contactText}>
-                <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Developer Support</Text>
-                <TouchableOpacity onPress={() => handleEmailPress('developer@betame.com.my')}>
-                  <Text style={[styles.contactValue, { color: colors.primary.main }]}>developer@betame.com.my</Text>
+                <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Email</Text>
+                <TouchableOpacity onPress={() => handleEmailPress('legal@betame.com')}>
+                  <Text style={[styles.contactValue, { color: colors.primary.main }]}>legal@betame.com</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -96,9 +90,10 @@ export default function ContactUsScreen() {
             <View style={styles.contactItem}>
               <MapPin size={20} color={colors.primary.main} />
               <View style={styles.contactText}>
-                <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Company</Text>
-                <Text style={[styles.contactValue, { color: colors.text.primary }]}>Betame Sdn. Bhd.</Text>
-                <Text style={[styles.contactValue, { color: colors.text.primary }]}>Malaysia</Text>
+                <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Address</Text>
+                <Text style={[styles.contactValue, { color: colors.text.primary }]}>
+                  23, Jalan SB Indah 2/15, Taman Sungai Besi Indah, Seri Kembangan, 43300 Selangor
+                </Text>
               </View>
             </View>
 
@@ -107,6 +102,16 @@ export default function ContactUsScreen() {
               <View style={styles.contactText}>
                 <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Response Time</Text>
                 <Text style={[styles.contactValue, { color: colors.text.primary }]}>Within 24 hours</Text>
+              </View>
+            </View>
+
+            <View style={styles.contactItem}>
+              <Clock size={20} color={colors.primary.main} />
+              <View style={styles.contactText}>
+                <Text style={[styles.contactLabel, { color: colors.text.secondary }]}>Phone</Text>
+                <TouchableOpacity onPress={() => handlePhonePress('016-6497179')}>
+                  <Text style={[styles.contactValue, { color: colors.primary.main }]}>016-6497179</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>

@@ -13,6 +13,7 @@ import {
   Modal,
   ActionSheetIOS,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import CalendarPicker from '@/components/CalendarPicker';
 import TimePicker from '@/components/TimePicker';
@@ -33,7 +34,6 @@ import { ServiceOfferModal } from '../../components/ServiceOfferModal';
 import { ServiceVariantSelectionModal } from '../../components/ServiceVariantSelectionModal';
 import { StructuredInquiryMessage } from '../../components/StructuredInquiryMessage';
 import { StructuredInquiryDraft } from '../../components/StructuredInquiryDraft';
-import { MalaysianPaymentModal } from '../../components/MalaysianPaymentModal';
 import { JobProgressMonitor } from '../../components/JobProgressMonitor';
 import { QuotedMessage } from '../../components/QuotedMessage';
 import { LocationShareModal } from '../../components/LocationShareModal';
@@ -858,22 +858,27 @@ export default function ChatScreen() {
 
   const handlePaymentSuccess = async (activeJobId: string) => {
     try {
-      // Accept the offer and create order using the new chat service method
+      // For Curlec payments, the job is already created via webhook
+      // We just need to update the offer status and send notifications
       if (selectedOfferForPayment && user?.id) {
         console.log('🔔 Processing payment success for offer:', selectedOfferForPayment.offer.id);
         
-        const result = await supabaseChatService.acceptServiceOffer(
-          selectedOfferForPayment.offer.id,
-          user.id
-        );
+        // Update the service offer status to in_progress (payment completed, job created)
+        await supabase
+          .from('service_offers')
+          .update({ 
+            status: 'in_progress',
+            accepted_at: new Date().toISOString()
+          })
+          .eq('id', selectedOfferForPayment.offer.id);
+
+        // Also update the corresponding chat message status
+        await supabase
+          .from('chat_messages')
+          .update({ offer_status: 'in_progress' })
+          .eq('offer_id', selectedOfferForPayment.offer.id);
         
-        if (!result.success) {
-          console.error('❌ Failed to accept offer:', result.error);
-          Alert.alert('Error', result.error || 'Failed to accept offer');
-          return;
-        }
-        
-        console.log('✅ Offer accepted and order created:', result.orderId);
+        console.log('✅ Offer status updated to in_progress');
         
         // Add notification for offer acceptance (to the seller)
         await notificationService.addOfferAcceptedNotification({
@@ -916,6 +921,137 @@ export default function ChatScreen() {
   const handlePaymentCancel = () => {
     setPaymentModalVisible(false);
     setSelectedOfferForPayment(null);
+  };
+
+  // Manual status update function (for testing/debugging)
+  const manuallyUpdateOfferStatus = async (offerId: string, status: 'accepted' | 'rejected') => {
+    try {
+      console.log(`🔄 Manually updating offer ${offerId} status to ${status}`);
+      
+      // Update service offer status
+      await supabase
+        .from('service_offers')
+        .update({ 
+          status: status,
+          accepted_at: new Date().toISOString()
+        })
+        .eq('id', offerId);
+
+      // Update chat message status
+      await supabase
+        .from('chat_messages')
+        .update({ offer_status: status })
+        .eq('offer_id', offerId);
+      
+      console.log(`✅ Offer ${offerId} status manually updated to ${status}`);
+    } catch (error) {
+      console.error('❌ Error manually updating offer status:', error);
+    }
+  };
+
+  // Immediate payment status check (for immediate feedback)
+  const checkPaymentStatusImmediately = async (offerId: string) => {
+    try {
+      console.log('🔍 Checking payment status immediately for offer:', offerId);
+      
+      // Wait a moment for the payment to be processed
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Check if payment transaction exists and is completed
+      const { data: transaction, error } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .eq('metadata->offer_id', offerId)
+        .eq('status', 'completed')
+        .single();
+
+      if (error || !transaction) {
+        console.log('Payment not yet completed, will continue polling...');
+        return;
+      }
+
+      console.log('✅ Payment completed! Updating offer status to accepted');
+      
+      // Update service offer status to accepted
+      await supabase
+        .from('service_offers')
+        .update({ 
+          status: 'accepted',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', offerId);
+
+      // Update chat message status
+      await supabase
+        .from('chat_messages')
+        .update({ offer_status: 'accepted' })
+        .eq('offer_id', offerId);
+
+      console.log('✅ Offer status updated to accepted successfully');
+    } catch (error) {
+      console.error('❌ Error checking payment status immediately:', error);
+    }
+  };
+
+  // Poll for payment status (fallback for webhook issues)
+  const startPaymentStatusPolling = (offerId: string, checkoutId: string) => {
+    console.log('🔄 Starting payment status polling for offer:', offerId, 'checkout:', checkoutId);
+    
+    let pollCount = 0;
+    const maxPolls = 30; // Poll for 5 minutes (30 * 10 seconds)
+    const pollInterval = 10000; // 10 seconds
+    
+    const pollPaymentStatus = async () => {
+      try {
+        pollCount++;
+        console.log(`🔄 Polling payment status (${pollCount}/${maxPolls}) for offer:`, offerId);
+        
+        // Check if payment transaction exists and is completed
+        const { data: transaction, error } = await supabase
+          .from('payment_transactions')
+          .select('*')
+          .eq('curlec_checkout_id', checkoutId)
+          .eq('status', 'completed')
+          .single();
+        
+        if (transaction && !error) {
+          console.log('✅ Payment completed, updating offer status to in_progress');
+          
+          // Update service offer status to in_progress
+          await supabase
+            .from('service_offers')
+            .update({ 
+              status: 'in_progress',
+              accepted_at: new Date().toISOString()
+            })
+            .eq('id', offerId);
+
+          // Update chat message status
+          await supabase
+            .from('chat_messages')
+            .update({ offer_status: 'in_progress' })
+            .eq('offer_id', offerId);
+          
+          console.log('✅ Offer status updated to in_progress via polling');
+          return; // Stop polling
+        }
+        
+        // Continue polling if not completed yet
+        if (pollCount < maxPolls) {
+          setTimeout(pollPaymentStatus, pollInterval);
+        } else {
+          console.log('⏰ Payment status polling timed out for offer:', offerId);
+        }
+      } catch (error) {
+        console.error('❌ Error polling payment status:', error);
+        if (pollCount < maxPolls) {
+          setTimeout(pollPaymentStatus, pollInterval);
+        }
+      }
+    };
+    
+    // Start polling after a short delay
+    setTimeout(pollPaymentStatus, pollInterval);
   };
 
   const cancelServiceOffer = async (offerId: string) => {
@@ -1299,7 +1435,7 @@ export default function ChatScreen() {
     }
   };
 
-  // Accept service offer - show payment options
+  // Accept service offer - directly process Curlec payment
   const acceptServiceOffer = async (offerId: string) => {
     try {
       console.log('🔄 Accepting service offer:', offerId);
@@ -1313,8 +1449,6 @@ export default function ChatScreen() {
 
       const serviceData = offerMessage.serviceData;
       const amount = serviceData.customPrice || serviceData.price || 0;
-      const buyerFee = Math.round((amount * 0.022) * 100) / 100; // 2.2% processing fee
-      const totalAmount = amount + buyerFee;
       const sellerId = offerMessage.senderId;
       
       if (!user?.id || !sellerId) {
@@ -1322,18 +1456,18 @@ export default function ChatScreen() {
         return;
       }
 
-      // Show payment options to the buyer
+      // Show confirmation dialog
       Alert.alert(
-        'Choose Payment Method',
-        `Service: ${serviceData.title}\nAmount: RM ${amount}\nProcessing Fee: RM ${buyerFee}\nTotal: RM ${totalAmount}\n\nHow would you like to pay?`,
+        'Confirm Service Offer',
+        `Service: ${serviceData.title}\nAmount: RM ${amount}\n\nAre you sure you want to accept this offer and proceed to payment?`,
         [
           {
             text: 'Cancel',
             style: 'cancel'
           },
           {
-            text: 'Pay with Card/Bank',
-            onPress: () => processExternalPayment(offerId, offerMessage, serviceData, amount, sellerId)
+            text: 'Accept & Pay',
+            onPress: () => processCurlecPayment(offerId, offerMessage, serviceData, amount, sellerId)
           }
         ]
       );
@@ -1345,10 +1479,12 @@ export default function ChatScreen() {
 
 
 
-  // Process payment using external payment methods
-  const processExternalPayment = async (offerId: string, offerMessage: any, serviceData: any, amount: number, sellerId: string) => {
+  // Process Curlec payment directly
+  const processCurlecPayment = async (offerId: string, offerMessage: any, serviceData: any, amount: number, sellerId: string) => {
     try {
-      // Set up the offer data for the payment modal
+      console.log('🔄 Processing Curlec payment for offer:', offerId);
+      
+      // Set up the offer data
       const offerData = {
         id: offerId,
         chatId: chatId || '',
@@ -1364,18 +1500,71 @@ export default function ChatScreen() {
         updatedAt: new Date()
       };
 
-      // Store the payment data for the modal
+      // Store the payment data for webhook processing
       setSelectedOfferForPayment({
         offer: offerData,
         serviceData: serviceData,
         sellerId: sellerId
       });
+
+      // Import CurlecPaymentService
+      const { CurlecPaymentService } = await import('@/lib/curlec-payment-service');
+      const { FeeService } = await import('@/lib/fee-service');
       
-      // Show the payment modal
-      setPaymentModalVisible(true);
+      const paymentService = CurlecPaymentService.getInstance();
+
+      // Calculate fees using FeeService
+      const feeCalculation = FeeService.calculateFees(amount, 'MYR');
+      const totalAmount = feeCalculation.buyerTotal; // Service price + 2.2% processing fee
+
+      // Create checkout session with Curlec
+      const response = await paymentService.createCheckoutSession({
+        user_id: user!.id,
+        payment_type: 'service_payment',
+        amount: Math.round(totalAmount * 100), // Convert to cents
+        currency: 'MYR',
+        success_url: 'betame://payment/success',
+        cancel_url: 'betame://payment/cancel',
+        metadata: {
+          service_name: serviceData.title,
+          service_provider_id: sellerId,
+          offer_id: offerId,
+          payment_method: 'curlec',
+          service_data: JSON.stringify(serviceData),
+          offer_data: JSON.stringify(offerData),
+          buyer_id: user!.id,
+          final_price: amount,
+          processing_fee: feeCalculation.buyerFee,
+          total_amount: totalAmount,
+        },
+      });
+
+      if (!response.success) {
+        console.error('Curlec payment creation failed:', response.error);
+        Alert.alert('Payment Error', response.error || 'Failed to create payment session');
+        return;
+      }
+
+      // Open Curlec payment page in browser
+      if (response.checkout_url) {
+        const supported = await Linking.canOpenURL(response.checkout_url);
+        if (supported) {
+          await Linking.openURL(response.checkout_url);
+          
+          // Start polling for payment status (fallback for webhook issues)
+          startPaymentStatusPolling(offerId, response.checkout_id || '');
+          
+          // Also start immediate status checking
+          checkPaymentStatusImmediately(offerId);
+        } else {
+          Alert.alert('Error', 'Cannot open payment page. Please try again.');
+        }
+      } else {
+        Alert.alert('Error', 'No payment URL received');
+      }
     } catch (error) {
-      console.error('Error preparing external payment:', error);
-      Alert.alert('Error', 'Failed to prepare payment. Please try again.');
+      console.error('Error processing Curlec payment:', error);
+      Alert.alert('Payment Error', 'Failed to process payment. Please try again.');
     }
   };
 
@@ -2058,16 +2247,7 @@ export default function ChatScreen() {
           </View>
         </Modal>
 
-        {/* Payment Modal */}
-        <MalaysianPaymentModal
-          visible={paymentModalVisible}
-          offer={selectedOfferForPayment?.offer}
-          serviceData={selectedOfferForPayment?.serviceData}
-          buyerId={user?.id || ''}
-          sellerId={selectedOfferForPayment?.sellerId || ''}
-          onPaymentSuccess={handlePaymentSuccess}
-          onClose={handlePaymentCancel}
-        />
+
 
         {/* Job Progress Monitor */}
         <JobProgressMonitor

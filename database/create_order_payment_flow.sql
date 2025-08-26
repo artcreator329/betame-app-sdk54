@@ -560,3 +560,61 @@ BEGIN
     RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
+-- Fun
+ction to notify service provider when order is created
+CREATE OR REPLACE FUNCTION notify_order_created()
+RETURNS TRIGGER AS $
+DECLARE
+    buyer_profile RECORD;
+    service_offer RECORD;
+BEGIN
+    -- Only send notification for new orders
+    IF TG_OP = 'INSERT' AND NEW.status = 'payment_received' THEN
+        -- Get buyer profile information
+        SELECT full_name, avatar_url INTO buyer_profile
+        FROM profiles 
+        WHERE id = NEW.buyer_id;
+        
+        -- Get service offer information for chat_id
+        SELECT chat_id INTO service_offer
+        FROM service_offers
+        WHERE id = NEW.service_offer_id;
+        
+        -- Create notification for service provider
+        INSERT INTO notifications (
+            user_id,
+            type,
+            title,
+            message,
+            data,
+            created_at
+        ) VALUES (
+            NEW.seller_id,
+            'order',
+            'New Order from ' || COALESCE(buyer_profile.full_name, 'Customer'),
+            'Payment received for "' || NEW.service_title || '" - $' || NEW.amount,
+            jsonb_build_object(
+                'orderId', NEW.id,
+                'chatId', service_offer.chat_id,
+                'participantId', NEW.buyer_id,
+                'participantName', COALESCE(buyer_profile.full_name, 'Customer'),
+                'participantImage', COALESCE(buyer_profile.avatar_url, ''),
+                'serviceTitle', NEW.service_title,
+                'amount', NEW.amount,
+                'currency', 'USD',
+                'orderStatus', NEW.status
+            ),
+            NOW()
+        );
+    END IF;
+    
+    RETURN NEW;
+END;
+$ LANGUAGE plpgsql;
+
+-- Create trigger for order notifications
+DROP TRIGGER IF EXISTS trigger_notify_order_created ON orders;
+CREATE TRIGGER trigger_notify_order_created
+    AFTER INSERT ON orders
+    FOR EACH ROW
+    EXECUTE FUNCTION notify_order_created();

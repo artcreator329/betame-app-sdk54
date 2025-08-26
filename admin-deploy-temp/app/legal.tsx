@@ -151,13 +151,16 @@ export default function LegalScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>11. Contact Information</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Contact Information</Text>
           <Text style={[styles.paragraph, { color: colors.text.secondary }]}>
-            For legal inquiries, please contact:
-            {'\n'}Legal Department: legal@betame.com.my
-            {'\n'}Customer Service: customer.service@betame.com.my
-            {'\n'}Data Protection Officer: dpo@betame.com.my
-            {'\n'}Compliance Team: compliance@betame.com.my
+            For legal inquiries about these Terms of Service:
+            {'\n'}Email: legal@betame.com
+            {'\n'}Address: 23, Jalan SB Indah 2/15, Taman Sungai Besi Indah, Seri Kembangan, 43300 Selangor
+            {'\n'}Phone: 016-6497179
+            {'\n\n'}For privacy inquiries:
+            {'\n'}Email: privacy@betame.com
+            {'\n'}Data Protection Officer: dpo@betame.com
+            {'\n\n'}• Our liability is limited as outlined in our Terms of Service
           </Text>
         </View>
 

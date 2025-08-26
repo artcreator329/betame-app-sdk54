@@ -46,10 +46,14 @@ export default function JobReviewScreen() {
   const loadJobData = async () => {
     try {
       setIsLoading(true);
+      console.log('🔍 Loading job data for jobId:', jobId);
       const [jobData, photosData] = await Promise.all([
         ActiveJobService.getActiveJob(jobId),
-        JobCompletionService.getCompletionPhotos(jobId)
+        JobCompletionService.getCompletionPhotosByActiveJobId(jobId)
       ]);
+      console.log('🔍 Job data loaded:', jobData);
+      console.log('🔍 Photos data loaded:', photosData);
+      console.log('🔍 Number of photos:', photosData?.length || 0);
       setJob(jobData);
       setCompletionPhotos(photosData);
     } catch (error) {
@@ -61,7 +65,7 @@ export default function JobReviewScreen() {
   };
 
   const isBuyer = job?.buyer_id === user?.id;
-  const isSeller = job?.seller_id === user?.id;
+  const isSeller = job?.service_provider_id === user?.id;
 
   const handleRatingPress = (selectedRating: number) => {
     setRating(selectedRating);
@@ -84,7 +88,7 @@ export default function JobReviewScreen() {
       const reviewData = {
         jobId: job?.id!,
         reviewerId: user?.id!,
-        reviewedUserId: isBuyer ? job?.seller_id! : job?.buyer_id!,
+        reviewedUserId: isBuyer ? job?.service_provider_id! : job?.buyer_id!,
         rating,
         review: review.trim(),
         jobTitle: job?.title!,
@@ -96,7 +100,7 @@ export default function JobReviewScreen() {
 
       // Send notification to the reviewed user
       const notificationData = {
-        participantId: isBuyer ? job?.seller_id! : job?.buyer_id!,
+        participantId: isBuyer ? job?.service_provider_id! : job?.buyer_id!,
         participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
         participantImage: userProfile?.avatar_url || '',
         jobId: job?.id!,
@@ -111,7 +115,7 @@ export default function JobReviewScreen() {
         title: 'Job Review Received',
         message: `You received a ${rating}-star review for "${job?.title}"`,
         data: notificationData,
-      }, isBuyer ? job?.seller_id! : job?.buyer_id!);
+      }, isBuyer ? job?.service_provider_id! : job?.buyer_id!);
 
       Alert.alert(
         'Review Submitted',
@@ -149,7 +153,7 @@ export default function JobReviewScreen() {
           reportedBy: user?.id || '',
           reportedByName: userProfile?.full_name || user?.email?.split('@')[0] || 'User',
           reason: reportReason,
-          reportedUserId: isBuyer ? job.seller_id : job.buyer_id,
+          reportedUserId: isBuyer ? job.service_provider_id : job.buyer_id,
         },
       }, 'admin'); // Send to admin for review
 
@@ -168,7 +172,7 @@ export default function JobReviewScreen() {
   };
 
   const handleMessage = () => {
-    const otherPartyId = isBuyer ? job?.seller_id : job?.buyer_id;
+    const otherPartyId = isBuyer ? job?.service_provider_id : job?.buyer_id;
     if (otherPartyId) {
       router.push(`/chat/${otherPartyId}`);
     }
@@ -338,6 +342,12 @@ export default function JobReviewScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Completion Photos</Text>
             <JobCompletionPhotosViewer photos={completionPhotos} />
+          </View>
+        )}
+        {completionPhotos.length === 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Completion Photos</Text>
+            <Text style={styles.noPhotosText}>No completion photos uploaded yet.</Text>
           </View>
         )}
 
@@ -885,5 +895,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  noPhotosText: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingVertical: 20,
   },
 }); 

@@ -200,7 +200,10 @@ export default function SafetySecurityScreen() {
             Our support team is available 24/7 to help with safety and security concerns.
           </Text>
           <Text style={[styles.supportEmail, { color: colors.primary.main }]}>
-            customer.service@betame.com.my
+            legal@betame.com
+          </Text>
+          <Text style={[styles.paragraph, { color: colors.text.secondary }]}>
+            If you encounter any safety or security concerns while using BetaMe, please report them immediately to our support team at legal@betame.com.
           </Text>
         </View>
 
@@ -356,6 +359,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  paragraph: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 8,
   },
   copyright: {
     fontSize: 14,

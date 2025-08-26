@@ -50,8 +50,8 @@ export default function PaymentHelpScreen() {
   const router = useRouter();
   const colors = useColors();
 
-  const handleEmailSupport = () => {
-    Linking.openURL('mailto:customer.service@betame.com.my?subject=Payment Support Request');
+  const handleContactSupport = () => {
+    Linking.openURL('mailto:legal@betame.com?subject=Payment Support Request');
   };
 
   const paymentHelpData = [
@@ -167,7 +167,7 @@ export default function PaymentHelpScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.quickAction, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}
-              onPress={handleEmailSupport}
+              onPress={handleContactSupport}
             >
               <CreditCard size={24} color={colors.primary.main} />
               <Text style={[styles.quickActionText, { color: colors.text.primary }]}>Contact Support</Text>
@@ -227,7 +227,7 @@ export default function PaymentHelpScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.contactButton, { backgroundColor: colors.primary.main }]}
-            onPress={handleEmailSupport}
+            onPress={handleContactSupport}
           >
             <Text style={[styles.contactButtonText, { color: colors.text.white }]}>Contact Payment Support</Text>
           </TouchableOpacity>

@@ -176,36 +176,16 @@ export default function SettingsScreen() {
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'Are you sure you want to permanently delete your account? This action cannot be undone.\n\nAll your data, including:\n• Profile information\n• Service listings\n• Transaction history\n• Messages and reviews\n• BetaCoin balance\n\nWill be permanently deleted.',
+      'Are you sure you want to permanently delete your account? This action cannot be undone.',
       [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete Account',
+          text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            // Second confirmation
-            Alert.alert(
-              'Final Confirmation',
-              'This is your final warning. Deleting your account is permanent and cannot be reversed.\n\nTo proceed with account deletion, please contact our support team who will assist you with the process and ensure all your data is properly removed.',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel',
-                },
-                {
-                  text: 'Contact Support',
-                  style: 'destructive',
-                  onPress: () => {
-                    Linking.openURL('mailto:customer.service@betame.com.my?subject=Account Deletion Request&body=I would like to permanently delete my BetaMe account. Please assist me with this process.\n\nAccount Email: ' + (userProfile?.email || 'Not available') + '\nReason for deletion: [Please specify your reason]\n\nI understand this action is permanent and cannot be undone.');
-                  },
-                },
-              ]
-            );
-          },
-        },
+            Linking.openURL('mailto:legal@betame.com?subject=Account Deletion Request&body=I would like to permanently delete my BetaMe account. Please assist me with this process.\n\nAccount Email: ' + (userProfile?.email || 'Not provided') + '\n\nReason for deletion: [Please specify your reason]\n\nI understand that this action is permanent and cannot be undone.\n\nThank you.');
+          }
+        }
       ]
     );
   };
