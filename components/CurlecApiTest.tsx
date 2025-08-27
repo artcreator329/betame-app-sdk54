@@ -37,8 +37,8 @@ export default function CurlecApiTest() {
         payment_type: 'betacoin_purchase',
         amount: 500, // RM5.00 in cents
         currency: 'MYR',
-        success_url: 'https://yourapp.com/payment/success?checkout_id={CHECKOUT_ID}',
-        cancel_url: 'https://yourapp.com/payment/cancel',
+              success_url: 'https://betame.com.my/payment/success?checkout_id={CHECKOUT_ID}',
+      cancel_url: 'https://betame.com.my/payment/cancel',
         metadata: {
           betacoin_amount: 20,
           package_id: 'test-package',

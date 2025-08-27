@@ -29,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import { useColors } from '@/contexts/ThemeContext';
 import { imageCacheService } from '@/lib/image-cache-service';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -122,6 +123,20 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { totalUnreadCount } = useUnreadMessageCount();
   const colors = useColors();
+  const insets = useSafeAreaInsets();
+
+  // Calculate adaptive bottom padding for Android devices
+  const getAdaptiveBottomPadding = () => {
+    if (Platform.OS === 'android') {
+      // Account for floating tab bar + safe area + extra padding
+      const tabBarHeight = 70; // Height of the floating tab bar
+      const tabBarMargin = Math.max(insets.bottom + 16, 25); // Adaptive margin from tab layout
+      const extraPadding = 20; // Additional padding for content
+      return tabBarHeight + tabBarMargin + extraPadding;
+    }
+    // For iOS, use standard padding
+    return 100;
+  };
 
   // Helper function to convert database service to UI service format
   const convertToUIService = (dbService: DBService): Service => {
@@ -214,7 +229,11 @@ export default function HomeScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScrollView 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, isDesktop && styles.desktopScrollContent]}
+        contentContainerStyle={[
+          styles.scrollContent, 
+          isDesktop && styles.desktopScrollContent,
+          { paddingBottom: getAdaptiveBottomPadding() }
+        ]}
       >
         {/* Header */}
         <View style={styles.header}>

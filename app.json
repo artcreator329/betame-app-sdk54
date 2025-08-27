@@ -34,7 +34,7 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-      "buildNumber": "6"
+      "buildNumber": "7"
     },
     "android": {
       "config": {
@@ -45,7 +45,7 @@
       "package": "com.betame.app",
       "enableProguardInReleaseBuilds": false,
       "enableSeparateBuildPerCPUArchitecture": false,
-              "versionCode": 4,
+      "versionCode": 7,
       "versionName": "1.0.0",
       "edgeToEdgeEnabled": true
     },

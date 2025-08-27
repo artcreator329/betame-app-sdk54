@@ -689,16 +689,6 @@ export class NotificationService {
     chatId: string;
     senderId: string;
   }): Promise<void> {
-    console.log('🔔 NotificationService: addChatNotification called with:', {
-      participantId,
-      participantName,
-      message: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
-      fullMessage: message,
-      chatId,
-      senderId,
-      currentUserId: this.currentUserId
-    });
-
     // Validate that we have a senderId for navigation
     if (!senderId) {
       console.error('❌ NotificationService: senderId is required for chat notifications');
@@ -707,7 +697,6 @@ export class NotificationService {
 
     // CRITICAL: Prevent self-notifications - don't notify if sender is the same as recipient
     if (senderId === participantId) {
-      console.log('ℹ️ NotificationService: Skipping self-notification - sender and recipient are the same:', senderId);
       return;
     }
     
@@ -723,10 +712,7 @@ export class NotificationService {
        },
      };
      
-     console.log('🔔 NotificationService: Created notification object:', notification);
-     console.log('🔔 NotificationService: Notification will be sent TO:', participantId, 'FROM:', participantName);
-      await this.addNotification(notification, participantId);
-     console.log('🔔 NotificationService: addChatNotification completed');
+     await this.addNotification(notification, participantId);
   }
 
   // Helper method to add service offer notification

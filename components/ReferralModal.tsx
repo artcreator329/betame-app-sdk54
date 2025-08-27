@@ -84,16 +84,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
     }
   };
 
-  const copyReferralCode = async () => {
-    if (!stats?.referralCode) return;
-    
-    try {
-      await Clipboard.setStringAsync(stats.referralCode);
-      Alert.alert('Copied!', 'Referral code copied to clipboard');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to copy referral code');
-    }
-  };
+
 
   const shareReferralLink = async () => {
     if (!stats?.referralCode) return;
@@ -196,19 +187,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
         </View>
       </View>
 
-      {/* Compact Code Section */}
-      <View style={styles.codeSection}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="qr-code" size={20} color="#FF6B6B" />
-          <Text style={styles.sectionTitle}>Your Referral Code</Text>
-        </View>
-        <View style={styles.codeContainer}>
-          <Text style={styles.codeText}>{stats?.referralCode || 'Loading...'}</Text>
-          <TouchableOpacity style={styles.copyButton} onPress={copyReferralCode}>
-            <Ionicons name="copy" size={16} color="white" />
-          </TouchableOpacity>
-        </View>
-      </View>
+
 
       {/* Compact How it Works Section */}
       <View style={styles.howItWorksSection}>
@@ -526,20 +505,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  codeSection: {
-    backgroundColor: 'white',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-  },
+
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -551,28 +517,7 @@ const styles = StyleSheet.create({
     color: '#1C1C1E',
     marginLeft: 8,
   },
-  codeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#FF6B6B',
-  },
-  codeText: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    textAlign: 'center',
-    letterSpacing: 1,
-  },
-  copyButton: {
-    backgroundColor: '#FF6B6B',
-    padding: 10,
-    borderRadius: 6,
-  },
+
   howItWorksSection: {
     backgroundColor: 'white',
     padding: 15,

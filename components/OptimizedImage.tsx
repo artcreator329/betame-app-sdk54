@@ -1,9 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
-import { Image } from 'expo-image';
+import { View, StyleSheet, ActivityIndicator, Image as RNImage, Platform } from 'react-native';
 import { useColors } from '@/contexts/ThemeContext';
 import { performanceMonitor } from '@/lib/performance-monitor';
 import { imageCacheService } from '@/lib/image-cache-service';
+
+// Try to import expo-image, fallback to React Native Image on Android if needed
+let ExpoImage: any = null;
+try {
+  ExpoImage = require('expo-image').Image;
+} catch (error) {
+  console.warn('expo-image not available, falling back to React Native Image');
+}
 
 interface OptimizedImageProps {
   source: string | null;
@@ -34,6 +41,9 @@ export default function OptimizedImage({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const loadStartTime = useRef<number>(0);
+
+  // Use React Native Image as fallback on Android if expo-image is not available
+  const shouldUseFallback = Platform.OS === 'android' && !ExpoImage;
 
   if (!source) {
     return (
@@ -66,9 +76,50 @@ export default function OptimizedImage({
     onError?.(error);
   };
 
+  // Convert expo-image contentFit to React Native resizeMode
+  const getResizeMode = (contentFit: string) => {
+    switch (contentFit) {
+      case 'cover': return 'cover';
+      case 'contain': return 'contain';
+      case 'fill': return 'stretch';
+      case 'none': return 'center';
+      case 'scale-down': return 'contain';
+      default: return 'cover';
+    }
+  };
+
+  if (shouldUseFallback) {
+    // Use React Native Image as fallback
+    return (
+      <View style={[styles.container, style]}>
+        <RNImage
+          source={{ uri: source }}
+          style={[styles.image, style]}
+          resizeMode={getResizeMode(contentFit)}
+          onLoad={handleLoad}
+          onError={handleError}
+          onLoadStart={() => {
+            loadStartTime.current = Date.now();
+          }}
+        />
+        {isLoading && showLoadingIndicator && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="small" color={colors.primary.main} />
+          </View>
+        )}
+        {hasError && (
+          <View style={[styles.errorOverlay, { backgroundColor: colors.border.light }]}>
+            <ActivityIndicator size="small" color={colors.text.secondary} />
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // Use expo-image when available
   return (
     <View style={[styles.container, style]}>
-      <Image
+      <ExpoImage
         source={source}
         style={[styles.image, style]}
         contentFit={contentFit}

@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
 import React, { useEffect } from 'react';
-import { Platform, View, Text, Dimensions, TouchableOpacity, StyleSheet } from 'react-native';
+import { Platform, View, Text, Dimensions, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Home, Users, FileText, Bell, User, Briefcase } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -112,6 +113,7 @@ export default function TabLayout() {
   const { unreadCount } = useNotifications();
   const segments = useSegments();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   
   const screenWidth = Dimensions.get('window').width;
   
@@ -122,6 +124,18 @@ export default function TabLayout() {
     }
     return true;
   });
+  
+  // Calculate adaptive bottom margin for Android devices
+  const getAdaptiveBottomMargin = () => {
+    if (Platform.OS === 'android') {
+      // Use safe area bottom inset + additional padding for Android
+      const baseMargin = insets.bottom;
+      const additionalPadding = 16; // Extra padding for Android
+      return Math.max(baseMargin + additionalPadding, 25); // Minimum 25px
+    }
+    // For iOS, use the standard margin
+    return 25;
+  };
   
   // Removed animation code to prevent flashing
 
@@ -164,8 +178,6 @@ export default function TabLayout() {
             tabBarStyle: { display: 'none' }, // Hide the tab bar on desktop
             // Smooth tab transitions
             animation: 'fade' as const,
-            // Enable smooth animations
-            animationEnabled: true,
           }}>
             <Tabs.Screen name="index" />
             <Tabs.Screen name="services" />
@@ -186,13 +198,12 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#8E8E93',
         // Smooth tab transitions
         animation: 'fade' as const,
-        animationEnabled: true,
         tabBarStyle: {
           backgroundColor: 'white',
           borderTopWidth: 0,
           borderRadius: 25,
           marginHorizontal: 20,
-          marginBottom: 25,
+          marginBottom: getAdaptiveBottomMargin(),
           paddingBottom: 8,
           paddingTop: 8,
           height: 70,
@@ -219,8 +230,6 @@ export default function TabLayout() {
           }} />
         ),
         // Enhanced tab press feedback
-        tabBarPressColor: 'rgba(0, 122, 255, 0.1)',
-        tabBarPressOpacity: 0.8,
       }}>
       <Tabs.Screen
         name="index"

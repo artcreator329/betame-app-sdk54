@@ -34,8 +34,8 @@ export default function CurlecTestPayment() {
         payment_type: 'betacoin_purchase',
         amount: 1000, // RM10.00 in cents
         currency: 'MYR',
-        success_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://yourapp.com'}/payment/success?checkout_id={CHECKOUT_ID}`,
-        cancel_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://yourapp.com'}/payment/cancel`,
+        success_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://betame.com.my'}/payment/success?checkout_id={CHECKOUT_ID}`,
+        cancel_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://betame.com.my'}/payment/cancel`,
         metadata: {
           betacoin_amount: 100,
           package_id: 'test-package',
@@ -84,8 +84,8 @@ export default function CurlecTestPayment() {
         amount: 2500, // RM25.00 in cents
         currency: 'MYR',
         order_id: 'test-order-123',
-        success_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://yourapp.com'}/payment/success?checkout_id={CHECKOUT_ID}`,
-        cancel_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://yourapp.com'}/payment/cancel`,
+        success_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://betame.com.my'}/payment/success?checkout_id={CHECKOUT_ID}`,
+        cancel_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://betame.com.my'}/payment/cancel`,
         metadata: {
           service_name: 'Test Service',
           service_provider_name: 'Test Provider',

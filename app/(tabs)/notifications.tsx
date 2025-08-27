@@ -42,16 +42,6 @@ export default function NotificationsScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedNotifications, setSelectedNotifications] = useState<Set<string>>(new Set());
 
-  // Add debugging
-  React.useEffect(() => {
-    console.log('🔍 NotificationsScreen: Current state:', {
-      notificationsCount: notifications.length,
-      user: user?.id,
-      notifications: notifications.slice(0, 3) // Log first 3 notifications
-    });
-  }, [notifications, user]);
-
-
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     // Simulate refresh - in real app, you'd reload notifications

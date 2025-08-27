@@ -68,8 +68,8 @@ export default function BetaCoinPurchaseModal({ visible, onClose }: BetaCoinPurc
         payment_type: 'betacoin_purchase',
         amount: selectedPackage.price,
         currency: selectedPackage.currency,
-        success_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://yourapp.com'}/payment/success?checkout_id={CHECKOUT_ID}`,
-        cancel_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://yourapp.com'}/payment/cancel`,
+        success_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://betame.com.my'}/payment/success?checkout_id={CHECKOUT_ID}`,
+        cancel_url: `${process.env.EXPO_PUBLIC_APP_URL || 'https://betame.com.my'}/payment/cancel`,
         metadata: {
           betacoin_amount: selectedPackage.betacoin_amount,
           package_id: selectedPackage.id,

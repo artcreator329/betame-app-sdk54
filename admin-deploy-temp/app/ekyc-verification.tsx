@@ -537,14 +537,14 @@ export default function EKYCVerificationScreen() {
 
   const handleDocumentUpload = async (documentId: string, documentType: 'identity' | 'additional' = 'additional') => {
     try {
-      // Use basic image picker without watermark for now to test upload
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      // Only allow camera capture - no gallery upload option
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant media library access to upload documents.');
+        Alert.alert('Permission Required', 'Please grant camera access to take photos of your documents.');
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
+      const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
@@ -630,6 +630,17 @@ export default function EKYCVerificationScreen() {
         );
       } catch (uploadError: any) {
         console.error('❌ Upload to storage failed:', uploadError);
+        
+        // Check if this is a simulator error
+        if (uploadError.message && uploadError.message.includes('simulator')) {
+          Alert.alert(
+            'Camera Not Available',
+            'Camera is not available in the simulator. Please test this feature on a real device.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+        
         console.error('❌ Upload error details:', {
           message: uploadError?.message || 'Unknown error',
           stack: uploadError?.stack,
@@ -934,7 +945,7 @@ export default function EKYCVerificationScreen() {
                 onPress={() => handleDocumentUpload(document.id, 'identity')}
               >
                 <Camera size={20} color={colors.text.white} />
-                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Upload {document.name}</Text>
+                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Take Photo</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1304,8 +1315,8 @@ export default function EKYCVerificationScreen() {
                 style={[styles.uploadButton, { backgroundColor: colors.primary.main }]}
                 onPress={() => handleDocumentUpload(document.id, 'additional')}
               >
-                <Upload size={20} color="white" />
-                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Upload Document</Text>
+                <Camera size={20} color="white" />
+                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Take Photo</Text>
               </TouchableOpacity>
             )}
           </View>

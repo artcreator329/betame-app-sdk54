@@ -1,4 +1,11 @@
-import { Image } from 'expo-image';
+// Try to import expo-image, fallback gracefully on Android if needed
+let ExpoImage: any = null;
+try {
+  ExpoImage = require('expo-image').Image;
+} catch (error) {
+  console.warn('expo-image not available in image cache service, some features may be limited');
+}
+
 import { IMAGE_OPTIMIZATION_CONFIG, getOptimizedImageUrl } from '@/config/image-optimization';
 
 export class ImageCacheService {
@@ -35,6 +42,13 @@ export class ImageCacheService {
 
       console.log(`🖼️ Preloading ${validUrls.length} images...`);
       
+      // If expo-image is not available, just mark as cached without actual preloading
+      if (!ExpoImage) {
+        console.warn('expo-image not available, skipping actual preloading');
+        validUrls.forEach(url => this.cache.set(url, true));
+        return;
+      }
+      
       // Preload images in batches to avoid overwhelming the system
       const batchSize = IMAGE_OPTIMIZATION_CONFIG.preload.batchSize;
       for (let i = 0; i < validUrls.length; i += batchSize) {
@@ -43,7 +57,7 @@ export class ImageCacheService {
         await Promise.allSettled(
           batch.map(async (url) => {
             try {
-              await Image.prefetch(url);
+              await ExpoImage.prefetch(url);
               this.cache.set(url, true);
             } catch (error) {
               console.warn(`Failed to preload image: ${url}`, error);
@@ -77,7 +91,9 @@ export class ImageCacheService {
    */
   clearCache(): void {
     this.cache.clear();
-    Image.clearMemoryCache();
+    if (ExpoImage) {
+      ExpoImage.clearMemoryCache();
+    }
     console.log('🧹 Image cache cleared');
   }
 

@@ -24,19 +24,15 @@ if (!fs.existsSync(androidDir)) {
   process.exit(1);
 }
 
-// Function to create keystore if it doesn't exist
-function createKeystoreIfMissing() {
-  const keystorePath = path.join(androidDir, 'app', 'betame-release-key.keystore');
+// Function to check if existing keystore exists
+function checkExistingKeystore() {
+  const keystorePath = path.join(androidDir, 'betame-release-key-new.jks');
   if (!fs.existsSync(keystorePath)) {
-    console.log('🔑 Creating release keystore...');
-    try {
-      execSync(`cd ${path.join(androidDir, 'app')} && keytool -genkey -v -keystore betame-release-key.keystore -alias betame-key-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass betame123 -keypass betame123 -dname "CN=BetaMe, OU=BetaMe Team, O=BetaMe, L=Kuala Lumpur, S=Selangor, C=MY"`, { stdio: 'inherit' });
-      console.log('✅ Release keystore created');
-    } catch (error) {
-      console.error('❌ Failed to create keystore:', error.message);
-      process.exit(1);
-    }
+    console.error('❌ Error: Existing keystore not found at android/betame-release-key-new.jks');
+    console.error('Please ensure the keystore file exists before building.');
+    process.exit(1);
   }
+  console.log('✅ Existing keystore found: betame-release-key-new.jks');
 }
 
 // Function to fix signing configuration after prebuild
@@ -44,13 +40,13 @@ function fixSigningConfiguration() {
   console.log('🔧 Fixing signing configuration after prebuild...');
   
   const buildGradlePath = path.join(androidDir, 'app', 'build.gradle');
-  const keystorePropertiesPath = path.join(androidDir, 'app', 'keystore.properties');
+  const keystorePropertiesPath = path.join(androidDir, 'keystore.properties');
   
-  // Create keystore properties file
-  const keystoreProperties = `storeFile=betame-release-key.keystore
-storePassword=betame123
-keyAlias=betame-key-alias
-keyPassword=betame123
+  // Create keystore properties file using existing keystore
+  const keystoreProperties = `storePassword=Betame##888
+keyPassword=Betame##888
+keyAlias=betame-key
+storeFile=betame-release-key-new.jks
 `;
   
   fs.writeFileSync(keystorePropertiesPath, keystoreProperties);
@@ -62,7 +58,7 @@ keyPassword=betame123
   // Add keystore properties loading after the plugins
   const keystorePropertiesLoading = `
 // Load keystore properties
-def keystorePropertiesFile = rootProject.file("app/keystore.properties")
+def keystorePropertiesFile = rootProject.file("keystore.properties")
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
@@ -109,8 +105,8 @@ try {
   execSync('npm install', { stdio: 'inherit' });
   console.log('✅ Dependencies installed\n');
 
-  // Create keystore if missing
-  createKeystoreIfMissing();
+  // Check existing keystore
+  checkExistingKeystore();
 
   console.log('🔧 Step 2: Prebuilding Android project...');
   execSync('npx expo prebuild --platform android --clean', { stdio: 'inherit' });

@@ -33,6 +33,21 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     }
   }
   
+  // Handle expo-image on Android - provide fallback if native module fails
+  if (platform === 'android' && moduleName === 'expo-image') {
+    try {
+      // Try to resolve the actual expo-image module
+      return context.resolveRequest(context, moduleName, platform);
+    } catch (error) {
+      console.warn('expo-image native module not available on Android, using fallback');
+      // Return a fallback module that exports a basic Image component
+      return {
+        filePath: path.resolve(__dirname, 'metro-shims/expo-image-fallback.js'),
+        type: 'sourceFile',
+      };
+    }
+  }
+  
   // Use default resolution for all other cases
   return context.resolveRequest(context, moduleName, platform);
 };

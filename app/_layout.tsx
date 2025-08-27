@@ -80,7 +80,7 @@ function CustomSplashScreen() {
           style={styles.splashTextLogo}
           resizeMode="contain"
         />
-        <Text style={styles.splashSubtext}>Connecting People & Services</Text>
+        <Text style={styles.splashSubtext}>Connecting People, Powering Possibilities</Text>
       </View>
       <ActivityIndicator 
         size="large" 

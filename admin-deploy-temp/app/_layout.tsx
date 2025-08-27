@@ -83,7 +83,7 @@ function CustomSplashScreen() {
           resizeMode="contain"
         />
         <Text style={styles.splashText}>BetaMe</Text>
-        <Text style={styles.splashSubtext}>Connecting People & Services</Text>
+        <Text style={styles.splashSubtext}>Connecting People, Powering Possibilities</Text>
       </View>
       <ActivityIndicator 
         size="large" 

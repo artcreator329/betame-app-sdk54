@@ -897,25 +897,8 @@ export default function EKYCVerificationScreen() {
 
   const handleDocumentUpload = async (documentId: string, documentType: 'identity' | 'additional' = 'additional') => {
     try {
-      // Show action sheet to choose between camera and gallery
-      Alert.alert(
-        'Upload Document',
-        'Choose how you want to upload your document',
-        [
-          {
-            text: 'Take Photo',
-            onPress: () => handleCameraUpload(documentId, documentType)
-          },
-          {
-            text: 'Choose from Gallery',
-            onPress: () => handleGalleryUpload(documentId, documentType)
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel'
-          }
-        ]
-      );
+      // Only allow camera capture - no gallery upload option
+      await handleCameraUpload(documentId, documentType);
     } catch (error: any) {
       console.error('❌ Document upload error:', error);
       Alert.alert(
@@ -950,45 +933,25 @@ export default function EKYCVerificationScreen() {
       await processUploadedImage(asset, documentId, documentType);
     } catch (error: any) {
       console.error('❌ Camera upload error:', error);
-      Alert.alert(
-        'Camera Error',
-        'Failed to take photo. Please try again.',
-        [{ text: 'OK' }]
-      );
+      
+      // Check if this is a simulator error
+      if (error.message && error.message.includes('simulator')) {
+        Alert.alert(
+          'Camera Not Available',
+          'Camera is not available in the simulator. Please test this feature on a real device.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Camera Error',
+          'Failed to take photo. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
     }
   };
 
-  const handleGalleryUpload = async (documentId: string, documentType: 'identity' | 'additional' = 'additional') => {
-    try {
-      // Request media library permissions
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant media library access to upload documents.');
-        return;
-      }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-        base64: false,
-      });
-
-      if (result.canceled || !result.assets || result.assets.length === 0) {
-        return;
-      }
-
-      const asset = result.assets[0];
-      await processUploadedImage(asset, documentId, documentType);
-    } catch (error: any) {
-      console.error('❌ Gallery upload error:', error);
-      Alert.alert(
-        'Gallery Error',
-        'Failed to select image from gallery. Please try again.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
 
   const processUploadedImage = async (asset: any, documentId: string, documentType: 'identity' | 'additional' = 'additional') => {
     try {
@@ -1517,7 +1480,7 @@ export default function EKYCVerificationScreen() {
                 onPress={() => handleDocumentUpload(document.id, 'identity')}
               >
                 <Camera size={20} color={colors.text.white} />
-                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Take Photo or Upload</Text>
+                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Take Photo</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1530,7 +1493,7 @@ export default function EKYCVerificationScreen() {
         <View style={styles.infoContent}>
           <Text style={[styles.infoTitle, { color: colors.text.primary }]}>Important Notes</Text>
           <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-            • Take a photo directly or choose from your gallery{'\n'}
+            • Take a photo directly with your camera{'\n'}
             • Ensure your document is clearly visible and well-lit{'\n'}
             • All text should be readable and not blurry{'\n'}
             • Upload the front side of your {personalInfo.nationality === 'malaysian' ? 'IC' : 'Passport'}{'\n'}
@@ -1942,7 +1905,7 @@ export default function EKYCVerificationScreen() {
                 onPress={() => handleDocumentUpload(document.id, 'additional')}
               >
                 <Camera size={20} color="white" />
-                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Take Photo or Upload</Text>
+                <Text style={[styles.uploadButtonText, { color: colors.text.white }]}>Take Photo</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1952,7 +1915,7 @@ export default function EKYCVerificationScreen() {
       <View style={[styles.infoBox, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
         <AlertCircle size={20} color={colors.status.warning} />
         <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-          You can take photos directly with your camera or upload from your gallery. Ensure all documents are clear, well-lit, and show all information. Blurry or incomplete documents may delay verification.
+          Take photos directly with your camera. Ensure all documents are clear, well-lit, and show all information. Blurry or incomplete documents may delay verification.
         </Text>
       </View>
     </View>

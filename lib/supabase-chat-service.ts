@@ -441,8 +441,6 @@ export class SupabaseChatService {
               ? chat.participant2_id 
               : chat.participant1_id;
             
-            console.log('🔔 SupabaseChatService: Creating notification for participant:', otherParticipantId);
-            
             // Add notification for incoming message (to the recipient)
             await notificationService.addChatNotification({
               participantId: otherParticipantId, // Send notification TO the other participant
@@ -452,10 +450,6 @@ export class SupabaseChatService {
               chatId: chatId,
               senderId: senderId, // Add sender ID for navigation
             });
-            
-            console.log('✅ SupabaseChatService: Chat notification created successfully');
-          } else {
-            console.log('⚠️ SupabaseChatService: Chat not found for notification:', chatId);
           }
         } catch (notificationError) {
           console.error('❌ SupabaseChatService: Error adding chat notification:', notificationError);
@@ -463,7 +457,6 @@ export class SupabaseChatService {
         }
       }
 
-      console.log('✅ Message sent successfully:', transformedMessage.id);
       return transformedMessage;
     } catch (error) {
       console.error('Error sending message:', error);

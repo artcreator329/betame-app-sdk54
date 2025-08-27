@@ -55,7 +55,7 @@ export async function configureLocalNotifications() {
 
     // Configure notification handler first
     await mod.setNotificationHandler({
-      handleNotification: async (notification) => {
+      handleNotification: async (notification: any) => {
         console.log('📱 Handling notification:', notification.request.content.title);
         return {
           shouldShowAlert: true,
@@ -115,12 +115,14 @@ export async function showLocalNotification(notification: AppNotification) {
 
     console.log(`📱 Sending system notification: "${notification.title}"`);
 
-    const notificationContent = {
+    const notificationContent: any = {
       title: notification.title,
       body: notification.message,
       data: notification.data ?? {},
       sound: 'default',
       badge: 1,
+      // Ensure notifications show even when app is in foreground
+      autoDismiss: false,
     };
 
     // Add Android-specific properties
@@ -138,7 +140,9 @@ export async function showLocalNotification(notification: AppNotification) {
     return true;
   } catch (error) {
     console.error('❌ Local notification error:', error);
-    console.error('Error details:', error.message);
+    if (error instanceof Error) {
+      console.error('Error details:', error.message);
+    }
     return false;
   }
 }

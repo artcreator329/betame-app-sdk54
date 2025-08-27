@@ -83,16 +83,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
     }
   };
 
-  const copyReferralCode = async () => {
-    if (!stats?.referralCode) return;
-    
-    try {
-      await Clipboard.setStringAsync(stats.referralCode);
-      Alert.alert('Copied!', 'Referral code copied to clipboard');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to copy referral code');
-    }
-  };
+
 
   const shareReferralLink = async () => {
     if (!stats?.referralCode) return;
@@ -170,16 +161,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
         </View>
       </View>
 
-      {/* Referral Code Section */}
-      <View style={styles.codeSection}>
-        <Text style={styles.sectionTitle}>Your Referral Code</Text>
-        <View style={styles.codeContainer}>
-          <Text style={styles.codeText}>{stats?.referralCode || 'Loading...'}</Text>
-          <TouchableOpacity style={styles.copyButton} onPress={copyReferralCode}>
-            <Ionicons name="copy-outline" size={20} color="#007AFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
+
 
       {/* How it Works Section */}
       <View style={styles.howItWorksSection}>
@@ -418,46 +400,14 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
-  codeSection: {
-    margin: 20,
-    marginTop: 0,
-    padding: 20,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
+
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
     marginBottom: 12,
   },
-  codeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  codeText: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    fontFamily: 'monospace',
-  },
-  copyButton: {
-    padding: 8,
-  },
+
   howItWorksSection: {
     margin: 20,
     marginTop: 0,

@@ -240,8 +240,10 @@ class ReferralService {
 
   // Generate referral link
   generateReferralLink(referralCode: string): string {
-    const baseUrl = process.env.EXPO_PUBLIC_APP_URL || 'https://yourapp.com';
-    return `${baseUrl}/signup?ref=${referralCode}`;
+    // Use a smart link that can handle both app installation and deep linking
+    // This will redirect to app store if app not installed, or open app if installed
+    const baseUrl = process.env.EXPO_PUBLIC_APP_URL || 'https://betame.com.my';
+    return `${baseUrl}/install?ref=${referralCode}`;
   }
 
   // Check if user was referred

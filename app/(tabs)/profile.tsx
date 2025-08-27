@@ -21,6 +21,7 @@ import { ReferralStatsInline } from '@/components/ReferralStatsInline';
 import { JobProposalNotifications } from '@/components/JobProposalNotifications';
 import { JobNotificationService, JobNotificationPayload } from '@/lib/job-notification-service';
 import { EKYCService, EKYCSubmission } from '@/lib/ekyc-service';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Helper function to format joined date
 const formatJoinedDate = (createdAt: string): string => {
@@ -71,6 +72,7 @@ export default function ProfileScreen() {
   const { user, userProfile, updateProfile, refreshProfile, checkAdminStatus: contextCheckAdminStatus, isAdmin } = useAuth();
   const colors = useColors();
   const { isDarkMode, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Calculate average rating from reviews
   const averageRating = reviews.length > 0
@@ -988,6 +990,19 @@ export default function ProfileScreen() {
     );
   }
 
+  // Calculate adaptive bottom padding for Android devices
+  const getAdaptiveBottomPadding = () => {
+    if (Platform.OS === 'android') {
+      // Account for floating tab bar + safe area + extra padding
+      const tabBarHeight = 70; // Height of the floating tab bar
+      const tabBarMargin = Math.max(insets.bottom + 16, 25); // Adaptive margin from tab layout
+      const extraPadding = 20; // Additional padding for content
+      return tabBarHeight + tabBarMargin + extraPadding;
+    }
+    // For iOS, use standard padding
+    return 100;
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background.primary }]}
@@ -996,7 +1011,11 @@ export default function ProfileScreen() {
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
+        contentContainerStyle={[
+          styles.scrollContent, 
+          isDesktop && styles.scrollContentDesktop,
+          { paddingBottom: getAdaptiveBottomPadding() }
+        ]}
         style={{ backgroundColor: colors.background.primary }}
         refreshControl={
           <RefreshControl
