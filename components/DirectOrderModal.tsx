@@ -241,10 +241,7 @@ export function DirectOrderModal({
                       Delivery: {customDeliveryTime || 7} days
                     </Text>
                   </View>
-                  <View style={styles.timelineItem}>
-                    <Shield size={16} color={'#10B981'} />
-                    <Text style={styles.timelineText}>Protected by BetaMe Guarantee</Text>
-                  </View>
+
                 </View>
               </View>
             </View>

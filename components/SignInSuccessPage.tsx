@@ -213,7 +213,7 @@ export default function SignInSuccessPage({ onComplete, delay = 2000 }: SignInSu
                 transform: [{ translateY: titleTranslateY }]
               }}
             >
-              <Text style={styles.successTitle}>Sign In Successful!</Text>
+              <Text style={styles.successTitle}>Welcome back!</Text>
             </Animated.View>
             <Animated.View
               style={{
@@ -222,7 +222,7 @@ export default function SignInSuccessPage({ onComplete, delay = 2000 }: SignInSu
               }}
             >
               <Text style={styles.successSubtitle}>
-                Welcome back! Taking you to your dashboard...
+                Connecting People, Powering Possibilities
               </Text>
             </Animated.View>
           </View>
