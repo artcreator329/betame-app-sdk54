@@ -75,25 +75,45 @@ export class ServiceService {
       // Get unique user IDs from all services
       const userIds = [...new Set(allServices.map(s => s.user_id))];
 
-      // Get profiles for these users
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, created_at')
-        .in('id', userIds);
+      // Get profiles for these users from both tables
+      const [profilesResult, userProfilesResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, created_at')
+          .in('id', userIds),
+        supabase
+          .from('user_profiles')
+          .select('user_id, full_name, avatar_url, created_at')
+          .in('user_id', userIds)
+      ]);
 
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-        // Return parent services without profile data and variants
-        return parentServices.map(service => ({
-          ...service,
-          provider_name: 'Service Provider',
-          provider_avatar: undefined,
-          service_variants: variantsMap.get(service.id) || []
-        }));
+      if (profilesResult.error) {
+        console.error('Error fetching profiles:', profilesResult.error);
       }
 
-      // Create a map for quick lookup
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      if (userProfilesResult.error) {
+        console.error('Error fetching user_profiles:', userProfilesResult.error);
+      }
+
+      // Create a map for quick lookup, prioritizing profiles table
+      const profileMap = new Map();
+      
+      // Add profiles from profiles table
+      profilesResult.data?.forEach(p => {
+        profileMap.set(p.id, p);
+      });
+      
+      // Add profiles from user_profiles table (only if not already in profiles table)
+      userProfilesResult.data?.forEach(p => {
+        if (!profileMap.has(p.user_id)) {
+          profileMap.set(p.user_id, {
+            id: p.user_id,
+            full_name: p.full_name,
+            avatar_url: p.avatar_url,
+            created_at: p.created_at
+          });
+        }
+      });
 
       // Get active features for all services
       const serviceIds = parentServices.map(s => s.id);

@@ -179,14 +179,28 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     const fetchUserCoverPhoto = async () => {
       if (!service.image_url && service.user_id) {
         try {
-          const { data, error } = await supabase
+          // Try to get cover photo from profiles table first
+          const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('cover_photo_url')
             .eq('id', service.user_id)
             .single();
 
-          if (!error && data?.cover_photo_url) {
-            setUserCoverPhoto(data.cover_photo_url);
+          if (!profileError && profileData?.cover_photo_url) {
+            setUserCoverPhoto(profileData.cover_photo_url);
+            return;
+          }
+
+          // If no cover photo in profiles table, try user_profiles table
+          const { data: userProfileData, error: userProfileError } = await supabase
+            .from('user_profiles')
+            .select('avatar_url')
+            .eq('user_id', service.user_id)
+            .single();
+
+          if (!userProfileError && userProfileData?.avatar_url) {
+            // Use avatar as fallback if no cover photo
+            setUserCoverPhoto(userProfileData.avatar_url);
           }
         } catch (error) {
           console.error('Error fetching user cover photo:', error);
@@ -207,8 +221,8 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     if (userProfileAvatar) {
       return imageCacheService.getThumbnailUrl(userProfileAvatar);
     }
-    // Return null to show no image instead of placeholder
-    return null;
+    // Return a default placeholder image if no images are available
+    return 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=400';
   };
 
   const handleMainCardPress = () => {
