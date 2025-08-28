@@ -124,25 +124,50 @@ export default function UserProfileScreen() {
             .from('profiles')
             .select('*')
             .eq('id', userId)
-            .single(),
+            .maybeSingle(),
           supabase
             .from('user_profiles')
-            .select('verification_status')
+            .select('*')
             .eq('user_id', userId)
-            .single()
+            .maybeSingle()
         ]);
 
-        if (profileResult.error) {
+        if (profileResult.error && profileResult.error.code !== 'PGRST116') {
           console.error('Error fetching user profile:', profileResult.error);
           Alert.alert('Error', 'User profile not found');
           router.back();
           return;
         }
 
-        // Merge profile data with verification status
+        if (userProfileResult.error && userProfileResult.error.code !== 'PGRST116') {
+          console.error('Error fetching user profile data:', userProfileResult.error);
+        }
+
+        // Merge profile data, prioritizing profiles table but falling back to user_profiles
         const mergedProfileData = {
+          // Start with profile data (if exists)
           ...profileResult.data,
-          verification_status: userProfileResult.data?.verification_status || null
+          // If no profile data, use user_profile data as fallback for basic fields
+          ...(profileResult.data ? {} : {
+            id: userId,
+            full_name: userProfileResult.data?.full_name || 'User',
+            avatar_url: userProfileResult.data?.avatar_url,
+            bio: userProfileResult.data?.bio,
+            phone: userProfileResult.data?.phone,
+            location: userProfileResult.data?.location,
+            date_of_birth: userProfileResult.data?.date_of_birth,
+            gender: userProfileResult.data?.gender,
+            created_at: userProfileResult.data?.created_at,
+            updated_at: userProfileResult.data?.updated_at,
+          }),
+          // Include service provider fields from user_profiles
+          is_service_provider: profileResult.data?.is_service_provider || userProfileResult.data?.is_service_provider || userProfileResult.data?.is_seller || false,
+          service_provider_badge: profileResult.data?.service_provider_badge || userProfileResult.data?.seller_badge,
+          service_provider_badge_subtitle: profileResult.data?.service_provider_badge_subtitle || userProfileResult.data?.seller_badge_subtitle,
+          service_provider_description: profileResult.data?.service_provider_description || userProfileResult.data?.seller_description,
+          rating: profileResult.data?.rating || userProfileResult.data?.rating || 0,
+          review_count: profileResult.data?.review_count || userProfileResult.data?.review_count || 0,
+          verification_status: profileResult.data?.verification_status || userProfileResult.data?.verification_status || 'not_started',
         };
 
         setUserProfile(mergedProfileData);

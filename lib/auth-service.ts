@@ -403,14 +403,27 @@ class AuthService {
         console.error('Error fetching user profile data:', userProfileError);
       }
 
-      // Merge the data, but only take service provider-specific fields from user_profiles
-      // to avoid data inconsistency
+      // Merge the data, prioritizing profiles table but falling back to user_profiles
       const mergedProfile = {
+        // Start with profile data (if exists)
         ...profileData,
+        // If no profile data, use user_profile data as fallback for basic fields
+        ...(profileData ? {} : {
+          id: user,
+          full_name: userProfileData?.full_name || 'User',
+          avatar_url: userProfileData?.avatar_url,
+          bio: userProfileData?.bio,
+          phone: userProfileData?.phone,
+          location: userProfileData?.location,
+          date_of_birth: userProfileData?.date_of_birth,
+          gender: userProfileData?.gender,
+          created_at: userProfileData?.created_at,
+          updated_at: userProfileData?.updated_at,
+        }),
         // Get is_service_provider from profiles table where we added it
-        is_service_provider: profileData?.is_service_provider || false,
+        is_service_provider: profileData?.is_service_provider || userProfileData?.is_service_provider || userProfileData?.is_seller || false,
         // Only take service provider-specific fields from user_profiles
-        service_provider_badge: userProfileData?.service_provider_badge || userProfileData?.is_seller || false,
+        service_provider_badge: userProfileData?.service_provider_badge || userProfileData?.seller_badge,
         service_provider_badge_subtitle: userProfileData?.service_provider_badge_subtitle || userProfileData?.seller_badge_subtitle,
         service_provider_description: userProfileData?.service_provider_description || userProfileData?.seller_description,
         rating: userProfileData?.rating || profileData?.rating || 0,
