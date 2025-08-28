@@ -5,7 +5,8 @@ export interface ReferralCode {
   user_id: string;
   referral_code: string;
   total_referrals: number;
-  total_betacoins_earned: number;
+  total_credits_earned: number;
+  total_cash_earned: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -16,9 +17,9 @@ export interface Referral {
   referrer_id: string;
   referred_user_id: string;
   status: 'pending' | 'signup_completed' | 'first_job_completed' | 'completed';
-  signup_betacoins_awarded: number;
+  signup_credits_awarded: number;
   first_job_cash_awarded: number;
-  total_betacoins_earned: number;
+  total_credits_earned: number;
   total_cash_earned: number;
   first_job_completed_at?: string;
   created_at: string;
@@ -171,7 +172,7 @@ class ReferralService {
       }
 
       const totalReferrals = referrals.length;
-      const totalBetaCoinsEarned = referrals.reduce((sum, ref) => sum + (ref.total_betacoins_earned || 0), 0);
+      const totalBetaCoinsEarned = referrals.reduce((sum, ref) => sum + (ref.total_credits_earned || 0), 0);
       const totalCashEarned = referrals.reduce((sum, ref) => sum + (ref.total_cash_earned || 0), 0);
       const pendingReferrals = referrals.filter(ref => 
         ref.status === 'pending' || ref.status === 'signup_completed'

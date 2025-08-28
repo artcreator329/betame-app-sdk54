@@ -39,6 +39,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { SupabaseChatProvider } from '@/contexts/SupabaseChatContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { ReferralProvider } from '@/contexts/ReferralContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, ActivityIndicator, Image, StyleSheet, Dimensions, Platform } from 'react-native';
@@ -725,14 +726,16 @@ export default function RootLayout() {
       <SafeAreaProvider style={{ backgroundColor: DARK_BACKGROUND }}>
         <AuthProvider>
           <ThemeProvider>
-            <View style={{ flex: 1, backgroundColor: DARK_BACKGROUND }}>
-              <NotificationProvider>
-                <SupabaseChatProvider>
-                  <ThemedStatusBar />
-                  <RootLayoutNav />
-                </SupabaseChatProvider>
-              </NotificationProvider>
-            </View>
+            <ReferralProvider>
+              <View style={{ flex: 1, backgroundColor: DARK_BACKGROUND }}>
+                <NotificationProvider>
+                  <SupabaseChatProvider>
+                    <ThemedStatusBar />
+                    <RootLayoutNav />
+                  </SupabaseChatProvider>
+                </NotificationProvider>
+              </View>
+            </ReferralProvider>
           </ThemeProvider>
         </AuthProvider>
       </SafeAreaProvider>

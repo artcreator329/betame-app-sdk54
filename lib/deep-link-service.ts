@@ -79,8 +79,34 @@ export class DeepLinkService {
 
       // Handle deep link scheme
       if (parsedUrl.protocol === `${this.config.scheme}:`) {
+        // For betame:// URLs, the hostname becomes the first path segment
+        const hostname = parsedUrl.hostname;
         const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
 
+        // Handle referral links (betame://install?ref=CODE or betame://ref?ref=CODE)
+        if (hostname === 'install' || hostname === 'ref') {
+          const referralCode = parsedUrl.searchParams.get('ref');
+          if (referralCode) {
+            return {
+              type: 'referral',
+              params: {
+                referralCode: referralCode.toUpperCase()
+              }
+            };
+          }
+        }
+
+        if (hostname === 'profile' && pathSegments[0]) {
+          return {
+            type: 'profile',
+            params: {
+              userId: pathSegments[0],
+              name: parsedUrl.searchParams.get('name')
+            }
+          };
+        }
+
+        // Legacy support for path-based deep links
         if (pathSegments[0] === 'profile' && pathSegments[1]) {
           return {
             type: 'profile',
@@ -89,6 +115,18 @@ export class DeepLinkService {
               name: parsedUrl.searchParams.get('name')
             }
           };
+        }
+
+        if (pathSegments[0] === 'install' || pathSegments[0] === 'ref') {
+          const referralCode = parsedUrl.searchParams.get('ref');
+          if (referralCode) {
+            return {
+              type: 'referral',
+              params: {
+                referralCode: referralCode.toUpperCase()
+              }
+            };
+          }
         }
 
         // Handle payment callbacks
@@ -151,6 +189,19 @@ export class DeepLinkService {
               source: parsedUrl.searchParams.get('source')
             }
           };
+        }
+
+        // Handle referral links from universal links
+        if (pathSegments[0] === 'install') {
+          const referralCode = parsedUrl.searchParams.get('ref');
+          if (referralCode) {
+            return {
+              type: 'referral',
+              params: {
+                referralCode: referralCode.toUpperCase()
+              }
+            };
+          }
         }
       }
 

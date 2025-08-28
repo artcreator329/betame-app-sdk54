@@ -19,6 +19,7 @@ import { referralService } from '@/lib/referral-service';
 import { LinearGradient } from 'expo-linear-gradient';
 import { audioSessionManager } from '@/lib/audio-session-manager';
 import { supabase } from '@/lib/supabase';
+import { useReferral } from '@/contexts/ReferralContext';
 
 // Import BackgroundVideoPlayer for iOS with improved stability
 const BackgroundVideoPlayer = Platform.OS === 'ios' 
@@ -35,11 +36,11 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [fullName, setFullName] = useState('');
-  const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
   const { signIn, signUp } = useAuth();
+  const { referralCode, clearReferralCode, hasReferralCode } = useReferral();
 
   const videos = [
     require('../../assets/images/sign_up_page_video.mp4'),
@@ -109,18 +110,21 @@ export default function LoginScreen() {
         } else if (result.user) {
           console.log('🔍 Login: User signed up:', result.user.id);
           
-          // Handle referral code if provided
-          if (referralCode.trim()) {
+          // Handle referral code if provided from deep link
+          if (referralCode && referralCode.trim()) {
             try {
               const referralSuccess = await referralService.handleReferralSignup(
                 result.user.id, 
                 referralCode.trim().toUpperCase()
               );
               
+              // Clear the referral code after use
+              clearReferralCode();
+              
               if (referralSuccess) {
                 Alert.alert(
                   'Account Created Successfully! 🎉',
-                  'We\'ve sent a verification link to your email. Please check your inbox and click the verification link to activate your account.\n\n✅ Referral code applied! Your referrer has earned 15 credits.',
+                  'We\'ve sent a verification link to your email. Please check your inbox and click the verification link to activate your account.\n\n✅ Referral code applied! Your referrer has earned 15 BetaCoins.',
                   [
                     {
                       text: 'OK',
@@ -129,7 +133,6 @@ export default function LoginScreen() {
                         setEmail('');
                         setPassword('');
                         setFullName('');
-                        setReferralCode('');
                         setIsSignUp(false);
                       }
                     }
@@ -147,7 +150,6 @@ export default function LoginScreen() {
                         setEmail('');
                         setPassword('');
                         setFullName('');
-                        setReferralCode('');
                         setIsSignUp(false);
                       }
                     }
@@ -167,7 +169,6 @@ export default function LoginScreen() {
                       setEmail('');
                       setPassword('');
                       setFullName('');
-                      setReferralCode('');
                       setIsSignUp(false);
                     }
                   }
@@ -342,22 +343,11 @@ export default function LoginScreen() {
                    onSubmitEditing={isSignUp ? undefined : handleEmailAuth}
                  />
 
-                {/* Referral Code Input - Only show for sign up */}
-                {isSignUp && (
-                  <View style={styles.referralContainer}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Referral Code (Optional)"
-                      placeholderTextColor="#9CA3AF"
-                      value={referralCode}
-                      onChangeText={setReferralCode}
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      returnKeyType="done"
-                      onSubmitEditing={handleEmailAuth}
-                    />
-                    <Text style={styles.referralNote}>
-                      💰 Enter a friend's referral code to give them 15 credits when you sign up, and 25 more when you complete your first job!
+                {/* Referral Code Indicator - Show if referral code is captured from deep link */}
+                {isSignUp && hasReferralCode && (
+                  <View style={styles.referralIndicatorContainer}>
+                    <Text style={styles.referralIndicatorText}>
+                      🎉 Referral code applied! Your referrer will earn rewards when you sign up.
                     </Text>
                   </View>
                 )}
@@ -404,8 +394,6 @@ export default function LoginScreen() {
                    </Text>
                    <TouchableOpacity onPress={() => {
                      setIsSignUp(!isSignUp);
-                     // Clear referral code when switching modes
-                     setReferralCode('');
                    }}>
                      <Text style={styles.toggleLink}>
                        {isSignUp ? ' Sign In' : ' Sign Up'}
@@ -759,18 +747,22 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
   },
-  referralContainer: {
-    marginTop: 16,
+  referralIndicatorContainer: {
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     marginBottom: 16,
   },
-  referralNote: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
+  referralIndicatorText: {
+    color: '#22C55E',
+    fontSize: 14,
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 16,
-    fontWeight: '400',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    lineHeight: 20,
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
   },

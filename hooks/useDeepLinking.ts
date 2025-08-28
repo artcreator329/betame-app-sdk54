@@ -2,10 +2,12 @@ import { useEffect, useRef } from 'react';
 import { Linking, AppState, AppStateStatus } from 'react-native';
 import { useRouter } from 'expo-router';
 import { DeepLinkService } from '@/lib/deep-link-service';
+import { useReferral } from '@/contexts/ReferralContext';
 
 export function useDeepLinking() {
   const router = useRouter();
   const appState = useRef(AppState.currentState);
+  const { setReferralCode } = useReferral();
 
   useEffect(() => {
     // Handle initial URL when app is opened from a deep link
@@ -61,6 +63,16 @@ export function useDeepLinking() {
       }
 
       switch (linkData.type) {
+        case 'referral':
+          if (linkData.params.referralCode) {
+            // Store referral code for later use during signup
+            setReferralCode(linkData.params.referralCode);
+            console.log('🔗 Referral code captured from deep link:', linkData.params.referralCode);
+            // Navigate to signup page
+            router.push('/auth/login');
+          }
+          break;
+
         case 'profile':
         case 'shared_profile':
           if (linkData.params.userId) {
