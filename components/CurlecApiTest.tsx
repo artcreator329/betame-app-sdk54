@@ -85,8 +85,8 @@ export default function CurlecApiTest() {
         <View style={styles.infoContainer}>
           <Text style={styles.infoTitle}>Test Configuration:</Text>
           <Text style={styles.infoText}>
-            • API Key: rzp_test_R9Zq5e24ydHz2T{'\n'}
-            • Environment: Sandbox{'\n'}
+            • API Key: rzp_live_RAh5xtapLC1eW9{'\n'}
+            • Environment: Production{'\n'}
             • Test Amount: RM 5.00{'\n'}
             • Currency: MYR
           </Text>

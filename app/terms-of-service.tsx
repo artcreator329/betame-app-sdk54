@@ -30,8 +30,8 @@ export default function TermsOfServiceScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
           <Text style={[styles.title, { color: colors.text.primary }]}>BetaMe – Terms of Service</Text>
-          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Effective Date: January 1, 2025</Text>
-          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Last Updated: January 1, 2025</Text>
+          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Effective Date: 26/8/2025</Text>
+          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Last Updated: 26/8/2025</Text>
         </View>
 
         <View style={styles.section}>

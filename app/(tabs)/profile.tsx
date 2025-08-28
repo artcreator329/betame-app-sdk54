@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform, StatusBar, RefreshControl, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun, Heart as HeartFilled, Settings as SettingsFilled, Sun as SunFilled, Moon as MoonFilled, Wallet as WalletFilled, Trophy as TrophyFilled, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors, useTheme } from '@/contexts/ThemeContext';
@@ -50,6 +50,7 @@ interface Review {
 export default function ProfileScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const isDesktop = screenWidth > 768;
+  const params = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState('My Services');
   const [services, setServices] = useState<any[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -73,6 +74,15 @@ export default function ProfileScreen() {
   const colors = useColors();
   const { isDarkMode, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Handle showReferral parameter
+  useEffect(() => {
+    if (params.showReferral === 'true') {
+      setReferralModalVisible(true);
+      // Clear the parameter from the URL
+      router.setParams({ showReferral: undefined });
+    }
+  }, [params.showReferral, router]);
 
   // Calculate average rating from reviews
   const averageRating = reviews.length > 0

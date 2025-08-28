@@ -1,4 +1,7 @@
-Service Provider Agreement
+# Service Provider Agreement
+**Effective Date:** 26/8/2025  
+**Last Updated:** 26/8/2025
+
 (BetaMe Platform)
 This Service Provider Agreement (“Agreement”) is entered into between you (“Provider” or “Service Provider”) and BetaMe (“Company,” “Platform,” “we,” or “us”). By registering as a Provider on the Platform, you agree to the terms and conditions set forth herein.
  

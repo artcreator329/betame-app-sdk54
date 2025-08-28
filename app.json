@@ -4,7 +4,7 @@
     "slug": "betame",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon_android.png",
     "scheme": "betame",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -35,7 +35,7 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-      "buildNumber": "8",
+      "buildNumber": "10",
       "backgroundColor": "#0f1419"
     },
     "android": {
@@ -47,7 +47,7 @@
       "package": "com.betame.app",
       "enableProguardInReleaseBuilds": false,
       "enableSeparateBuildPerCPUArchitecture": false,
-      "versionCode": 8,
+      "versionCode": 9,
       "versionName": "1.0.0",
       "edgeToEdgeEnabled": true,
       "backgroundColor": "#0f1419"

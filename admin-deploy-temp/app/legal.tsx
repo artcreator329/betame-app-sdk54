@@ -29,7 +29,7 @@ export default function LegalScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
           <Text style={[styles.title, { color: colors.text.primary }]}>Legal Information</Text>
-          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Last updated: January 1, 2025</Text>
+                      <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Last updated: 26/8/2025</Text>
         </View>
 
         <View style={styles.section}>

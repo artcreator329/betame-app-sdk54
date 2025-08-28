@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Heart, Briefcase, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet, Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -112,20 +113,8 @@ export default function SettingsScreen() {
   };
 
   const handleInviteFriends = () => {
-    // Open referral modal instead of generic share
-    router.push('/(tabs)/profile');
-    // This will trigger the referral modal from the profile page
-    setTimeout(() => {
-      // You could also create a direct referral route if needed
-      Alert.alert(
-        'Invite Friends',
-        'Use your referral code to invite friends and earn rewards!',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'View Referrals', onPress: () => router.push('/(tabs)/profile') }
-        ]
-      );
-    }, 500);
+    // Navigate to profile page and trigger referral modal
+    router.push('/(tabs)/profile?showReferral=true');
   };
 
   const handleBecomeServiceProvider = () => {
@@ -136,21 +125,9 @@ export default function SettingsScreen() {
     router.push('/edit-profile');
   };
 
-  const handlePrivacySecurity = () => {
-    Alert.alert(
-      'Privacy & Security',
-      'Choose an option:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Privacy Policy', onPress: () => router.push('/privacy-policy') },
-        { text: 'Account Security', onPress: () => router.push('/edit-profile') },
-      ]
-    );
-  };
 
-  const handlePaymentMethods = () => {
-    router.push('/wallet');
-  };
+
+
 
   const handleLanguageRegion = () => {
     Alert.alert(
@@ -160,18 +137,7 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleCommunityLegal = () => {
-    Alert.alert(
-      'Community & Legal',
-      'Choose an option:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Terms of Service', onPress: () => router.push('/terms-of-service') },
-        { text: 'Privacy Policy', onPress: () => router.push('/privacy-policy') },
-        { text: 'Community Guidelines', onPress: () => Alert.alert('Coming Soon', 'Community guidelines will be available soon.') },
-      ]
-    );
-  };
+
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -273,25 +239,31 @@ export default function SettingsScreen() {
           
           {/* AI Assistant Button */}
           <TouchableOpacity 
-            style={[styles.aiAssistantButton, { backgroundColor: colors.background.secondary, borderBottomColor: colors.background.secondary }]} 
             onPress={() => router.push('/messages?showAI=true')}
           >
-            <View style={styles.aiAssistantLeft}>
-              <View style={styles.betameLogoContainer}>
-                <Text style={[styles.betameLogoText, { color: colors.primary.main }]}>B</Text>
+            <LinearGradient
+              colors={['#00D4FF', '#0099CC', '#0066AA']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.aiAssistantButton, { borderBottomColor: 'transparent' }]}
+            >
+              <View style={styles.aiAssistantLeft}>
+                <View style={styles.betameLogoContainer}>
+                  <Text style={[styles.betameLogoText, { color: 'white' }]}>B</Text>
+                </View>
+                <Text 
+                  style={[styles.aiAssistantTitle, { fontSize: 16, fontWeight: '600', color: 'white' }]}
+                >
+                  Chat with AI Assistant
+                </Text>
               </View>
-              <Text 
-                style={[styles.aiAssistantTitle, { fontSize: 16, fontWeight: '600', color: '#007AFF' }]}
-              >
-                Chat with AI Assistant
-              </Text>
-            </View>
-            <View style={styles.aiAssistantRight}>
-              <Sparkles size={16} color="#FFD700" />
-              <View style={styles.arrow}>
-                <Text style={[styles.arrowText, { color: colors.text.secondary }]}>›</Text>
+              <View style={styles.aiAssistantRight}>
+                <Sparkles size={16} color="#FFD700" />
+                <View style={styles.arrow}>
+                  <Text style={[styles.arrowText, { color: 'white' }]}>›</Text>
+                </View>
               </View>
-            </View>
+            </LinearGradient>
           </TouchableOpacity>
           
           <SettingItem
@@ -306,23 +278,9 @@ export default function SettingsScreen() {
             onPress={() => router.push('/notification-settings')}
           />
 
-          <SettingItem
-            icon={<Shield size={20} color={colors.text.primary} />}
-            title="Privacy & Security"
-            onPress={handlePrivacySecurity}
-          />
 
-          <SettingItem
-            icon={<CreditCard size={20} color={colors.text.primary} />}
-            title="Payment Methods"
-            onPress={handlePaymentMethods}
-          />
 
-          <SettingItem
-            icon={<CreditCard size={20} color={colors.text.primary} />}
-            title="Test Payment Gateway"
-            onPress={() => router.push('/malaysian-payment-gateway')}
-          />
+
 
           <SettingItem
             icon={<Globe size={20} color={colors.text.primary} />}
@@ -351,11 +309,7 @@ export default function SettingsScreen() {
             onPress={() => router.push('/contact-us')}
           />
           
-          <SettingItem
-            icon={<Users size={20} color={colors.text.primary} />}
-            title="Community & legal"
-            onPress={handleCommunityLegal}
-          />
+
 
           <SettingItem
             icon={<FileText size={20} color={colors.text.primary} />}
@@ -518,7 +472,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -526,9 +480,11 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   betameLogoText: {
     fontSize: 18,

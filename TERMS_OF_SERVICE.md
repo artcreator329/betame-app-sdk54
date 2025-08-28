@@ -1,7 +1,7 @@
 
 # BetaMe – Terms of Service
-**Effective Date:** [Insert Date]  
-**Last Updated:** [Insert Date]
+**Effective Date:** 26/8/2025  
+**Last Updated:** 26/8/2025
 
 ## 1. Introduction
 Welcome to **BetaMe** (“we,” “our,” or “us”). These Terms of Service (“Terms”) govern your access to and use of the BetaMe mobile application and related services (collectively, the “Service”).  

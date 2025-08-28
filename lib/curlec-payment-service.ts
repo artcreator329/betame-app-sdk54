@@ -257,7 +257,14 @@ export class CurlecPaymentService {
   private async processBetaCoinPurchase(transaction: PaymentTransaction): Promise<void> {
     try {
       const { amount, metadata } = transaction;
-      const betacoinAmount = metadata?.betacoin_amount || Math.floor(amount / 100); // Default conversion
+      
+      // Use the betacoin_amount from metadata, which should be set correctly from the bundle
+      const betacoinAmount = metadata?.betacoin_amount;
+      
+      if (!betacoinAmount || betacoinAmount <= 0) {
+        console.error('Invalid BetaCoin amount in metadata:', metadata);
+        throw new Error('Invalid BetaCoin amount in transaction metadata');
+      }
 
       // Add BetaCoins to user's wallet
       const { WalletService } = await import('./wallet-service');

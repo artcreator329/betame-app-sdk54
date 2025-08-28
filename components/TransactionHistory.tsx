@@ -73,6 +73,7 @@ export function TransactionHistory({ visible, onClose, userId }: TransactionHist
     try {
       setLoading(true);
       const data = await WalletService.getTransactionHistory(userId);
+      console.log('Loaded transactions:', data);
       setTransactions(data);
     } catch (error) {
       console.error('Error loading transactions:', error);
@@ -99,20 +100,72 @@ export function TransactionHistory({ visible, onClose, userId }: TransactionHist
     const groups: { [key: string]: Transaction[] } = {};
     
     transactions.forEach(transaction => {
-      const date = new Date(transaction.created_at || '');
-      // Use Malaysian timezone for grouping
-      const dateInMY = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
-      const dateKey = dateInMY.toDateString();
-      
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
+      try {
+        const date = new Date(transaction.created_at || '');
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+          console.warn('Invalid date found for transaction:', transaction.id, transaction.created_at);
+          // Use current date as fallback
+          const fallbackDate = new Date();
+          const dateKey = fallbackDate.toDateString();
+          if (!groups[dateKey]) {
+            groups[dateKey] = [];
+          }
+          groups[dateKey].push(transaction);
+          return;
+        }
+        
+        // Use Malaysian timezone for grouping
+        let dateInMY: Date;
+        try {
+          dateInMY = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+        } catch (error) {
+          console.warn('Error converting to Malaysian timezone, using UTC:', error);
+          dateInMY = date; // Fallback to original date
+        }
+        
+        const dateKey = dateInMY.toDateString();
+        
+        // Additional validation for the dateKey
+        if (dateKey === 'Invalid Date') {
+          console.warn('Invalid dateKey generated for transaction:', transaction.id, transaction.created_at);
+          // Use current date as fallback
+          const fallbackDate = new Date();
+          const fallbackDateKey = fallbackDate.toDateString();
+          if (!groups[fallbackDateKey]) {
+            groups[fallbackDateKey] = [];
+          }
+          groups[fallbackDateKey].push(transaction);
+          return;
+        }
+        
+        if (!groups[dateKey]) {
+          groups[dateKey] = [];
+        }
+        groups[dateKey].push(transaction);
+      } catch (error) {
+        console.error('Error processing transaction date:', error, transaction);
+        // Use current date as fallback
+        const fallbackDate = new Date();
+        const dateKey = fallbackDate.toDateString();
+        if (!groups[dateKey]) {
+          groups[dateKey] = [];
+        }
+        groups[dateKey].push(transaction);
       }
-      groups[dateKey].push(transaction);
     });
 
     return Object.entries(groups)
       .map(([date, transactions]) => ({ date, transactions }))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => {
+        try {
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        } catch (error) {
+          console.error('Error sorting dates:', error);
+          return 0;
+        }
+      });
   };
 
   const getTransactionIcon = (type: string, amount: number) => {
@@ -185,7 +238,8 @@ export function TransactionHistory({ visible, onClose, userId }: TransactionHist
     const prefix = amount > 0 ? '+' : '';
     
     if (type === 'betacoin_purchase') {
-      return `${prefix}${amount} BetaCoins`;
+      // BetaCoin purchases should always show positive amount since user is receiving BetaCoins
+      return `+${Math.abs(amount)} BetaCoins`;
     } else if (type === 'conversion') {
       return `+${Math.floor(amount / 10)} BetaCoins`;
     } else if (type === 'daily_checkin' || type === 'referral_bonus') {
@@ -224,11 +278,31 @@ export function TransactionHistory({ visible, onClose, userId }: TransactionHist
   };
 
   const formatDate = (dateString: string) => {
-    return formatTimelineDate(dateString);
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date string in formatDate:', dateString);
+        return 'Invalid Date';
+      }
+      return formatTimelineDate(dateString);
+    } catch (error) {
+      console.error('Error formatting date:', error, dateString);
+      return 'Invalid Date';
+    }
   };
 
   const formatTime = (dateString: string) => {
-    return formatMalaysianTime(dateString);
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date string in formatTime:', dateString);
+        return 'Invalid Time';
+      }
+      return formatMalaysianTime(dateString);
+    } catch (error) {
+      console.error('Error formatting time:', error, dateString);
+      return 'Invalid Time';
+    }
   };
 
   if (!visible) return null;
@@ -312,7 +386,7 @@ export function TransactionHistory({ visible, onClose, userId }: TransactionHist
             {groupedTransactions.map((group, groupIndex) => (
               <View key={groupIndex} style={styles.dateGroup}>
                 <Text style={[styles.dateHeader, { color: colors.text.primary }]}>
-                  {formatDate(group.date)}
+                  {group.date === 'Invalid Date' ? 'Today' : formatDate(group.date)}
                 </Text>
                 
                 {group.transactions.map((transaction, index) => {

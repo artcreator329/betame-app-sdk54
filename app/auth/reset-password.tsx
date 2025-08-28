@@ -207,6 +207,7 @@ export default function ResetPasswordScreen() {
                     textContentType="emailAddress"
                     returnKeyType="done"
                     onSubmitEditing={handleRequestReset}
+                    selectionColor="#007AFF"
                   />
 
                   <TouchableOpacity 
@@ -305,6 +306,7 @@ export default function ResetPasswordScreen() {
                 textContentType="newPassword"
                 autoCapitalize="none"
                 returnKeyType="next"
+                selectionColor="#007AFF"
               />
               
               <TextInput
@@ -318,6 +320,7 @@ export default function ResetPasswordScreen() {
                 autoCapitalize="none"
                 returnKeyType="done"
                 onSubmitEditing={handleResetPassword}
+                selectionColor="#007AFF"
               />
 
               <TouchableOpacity 
@@ -405,6 +408,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    color: '#000000', // Explicit text color for Android compatibility
+    ...(Platform.OS === 'android' && {
+      textAlignVertical: 'center',
+      includeFontPadding: false,
+    }),
   },
   resetButton: {
     backgroundColor: '#007AFF',

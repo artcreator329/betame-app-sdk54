@@ -314,6 +314,7 @@ export default function LoginScreen() {
                    autoCapitalize="words"
                    textContentType="name"
                    returnKeyType="next"
+                   selectionColor="#007AFF"
                  />
                 )}
                 
@@ -328,6 +329,7 @@ export default function LoginScreen() {
                    autoCorrect={false}
                    textContentType="emailAddress"
                    returnKeyType="next"
+                   selectionColor="#007AFF"
                  />
                 
                 <TextInput
@@ -340,6 +342,7 @@ export default function LoginScreen() {
                    textContentType={isSignUp ? "newPassword" : "password"}
                    returnKeyType={isSignUp ? "next" : "done"}
                    onSubmitEditing={isSignUp ? undefined : handleEmailAuth}
+                   selectionColor="#007AFF"
                  />
 
                 {/* Referral Code Indicator - Show if referral code is captured from deep link */}
@@ -568,6 +571,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    color: '#000000', // Explicit text color for Android compatibility
+    ...(Platform.OS === 'android' && {
+      textAlignVertical: 'center',
+      includeFontPadding: false,
+    }),
   },
   continueButton: {
     backgroundColor: '#007AFF',

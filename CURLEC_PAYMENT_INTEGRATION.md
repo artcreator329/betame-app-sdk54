@@ -97,10 +97,10 @@ Add the following environment variables to your `.env` file:
 
 ```bash
 # Curlec Payment Gateway Configuration
-EXPO_PUBLIC_CURLEC_API_KEY=rzp_test_R9Zq5e24ydHz2T
+EXPO_PUBLIC_CURLEC_API_KEY=rzp_live_RAh5xtapLC1eW9
 CURLEC_SECRET_KEY=<REDACTED>
 CURLEC_WEBHOOK_SECRET=<REDACTED>
-EXPO_PUBLIC_CURLEC_ENVIRONMENT=sandbox
+EXPO_PUBLIC_CURLEC_ENVIRONMENT=production
 EXPO_PUBLIC_APP_URL=https://your-app-domain.com
 ```
 

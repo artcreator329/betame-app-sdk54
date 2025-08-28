@@ -131,8 +131,8 @@ export default function CurlecTestPayment() {
         <View style={styles.infoContainer}>
           <Text style={styles.infoTitle}>Test Credentials:</Text>
           <Text style={styles.infoText}>
-            • API Key: rzp_test_R9Zq5e24ydHz2T{'\n'}
-            • Environment: Sandbox{'\n'}
+            • API Key: rzp_live_RAh5xtapLC1eW9{'\n'}
+            • Environment: Production{'\n'}
             • Currency: MYR{'\n'}
             • Test Amounts: RM10.00, RM25.00
           </Text>

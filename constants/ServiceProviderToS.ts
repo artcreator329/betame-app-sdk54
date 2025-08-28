@@ -1,6 +1,6 @@
 export const SERVICE_PROVIDER_TERMS_OF_SERVICE = {
   title: "Service Provider Agreement",
-  lastUpdated: "January 1, 2025",
+  lastUpdated: "26/8/2025",
   content: `
 SERVICE PROVIDER AGREEMENT
 (BetaMe Platform)

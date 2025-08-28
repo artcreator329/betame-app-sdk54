@@ -1,5 +1,4 @@
-BetaMe -- Privacy Policy Effective Date: \[Insert Date\] Last Updated:
-\[Insert Date\]
+BetaMe -- Privacy Policy Effective Date: 26/8/2025 Last Updated: 26/8/2025
 
 1.  Introduction BetaMe ("we," "our," or "us") is committed to
     protecting your privacy. This Privacy Policy explains how we
