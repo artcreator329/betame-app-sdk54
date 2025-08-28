@@ -7,6 +7,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, useSegments } from 'expo-router';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
 
 function DesktopSidebar() {
   const { user } = useAuth();
+  const { theme, isDarkMode } = useTheme();
   const { unreadCount } = useNotifications();
   const router = useRouter();
   const segments = useSegments();
@@ -49,10 +51,24 @@ function DesktopSidebar() {
   };
 
   return (
-    <View style={styles.sidebar}>
-      <View style={styles.sidebarHeader}>
+    <View style={[styles.sidebar, { 
+      backgroundColor: theme.background.tertiary,
+      borderRightColor: theme.border.light,
+      shadowColor: theme.shadow.medium,
+      shadowOffset: { width: 2, height: 0 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+    }]}>
+      <View style={[styles.sidebarHeader, { borderBottomColor: theme.border.light }]}>
         <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>BETAME</Text>
+          <Image 
+            source={isDarkMode 
+              ? require('../../assets/images/text-logo-white.png')
+              : require('../../assets/images/text-logo.png')
+            }
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
       </View>
 
@@ -70,7 +86,10 @@ function DesktopSidebar() {
           return (
             <TouchableOpacity
               key={item.name}
-              style={[styles.navItem, isActive && styles.navItemActive]}
+              style={[
+              styles.navItem, 
+              isActive && { backgroundColor: theme.background.secondary }
+            ]}
               onPress={() => {
                 if (item.name === 'profile' && !isAuthenticated) {
                   router.push('/auth/login');
@@ -82,11 +101,15 @@ function DesktopSidebar() {
               <View style={styles.navItemContent}>
                 <IconComponent 
                   size={20} 
-                  color={isActive ? '#007AFF' : '#666'} 
+                  color={isActive ? theme.primary.main : theme.text.secondary} 
                 />
                 {item.name === 'notifications' && <NotificationBadge count={unreadCount} />}
               </View>
-              <Text style={[styles.navItemText, isActive && styles.navItemTextActive]}>
+              <Text style={[
+                styles.navItemText, 
+                { color: theme.text.secondary },
+                isActive && { color: theme.primary.main, fontWeight: '600' }
+              ]}>
                 {displayTitle}
               </Text>
             </TouchableOpacity>
@@ -94,8 +117,8 @@ function DesktopSidebar() {
         })}
       </View>
 
-      <View style={styles.sidebarFooter}>
-        <Text style={styles.footerText}>BetaMe v1.0.0</Text>
+      <View style={[styles.sidebarFooter, { borderTopColor: theme.border.light }]}>
+        <Text style={[styles.footerText, { color: theme.text.secondary }]}>BetaMe v1.0.0</Text>
       </View>
     </View>
   );
@@ -103,6 +126,7 @@ function DesktopSidebar() {
 
 export default function TabLayout() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const isAuthenticated = !!user;
   const { unreadCount } = useNotifications();
   const segments = useSegments();
@@ -178,10 +202,10 @@ export default function TabLayout() {
   };
 
   if (isDesktop) {
-    return (
-      <View style={styles.desktopContainer}>
-        <DesktopSidebar />
-        <View style={styles.mainContent}>
+      return (
+    <View style={[styles.desktopContainer, { backgroundColor: theme.background.primary }]}>
+      <DesktopSidebar />
+      <View style={[styles.mainContent, { backgroundColor: theme.background.primary }]}>
           <Tabs screenOptions={{ 
             headerShown: false,
             tabBarStyle: { display: 'none' }, // Hide the tab bar on desktop
@@ -352,11 +376,9 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
   },
-  logoText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#007AFF',
-    letterSpacing: 1,
+  logoImage: {
+    height: 28,
+    width: 100,
   },
   navContainer: {
     flex: 1,
@@ -414,7 +436,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: '#999',
   },
   mainContent: {
     flex: 1,

@@ -6,8 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-// Removed animation imports to prevent flashing
-// Removed unused import
+import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter, useSegments } from 'expo-router';
 
 const { width } = Dimensions.get('window');
@@ -32,6 +31,7 @@ const navItems: NavItem[] = [
 
 function DesktopSidebar() {
   const { user } = useAuth();
+  const { theme, isDarkMode } = useTheme();
   const { unreadCount } = useNotifications();
   const router = useRouter();
   const segments = useSegments();
@@ -51,11 +51,21 @@ function DesktopSidebar() {
   };
 
   return (
-    <View style={styles.sidebar}>
-      <View style={styles.sidebarHeader}>
+    <View style={[styles.sidebar, { 
+      backgroundColor: theme.background.tertiary,
+      borderRightColor: theme.border.light,
+      shadowColor: theme.shadow.medium,
+      shadowOffset: { width: 2, height: 0 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+    }]}>
+      <View style={[styles.sidebarHeader, { borderBottomColor: theme.border.light }]}>
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/images/text-logo.png')}
+            source={isDarkMode 
+              ? require('../../assets/images/text-logo-white.png')
+              : require('../../assets/images/text-logo.png')
+            }
             style={styles.logoImage}
             resizeMode="contain"
           />
@@ -76,7 +86,10 @@ function DesktopSidebar() {
           return (
             <TouchableOpacity
               key={item.name}
-              style={[styles.navItem, isActive && styles.navItemActive]}
+              style={[
+              styles.navItem, 
+              isActive && { backgroundColor: theme.background.secondary }
+            ]}
               onPress={() => {
                 if (item.name === 'profile' && !isAuthenticated) {
                   router.push('/auth/login');
@@ -88,11 +101,15 @@ function DesktopSidebar() {
               <View style={styles.navItemContent}>
                 <IconComponent 
                   size={20} 
-                  color={isActive ? '#007AFF' : '#666'} 
+                  color={isActive ? theme.primary.main : theme.text.secondary} 
                 />
                 {item.name === 'notifications' && <NotificationBadge count={unreadCount} />}
               </View>
-              <Text style={[styles.navItemText, isActive && styles.navItemTextActive]}>
+              <Text style={[
+                styles.navItemText, 
+                { color: theme.text.secondary },
+                isActive && { color: theme.primary.main, fontWeight: '600' }
+              ]}>
                 {displayTitle}
               </Text>
             </TouchableOpacity>
@@ -100,8 +117,8 @@ function DesktopSidebar() {
         })}
       </View>
 
-      <View style={styles.sidebarFooter}>
-        <Text style={styles.footerText}>BetaMe v1.0.0</Text>
+      <View style={[styles.sidebarFooter, { borderTopColor: theme.border.light }]}>
+        <Text style={[styles.footerText, { color: theme.text.secondary }]}>BetaMe v1.0.0</Text>
       </View>
     </View>
   );
@@ -109,6 +126,7 @@ function DesktopSidebar() {
 
 export default function TabLayout() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const isAuthenticated = !!user;
   const { unreadCount } = useNotifications();
   const segments = useSegments();
@@ -169,15 +187,15 @@ export default function TabLayout() {
   };
 
   if (isDesktop) {
-    return (
-      <View style={styles.desktopContainer}>
-        <DesktopSidebar />
-        <View style={styles.mainContent}>
+      return (
+    <View style={[styles.desktopContainer, { backgroundColor: theme.background.primary }]}>
+      <DesktopSidebar />
+      <View style={[styles.mainContent, { backgroundColor: theme.background.primary }]}>
           <Tabs screenOptions={{ 
             headerShown: false,
             tabBarStyle: { display: 'none' }, // Hide the tab bar on desktop
-            // Smooth tab transitions
-            animation: 'fade' as const,
+            // Disable animations to prevent white flash
+            animation: 'none' as const,
           }}>
             <Tabs.Screen name="index" />
             <Tabs.Screen name="services" />
@@ -194,12 +212,12 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#8E8E93',
-        // Smooth tab transitions
-        animation: 'fade' as const,
+        tabBarActiveTintColor: theme.primary.main,
+        tabBarInactiveTintColor: theme.text.tertiary,
+        // Disable animations to prevent white flash
+        animation: 'none' as const,
         tabBarStyle: {
-          backgroundColor: 'white',
+          backgroundColor: theme.background.tertiary,
           borderTopWidth: 0,
           borderRadius: 25,
           marginHorizontal: 20,
@@ -208,7 +226,7 @@ export default function TabLayout() {
           paddingTop: 8,
           height: 70,
           position: 'absolute',
-          shadowColor: '#000',
+          shadowColor: theme.shadow.medium,
           shadowOffset: {
             width: 0,
             height: 4,
@@ -224,7 +242,7 @@ export default function TabLayout() {
         tabBarBackground: () => (
           <View style={{
             flex: 1,
-            backgroundColor: 'white',
+            backgroundColor: theme.background.tertiary,
             borderRadius: 25,
             overflow: 'hidden',
           }} />
@@ -302,24 +320,16 @@ const styles = StyleSheet.create({
   desktopContainer: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#f8f9fa',
   },
   sidebar: {
     width: 240,
-    backgroundColor: '#fff',
     borderRightWidth: 1,
-    borderRightColor: '#e0e0e0',
     flexDirection: 'column',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
     elevation: 4,
   },
   sidebarHeader: {
     padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   logoContainer: {
     alignItems: 'center',
@@ -350,7 +360,6 @@ const styles = StyleSheet.create({
   },
   navItemText: {
     fontSize: 16,
-    color: '#666',
     fontWeight: '500',
   },
   navItemTextActive: {
@@ -379,15 +388,12 @@ const styles = StyleSheet.create({
   sidebarFooter: {
     padding: 24,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
     alignItems: 'center',
   },
   footerText: {
     fontSize: 12,
-    color: '#999',
   },
   mainContent: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
 });

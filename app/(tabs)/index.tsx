@@ -27,7 +27,7 @@ import { BannerService, Banner } from '@/lib/banner-service';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
-import { useColors } from '@/contexts/ThemeContext';
+import { useColors, useTheme } from '@/contexts/ThemeContext';
 import { imageCacheService } from '@/lib/image-cache-service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -123,6 +123,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { totalUnreadCount } = useUnreadMessageCount();
   const colors = useColors();
+  const { isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
 
   // Calculate adaptive bottom padding for Android devices
@@ -239,7 +240,10 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Image 
-              source={require('../../assets/images/text-logo.png')}
+              source={isDarkMode 
+                ? require('../../assets/images/text-logo-white.png')
+                : require('../../assets/images/text-logo.png')
+              }
               style={styles.logoImage}
               resizeMode="contain"
             />

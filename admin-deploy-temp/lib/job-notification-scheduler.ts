@@ -64,7 +64,7 @@ export class JobNotificationScheduler {
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-      // Check escrow jobs (job_status table) - both work_completed and revision_completed
+      // Check escrow jobs (job_status table) - completed status
       const { data: escrowJobs, error: escrowError } = await supabase
         .from('job_status')
         .select(`
@@ -72,18 +72,16 @@ export class JobNotificationScheduler {
           buyer_id,
           service_provider_id,
           work_completed_at,
-          revision_completed_at,
           current_status,
-          service_offers!inner(
-            service_title,
-            services!inner(
+          service_offers(
+            services(
               title
             )
           )
         `)
-        .or('current_status.eq.work_completed,current_status.eq.revision_completed')
-        .or('work_completed_at.gte.' + twentyFourHoursAgo + ',revision_completed_at.gte.' + twentyFourHoursAgo)
-        .or('work_completed_at.lte.' + twelveHoursAgo + ',revision_completed_at.lte.' + twelveHoursAgo);
+        .eq('current_status', 'completed')
+        .gte('work_completed_at', twentyFourHoursAgo)
+        .lte('work_completed_at', twelveHoursAgo);
 
       if (escrowError) {
         console.error('Error fetching escrow jobs for reminders:', escrowError);
@@ -133,13 +131,8 @@ export class JobNotificationScheduler {
    */
   private async sendReminderForEscrowJob(job: any): Promise<void> {
     try {
-      // Determine completion time based on status
-      let completionTime: Date;
-      if (job.current_status === 'revision_completed' && job.revision_completed_at) {
-        completionTime = new Date(job.revision_completed_at);
-      } else {
-        completionTime = new Date(job.work_completed_at);
-      }
+      // Use work completion time
+      const completionTime = new Date(job.work_completed_at);
 
       const hoursSinceCompletion = (Date.now() - completionTime.getTime()) / (1000 * 60 * 60);
       const hoursRemaining = Math.max(0, 24 - hoursSinceCompletion);
@@ -154,7 +147,7 @@ export class JobNotificationScheduler {
         .single();
 
       const providerName = providerProfile?.full_name || 'Service Provider';
-      const serviceTitle = job.service_offers?.service_title || job.service_offers?.services?.title || 'Service';
+      const serviceTitle = job.service_offers?.services?.title || 'Service';
 
       // Send reminder notification
       await notificationService.addJobCompletionReminderNotification({

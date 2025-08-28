@@ -6,6 +6,7 @@ import { useSmartNavigation } from '@/hooks/useSmartNavigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -39,6 +40,7 @@ function DesktopSidebar() {
   const router = useRouter();
   const segments = useSegments();
   const { smartBack } = useSmartNavigation();
+  const { colors } = useTheme();
   const currentRoute = segments[segments.length - 1] || 'index';
 
   return (
@@ -46,7 +48,7 @@ function DesktopSidebar() {
       <View style={styles.sidebarHeader}>
         <View style={styles.logoContainer}>
           <Ionicons name="shield-checkmark" size={32} color="#2196F3" />
-          <Text style={styles.logoText}>BetaMe Admin</Text>
+          <Text style={[styles.logoText, { color: colors.text.primary }]}>BetaMe Admin</Text>
         </View>
       </View>
 
@@ -106,7 +108,7 @@ function MobileHeader() {
           <Ionicons name="menu-outline" size={24} color="#333" />
         </TouchableOpacity>
         
-        <Text style={styles.mobileHeaderTitle}>
+        <Text style={[styles.mobileHeaderTitle, { color: colors.text.primary }]}>
           {currentItem?.title || 'Admin'}
         </Text>
         
@@ -129,7 +131,7 @@ function MobileHeader() {
             <View style={styles.drawerHeader}>
               <View style={styles.logoContainer}>
                 <Ionicons name="shield-checkmark" size={24} color="#2196F3" />
-                <Text style={styles.drawerTitle}>BetaMe Admin</Text>
+                <Text style={[styles.drawerTitle, { color: colors.text.primary }]}>BetaMe Admin</Text>
               </View>
               <TouchableOpacity onPress={() => setMenuOpen(false)}>
                 <Ionicons name="close-outline" size={24} color="#666" />

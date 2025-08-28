@@ -1,0 +1,139 @@
+/* Global styles to prevent white flash during navigation */
+
+/* Base HTML and body styles */
+html {
+  background-color: #f0f8ff; /* Light theme background */
+  transition: background-color 0.3s ease;
+}
+
+body {
+  background-color: #f0f8ff; /* Light theme background */
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #0f1419; /* Dark theme background */
+  }
+  
+  body {
+    background-color: #0f1419; /* Dark theme background */
+  }
+}
+
+/* React Native Web root container */
+#root {
+  background-color: inherit;
+  min-height: 100vh;
+  transition: background-color 0.3s ease;
+}
+
+/* Prevent white flash during page transitions */
+.react-native-web-view {
+  background-color: inherit !important;
+}
+
+/* Navigation container styles */
+.navigation-container {
+  background-color: inherit !important;
+}
+
+/* Screen container styles */
+.screen-container {
+  background-color: inherit !important;
+  min-height: 100vh;
+}
+
+/* Modal and overlay styles */
+.modal-overlay {
+  background-color: inherit !important;
+}
+
+/* Tab bar styles */
+.tab-bar {
+  background-color: inherit !important;
+}
+
+/* Smooth transitions for all elements */
+* {
+  transition: background-color 0.3s ease;
+}
+
+/* Prevent flash during route changes */
+.route-transition {
+  background-color: inherit !important;
+}
+
+/* Loading screen styles */
+.loading-screen {
+  background-color: inherit !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+}
+
+/* Splash screen styles */
+.splash-screen {
+  background-color: inherit !important;
+}
+
+/* Override any white backgrounds */
+.white-bg-override {
+  background-color: inherit !important;
+}
+
+/* Ensure all React Native Web views inherit background */
+[data-reactroot] {
+  background-color: inherit !important;
+  min-height: 100vh;
+}
+
+/* Stack navigator styles */
+.stack-screen {
+  background-color: inherit !important;
+}
+
+/* Tab navigator styles */
+.tab-screen {
+  background-color: inherit !important;
+}
+
+/* Prevent white flash on iOS Safari */
+@supports (-webkit-touch-callout: none) {
+  html {
+    -webkit-appearance: none;
+  }
+  
+  body {
+    -webkit-appearance: none;
+  }
+}
+
+/* Prevent white flash on Android Chrome */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  html {
+    background-attachment: fixed;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  html, body {
+    background-color: #000000;
+    color: #ffffff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

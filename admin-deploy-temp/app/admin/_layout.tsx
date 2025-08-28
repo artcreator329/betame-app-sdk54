@@ -4,6 +4,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -34,6 +35,7 @@ const adminNavItems: AdminNavItem[] = [
 function DesktopSidebar() {
   const router = useRouter();
   const segments = useSegments();
+  const { theme } = useTheme();
   const currentRoute = segments[segments.length - 1] || 'index';
 
   return (
@@ -41,7 +43,7 @@ function DesktopSidebar() {
       <View style={styles.sidebarHeader}>
         <View style={styles.logoContainer}>
           <Ionicons name="shield-checkmark" size={32} color="#2196F3" />
-          <Text style={styles.logoText}>BetaMe Admin</Text>
+          <Text style={[styles.logoText, { color: theme.text.primary }]}>BetaMe Admin</Text>
         </View>
       </View>
 
@@ -279,7 +281,6 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
     marginLeft: 12,
   },
   navContainer: {

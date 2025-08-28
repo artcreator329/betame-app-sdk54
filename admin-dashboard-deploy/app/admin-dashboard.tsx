@@ -28,7 +28,6 @@ import {
   ArrowLeft,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
 import { adminService, DashboardStats, UserManagement } from '@/lib/admin-service';
 import { Colors } from '@/constants/Colors';
 
@@ -81,6 +80,7 @@ function QuickAction({ title, icon, onPress, color }: QuickActionProps) {
 export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>
             {!isAdmin ? 'Verifying admin access...' : 'Loading dashboard...'}
           </Text>
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
             style={styles.settingsButton}
             onPress={() => router.push('/admin/settings')}
           >
-            <Settings size={24} color={Colors.text} />
+            <Settings size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -199,8 +199,8 @@ export default function AdminDashboard() {
             <StatCard
               title="Total Users"
               value={formatNumber(stats.totalUsers)}
-              icon={<Users size={24} color={Colors.primary} />}
-              color={Colors.primary}
+              icon={<Users size={24} color={colors.primary} />}
+              color={colors.primary}
               onPress={() => router.push('/admin/users')}
             />
             <StatCard
@@ -247,9 +247,9 @@ export default function AdminDashboard() {
           <View style={styles.quickActionsGrid}>
             <QuickAction
               title="User Management"
-              icon={<Users size={20} color={Colors.primary} />}
+              icon={<Users size={20} color={colors.primary} />}
               onPress={() => router.push('/admin/users')}
-              color={Colors.primary}
+              color={colors.primary}
             />
             <QuickAction
               title="Service Moderation"
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: '#6B7280', // Changed from Colors.textSecondary
   },
   scrollView: {
     flex: 1,
@@ -327,11 +327,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: '#1F2937', // Changed from Colors.text
   },
   headerSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: '#6B7280', // Changed from Colors.textSecondary
     marginTop: 2,
   },
   settingsButton: {
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: Colors.text,
+    color: '#1F2937', // Changed from Colors.text
     marginBottom: 16,
   },
   statsGrid: {
@@ -383,11 +383,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: '#1F2937', // Changed from Colors.text
   },
   statTitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: '#6B7280', // Changed from Colors.textSecondary
     fontWeight: '500',
   },
   quickActionsSection: {
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   quickActionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text,
+    color: '#1F2937', // Changed from Colors.text
     textAlign: 'center',
   },
   recentActivitySection: {
@@ -450,11 +450,11 @@ const styles = StyleSheet.create({
   },
   activityText: {
     fontSize: 16,
-    color: Colors.text,
+    color: '#1F2937', // Changed from Colors.text
     flex: 1,
   },
   activityTime: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: '#6B7280', // Changed from Colors.textSecondary
   },
 });

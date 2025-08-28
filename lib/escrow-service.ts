@@ -387,9 +387,8 @@ export class EscrowService {
           .select(`
             buyer_id,
             service_provider_id,
-            service_offers!inner(
-              service_title,
-              services!inner(
+            service_offers(
+              services(
                 title
               )
             )
@@ -400,7 +399,7 @@ export class EscrowService {
         if (!detailsError && jobDetails) {
           const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
           const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
-          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          const serviceTitle = services?.title || 'Service';
           
           // Get service provider profile
           const { data: providerProfile } = await supabase
@@ -495,9 +494,8 @@ export class EscrowService {
           .select(`
             buyer_id,
             service_provider_id,
-            service_offers!inner(
-              service_title,
-              services!inner(
+            service_offers(
+              services(
                 title
               )
             )
@@ -508,7 +506,7 @@ export class EscrowService {
         if (!detailsError && jobDetails) {
           const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
           const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
-          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          const serviceTitle = services?.title || 'Service';
           
           // Get buyer profile
           const { data: buyerProfile } = await supabase
@@ -597,9 +595,8 @@ export class EscrowService {
           .select(`
             buyer_id,
             service_provider_id,
-            service_offers!inner(
-              service_title,
-              services!inner(
+            service_offers(
+              services(
                 title
               )
             )
@@ -610,7 +607,7 @@ export class EscrowService {
         if (!detailsError && jobDetails) {
           const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
           const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
-          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          const serviceTitle = services?.title || 'Service';
           
           // Get service provider profile
           const { data: providerProfile } = await supabase
@@ -698,9 +695,8 @@ export class EscrowService {
           .select(`
             buyer_id,
             service_provider_id,
-            service_offers!inner(
-              service_title,
-              services!inner(
+            service_offers(
+              services(
                 title
               )
             )
@@ -711,7 +707,7 @@ export class EscrowService {
         if (!detailsError && jobDetails) {
           const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
           const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
-          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          const serviceTitle = services?.title || 'Service';
           
           // Get service provider profile
           const { data: providerProfile } = await supabase
@@ -801,9 +797,8 @@ export class EscrowService {
           .select(`
             buyer_id,
             service_provider_id,
-            service_offers!inner(
-              service_title,
-              services!inner(
+            service_offers(
+              services(
                 title
               )
             )
@@ -814,7 +809,7 @@ export class EscrowService {
         if (!detailsError && jobDetails) {
           const serviceOffer = Array.isArray(jobDetails.service_offers) ? jobDetails.service_offers[0] : jobDetails.service_offers;
           const services = Array.isArray(serviceOffer?.services) ? serviceOffer.services[0] : serviceOffer?.services;
-          const serviceTitle = serviceOffer?.service_title || services?.title || 'Service';
+          const serviceTitle = services?.title || 'Service';
           
           // Get service provider profile
           const { data: providerProfile } = await supabase

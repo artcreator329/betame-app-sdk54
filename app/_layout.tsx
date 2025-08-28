@@ -47,6 +47,7 @@ import { configureLocalNotifications } from '@/lib/local-notifications';
 import { useDeepLinking } from '@/hooks/useDeepLinking';
 import { audioSessionManager } from '@/lib/audio-session-manager';
 import * as SplashScreen from 'expo-splash-screen';
+import { DARK_BACKGROUND } from '@/constants/NavigationStyles';
 
 const { width, height } = Dimensions.get('window');
 
@@ -68,7 +69,7 @@ function CustomSplashScreen() {
   }, []);
 
   return (
-    <View style={styles.splashContainer}>
+    <View style={[styles.splashContainer, { backgroundColor: '#0f1419' }]}>
       <View style={styles.logoContainer}>
         <Image 
           source={require('../assets/images/icon_splashscreen.png')}
@@ -80,11 +81,42 @@ function CustomSplashScreen() {
           style={styles.splashTextLogo}
           resizeMode="contain"
         />
-        <Text style={styles.splashSubtext}>Connecting People, Powering Possibilities</Text>
+        <Text style={[styles.splashSubtext, { color: '#94a3b8' }]}>
+          Connecting People, Powering Possibilities
+        </Text>
       </View>
       <ActivityIndicator 
         size="large" 
-        color="#007AFF" 
+        color="#4db8d8" 
+        style={styles.loadingIndicator}
+      />
+    </View>
+  );
+}
+
+function ThemedSplashScreen() {
+  const { theme } = useTheme();
+  
+  return (
+    <View style={[styles.splashContainer, { backgroundColor: theme.background.primary }]}>
+      <View style={styles.logoContainer}>
+        <Image 
+          source={require('../assets/images/icon_splashscreen.png')}
+          style={styles.splashImage}
+          resizeMode="contain"
+        />
+        <Image 
+          source={require('../assets/images/text-logo.png')}
+          style={styles.splashTextLogo}
+          resizeMode="contain"
+        />
+        <Text style={[styles.splashSubtext, { color: theme.text.secondary }]}>
+          Connecting People, Powering Possibilities
+        </Text>
+      </View>
+      <ActivityIndicator 
+        size="large" 
+        color={theme.primary.main} 
         style={styles.loadingIndicator}
       />
     </View>
@@ -93,6 +125,7 @@ function CustomSplashScreen() {
 
 function RootLayoutNav() {
   const { user, isAdmin, loading } = useAuth();
+  const { theme, isLoading: themeLoading } = useTheme();
   const segments = useSegments();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
@@ -241,266 +274,410 @@ function RootLayoutNav() {
     console.log('🔍 Layout: Allowing access to all pages for debugging');
   }, [user, isAdmin, loading, segments, isMounted]);
 
-  if (loading) {
-    return <CustomSplashScreen />;
+  if (loading || themeLoading) {
+    return <ThemedSplashScreen />;
   }
 
-  // Enhanced Stack screen options with smooth animations
+  // Enhanced Stack screen options with smooth slow-in-slow-out animations
   const stackScreenOptions = {
     headerShown: false,
-    // Smooth slide transitions
+    // Enable smooth slide animation
     animation: 'slide_from_right' as const,
-    // Enable gesture-based navigation
+    // Enable gestures for smooth interaction
     gestureEnabled: true,
-    // Card style for smooth shadows and rounded corners
+    // Force dark background at all times
     cardStyle: {
-      backgroundColor: '#ffffff',
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 5,
+      backgroundColor: DARK_BACKGROUND,
     },
-    // Card overlay for smooth transitions
-    cardOverlayEnabled: true,
+    // Custom style interpolator with slow-in-slow-out easing
+    cardStyleInterpolator: ({ current, next, layouts }: any) => {
+      // Slow-in-slow-out easing function (cubic-bezier equivalent)
+      const easeInOut = (t: number) => {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      };
+
+      const progress = current.progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 1],
+        extrapolate: 'clamp',
+      });
+
+      return {
+        cardStyle: {
+          backgroundColor: DARK_BACKGROUND,
+          transform: [
+            {
+              translateX: current.progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [layouts.screen.width, 0],
+                extrapolate: 'clamp',
+                // Apply easing curve for smooth animation
+                easing: (t: number) => easeInOut(t),
+              }),
+            },
+            {
+              scale: next
+                ? next.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 0.95],
+                    extrapolate: 'clamp',
+                    easing: (t: number) => easeInOut(t),
+                  })
+                : 1,
+            },
+          ],
+          opacity: current.progress.interpolate({
+            inputRange: [0, 0.3, 1],
+            outputRange: [0, 0.8, 1],
+            extrapolate: 'clamp',
+            easing: (t: number) => easeInOut(t),
+          }),
+        },
+        overlayStyle: {
+          backgroundColor: DARK_BACKGROUND,
+          opacity: current.progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 0.3],
+            extrapolate: 'clamp',
+            easing: (t: number) => easeInOut(t),
+          }),
+        },
+      };
+    },
+    // Smooth transition timing
+    transitionSpec: {
+      open: {
+        animation: 'timing',
+        config: {
+          duration: 350,
+          easing: require('react-native').Easing.bezier(0.25, 0.46, 0.45, 0.94), // Slow-in-slow-out
+        },
+      },
+      close: {
+        animation: 'timing',
+        config: {
+          duration: 300,
+          easing: require('react-native').Easing.bezier(0.25, 0.46, 0.45, 0.94), // Slow-in-slow-out
+        },
+      },
+    },
   };
 
-  // Special animation for modal-like screens
+  // Modal screens with smooth slide-up animation
   const modalScreenOptions = {
-    ...stackScreenOptions,
+    headerShown: false,
     animation: 'slide_from_bottom' as const,
     presentation: 'modal' as const,
     gestureEnabled: true,
     gestureDirection: 'vertical' as const,
+    cardStyle: {
+      backgroundColor: DARK_BACKGROUND,
+    },
+    cardStyleInterpolator: ({ current, layouts }: any) => {
+      const easeInOut = (t: number) => {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      };
+
+      return {
+        cardStyle: {
+          backgroundColor: DARK_BACKGROUND,
+          transform: [
+            {
+              translateY: current.progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [layouts.screen.height, 0],
+                extrapolate: 'clamp',
+                easing: (t: number) => easeInOut(t),
+              }),
+            },
+            {
+              scale: current.progress.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: [0.9, 0.95, 1],
+                extrapolate: 'clamp',
+                easing: (t: number) => easeInOut(t),
+              }),
+            },
+          ],
+          opacity: current.progress.interpolate({
+            inputRange: [0, 0.2, 1],
+            outputRange: [0, 0.7, 1],
+            extrapolate: 'clamp',
+            easing: (t: number) => easeInOut(t),
+          }),
+        },
+        overlayStyle: {
+          backgroundColor: DARK_BACKGROUND,
+          opacity: current.progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 0.5],
+            extrapolate: 'clamp',
+            easing: (t: number) => easeInOut(t),
+          }),
+        },
+      };
+    },
+    transitionSpec: {
+      open: {
+        animation: 'timing',
+        config: {
+          duration: 400,
+          easing: require('react-native').Easing.bezier(0.25, 0.46, 0.45, 0.94),
+        },
+      },
+      close: {
+        animation: 'timing',
+        config: {
+          duration: 350,
+          easing: require('react-native').Easing.bezier(0.25, 0.46, 0.45, 0.94),
+        },
+      },
+    },
   };
 
-  // Special animation for tab transitions
+  // Tab transitions - no animations to prevent white flash
   const tabScreenOptions = {
     ...stackScreenOptions,
-    animation: 'fade' as const,
+    animation: 'none' as const,
     gestureEnabled: false,
+    cardStyleInterpolator: () => {
+      return {
+        cardStyle: {
+          backgroundColor: DARK_BACKGROUND,
+          opacity: 1,
+        },
+      };
+    },
   };
 
   return (
-    <Stack screenOptions={stackScreenOptions}>
-      {/* Tab screens with fade animation */}
-      <Stack.Screen 
-        name="(tabs)" 
-        options={tabScreenOptions}
-      />
-      
-      {/* Auth screens with slide animation */}
-      <Stack.Screen 
-        name="auth" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Admin screens with slide animation */}
-      <Stack.Screen 
-        name="admin" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="admin-dashboard" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Chat screens with slide animation */}
-      <Stack.Screen 
-        name="chat/[participantId]" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Job-related screens with slide animation */}
-      <Stack.Screen 
-        name="job/[id]" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="job-acceptance/[jobId]" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="job-progress/[jobId]" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="job-completion/[jobId]" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="job-review/[jobId]" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Service-related screens with slide animation */}
-      <Stack.Screen 
-        name="service/[id]" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="edit-service/[id]" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="detailed-service-listing" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Profile screens with slide animation */}
-      <Stack.Screen 
-        name="profile/[userId]" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="user-profile/[userId]" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Location and search screens with slide animation */}
-      <Stack.Screen 
-        name="check-in" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="nearby" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="search" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="trending" 
-        options={stackScreenOptions}
-      />
-      
-      {/* User action screens with slide animation */}
-      <Stack.Screen 
-        name="favorites" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="orders" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="messages" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="wallet" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Creation screens with slide animation */}
-      <Stack.Screen 
-        name="create-service-listing" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="create-job-listing" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Authentication and verification screens with slide animation */}
-      <Stack.Screen 
-        name="become-service-provider" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="bank-upload" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="ekyc-verification" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="malaysian-payment-gateway" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Settings screens with slide animation */}
-      <Stack.Screen 
-        name="settings" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="edit-profile" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="notification-settings" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Information pages with slide animation */}
-      <Stack.Screen 
-        name="about-us" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="contact-us" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="faq" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="legal" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="privacy-policy" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="terms-of-service" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="safety-security" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="payment-help" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="support" 
-        options={stackScreenOptions}
-      />
-      <Stack.Screen 
-        name="user-guide" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Test and utility screens */}
-      <Stack.Screen 
-        name="test-map" 
-        options={stackScreenOptions}
-      />
-      
-      {/* Error screen */}
-      <Stack.Screen 
-        name="+not-found" 
-        options={{ 
-          title: 'Oops!',
-          ...stackScreenOptions
-        }} 
-      />
-    </Stack>
+    <View style={{ flex: 1, backgroundColor: DARK_BACKGROUND }}>
+      <Stack screenOptions={stackScreenOptions}>
+        {/* Tab screens with fade animation */}
+        <Stack.Screen 
+          name="(tabs)" 
+          options={tabScreenOptions}
+        />
+        
+        {/* Auth screens with slide animation */}
+        <Stack.Screen 
+          name="auth" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Admin screens with slide animation */}
+        <Stack.Screen 
+          name="admin" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="admin-dashboard" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Chat screens with slide animation */}
+        <Stack.Screen 
+          name="chat/[participantId]" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Job-related screens with slide animation */}
+        <Stack.Screen 
+          name="job/[id]" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="job-acceptance/[jobId]" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="job-progress/[jobId]" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="job-completion/[jobId]" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="job-review/[jobId]" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Service-related screens with slide animation */}
+        <Stack.Screen 
+          name="service/[id]" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="edit-service/[id]" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="detailed-service-listing" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Profile screens with slide animation */}
+        <Stack.Screen 
+          name="profile/[userId]" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="user-profile/[userId]" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Location and search screens with slide animation */}
+        <Stack.Screen 
+          name="check-in" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="nearby" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="search" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="trending" 
+          options={stackScreenOptions}
+        />
+        
+        {/* User action screens with slide animation */}
+        <Stack.Screen 
+          name="favorites" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="orders" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="messages" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="wallet" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Creation screens with slide animation */}
+        <Stack.Screen 
+          name="create-service-listing" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="create-job-listing" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Authentication and verification screens with slide animation */}
+        <Stack.Screen 
+          name="become-service-provider" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="bank-upload" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="ekyc-verification" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="malaysian-payment-gateway" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Settings screens with slide animation */}
+        <Stack.Screen 
+          name="settings" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="edit-profile" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="notification-settings" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Information pages with slide animation */}
+        <Stack.Screen 
+          name="about-us" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="contact-us" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="faq" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="legal" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="privacy-policy" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="terms-of-service" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="safety-security" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="payment-help" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="support" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="user-guide" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Test and utility screens */}
+        <Stack.Screen 
+          name="test-map" 
+          options={stackScreenOptions}
+        />
+        
+        {/* Error screen */}
+        <Stack.Screen 
+          name="+not-found" 
+          options={{ 
+            title: 'Oops!',
+            ...stackScreenOptions
+          }} 
+        />
+      </Stack>
+    </View>
   );
 }
 
 function ThemedStatusBar() {
   const { isDarkMode } = useTheme();
   return <StatusBar style={isDarkMode ? 'light' : 'dark'} />;
+}
+
+function ThemedRootContainer({ children }: { children: React.ReactNode }) {
+  const { theme } = useTheme();
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.background.primary }}>
+      {children}
+    </View>
+  );
 }
 
 export default function RootLayout() {
@@ -544,16 +721,18 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: DARK_BACKGROUND }}>
+      <SafeAreaProvider style={{ backgroundColor: DARK_BACKGROUND }}>
         <AuthProvider>
           <ThemeProvider>
-            <NotificationProvider>
-              <SupabaseChatProvider>
-                <ThemedStatusBar />
-                <RootLayoutNav />
-              </SupabaseChatProvider>
-            </NotificationProvider>
+            <View style={{ flex: 1, backgroundColor: DARK_BACKGROUND }}>
+              <NotificationProvider>
+                <SupabaseChatProvider>
+                  <ThemedStatusBar />
+                  <RootLayoutNav />
+                </SupabaseChatProvider>
+              </NotificationProvider>
+            </View>
           </ThemeProvider>
         </AuthProvider>
       </SafeAreaProvider>

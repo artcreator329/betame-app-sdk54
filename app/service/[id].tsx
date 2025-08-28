@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, MessageCircle, X, Package, ShoppingCart, FileText } from 'lucide-react-native';
+import { ArrowLeft, Star, MessageCircle, X, Package, ShoppingCart, FileText, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSmartNavigation } from '@/hooks/useSmartNavigation';
@@ -67,6 +67,7 @@ export default function ServiceDetailsScreen() {
   const [serviceInquiryModalVisible, setServiceInquiryModalVisible] = useState(false);
   const [inquiryMode, setInquiryMode] = useState<'text' | 'structured' | null>(null);
   const [userCoverPhoto, setUserCoverPhoto] = useState<string | null>(null);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   console.log('🔍 ServiceDetailsScreen: Component mounted with ID:', id);
   console.log('🔍 ServiceDetailsScreen: ID type:', typeof id);
@@ -487,7 +488,32 @@ export default function ServiceDetailsScreen() {
           {/* Service Details */}
           <View style={styles.serviceSection}>
             <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>{serviceDetails.title}</Text>
-            <Text style={[styles.serviceSubtitle, { color: colors.text.secondary }]}>{serviceDetails.subtitle}</Text>
+            
+            {/* Truncated Description with More Button */}
+            <View style={styles.descriptionContainer}>
+              <Text 
+                style={[styles.serviceSubtitle, { color: colors.text.secondary }]}
+                numberOfLines={isDescriptionExpanded ? undefined : 4}
+              >
+                {serviceDetails.subtitle}
+              </Text>
+              {serviceDetails.subtitle && serviceDetails.subtitle.length > 200 && (
+                <TouchableOpacity
+                  style={styles.moreButton}
+                  onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                >
+                  <Text style={[styles.moreButtonText, { color: colors.primary.main }]}>
+                    {isDescriptionExpanded ? 'Show less' : 'Read more'}
+                  </Text>
+                  {isDescriptionExpanded ? (
+                    <ChevronUp size={16} color={colors.primary.main} />
+                  ) : (
+                    <ChevronDown size={16} color={colors.primary.main} />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+            
             <Text style={[styles.serviceDuration, { color: colors.text.secondary }]}>{serviceDetails.duration}</Text>
             
             <View style={styles.priceContainer}>
@@ -638,13 +664,11 @@ export default function ServiceDetailsScreen() {
         <DirectOrderModal
           visible={paymentModalVisible}
           orderData={{
-            serviceId: selectedServiceForOrder.id || '',
+            id: selectedServiceForOrder.id || '',
             title: selectedServiceForOrder.title,
             description: selectedServiceForOrder.description,
             price: selectedServiceForOrder.price,
             currency: selectedServiceForOrder.currency,
-            image_url: selectedServiceForOrder.image_url,
-            category_name: selectedServiceForOrder.category_name,
           }}
           buyerId={user?.id || ''}
           serviceProviderId={selectedServiceForOrder.user_id}
@@ -1153,5 +1177,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  descriptionContainer: {
+    marginBottom: 12,
+  },
+  moreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  moreButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 4,
   },
 });

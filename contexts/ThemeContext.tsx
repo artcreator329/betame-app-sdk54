@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LightTheme, DarkTheme } from '@/constants/Colors';
 import { useAuth } from './AuthContext';
@@ -11,6 +11,8 @@ interface ThemeContextType {
   isDarkMode: boolean;
   toggleTheme: () => void;
   setTheme: (isDark: boolean) => void;
+  isLoading: boolean;
+  ScreenContainer: React.ComponentType<{ children: ReactNode; style?: any }>;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -24,15 +26,17 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const systemColorScheme = useColorScheme();
   const { user } = useAuth();
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(false); // Default to light mode
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(true); // Default to dark mode to prevent white flash
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Add loading state
 
   // Load theme preference from storage
   useEffect(() => {
     const loadThemePreference = async () => {
       try {
-        // If user is not authenticated, force light mode
+        // If user is not authenticated, force dark mode to prevent white flash
         if (!user) {
-          setIsDarkMode(false);
+          setIsDarkMode(true);
+          setIsLoading(false);
           return;
         }
 
@@ -41,12 +45,14 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         if (savedTheme !== null) {
           setIsDarkMode(savedTheme === 'dark');
         } else {
-          // If no preference saved, default to light mode (not system preference)
-          setIsDarkMode(false);
+          // If no preference saved, default to dark mode to prevent white flash
+          setIsDarkMode(true);
         }
       } catch (error) {
         console.error('Error loading theme preference:', error);
-        setIsDarkMode(false); // Default to light mode on error
+        setIsDarkMode(true); // Default to dark mode on error to prevent white flash
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -88,6 +94,13 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   const theme = isDarkMode ? DarkTheme : LightTheme;
 
+  // Screen container component that always uses the correct background
+  const ScreenContainer = ({ children, style }: { children: ReactNode; style?: any }) => (
+    <View style={[{ flex: 1, backgroundColor: theme.background.primary }, style]}>
+      {children}
+    </View>
+  );
+
   // Always render children, don't block on auth loading
   // This prevents the white blank page issue
   const contextValue: ThemeContextType = {
@@ -95,6 +108,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     isDarkMode,
     toggleTheme,
     setTheme,
+    isLoading,
+    ScreenContainer,
   };
 
   return (

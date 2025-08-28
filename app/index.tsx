@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function IndexScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
 
   useEffect(() => {
     // Add a small delay to ensure the Root Layout is mounted before navigation
@@ -17,8 +19,13 @@ export default function IndexScreen() {
 
   // Show loading spinner while redirecting
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
-      <ActivityIndicator size="large" color="#007AFF" />
+    <View style={{ 
+      flex: 1, 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      backgroundColor: theme.background.primary 
+    }}>
+      <ActivityIndicator size="large" color={theme.primary.main} />
     </View>
   );
 }

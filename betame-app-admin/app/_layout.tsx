@@ -31,11 +31,15 @@ SplashScreen.preventAutoHideAsync();
 
 function CustomSplashScreen() {
   const [isVisible, setIsVisible] = useState(true);
+  const { colors } = useTheme();
 
   useEffect(() => {
     const hideSplash = async () => {
       try {
+        // Hide the native splash screen
         await SplashScreen.hideAsync();
+        
+        // Add a small delay before hiding our custom splash screen
         setTimeout(() => {
           setIsVisible(false);
         }, 100);
@@ -55,12 +59,12 @@ function CustomSplashScreen() {
           style={styles.splashImage}
           resizeMode="contain"
         />
-        <Text style={styles.splashText}>BetaMe Admin</Text>
-        <Text style={styles.splashSubtext}>Management Console</Text>
+        <Text style={[styles.splashText, { color: colors.text.primary }]}>BetaMe Admin</Text>
+        <Text style={[styles.splashSubtext, { color: colors.text.secondary }]}>Management Console</Text>
       </View>
       <ActivityIndicator 
         size="large" 
-        color="#007AFF" 
+        color={colors.primary.main}
         style={styles.loadingIndicator}
       />
     </View>
@@ -183,13 +187,11 @@ const styles = StyleSheet.create({
   splashText: {
     fontSize: 42,
     fontWeight: 'bold',
-    color: '#007AFF',
     marginBottom: 8,
     letterSpacing: 1,
   },
   splashSubtext: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     marginTop: 5,
     fontWeight: '400',

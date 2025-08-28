@@ -10,8 +10,9 @@
     "splash": {
       "image": "./assets/images/icon_splashscreen.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0f1419"
     },
+    "backgroundColor": "#0f1419",
     "newArchEnabled": false,
     "linking": {
       "prefixes": [
@@ -34,7 +35,8 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-      "buildNumber": "7"
+      "buildNumber": "8",
+      "backgroundColor": "#0f1419"
     },
     "android": {
       "config": {
@@ -45,9 +47,10 @@
       "package": "com.betame.app",
       "enableProguardInReleaseBuilds": false,
       "enableSeparateBuildPerCPUArchitecture": false,
-      "versionCode": 7,
+      "versionCode": 8,
       "versionName": "1.0.0",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "backgroundColor": "#0f1419"
     },
     "web": {
       "bundler": "metro",
