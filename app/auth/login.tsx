@@ -188,7 +188,6 @@ export default function LoginScreen() {
                     setEmail('');
                     setPassword('');
                     setFullName('');
-                    setReferralCode('');
                     setIsSignUp(false);
                   }
                 }

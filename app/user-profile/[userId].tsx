@@ -414,22 +414,22 @@ export default function UserProfileScreen() {
                 return (
                   <View key={service.id}>
                     {/* Main Service Header */}
-                    <View style={[styles.mainServiceHeader, { backgroundColor: '#E3F2FD' }]}>
+                    <View style={[styles.mainServiceHeader, { backgroundColor: colors.background.secondary }]}>
                       <Text style={[styles.mainServiceTitle, { color: colors.text.primary }]}>
                         {service.title}
                       </Text>
-                      <Text style={[styles.mainServiceDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+                      <Text style={[styles.mainServiceDescription, { color: colors.text.primary }]} numberOfLines={2}>
                         {service.description}
                       </Text>
                     </View>
                     
                     {/* Service Variants */}
                     {hasVariants && service.service_variants!.map((variant) => (
-                      <View key={variant.id} style={[styles.serviceCard, { backgroundColor: '#E3F2FD' }]}>
+                      <View key={variant.id} style={[styles.serviceCard, { backgroundColor: colors.background.secondary }]}>
                         <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>
                           {variant.title}
                         </Text>
-                        <Text style={[styles.serviceDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+                        <Text style={[styles.serviceDescription, { color: colors.text.primary }]} numberOfLines={2}>
                           {variant.description}
                         </Text>
                         <Text style={[styles.servicePrice, { color: colors.primary.main }]}>
@@ -440,11 +440,11 @@ export default function UserProfileScreen() {
                     
                     {/* If no variants, show the main service as a regular card */}
                     {!hasVariants && (
-                      <View style={[styles.serviceCard, { backgroundColor: '#E3F2FD' }]}>
+                      <View style={[styles.serviceCard, { backgroundColor: colors.background.secondary }]}>
                         <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>
                           {service.title}
                         </Text>
-                        <Text style={[styles.serviceDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+                        <Text style={[styles.serviceDescription, { color: colors.text.primary }]} numberOfLines={2}>
                           {service.description}
                         </Text>
                         <Text style={[styles.servicePrice, { color: colors.primary.main }]}>

@@ -46,23 +46,24 @@ interface ServiceVariantCardProps {
 }
 
 function ServiceVariantCard({ variant, onPress }: ServiceVariantCardProps) {
+  const colors = useColors();
   const isMainServiceVariant = !variant.parent_service_id;
   
   return (
-    <TouchableOpacity style={styles.variantCard} onPress={onPress}>
+    <TouchableOpacity style={[styles.variantCard, { backgroundColor: colors.background.primary, borderColor: colors.border.light }]} onPress={onPress}>
       <View style={styles.variantContent}>
-        <Text style={styles.variantTitle} numberOfLines={1}>
+        <Text style={[styles.variantTitle, { color: colors.text.primary }]} numberOfLines={1}>
           {variant.title}
         </Text>
-        <Text style={styles.variantDescription} numberOfLines={2}>
+        <Text style={[styles.variantDescription, { color: colors.text.primary }]} numberOfLines={2}>
           {variant.description}
         </Text>
         {!isMainServiceVariant ? (
-          <Text style={styles.variantPrice}>
+          <Text style={[styles.variantPrice, { color: colors.primary.main }]}>
             From {variant.currency}{String(variant.price)}
           </Text>
         ) : (
-          <Text style={styles.variantMainService}>
+          <Text style={[styles.variantMainService, { color: colors.text.secondary }]}>
             Main Service - View Details
           </Text>
         )}
@@ -251,7 +252,7 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
 
   return (
     <View style={[styles.cardContainer, style]}>
-      <TouchableOpacity style={styles.card} onPress={handleMainCardPress}>
+      <TouchableOpacity style={[styles.card, { backgroundColor: colors.background.secondary }]} onPress={handleMainCardPress}>
         {showEditButton && (
         <TouchableOpacity style={styles.editButton} onPress={handleEditPress}>
           <Edit3 size={16} color={colors.background.primary} />
@@ -260,7 +261,11 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
       
       {/* Favorite Button */}
       <TouchableOpacity 
-        style={[styles.favoriteButton, isFavorited && styles.favoriteButtonActive]} 
+        style={[
+          styles.favoriteButton, 
+          { backgroundColor: isFavorited ? '#FF3B30' : colors.background.tertiary },
+          isFavorited && styles.favoriteButtonActive
+        ]} 
         onPress={handleToggleFavorite}
         disabled={isFavoriteLoading}
       >
@@ -272,14 +277,14 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
       </TouchableOpacity>
       
       {showProfileToggle && (
-        <View style={styles.profileToggleContainer}>
+        <View style={[styles.profileToggleContainer, { backgroundColor: colors.background.secondary }]}>
           <View style={styles.profileToggleContent}>
             {isProfileVisible ? (
               <Eye size={14} color={colors.text.secondary} />
             ) : (
               <EyeOff size={14} color={colors.text.secondary} />
             )}
-            <Text style={styles.profileToggleLabel}>
+            <Text style={[styles.profileToggleLabel, { color: colors.text.secondary }]}>
               {isProfileVisible ? 'Visible on profile' : 'Hidden from profile'}
             </Text>
           </View>
@@ -303,8 +308,8 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
         <View style={styles.content}>
           <View style={styles.ratingContainer}>
             <Star size={12} color="#FFD700" fill="#FFD700" />
-            <Text style={styles.rating}>{service.rating}</Text>
-            <Text style={styles.reviewCount}>({service.review_count})</Text>
+            <Text style={[styles.rating, { color: colors.text.primary }]}>{service.rating}</Text>
+            <Text style={[styles.reviewCount, { color: colors.text.secondary }]}>({service.review_count})</Text>
             {service.active_features && service.active_features.length > 0 && (
               <FeatureIcons 
                 features={service.active_features} 
@@ -314,32 +319,37 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
             )}
           </View>
           <View style={styles.providerContainer}>
-            <Text style={styles.provider}>{service.provider_name || 'Unknown Provider'}</Text>
+            <Text style={[styles.provider, { color: colors.text.primary }]}>{service.provider_name || 'Unknown Provider'}</Text>
             {service.provider_created_at && (
-              <Text style={styles.joinedDate}>
+              <Text style={[styles.joinedDate, { color: colors.text.secondary }]}>
                 {formatJoinedDate(service.provider_created_at)}
               </Text>
             )}
           </View>
-          <Text style={styles.title} numberOfLines={showVariants ? undefined : 2}>
+          <Text style={[styles.title, { color: colors.text.primary }]} numberOfLines={showVariants ? undefined : 2}>
             {service.title}
           </Text>
+          {!showVariants && service.description && (
+            <Text style={[styles.description, { color: colors.text.primary }]} numberOfLines={2}>
+              {service.description}
+            </Text>
+          )}
           {showVariants && (
-            <Text style={styles.expandedDescription} numberOfLines={undefined}>
+            <Text style={[styles.expandedDescription, { color: colors.text.primary }]} numberOfLines={undefined}>
               {service.description}
             </Text>
           )}
           {shouldShowPricing ? (
             <View style={styles.priceContainer}>
-              <Text style={styles.price}>
+              <Text style={[styles.price, { color: colors.text.primary }]}>
                 From {service.currency}{getLowestPrice()}
               </Text>
 
             </View>
           ) : (
             <View style={styles.detailsContainer}>
-              <Text style={styles.detailsLabel}>View Details</Text>
-              <Text style={styles.categoryText}>{service.category_name}</Text>
+              <Text style={[styles.detailsLabel, { color: colors.primary.main }]}>View Details</Text>
+              <Text style={[styles.categoryText, { color: colors.text.primary }]}>{service.category_name}</Text>
             </View>
           )}
         </View>
@@ -355,7 +365,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     shadowColor: '#000000',
     shadowOffset: {
@@ -396,7 +405,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: '#F8F9FA',
     borderRadius: 20,
     width: 32,
     height: 32,
@@ -438,12 +446,10 @@ const styles = StyleSheet.create({
   rating: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#000000',
     marginLeft: 3,
   },
   reviewCount: {
     fontSize: 11,
-    color: '#6B7280',
     marginLeft: 2,
   },
   featureIcons: {
@@ -455,7 +461,6 @@ const styles = StyleSheet.create({
   provider: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000000',
     marginBottom: 1,
     ...(isWeb && {
       fontSize: 12,
@@ -464,7 +469,6 @@ const styles = StyleSheet.create({
   },
   joinedDate: {
     fontSize: 11,
-    color: '#6B7280',
     fontWeight: '400',
     ...(isWeb && {
       fontSize: 10,
@@ -472,12 +476,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 12,
-    color: '#6B7280',
     marginBottom: 8,
     lineHeight: 16,
     ...(isWeb && {
       fontSize: 11,
       lineHeight: 14,
+      marginBottom: 6,
+    }),
+  },
+  description: {
+    fontSize: 11,
+    lineHeight: 15,
+    marginBottom: 8,
+    ...(isWeb && {
+      fontSize: 10,
+      lineHeight: 13,
       marginBottom: 6,
     }),
   },
@@ -489,7 +502,6 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000000',
     ...(isWeb && {
       fontSize: 12,
     }),
@@ -501,11 +513,9 @@ const styles = StyleSheet.create({
   },
   variantCount: {
     fontSize: 11,
-    color: '#007AFF',
     fontWeight: '500',
   },
   variantsContainer: {
-    backgroundColor: '#F1F5F9',
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
     paddingHorizontal: 12,
@@ -513,11 +523,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   variantCard: {
-    backgroundColor: '#F8F9FA',
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   variantContent: {
     flex: 1,
@@ -525,24 +533,20 @@ const styles = StyleSheet.create({
   variantTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000000',
     marginBottom: 4,
   },
   variantDescription: {
     fontSize: 12,
-    color: '#6B7280',
     lineHeight: 16,
     marginBottom: 6,
   },
   variantPrice: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#007AFF',
   },
   variantMainService: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
     fontStyle: 'italic',
   },
   detailsContainer: {
@@ -551,17 +555,14 @@ const styles = StyleSheet.create({
   detailsLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#007AFF',
     marginBottom: 2,
   },
   categoryText: {
     fontSize: 11,
-    color: '#6B7280',
     fontStyle: 'italic',
   },
   expandedDescription: {
     fontSize: 12,
-    color: '#6B7280',
     lineHeight: 16,
     marginBottom: 8,
     marginTop: 4,
@@ -570,7 +571,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -596,7 +596,6 @@ const styles = StyleSheet.create({
   },
   profileToggleLabel: {
     fontSize: 11,
-    color: '#6B7280',
     fontWeight: '500',
   },
 });
