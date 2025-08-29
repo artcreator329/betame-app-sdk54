@@ -33,6 +33,7 @@ export default function NearbyScreen() {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [listLayout, setListLayout] = useState<'list' | 'grid'>('grid');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [hoveredService, setHoveredService] = useState<Service | null>(null);
 
   // Load services on mount
   useEffect(() => {
@@ -147,14 +148,37 @@ export default function NearbyScreen() {
                   router.push(`/service/${service.id}`);
                 }
               }}
+              onMouseEnter={() => {
+                if (isWeb) {
+                  setHoveredService(service);
+                }
+              }}
+              onMouseLeave={() => {
+                if (isWeb) {
+                  setHoveredService(null);
+                }
+              }}
             >
               <View style={[
                 styles.markerContainer,
                 selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedMarker
               ]}>
+                {/* Service name label */}
+                <View style={[
+                  styles.serviceNameLabel,
+                  selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedServiceNameLabel
+                ]}>
+                  <Text style={[
+                    styles.serviceNameText,
+                    selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedServiceNameText
+                  ]} numberOfLines={2}>
+                    {service.title}
+                  </Text>
+                </View>
                 <View style={[
                   styles.marker,
-                  selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedMarkerInner
+                  selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedMarkerInner,
+                  hoveredService?.id === service.id && isWeb && styles.hoveredMarker
                 ]}>
                   <MapPin size={20} color="white" />
                 </View>
@@ -163,6 +187,36 @@ export default function NearbyScreen() {
                   selectedService?.id === service.id && isWeb && width >= 1024 && styles.selectedMarkerTriangle
                 ]} />
               </View>
+              
+              {/* Hover Tooltip */}
+              {hoveredService?.id === service.id && isWeb && (
+                <View style={styles.hoverTooltip}>
+                  <View style={styles.tooltipContent}>
+                    <Text style={styles.tooltipTitle} numberOfLines={1}>
+                      {service.title}
+                    </Text>
+                    <Text style={styles.tooltipProvider} numberOfLines={1}>
+                      {service.provider_name}
+                    </Text>
+                    <View style={styles.tooltipPriceRow}>
+                      <Text style={styles.tooltipPrice}>
+                        {service.currency}{service.price}
+                      </Text>
+                      {service.category_name && (
+                        <Text style={styles.tooltipCategory}>
+                          • {service.category_name}
+                        </Text>
+                      )}
+                    </View>
+                    {service.description && (
+                      <Text style={styles.tooltipDescription} numberOfLines={2}>
+                        {service.description}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.tooltipArrow} />
+                </View>
+              )}
             </Marker>
           );
         })}
@@ -351,6 +405,115 @@ const styles = StyleSheet.create({
   },
   markerContainer: {
     alignItems: 'center',
+  },
+  serviceNameLabel: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+    maxWidth: 120,
+    minWidth: 80,
+  },
+  serviceNameText: {
+    fontSize: 11,
+    color: '#1D1D1F',
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 13,
+  },
+  selectedServiceNameLabel: {
+    backgroundColor: '#F0F8FF',
+    borderColor: '#007AFF',
+  },
+  selectedServiceNameText: {
+    color: '#007AFF',
+    fontWeight: '700',
+  },
+  hoverTooltip: {
+    position: 'absolute',
+    bottom: 60,
+    left: -100,
+    width: 200,
+    zIndex: 1000,
+  },
+  tooltipContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  tooltipTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1D1D1F',
+    marginBottom: 4,
+  },
+  tooltipProvider: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginBottom: 6,
+  },
+  tooltipPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  tooltipPrice: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  tooltipCategory: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginLeft: 4,
+  },
+  tooltipDescription: {
+    fontSize: 11,
+    color: '#8E8E93',
+    lineHeight: 14,
+  },
+  tooltipArrow: {
+    position: 'absolute',
+    bottom: -6,
+    left: 20,
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderBottomWidth: 0,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: 'white',
+    borderBottomColor: 'transparent',
+  },
+  hoveredMarker: {
+    transform: [{ scale: 1.1 }],
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
   },
   marker: {
     backgroundColor: '#007AFF',

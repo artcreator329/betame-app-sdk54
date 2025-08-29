@@ -142,6 +142,12 @@ export default function NearbyScreen() {
             onPress={() => handleServicePress(service.id)}
           >
             <View style={styles.markerContainer}>
+              {/* Service name label */}
+              <View style={styles.serviceNameLabel}>
+                <Text style={styles.serviceNameText} numberOfLines={2}>
+                  {service.title}
+                </Text>
+              </View>
               <View style={styles.marker}>
                 <MapPin size={20} color="white" />
               </View>
@@ -302,6 +308,32 @@ const styles = StyleSheet.create({
   },
   markerContainer: {
     alignItems: 'center',
+  },
+  serviceNameLabel: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+    maxWidth: 120,
+    minWidth: 80,
+  },
+  serviceNameText: {
+    fontSize: 11,
+    color: '#1D1D1F',
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 13,
   },
   marker: {
     backgroundColor: '#007AFF',
