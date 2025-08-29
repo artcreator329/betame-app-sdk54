@@ -10,6 +10,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { Send, Bot, Trash2, Sparkles, MessageCircle, Clock } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -172,6 +173,7 @@ export default function AIChatSection() {
   };
 
   const handleChatPress = () => {
+    Keyboard.dismiss();
     scrollToBottom();
   };
 
@@ -281,94 +283,102 @@ export default function AIChatSection() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerBetameLogo}>
-            <Text style={styles.headerBetameLogoText}>B</Text>
-          </View>
-          <Text style={styles.headerTitle}>AI Assistant</Text>
-          <Sparkles size={16} color="#FFD700" />
-        </View>
-        {messages.length > 0 && !conversationEnded && (
-          <TouchableOpacity onPress={clearConversation} style={styles.clearButton}>
-            <Trash2 size={20} color="#FF3B30" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Messages */}
-      <TouchableOpacity 
-        style={styles.messagesTouchable}
-        activeOpacity={1}
-        onPress={handleChatPress}
-      >
-        <ScrollView 
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}
-        >
-        {messages.length === 0 ? (
-          renderWelcomeMessage()
-        ) : (
-          <>
-            {messages.map((message, index) => renderMessage(message, index))}
-            {conversationEnded && renderConversationEndedMessage()}
-          </>
-        )}
-        
-        {isLoading && (
-          <View style={styles.aiMessageContainer}>
-            <View style={styles.aiAvatar}>
-              <Text style={styles.aiAvatarText}>B</Text>
+    <KeyboardAvoidingView 
+      style={styles.keyboardAvoid}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.headerBetameLogo}>
+              <Text style={styles.headerBetameLogoText}>B</Text>
             </View>
-            <View style={styles.aiMessageBubble}>
-              <View style={styles.typingIndicator}>
-                <ActivityIndicator size="small" color="#007AFF" />
-                <Text style={styles.typingText}>AI is thinking...</Text>
+            <Text style={styles.headerTitle}>AI Assistant</Text>
+            <Sparkles size={16} color="#FFD700" />
+          </View>
+          {messages.length > 0 && !conversationEnded && (
+            <TouchableOpacity onPress={clearConversation} style={styles.clearButton}>
+              <Trash2 size={20} color="#FF3B30" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Messages */}
+        <TouchableOpacity 
+          style={styles.messagesTouchable}
+          activeOpacity={1}
+          onPress={handleChatPress}
+        >
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.messagesContent}
+            showsVerticalScrollIndicator={false}
+          >
+          {messages.length === 0 ? (
+            renderWelcomeMessage()
+          ) : (
+            <>
+              {messages.map((message, index) => renderMessage(message, index))}
+              {conversationEnded && renderConversationEndedMessage()}
+            </>
+          )}
+          
+          {isLoading && (
+            <View style={styles.aiMessageContainer}>
+              <View style={styles.aiAvatar}>
+                <Text style={styles.aiAvatarText}>B</Text>
+              </View>
+              <View style={styles.aiMessageBubble}>
+                <View style={styles.typingIndicator}>
+                  <ActivityIndicator size="small" color="#007AFF" />
+                  <Text style={styles.typingText}>AI is thinking...</Text>
+                </View>
               </View>
             </View>
-          </View>
-        )}
-        </ScrollView>
-      </TouchableOpacity>
+          )}
+          </ScrollView>
+        </TouchableOpacity>
 
-      {/* Input Section */}
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.textInput}
-            value={inputMessage}
-            onChangeText={setInputMessage}
-            placeholder={conversationEnded ? "Start a new conversation..." : "Message AI Assistant..."}
-            placeholderTextColor="#8E8E93"
-            multiline
-            maxLength={1000}
-            editable={!isLoading && !conversationEnded}
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              (!inputMessage.trim() || isLoading || conversationEnded) && styles.sendButtonDisabled
-            ]}
-            onPress={sendMessage}
-            disabled={!inputMessage.trim() || isLoading || conversationEnded}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Send size={20} color="white" />
-            )}
-          </TouchableOpacity>
+        {/* Input Section */}
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.textInput}
+              value={inputMessage}
+              onChangeText={setInputMessage}
+              placeholder={conversationEnded ? "Start a new conversation..." : "Message AI Assistant..."}
+              placeholderTextColor="#8E8E93"
+              multiline
+              maxLength={1000}
+              editable={!isLoading && !conversationEnded}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                (!inputMessage.trim() || isLoading || conversationEnded) && styles.sendButtonDisabled
+              ]}
+              onPress={sendMessage}
+              disabled={!inputMessage.trim() || isLoading || conversationEnded}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Send size={20} color="white" />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoid: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',

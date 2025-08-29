@@ -225,24 +225,32 @@ export default function HomeScreen() {
   );
 
   const handleSlideChange = (event: any) => {
-    const slideIndex = Math.round(event.nativeEvent.contentOffset.x / (screenWidth - 40));
+    const bannerWidth = isDesktop ? screenWidth - 200 : screenWidth - 40;
+    const slideIndex = Math.round(event.nativeEvent.contentOffset.x / bannerWidth);
     setCurrentSlide(slideIndex);
   };
 
-  // Auto-slide functionality
+  // Auto-slide functionality - simplified and more reliable
   const startAutoSlide = useCallback(() => {
     if (banners.length <= 1 || !isAutoSliding) return;
     
+    stopAutoSlide(); // Clear any existing timer first
+    
     autoSlideTimerRef.current = setInterval(() => {
-      const nextSlide = (currentSlide + 1) % banners.length;
-      setCurrentSlide(nextSlide);
-      
-      bannerScrollViewRef.current?.scrollTo({
-        x: nextSlide * (screenWidth - 40),
-        animated: true,
+      setCurrentSlide(prevSlide => {
+        const nextSlide = (prevSlide + 1) % banners.length;
+        const bannerWidth = isDesktop ? screenWidth - 200 : screenWidth - 40;
+        
+        // Scroll to the next slide
+        bannerScrollViewRef.current?.scrollTo({
+          x: nextSlide * bannerWidth,
+          animated: true,
+        });
+        
+        return nextSlide;
       });
     }, 3000); // Change slide every 3 seconds
-  }, [banners.length, currentSlide, isAutoSliding]);
+  }, [banners.length, isAutoSliding, isDesktop]);
 
   const stopAutoSlide = useCallback(() => {
     if (autoSlideTimerRef.current) {
@@ -256,14 +264,23 @@ export default function HomeScreen() {
   };
 
   const handleBannerTouchEnd = () => {
-    if (isAutoSliding) {
-      startAutoSlide();
-    }
+    // Restart auto-slide after a short delay to avoid conflicts
+    setTimeout(() => {
+      if (isAutoSliding && banners.length > 1) {
+        startAutoSlide();
+      }
+    }, 1000);
   };
 
   // Start auto-slide when banners are loaded
   useEffect(() => {
     if (banners.length > 1 && isAutoSliding) {
+      // Reset to first slide and start auto-slide
+      setCurrentSlide(0);
+      bannerScrollViewRef.current?.scrollTo({
+        x: 0,
+        animated: false,
+      });
       startAutoSlide();
     }
     

@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Heart, Briefcase, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet, Sparkles } from 'lucide-react-native';
+import { ArrowLeft, Heart, Briefcase, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet, Sparkles, Building2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme, useColors } from '@/contexts/ThemeContext';
@@ -123,6 +123,10 @@ export default function SettingsScreen() {
 
   const handleMyAccount = () => {
     router.push('/edit-profile');
+  };
+
+  const handleUpdateBankInfo = () => {
+    router.push('/update-bank-info');
   };
 
 
@@ -271,6 +275,15 @@ export default function SettingsScreen() {
             title="My account"
             onPress={handleMyAccount}
           />
+
+          {/* Bank Information Update - Only show for service providers */}
+          {userProfile?.is_service_provider && (
+            <SettingItem
+              icon={<Building2 size={20} color={colors.text.primary} />}
+              title="Update Bank Information"
+              onPress={handleUpdateBankInfo}
+            />
+          )}
 
           <SettingItem
             icon={<Bell size={20} color={colors.text.primary} />}

@@ -11,14 +11,12 @@ interface OrderCardProps {
   order: Order;
   currentUserId: string;
   onOrderUpdate?: () => void;
-  onViewPDFReceipt?: (orderId: string) => void;
 }
 
 export const OrderCard: React.FC<OrderCardProps> = ({ 
   order, 
   currentUserId, 
-  onOrderUpdate,
-  onViewPDFReceipt
+  onOrderUpdate 
 }) => {
   const router = useRouter();
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -248,19 +246,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               <Text style={styles.actionButtonText}>Mark Completed</Text>
             </TouchableOpacity>
           );
-        case 'completed':
-          // Show PDF receipt button if payment has been released
-          if (order.payment_released_at) {
-            return (
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.pdfButton]} 
-                onPress={() => onViewPDFReceipt && onViewPDFReceipt(order.id)}
-              >
-                <Text style={styles.actionButtonText}>📄 Download Receipt</Text>
-              </TouchableOpacity>
-            );
-          }
-          return null;
         default:
           return null;
       }
@@ -478,9 +463,6 @@ const styles = StyleSheet.create({
   disputeButton: {
     backgroundColor: '#F44336',
     flex: 1,
-  },
-  pdfButton: {
-    backgroundColor: '#2196F3',
   },
   completionPhotosSection: {
     marginTop: 12,

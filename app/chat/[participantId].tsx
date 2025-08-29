@@ -20,6 +20,7 @@ import TimePicker from '@/components/TimePicker';
 import MapView, { Marker } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MoveVertical as MoreVertical, Smile, Send, Shield, Flag, Ban, Trash2, Package, X, MapPin } from 'lucide-react-native';
+import ReportUserModal from '@/components/ReportUserModal';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSmartNavigation } from '@/hooks/useSmartNavigation';
 import { ChatMessage, LiveChatMessage } from '@/types/chat';
@@ -70,6 +71,7 @@ export default function ChatScreen() {
   const { user, userProfile } = useAuth();
   const [message, setMessage] = useState('');
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportUserModalVisible, setReportUserModalVisible] = useState(false);
   const [serviceModalVisible, setServiceModalVisible] = useState(false);
   const [serviceOfferModalVisible, setServiceOfferModalVisible] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -1915,9 +1917,20 @@ export default function ChatScreen() {
                   <Text style={styles.headerStatus}>{chat.lastActive}</Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={handleDeleteConversation}>
-                <Trash2 size={24} color="#FF3B30" />
-              </TouchableOpacity>
+              <View style={styles.headerActions}>
+                <TouchableOpacity 
+                  style={styles.headerActionButton}
+                  onPress={() => setReportUserModalVisible(true)}
+                >
+                  <Flag size={24} color="#FF9500" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.headerActionButton}
+                  onPress={handleDeleteConversation}
+                >
+                  <Trash2 size={24} color="#FF3B30" />
+                </TouchableOpacity>
+              </View>
             </>
           )}
         </View>
@@ -2320,6 +2333,19 @@ export default function ChatScreen() {
           serviceTitle={inquiryServiceData?.serviceTitle || ''}
         />
 
+        {/* Report User Modal */}
+        <ReportUserModal
+          visible={reportUserModalVisible}
+          onClose={() => setReportUserModalVisible(false)}
+          reportedUserId={participantId as string}
+          reporterId={user?.id || ''}
+          reportedUserName={chat?.participantName || 'User'}
+          context={{
+            chatId: chatId || undefined,
+            profileContext: 'chat'
+          }}
+        />
+
       </SafeAreaView>
     );
   }
@@ -2365,6 +2391,14 @@ const styles = StyleSheet.create({
   headerStatus: {
     fontSize: 14,
     color: '#8E8E93',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerActionButton: {
+    padding: 8,
   },
   messagesContainer: {
     flex: 1,

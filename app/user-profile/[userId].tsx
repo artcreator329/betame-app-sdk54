@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, Share, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, MessageCircle, User, Heart, Share as ShareIcon, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react-native';
+import { ArrowLeft, Star, MessageCircle, User, Heart, Share as ShareIcon, CheckCircle, Clock, XCircle, AlertCircle, Flag } from 'lucide-react-native';
+import ReportUserModal from '@/components/ReportUserModal';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -91,6 +92,7 @@ export default function UserProfileScreen() {
   const [activeTab, setActiveTab] = useState('My Services');
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [reportUserModalVisible, setReportUserModalVisible] = useState(false);
 
   // Calculate average rating from userProfile (preferred) or reviews array (fallback)
   const averageRating = userProfile?.rating || (reviews.length > 0 
@@ -553,6 +555,14 @@ export default function UserProfileScreen() {
                   />
                 </TouchableOpacity>
               )}
+              {user && user.id !== userId && (
+                <TouchableOpacity 
+                  style={[styles.headerIcon, isDesktop && styles.headerIconDesktop]}
+                  onPress={() => setReportUserModalVisible(true)}
+                >
+                  <Flag size={24} color="#FF9500" />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity 
                 style={[styles.headerIcon, isDesktop && styles.headerIconDesktop]}
                 onPress={handleShareProfile}
@@ -768,6 +778,18 @@ export default function UserProfileScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Report User Modal */}
+      <ReportUserModal
+        visible={reportUserModalVisible}
+        onClose={() => setReportUserModalVisible(false)}
+        reportedUserId={userId as string}
+        reporterId={user?.id || ''}
+        reportedUserName={userProfile?.full_name || 'User'}
+        context={{
+          profileContext: 'profile'
+        }}
+      />
     </SafeAreaView>
   );
 }

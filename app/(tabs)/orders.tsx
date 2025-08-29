@@ -23,6 +23,7 @@ import { supabase } from '@/lib/supabase';
 import { formatMalaysianDate, formatMalaysianTime, formatMalaysianDateTime } from '@/lib/malaysian-time-utils';
 import { ServerPDFService } from '@/lib/server-pdf-service';
 import { BuyerReceiptService, BuyerReceiptData } from '@/lib/buyer-receipt-service';
+import { UserPDFService, UserPDFData } from '@/lib/user-pdf-service';
 import PDFViewer from '@/components/PDFViewer';
 
 export default function OrdersScreen() {
@@ -1073,6 +1074,252 @@ export default function OrdersScreen() {
     }
   };
 
+  const handleViewTransactionSlip = async (orderId: string) => {
+    try {
+      console.log('🔍 Looking for existing transaction slip for order ID:', orderId);
+      
+      // First, check if a user PDF already exists
+      let result = await UserPDFService.getPDFReceipt(orderId);
+      
+      // If not found, try to find the related active job
+      if (!result.success) {
+        console.log('🔍 Transaction slip not found with order ID, checking for related active job...');
+        
+        // Check if there's an active job related to this escrow transaction
+        const { data: activeJob, error } = await supabase
+          .from('active_jobs')
+          .select('id')
+          .eq('service_offer_id', orderId)
+          .single();
+        
+        if (!error && activeJob) {
+          console.log('🔍 Found related active job ID:', activeJob.id);
+          result = await UserPDFService.getPDFReceipt(activeJob.id);
+        }
+      }
+      
+      if (result.success && result.pdfUrl) {
+        console.log('✅ Existing transaction slip found, opening:', result.pdfUrl);
+        
+        // Open existing PDF in in-app viewer
+        setPdfUrl(result.pdfUrl);
+        setPdfTitle('Transaction Slip');
+        setShowPDFViewer(true);
+      } else {
+        console.log('📄 No existing slip found, generating new transaction slip (one-time action)...');
+        
+        // Generate new transaction slip (one-time action - will be stored permanently)
+        await generateTransactionSlip(orderId);
+      }
+    } catch (error) {
+      console.error('Error viewing transaction slip:', error);
+      Alert.alert('Error', 'Failed to open transaction slip');
+    }
+  };
+
+  const generateTransactionSlip = async (orderId: string) => {
+    try {
+      console.log('📄 Generating new transaction slip for order ID:', orderId);
+      console.log('💾 This is a one-time action - slip will be permanently stored in Supabase');
+      
+      let jobData: any = null;
+      let tableSource = 'job_status';
+
+      // First, try to find in job_status table
+      let { data: jobStatus, error: jobError } = await supabase
+        .from('job_status')
+        .select(`
+          *,
+          escrow_transactions(*)
+        `)
+        .eq('id', orderId)
+        .single();
+
+      if (jobStatus) {
+        console.log('✅ Found in job_status table');
+        jobData = jobStatus;
+        tableSource = 'job_status';
+      } else {
+        // Try to find in active_jobs table
+        console.log('🔍 Trying active_jobs table...');
+        const { data: activeJob, error: activeJobError } = await supabase
+          .from('active_jobs')
+          .select('*')
+          .eq('id', orderId)
+          .single();
+
+        if (activeJob) {
+          console.log('✅ Found in active_jobs table');
+          jobData = activeJob;
+          tableSource = 'active_jobs';
+        } else {
+          // Try to find by service_offer_id in job_status
+          console.log('🔍 Trying to find by service_offer_id...');
+          const { data: jobByOffer, error: jobByOfferError } = await supabase
+            .from('job_status')
+            .select(`
+              *,
+              escrow_transactions(*)
+            `)
+            .eq('service_offer_id', orderId)
+            .single();
+
+          if (jobByOffer) {
+            console.log('✅ Found by service_offer_id in job_status');
+            jobData = jobByOffer;
+            tableSource = 'job_status';
+          } else {
+            console.error('❌ Order not found in any table');
+            Alert.alert('Error', 'Order details not found');
+            return;
+          }
+        }
+      }
+
+      if (!jobData) {
+        console.error('❌ No job data found');
+        Alert.alert('Error', 'Order details not found');
+        return;
+      }
+
+      // Get user profiles for names
+      const buyerId = jobData.buyer_id;
+      const serviceProviderId = jobData.service_provider_id;
+
+      const { data: buyerProfile } = await supabase
+        .from('user_profiles')
+        .select('full_name')
+        .eq('user_id', buyerId)
+        .single();
+
+      const { data: serviceProviderProfile } = await supabase
+        .from('user_profiles')
+        .select('full_name')
+        .eq('user_id', serviceProviderId)
+        .single();
+
+      // Calculate fees and amounts
+      let serviceAmount = 0;
+      let platformFee = 0;
+      let netPayout = 0;
+      let serviceTitle = 'Service';
+      let paymentDate = new Date().toISOString();
+      let completionDate = new Date().toISOString();
+
+      if (jobData.escrow_transactions) {
+        serviceAmount = jobData.escrow_transactions.amount / 100; // Convert from cents
+        serviceTitle = jobData.escrow_transactions.service_title || 'Service';
+        paymentDate = jobData.escrow_transactions.created_at;
+      } else if (jobData.price) {
+        serviceAmount = parseFloat(jobData.price);
+        serviceTitle = jobData.title || 'Service';
+        paymentDate = jobData.created_at;
+      }
+
+      platformFee = serviceAmount * 0.022; // 2.2% platform fee
+      netPayout = serviceAmount - platformFee;
+
+      if (jobData.completion_confirmed_at) {
+        completionDate = jobData.completion_confirmed_at;
+      } else if (jobData.completed_at) {
+        completionDate = jobData.completed_at;
+      }
+
+      // Calculate service fee (RM4.90 or 11%, whichever is higher)
+      const serviceFeePercentage = serviceAmount * 0.11;
+      const serviceFeeFixed = 4.90;
+      const serviceFee = Math.max(serviceFeePercentage, serviceFeeFixed);
+      const finalNetPayout = serviceAmount - platformFee - serviceFee;
+
+      // Get user emails (using profiles table which should have email info)
+      const { data: buyerProfileWithEmail } = await supabase
+        .from('user_profiles')
+        .select('email')
+        .eq('user_id', buyerId)
+        .single();
+
+      const { data: serviceProviderProfileWithEmail } = await supabase
+        .from('user_profiles')
+        .select('email')
+        .eq('user_id', serviceProviderId)
+        .single();
+
+      // Get current user's profile (the service provider generating the slip)
+      console.log('🔍 Current user ID:', user?.id);
+      
+      let currentUserProfile = null;
+      let currentUserError = null;
+      
+      if (user?.id) {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('full_name, display_name, email')
+          .eq('user_id', user.id)
+          .single();
+        
+        currentUserProfile = data;
+        currentUserError = error;
+        
+        if (currentUserError) {
+          console.error('❌ Error fetching current user profile:', currentUserError);
+        } else {
+          console.log('✅ Current user profile:', currentUserProfile);
+        }
+      } else {
+        console.error('❌ No user ID available');
+      }
+
+      // Prepare user PDF data for transaction slip
+      const userPDFData: UserPDFData = {
+        jobId: jobData.id,
+        jobTableSource: tableSource,
+        jobTitle: serviceTitle,
+        serviceProviderName: currentUserProfile?.display_name || currentUserProfile?.full_name || user?.email?.split('@')[0] || 'Unknown Service Provider',
+        buyerName: buyerProfile?.full_name || 'Unknown Buyer',
+        serviceProviderEmail: currentUserProfile?.email || user?.email || 'unknown@betame.com',
+        buyerEmail: buyerProfileWithEmail?.email || 'unknown@betame.com',
+        serviceAmount: serviceAmount,
+        platformFee: platformFee,
+        serviceFee: serviceFee,
+        netPayout: finalNetPayout,
+        currency: 'RM',
+        paymentDate: paymentDate,
+        completionDate: completionDate,
+        jobCreatedAt: jobData.created_at,
+        workCompletedAt: jobData.completed_at || jobData.completion_confirmed_at || completionDate,
+        buyerConfirmedAt: jobData.completion_confirmed_at || completionDate,
+        paymentReleasedAt: jobData.payment_released_at || new Date().toISOString(),
+        description: jobData.description || 'Service order created from payment',
+        status: jobData.status || 'PAYMENT RELEASED',
+        adminEmail: 'developer@betame.com.my'
+      };
+
+      console.log('📄 User PDF data prepared:', userPDFData);
+      console.log('👤 Service Provider Name being used:', userPDFData.serviceProviderName);
+      console.log('📧 Service Provider Email being used:', userPDFData.serviceProviderEmail);
+
+      // Generate and store transaction slip using UserPDFService
+      const result = await UserPDFService.generateAndStorePDF(userPDFData);
+
+      if (result.success && result.pdfUrl) {
+        console.log('✅ Transaction slip generated successfully:', result.pdfUrl);
+        
+        // Open PDF in in-app viewer
+        setPdfUrl(result.pdfUrl);
+        setPdfTitle('Transaction Slip');
+        setShowPDFViewer(true);
+      } else {
+        console.error('❌ Failed to generate transaction slip:', result.error);
+        Alert.alert('Error', 'Failed to generate transaction slip');
+      }
+    } catch (error) {
+      console.error('Error generating transaction slip:', error);
+      Alert.alert('Error', 'Failed to generate transaction slip');
+    }
+  };
+
+
+
   const handleContactBuyer = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
     // Get the buyer ID from the order
     const buyerId = order.buyer_id;
@@ -1314,11 +1561,17 @@ export default function OrdersScreen() {
                 <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Acceptance Acknowledged</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.optimizedActionButton, styles.contactBuyerButton]}
                 onPress={() => handleContactBuyer(order)}
+                activeOpacity={0.8}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+                <View style={styles.buttonContent}>
+                  <View style={styles.buttonIconContainer}>
+                    <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+                  </View>
+                  <Text style={styles.optimizedButtonText}>Contact Buyer</Text>
+                </View>
+                <View style={styles.buttonShine} />
               </TouchableOpacity>
             </View>
           );
@@ -1333,11 +1586,17 @@ export default function OrdersScreen() {
                 <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Confirm Order</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#28a745' }]}
+                style={[styles.optimizedActionButton, styles.contactBuyerButton]}
                 onPress={() => handleContactBuyer(order)}
+                activeOpacity={0.8}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+                <View style={styles.buttonContent}>
+                  <View style={styles.buttonIconContainer}>
+                    <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+                  </View>
+                  <Text style={styles.optimizedButtonText}>Contact Buyer</Text>
+                </View>
+                <View style={styles.buttonShine} />
               </TouchableOpacity>
             </View>
           );
@@ -1355,11 +1614,17 @@ export default function OrdersScreen() {
                 <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Mark Complete</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.optimizedActionButton, styles.contactBuyerButton]}
                 onPress={() => handleContactBuyer(order)}
+                activeOpacity={0.8}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+                <View style={styles.buttonContent}>
+                  <View style={styles.buttonIconContainer}>
+                    <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+                  </View>
+                  <Text style={styles.optimizedButtonText}>Contact Buyer</Text>
+                </View>
+                <View style={styles.buttonShine} />
               </TouchableOpacity>
             </View>
           );
@@ -1372,11 +1637,17 @@ export default function OrdersScreen() {
                 <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Awaiting Review</Text>
               </View>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.optimizedActionButton, styles.contactBuyerButton]}
                 onPress={() => handleContactBuyer(order)}
+                activeOpacity={0.8}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+                <View style={styles.buttonContent}>
+                  <View style={styles.buttonIconContainer}>
+                    <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+                  </View>
+                  <Text style={styles.optimizedButtonText}>Contact Buyer</Text>
+                </View>
+                <View style={styles.buttonShine} />
               </TouchableOpacity>
             </View>
           );
@@ -1409,11 +1680,17 @@ export default function OrdersScreen() {
                 <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Working on Revision</Text>
               </View>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.optimizedActionButton, styles.contactBuyerButton]}
                 onPress={() => handleContactBuyer(order)}
+                activeOpacity={0.8}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+                <View style={styles.buttonContent}>
+                  <View style={styles.buttonIconContainer}>
+                    <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+                  </View>
+                  <Text style={styles.optimizedButtonText}>Contact Buyer</Text>
+                </View>
+                <View style={styles.buttonShine} />
               </TouchableOpacity>
             </View>
           );
@@ -1426,32 +1703,55 @@ export default function OrdersScreen() {
                 <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Revision Submitted</Text>
               </View>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.optimizedActionButton, styles.contactBuyerButton]}
                 onPress={() => handleContactBuyer(order)}
+                activeOpacity={0.8}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+                <View style={styles.buttonContent}>
+                  <View style={styles.buttonIconContainer}>
+                    <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+                  </View>
+                  <Text style={styles.optimizedButtonText}>Contact Buyer</Text>
+                </View>
+                <View style={styles.buttonShine} />
               </TouchableOpacity>
             </View>
           );
         
         case 'completed':
           return (
-            <View style={styles.actionButtonContainer}>
-              <TouchableOpacity
-                style={[styles.orderCardActionButton, { backgroundColor: '#28a745' }]}
-                onPress={() => order.id && handleViewPDFReceipt(order.id)}
-              >
-                <Ionicons name="document-text-outline" size={18} color="#fff" />
-                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>📄 Download Receipt</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
-                onPress={() => handleContactBuyer(order)}
-              >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Buyer</Text>
-              </TouchableOpacity>
+            <View style={styles.completedOrderActionsContainer}>
+              {/* Primary Actions Row */}
+              <View style={styles.primaryActionsRow}>
+                <TouchableOpacity
+                  style={[styles.optimizedActionButton, styles.downloadTransactionSlipButton]}
+                  onPress={() => order.id && handleViewTransactionSlip(order.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.buttonContent}>
+                    <View style={styles.buttonIconContainer}>
+                      <Ionicons name="receipt-outline" size={20} color="#fff" />
+                    </View>
+                    <Text style={styles.optimizedButtonText}>Download Transaction Slip</Text>
+                  </View>
+                  <View style={styles.buttonShine} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.optimizedActionButton, styles.contactBuyerButton]}
+                  onPress={() => handleContactBuyer(order)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.buttonContent}>
+                    <View style={styles.buttonIconContainer}>
+                      <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+                    </View>
+                    <Text style={styles.optimizedButtonText}>Contact Buyer</Text>
+                  </View>
+                  <View style={styles.buttonShine} />
+                </TouchableOpacity>
+              </View>
+              
+
             </View>
           );
 
@@ -1463,11 +1763,17 @@ export default function OrdersScreen() {
                 <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Payment Release Pending</Text>
               </View>
               <TouchableOpacity
-                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.optimizedActionButton, styles.contactBuyerButton]}
                 onPress={() => handleContactBuyer(order)}
+                activeOpacity={0.8}
               >
-                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+                <View style={styles.buttonContent}>
+                  <View style={styles.buttonIconContainer}>
+                    <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+                  </View>
+                  <Text style={styles.optimizedButtonText}>Contact Buyer</Text>
+                </View>
+                <View style={styles.buttonShine} />
               </TouchableOpacity>
             </View>
           );
@@ -3347,4 +3653,53 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     letterSpacing: 0.2,
   },
+  optimizedActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    flex: 1,
+    minHeight: 56,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    position: 'relative',
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  optimizedButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    flex: 1,
+  },
+  buttonShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    opacity: 0.5,
+  },
+  downloadReceiptButton: {
+    backgroundColor: '#10B981',
+  },
+  downloadTransactionSlipButton: {
+    backgroundColor: '#059669',
+  },
+  contactBuyerButton: {
+    backgroundColor: '#007AFF',
+  },
+
 });
