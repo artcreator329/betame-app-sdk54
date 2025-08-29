@@ -14,7 +14,7 @@ export interface ActiveJob {
   price: number;
   currency: string;
   delivery_time: string;
-  status: 'pending_confirmation' | 'in_progress' | 'completed' | 'completed_confirmed' | 'cancelled' | 'disputed' | 'revision_requested' | 'revision_in_progress' | 'revision_completed';
+  status: 'pending_confirmation' | 'in_progress' | 'completed' | 'completed_confirmed' | 'payment_release_in_progress' | 'cancelled' | 'disputed' | 'revision_requested' | 'revision_in_progress' | 'revision_completed';
   progress_percentage: number;
   payment_status: 'pending' | 'paid' | 'released' | 'refunded';
   started_at?: string;
@@ -195,13 +195,13 @@ export class ActiveJobService {
           .from('active_jobs')
           .select('*')
           .eq('buyer_id', userId)
-          .in('status', ['pending_confirmation', 'in_progress', 'completed', 'completed_confirmed', 'revision_requested', 'revision_in_progress', 'revision_completed'])
+          .in('status', ['pending_confirmation', 'in_progress', 'completed', 'completed_confirmed', 'payment_release_in_progress', 'revision_requested', 'revision_in_progress', 'revision_completed'])
           .order('created_at', { ascending: false }),
         supabase
           .from('active_jobs')
           .select('*')
           .eq('service_provider_id', userId)
-          .in('status', ['pending_confirmation', 'in_progress', 'completed', 'completed_confirmed', 'revision_requested', 'revision_in_progress', 'revision_completed'])
+          .in('status', ['pending_confirmation', 'in_progress', 'completed', 'completed_confirmed', 'payment_release_in_progress', 'revision_requested', 'revision_in_progress', 'revision_completed'])
           .order('created_at', { ascending: false })
       ]);
 
@@ -319,6 +319,24 @@ export class ActiveJobService {
    */
   static async completeJob(jobId: string): Promise<boolean> {
     try {
+      // First check the current status to prevent completing already completed jobs
+      const { data: currentJob, error: fetchError } = await supabase
+        .from('active_jobs')
+        .select('status')
+        .eq('id', jobId)
+        .single();
+
+      if (fetchError || !currentJob) {
+        console.error('Error fetching job for completion:', fetchError);
+        return false;
+      }
+
+      // Don't allow completing jobs that are already completed or in payment release
+      if (['completed', 'completed_confirmed', 'payment_release_in_progress'].includes(currentJob.status)) {
+        console.error('Cannot complete job that is already completed or in payment release:', currentJob.status);
+        return false;
+      }
+
       const { error } = await supabase
         .from('active_jobs')
         .update({
@@ -721,6 +739,25 @@ export class ActiveJobService {
    */
   static async confirmJob(jobId: string, serviceProviderId: string): Promise<boolean> {
     try {
+      // First check the current status to prevent confirming already completed jobs
+      const { data: currentJob, error: fetchError } = await supabase
+        .from('active_jobs')
+        .select('status')
+        .eq('id', jobId)
+        .eq('service_provider_id', serviceProviderId)
+        .single();
+
+      if (fetchError || !currentJob) {
+        console.error('Error fetching job for confirmation:', fetchError);
+        return false;
+      }
+
+      // Don't allow confirming jobs that are already completed or in payment release
+      if (['completed', 'completed_confirmed', 'payment_release_in_progress'].includes(currentJob.status)) {
+        console.error('Cannot confirm job that is already completed or in payment release:', currentJob.status);
+        return false;
+      }
+
       const { error } = await supabase
         .from('active_jobs')
         .update({
@@ -822,7 +859,6 @@ export class ActiveJobService {
       }
 
       if (!reviews || reviews.length === 0) {
-        console.log('No reviews found for service provider:', serviceProviderId);
         return;
       }
 
@@ -831,8 +867,8 @@ export class ActiveJobService {
       const averageRating = totalRating / reviews.length;
       const reviewCount = reviews.length;
 
-      // Update user profile with new rating and review count
-      const { error: updateError } = await supabase
+      // Update user_profiles table
+      const { error: userProfileUpdateError } = await supabase
         .from('user_profiles')
         .update({
           rating: averageRating,
@@ -841,10 +877,8 @@ export class ActiveJobService {
         })
         .eq('user_id', serviceProviderId);
 
-      if (updateError) {
-        console.error('Error updating service provider rating:', updateError);
-      } else {
-        console.log(`✅ Updated service provider rating: ${averageRating.toFixed(2)} (${reviewCount} reviews)`);
+      if (userProfileUpdateError) {
+        console.error('Error updating service provider rating:', userProfileUpdateError);
       }
     } catch (error) {
       console.error('Error in updateServiceProviderRating:', error);

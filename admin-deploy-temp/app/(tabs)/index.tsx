@@ -120,6 +120,11 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { totalUnreadCount } = useUnreadMessageCount();
   const colors = useColors();
+  
+  // Auto-slide functionality
+  const bannerScrollViewRef = useRef<ScrollView>(null);
+  const autoSlideTimerRef = useRef<number | null>(null);
+  const [isAutoSliding, setIsAutoSliding] = useState(true);
 
   // Helper function to convert database service to UI service format
   const convertToUIService = (dbService: DBService): Service => {
@@ -194,6 +199,62 @@ export default function HomeScreen() {
     setCurrentSlide(slideIndex);
   };
 
+  // Auto-slide functionality
+  const startAutoSlide = useCallback(() => {
+    if (banners.length <= 1 || !isAutoSliding) return;
+    
+    autoSlideTimerRef.current = setInterval(() => {
+      const nextSlide = (currentSlide + 1) % banners.length;
+      setCurrentSlide(nextSlide);
+      
+      bannerScrollViewRef.current?.scrollTo({
+        x: nextSlide * (screenWidth - 40),
+        animated: true,
+      });
+    }, 3000); // Change slide every 3 seconds
+  }, [banners.length, currentSlide, isAutoSliding]);
+
+  const stopAutoSlide = useCallback(() => {
+    if (autoSlideTimerRef.current) {
+      clearInterval(autoSlideTimerRef.current);
+      autoSlideTimerRef.current = null;
+    }
+  }, []);
+
+  const handleBannerTouchStart = () => {
+    stopAutoSlide();
+  };
+
+  const handleBannerTouchEnd = () => {
+    if (isAutoSliding) {
+      startAutoSlide();
+    }
+  };
+
+  // Start auto-slide when banners are loaded
+  useEffect(() => {
+    if (banners.length > 1 && isAutoSliding) {
+      startAutoSlide();
+    }
+    
+    return () => {
+      stopAutoSlide();
+    };
+  }, [banners.length, isAutoSliding, startAutoSlide, stopAutoSlide]);
+
+  // Pause auto-slide when screen loses focus
+  useFocusEffect(
+    useCallback(() => {
+      if (banners.length > 1 && isAutoSliding) {
+        startAutoSlide();
+      }
+      
+      return () => {
+        stopAutoSlide();
+      };
+    }, [banners.length, isAutoSliding, startAutoSlide, stopAutoSlide])
+  );
+
 
 
   return (
@@ -265,10 +326,13 @@ export default function HomeScreen() {
           {banners.length > 0 ? (
             <>
               <ScrollView
+                ref={bannerScrollViewRef}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={handleSlideChange}
+                onTouchStart={handleBannerTouchStart}
+                onTouchEnd={handleBannerTouchEnd}
                 style={styles.bannerSlider}
                 nestedScrollEnabled={true}
               >

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { AutomaticPDFService } from './automatic-pdf-service';
 
 export interface Order {
   id: string;
@@ -171,18 +172,147 @@ class OrderManagementService {
   }
 
   // Buyer confirms work completion
-  async confirmWorkCompletion(orderId: string, buyerId: string): Promise<boolean> {
+  async confirmWorkCompletion(orderId: string, buyerId: string): Promise<boolean | {
+    success: boolean;
+    error?: any;
+    userMessage?: string;
+  }> {
     try {
-      const { error } = await supabase.rpc('confirm_work_completion', {
+      console.log('🔄 Confirming work completion...');
+      console.log('   Order ID:', orderId);
+      console.log('   Buyer ID:', buyerId);
+
+      // Enhanced validation and error handling
+      const { data: authUser, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !authUser.user) {
+        console.log('❌ Authentication failed:', authError?.message);
+        return {
+          success: false,
+          error: { code: 'AUTH_REQUIRED', message: 'User not authenticated' },
+          userMessage: 'Please log in again and try confirming the work completion.'
+        };
+      }
+
+      if (authUser.user.id !== buyerId) {
+        console.log('❌ User ID mismatch');
+        return {
+          success: false,
+          error: { code: 'USER_MISMATCH', message: 'User mismatch' },
+          userMessage: 'You are not authorized to confirm this order.'
+        };
+      }
+
+      // Verify order exists and is in correct status
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select('status, buyer_id')
+        .eq('id', orderId)
+        .eq('buyer_id', buyerId)
+        .single();
+
+      if (orderError) {
+        console.log('❌ Order verification failed:', orderError.message);
+        
+        if (orderError.code === 'PGRST116') {
+          return {
+            success: false,
+            error: { code: 'ORDER_NOT_FOUND', message: 'Order not found' },
+            userMessage: 'Order not found. Please refresh and try again.'
+          };
+        } else if (orderError.code === '42501') {
+          return {
+            success: false,
+            error: { code: 'ACCESS_DENIED', message: 'Access denied' },
+            userMessage: 'You do not have permission to access this order.'
+          };
+        }
+        
+        return {
+          success: false,
+          error: orderError,
+          userMessage: 'Failed to verify order. Please try again.'
+        };
+      }
+
+      if (order?.status !== 'buyer_reviewing') {
+        console.log('❌ Invalid order status:', order?.status);
+        return {
+          success: false,
+          error: { code: 'INVALID_STATUS', message: `Order status is ${order?.status}` },
+          userMessage: order?.status === 'completed' 
+            ? 'This order has already been confirmed.'
+            : 'This order cannot be confirmed at this time.'
+        };
+      }
+
+      console.log('✅ Order validation passed');
+
+      // Call the database function
+      const { data, error } = await supabase.rpc('confirm_work_completion', {
         p_order_id: orderId,
         p_buyer_id: buyerId,
       });
 
-      if (error) throw error;
-      return true;
+      if (error) {
+        console.error('❌ Database function error:', error);
+        
+        let userMessage = 'Failed to confirm work completion. Please try again.';
+        
+        switch (error.code) {
+          case '42501':
+            userMessage = 'Permission denied. Please log in again and try.';
+            break;
+          case '23503':
+            userMessage = 'Data integrity error. Please contact support.';
+            break;
+          case '23505':
+            userMessage = 'This order has already been processed.';
+            break;
+          case '42883':
+            userMessage = 'System function not available. Please contact support.';
+            break;
+        }
+        
+        return {
+          success: false,
+          error,
+          userMessage
+        };
+      }
+
+      console.log('✅ Work completion confirmed successfully');
+
+      // Generate PDF receipt for the completed order
+      try {
+        console.log('📄 Generating PDF receipt for order:', orderId);
+        const pdfResult = await AutomaticPDFService.generateOrderPaymentReleasePDF(orderId);
+        
+        if (pdfResult.success) {
+          console.log('✅ PDF receipt generated successfully:', pdfResult.pdfUrl);
+        } else {
+          console.error('❌ PDF receipt generation failed:', pdfResult.error);
+          // Don't fail the whole operation if PDF generation fails
+        }
+      } catch (pdfError) {
+        console.error('❌ Error generating PDF receipt:', pdfError);
+        // Don't fail the whole operation if PDF generation fails
+      }
+
+      return {
+        success: true,
+        userMessage: 'Work confirmed successfully! Payment has been released to the service provider.'
+      };
+      
     } catch (error) {
-      console.error('Error confirming work completion:', error);
-      return false;
+      console.error('❌ Unexpected error confirming work completion:', error);
+      
+      // Return enhanced error for new UI, but also support legacy boolean return
+      return {
+        success: false,
+        error: { code: 'UNEXPECTED_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        userMessage: 'An unexpected error occurred. Please check your connection and try again.'
+      };
     }
   }
 

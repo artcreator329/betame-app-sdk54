@@ -125,6 +125,11 @@ export default function HomeScreen() {
   const colors = useColors();
   const { isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
+  
+  // Auto-slide functionality
+  const bannerScrollViewRef = useRef<ScrollView>(null);
+  const autoSlideTimerRef = useRef<number | null>(null);
+  const [isAutoSliding, setIsAutoSliding] = useState(true);
 
   // Calculate adaptive bottom padding for Android devices
   const getAdaptiveBottomPadding = () => {
@@ -181,9 +186,9 @@ export default function HomeScreen() {
 
       // Preload images for better performance
       const imageUrls = [
-        ...bannersData.map(banner => banner.image_url).filter(Boolean),
-        ...nearby.map(service => service.image_url).filter(Boolean),
-        ...trending.map(service => service.image_url).filter(Boolean)
+        ...bannersData.map(banner => banner.image_url).filter(Boolean) as string[],
+        ...nearby.map(service => service.image_url).filter(Boolean) as string[],
+        ...trending.map(service => service.image_url).filter(Boolean) as string[]
       ];
 
       // Preload images in background
@@ -223,6 +228,62 @@ export default function HomeScreen() {
     const slideIndex = Math.round(event.nativeEvent.contentOffset.x / (screenWidth - 40));
     setCurrentSlide(slideIndex);
   };
+
+  // Auto-slide functionality
+  const startAutoSlide = useCallback(() => {
+    if (banners.length <= 1 || !isAutoSliding) return;
+    
+    autoSlideTimerRef.current = setInterval(() => {
+      const nextSlide = (currentSlide + 1) % banners.length;
+      setCurrentSlide(nextSlide);
+      
+      bannerScrollViewRef.current?.scrollTo({
+        x: nextSlide * (screenWidth - 40),
+        animated: true,
+      });
+    }, 3000); // Change slide every 3 seconds
+  }, [banners.length, currentSlide, isAutoSliding]);
+
+  const stopAutoSlide = useCallback(() => {
+    if (autoSlideTimerRef.current) {
+      clearInterval(autoSlideTimerRef.current);
+      autoSlideTimerRef.current = null;
+    }
+  }, []);
+
+  const handleBannerTouchStart = () => {
+    stopAutoSlide();
+  };
+
+  const handleBannerTouchEnd = () => {
+    if (isAutoSliding) {
+      startAutoSlide();
+    }
+  };
+
+  // Start auto-slide when banners are loaded
+  useEffect(() => {
+    if (banners.length > 1 && isAutoSliding) {
+      startAutoSlide();
+    }
+    
+    return () => {
+      stopAutoSlide();
+    };
+  }, [banners.length, isAutoSliding, startAutoSlide, stopAutoSlide]);
+
+  // Pause auto-slide when screen loses focus
+  useFocusEffect(
+    useCallback(() => {
+      if (banners.length > 1 && isAutoSliding) {
+        startAutoSlide();
+      }
+      
+      return () => {
+        stopAutoSlide();
+      };
+    }, [banners.length, isAutoSliding, startAutoSlide, stopAutoSlide])
+  );
 
 
 
@@ -306,10 +367,13 @@ export default function HomeScreen() {
           {banners.length > 0 ? (
             <>
               <ScrollView
+                ref={bannerScrollViewRef}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={handleSlideChange}
+                onTouchStart={handleBannerTouchStart}
+                onTouchEnd={handleBannerTouchEnd}
                 style={styles.bannerSlider}
                 nestedScrollEnabled={true}
               >

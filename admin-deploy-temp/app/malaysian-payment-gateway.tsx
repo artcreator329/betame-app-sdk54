@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, CreditCard, Lock, Shield, CheckCircle, AlertCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/contexts/ThemeContext';
+import { FeeService } from '../lib/fee-service';
 
 interface PaymentMethod {
   id: string;
@@ -44,8 +45,9 @@ export default function MalaysianPaymentGatewayScreen() {
 
   // Mock payment amount
   const paymentAmount = 150.00;
-  const buyerFee = Math.round((paymentAmount * 0.022) * 100) / 100; // 2.2% processing fee
-  const totalAmount = paymentAmount + buyerFee;
+  const feeCalculation = FeeService.calculateFees(paymentAmount);
+  const buyerFee = feeCalculation.buyerFee;
+  const totalAmount = feeCalculation.buyerTotal;
 
   const paymentMethods: PaymentMethod[] = [
     {

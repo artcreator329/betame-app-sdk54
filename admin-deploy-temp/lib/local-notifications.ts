@@ -72,7 +72,7 @@ export async function configureLocalNotifications() {
         importance: mod.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#007AFF',
-        sound: 'default',
+        sound: 'sfx.wav',
         enableVibrate: true,
         showBadge: true,
       });
@@ -119,7 +119,7 @@ export async function showLocalNotification(notification: AppNotification) {
       title: notification.title,
       body: notification.message,
       data: notification.data ?? {},
-      sound: 'default',
+      sound: 'sfx.wav',
       badge: 1,
     };
 

@@ -18,48 +18,92 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
+    let isActive = true; // Flag to prevent state updates after cleanup
 
     const loadNotifications = async () => {
       console.log('🔍 NotificationContext: loadNotifications called with user:', user?.id);
       
       if (!user?.id) {
         console.log('🔍 NotificationContext: No user ID, clearing notifications');
-        setNotifications([]);
-        setUnreadCount(0);
+        if (isActive) {
+          setNotifications([]);
+          setUnreadCount(0);
+        }
         // Ensure realtime channel is cleaned up when user logs out
         try {
           (notificationService as any).disconnect?.();
           notificationScheduler.disconnect();
-        } catch {}
+        } catch (error) {
+          console.error('Error disconnecting notification services:', error);
+        }
         return;
       }
 
-      console.log('🔍 NotificationContext: Connecting notification service for user:', user.id);
-      await (notificationService as any).connect?.(user.id);
-      await notificationScheduler.initialize(user.id);
-      await jobNotificationScheduler.start();
-      
-      console.log('🔍 NotificationContext: Getting notifications from service');
-      await notificationService.getNotifications().then((savedNotifications) => {
-        console.log('🔍 NotificationContext: Received notifications:', savedNotifications.length);
-        setNotifications(savedNotifications);
-        setUnreadCount(savedNotifications.filter(n => !n.isRead).length);
-      });
+      try {
+        console.log('🔍 NotificationContext: Connecting notification service for user:', user.id);
+        
+        // Connect notification service with proper error handling
+        await (notificationService as any).connect?.(user.id);
+        
+        // Initialize schedulers
+        await notificationScheduler.initialize(user.id);
+        await jobNotificationScheduler.start();
+        
+        console.log('🔍 NotificationContext: Getting notifications from service');
+        const savedNotifications = await notificationService.getNotifications();
+        
+        // Only update state if component is still active
+        if (isActive) {
+          console.log('🔍 NotificationContext: Received notifications:', savedNotifications.length);
+          setNotifications(savedNotifications);
+          setUnreadCount(savedNotifications.filter(n => !n.isRead).length);
+        }
 
-      unsubscribe = notificationService.subscribe((updatedNotifications) => {
-        console.log('🔍 NotificationContext: Received updated notifications:', updatedNotifications.length);
-        // Force React to detect the change by creating a new array reference
-        setNotifications([...updatedNotifications]);
-        setUnreadCount(updatedNotifications.filter(n => !n.isRead).length);
-      });
+        // Subscribe to updates
+        unsubscribe = notificationService.subscribe((updatedNotifications) => {
+          if (isActive) {
+            console.log('🔍 NotificationContext: Received updated notifications:', updatedNotifications.length);
+            // Force React to detect the change by creating a new array reference
+            setNotifications([...updatedNotifications]);
+            setUnreadCount(updatedNotifications.filter(n => !n.isRead).length);
+          }
+        });
+        
+        console.log('✅ NotificationContext: Initialization completed successfully');
+        
+      } catch (error) {
+        console.error('❌ NotificationContext: Error during initialization:', error);
+        
+        // On error, still try to get cached notifications
+        try {
+          const cachedNotifications = await notificationService.getNotifications();
+          if (isActive) {
+            setNotifications(cachedNotifications);
+            setUnreadCount(cachedNotifications.filter(n => !n.isRead).length);
+          }
+        } catch (cacheError) {
+          console.error('❌ NotificationContext: Error getting cached notifications:', cacheError);
+        }
+      }
     };
 
     loadNotifications();
 
     return () => {
-      if (unsubscribe) unsubscribe();
-      notificationScheduler.disconnect();
-      jobNotificationScheduler.stop();
+      isActive = false; // Prevent state updates after cleanup
+      if (unsubscribe) {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.error('Error unsubscribing from notifications:', error);
+        }
+      }
+      try {
+        notificationScheduler.disconnect();
+        jobNotificationScheduler.stop();
+      } catch (error) {
+        console.error('Error disconnecting schedulers:', error);
+      }
     };
   }, [user?.id]);
 

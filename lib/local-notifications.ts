@@ -72,11 +72,11 @@ export async function configureLocalNotifications() {
         importance: mod.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#007AFF',
-        sound: 'default',
+        sound: 'sfx.wav',
         enableVibrate: true,
         showBadge: true,
       });
-      console.log('📱 Android notification channel created');
+      console.log('📱 Android notification channel created with custom sound');
     }
 
     // Request permissions after configuration
@@ -102,15 +102,20 @@ export async function showLocalNotification(notification: AppNotification) {
   }
 
   try {
+    console.log(`📱 Attempting to show system notification: "${notification.title}"`);
+    
     // Check if we have permission
     const { status } = await mod.getPermissionsAsync();
+    console.log('📱 Current notification permission status:', status);
+    
     if (status !== 'granted') {
       console.log('❌ No notification permission, requesting...');
       const hasPermission = await requestPermissions();
       if (!hasPermission) {
-        console.log('❌ Notification permission denied');
+        console.log('❌ Notification permission denied - cannot show system notification');
         return false;
       }
+      console.log('✅ Notification permission granted');
     }
 
     console.log(`📱 Sending system notification: "${notification.title}"`);
@@ -119,7 +124,7 @@ export async function showLocalNotification(notification: AppNotification) {
       title: notification.title,
       body: notification.message,
       data: notification.data ?? {},
-      sound: 'default',
+      sound: 'default', // Use default sound instead of custom
       badge: 1,
       // Ensure notifications show even when app is in foreground
       autoDismiss: false,
@@ -129,19 +134,34 @@ export async function showLocalNotification(notification: AppNotification) {
     if (Platform.OS === 'android') {
       notificationContent.channelId = 'default';
       notificationContent.priority = mod.AndroidImportance.HIGH;
+      notificationContent.vibrate = [0, 250, 250, 250];
     }
+
+    // Add iOS-specific properties
+    if (Platform.OS === 'ios') {
+      notificationContent.sound = 'default';
+      notificationContent.badge = 1;
+    }
+
+    console.log('📱 Notification content:', {
+      title: notificationContent.title,
+      body: notificationContent.body,
+      platform: Platform.OS,
+      hasData: !!notificationContent.data
+    });
 
     const notificationId = await mod.scheduleNotificationAsync({
       content: notificationContent,
       trigger: null, // Show immediately
     });
 
-    console.log(`✅ System notification sent with ID: ${notificationId}`);
+    console.log(`✅ System notification sent successfully with ID: ${notificationId}`);
     return true;
   } catch (error) {
     console.error('❌ Local notification error:', error);
     if (error instanceof Error) {
       console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
     }
     return false;
   }

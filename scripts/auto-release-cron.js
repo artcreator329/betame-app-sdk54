@@ -19,6 +19,42 @@ async function autoReleasePayments() {
     // Call the auto-release function
     const { data: releasedCount, error } = await supabase.rpc('auto_release_payments');
 
+    // Generate PDFs for auto-released payments
+    if (releasedCount > 0) {
+      console.log('📄 Generating PDFs for auto-released payments...');
+      
+      // Get the auto-released orders
+      const { data: autoReleasedOrders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id, service_title, service_provider_id, seller_id, buyer_id, amount, platform_fee, payment_released_at')
+        .eq('status', 'completed')
+        .not('payment_released_at', 'is', null)
+        .gte('payment_released_at', new Date(Date.now() - 60000).toISOString()) // Orders released in the last minute
+        .order('payment_released_at', { ascending: false });
+
+      if (!ordersError && autoReleasedOrders) {
+        for (const order of autoReleasedOrders) {
+          try {
+            // Generate PDF for each auto-released order
+            const { data: pdfResult, error: pdfError } = await supabase.functions.invoke('generate-payment-release-pdf', {
+              body: {
+                orderId: order.id,
+                tableSource: 'orders'
+              }
+            });
+
+            if (pdfError) {
+              console.error(`❌ PDF generation failed for order ${order.id}:`, pdfError);
+            } else {
+              console.log(`✅ PDF generated for auto-released order ${order.id}`);
+            }
+          } catch (pdfError) {
+            console.error(`❌ Error generating PDF for order ${order.id}:`, pdfError);
+          }
+        }
+      }
+    }
+
     if (error) {
       throw error;
     }

@@ -35,7 +35,7 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-      "buildNumber": "10",
+      "buildNumber": "12",
       "backgroundColor": "#0f1419"
     },
     "android": {
@@ -47,7 +47,7 @@
       "package": "com.betame.app",
       "enableProguardInReleaseBuilds": false,
       "enableSeparateBuildPerCPUArchitecture": false,
-      "versionCode": 9,
+      "versionCode": 11,
       "versionName": "1.0.0",
       "edgeToEdgeEnabled": true,
       "backgroundColor": "#0f1419"
@@ -65,7 +65,15 @@
       "expo-font",
       "expo-web-browser",
       "expo-dev-client",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#007AFF",
+          "sounds": ["./assets/sfx.wav"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

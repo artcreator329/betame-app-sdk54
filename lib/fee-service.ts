@@ -23,6 +23,9 @@ export class FeeService {
   // Buyer processing fee rate (2.2%)
   private static readonly BUYER_FEE_RATE = 0.022;
   
+  // Minimum buyer processing fee (RM 4.90)
+  private static readonly MINIMUM_BUYER_FEE = 4.90;
+  
   // Seller platform fee rate (11%)
   private static readonly SELLER_FEE_RATE = 0.11;
   
@@ -35,8 +38,9 @@ export class FeeService {
   static calculateFees(amount: number, currency: string = 'RM'): FeeCalculation {
     const baseAmount = amount;
     
-    // Buyer pays 2.2% processing fee on top
-    const buyerFee = Math.round((baseAmount * this.BUYER_FEE_RATE) * 100) / 100;
+    // Buyer pays 2.2% processing fee or RM4.90, whichever is higher
+    const calculatedBuyerFee = Math.round((baseAmount * this.BUYER_FEE_RATE) * 100) / 100;
+    const buyerFee = Math.max(calculatedBuyerFee, this.MINIMUM_BUYER_FEE);
     const buyerTotal = baseAmount + buyerFee;
     
     // Seller platform fee: 11% or RM4.90, whichever is higher
@@ -157,6 +161,13 @@ export class FeeService {
   }
 
   /**
+   * Get minimum buyer fee as formatted string
+   */
+  static getMinimumBuyerFeeString(currency: string = 'RM'): string {
+    return this.formatAmount(this.MINIMUM_BUYER_FEE, currency);
+  }
+
+  /**
    * Calculate seller payout after platform fees
    */
   static calculateSellerPayout(amount: number): {
@@ -231,9 +242,9 @@ export class FeeService {
     fullDisclosure: string;
   } {
     return {
-      buyerFeeText: `All purchases include a ${this.getBuyerFeeRateString()} processing fee`,
+      buyerFeeText: `All purchases include a ${this.getBuyerFeeRateString()} processing fee or ${this.formatAmount(this.MINIMUM_BUYER_FEE)}, whichever is higher`,
       sellerFeeText: `Platform fee: ${this.getSellerFeeRateString()} or ${this.getMinimumSellerFeeString()}, whichever is higher`,
-      fullDisclosure: `Buyers pay a ${this.getBuyerFeeRateString()} processing fee on all transactions. Sellers pay a platform fee of ${this.getSellerFeeRateString()} or ${this.getMinimumSellerFeeString()} (whichever is higher) that is deducted from their earnings.`
+      fullDisclosure: `Buyers pay a ${this.getBuyerFeeRateString()} processing fee or ${this.formatAmount(this.MINIMUM_BUYER_FEE)} (whichever is higher) on all transactions. Sellers pay a platform fee of ${this.getSellerFeeRateString()} or ${this.getMinimumSellerFeeString()} (whichever is higher) that is deducted from their earnings.`
     };
   }
 }

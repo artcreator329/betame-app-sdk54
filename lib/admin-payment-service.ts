@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { WalletService } from './wallet-service';
 import { PaymentService } from './payment-service';
+import { AutomaticPDFService } from './automatic-pdf-service';
 
 export interface AdminPaymentReleaseResult {
   success: boolean;
@@ -135,6 +136,19 @@ export class AdminPaymentService {
       } catch (notificationError) {
         console.error('Error sending payment release notification:', notificationError);
         // Don't fail the payment release if notification fails
+      }
+
+      // Generate PDF receipt
+      try {
+        const pdfResult = await AutomaticPDFService.generateAdminPaymentReleasePDF(jobId, adminUserId);
+        if (pdfResult.success) {
+          console.log('✅ PDF receipt generated successfully');
+        } else {
+          console.error('❌ PDF generation failed:', pdfResult.error);
+        }
+      } catch (pdfError) {
+        console.error('❌ Error generating PDF:', pdfError);
+        // Don't fail the payment release if PDF generation fails
       }
 
       console.log('✅ Payment released successfully to service provider:', {

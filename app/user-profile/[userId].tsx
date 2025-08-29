@@ -21,6 +21,8 @@ interface UserProfile {
   created_at: string;
   verification_status?: string;
   is_verified?: boolean;
+  rating?: number;
+  review_count?: number;
 }
 
 interface Service {
@@ -90,10 +92,10 @@ export default function UserProfileScreen() {
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
-  // Calculate average rating from reviews
-  const averageRating = reviews.length > 0 
+  // Calculate average rating from userProfile (preferred) or reviews array (fallback)
+  const averageRating = userProfile?.rating || (reviews.length > 0 
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
-    : 0;
+    : 0);
 
   // Set initial active tab based on whether user is viewing their own profile
   useEffect(() => {

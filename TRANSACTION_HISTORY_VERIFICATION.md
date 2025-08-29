@@ -101,3 +101,5 @@ The user `chris.wenfeng@gmail.com` made a real BetaCoin purchase of 5 BetaCoins 
 - Date/time formatting
 
 **No fixes are needed** - the transaction history is showing real data correctly.
+
+

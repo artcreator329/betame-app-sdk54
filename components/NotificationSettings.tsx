@@ -7,9 +7,10 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Bell, BellOff, MapPin, Megaphone } from 'lucide-react-native';
+import { Bell, BellOff, MapPin, Megaphone, Volume2, Play } from 'lucide-react-native';
 import { useColors } from '@/contexts/ThemeContext';
 import { notificationScheduler, NotificationPreferences } from '@/lib/notification-scheduler';
+import { Audio } from 'expo-av';
 
 interface NotificationSettingsProps {
   onClose?: () => void;
@@ -22,6 +23,7 @@ export default function NotificationSettings({ onClose }: NotificationSettingsPr
     checkInRemindersEnabled: true,
   });
   const [loading, setLoading] = useState(true);
+  const [isPlayingSound, setIsPlayingSound] = useState(false);
 
   useEffect(() => {
     loadPreferences();
@@ -71,6 +73,37 @@ export default function NotificationSettings({ onClose }: NotificationSettingsPr
     } catch (error) {
       console.error('Error updating check-in reminders preference:', error);
       Alert.alert('Error', 'Failed to update notification preferences. Please try again.');
+    }
+  };
+
+  const handleSoundPreview = async () => {
+    if (isPlayingSound) return;
+    
+    try {
+      setIsPlayingSound(true);
+      
+      // Load and play the notification sound
+      const { sound } = await Audio.Sound.createAsync(
+        require('@/assets/sfx.wav'),
+        { shouldPlay: true }
+      );
+      
+      // Wait for the sound to finish playing
+      await new Promise((resolve) => {
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            resolve(true);
+          }
+        });
+      });
+      
+      // Clean up
+      await sound.unloadAsync();
+    } catch (error) {
+      console.error('Error playing notification sound:', error);
+      Alert.alert('Error', 'Failed to play notification sound preview.');
+    } finally {
+      setIsPlayingSound(false);
     }
   };
 
@@ -140,6 +173,38 @@ export default function NotificationSettings({ onClose }: NotificationSettingsPr
             }}
             thumbColor={preferences.checkInRemindersEnabled ? colors.primary.main : colors.text.secondary}
           />
+        </View>
+
+        {/* Notification Sound Preview */}
+        <View style={[styles.settingItem, { borderBottomColor: colors.border.light }]}>
+          <View style={styles.settingInfo}>
+            <View style={styles.settingHeader}>
+              <Volume2 size={20} color={colors.primary.main} />
+              <Text style={[styles.settingTitle, { color: colors.text.primary }]}>
+                Notification Sound
+              </Text>
+            </View>
+            <Text style={[styles.settingDescription, { color: colors.text.secondary }]}>
+              Preview the custom notification sound used by the app
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.playButton,
+              { 
+                backgroundColor: isPlayingSound ? colors.background.secondary : colors.primary.main,
+                opacity: isPlayingSound ? 0.6 : 1
+              }
+            ]}
+            onPress={handleSoundPreview}
+            disabled={isPlayingSound}
+          >
+            <Play 
+              size={16} 
+              color={colors.text.white} 
+              fill={colors.text.white}
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -242,5 +307,12 @@ const styles = StyleSheet.create({
   closeButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  playButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

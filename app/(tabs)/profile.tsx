@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform, StatusBar, RefreshControl, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun, Heart as HeartFilled, Settings as SettingsFilled, Sun as SunFilled, Moon as MoonFilled, Wallet as WalletFilled, Trophy as TrophyFilled, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react-native';
+import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun, Heart as HeartFilled, Settings as SettingsFilled, Sun as SunFilled, Moon as MoonFilled, Wallet as WalletFilled, Trophy as TrophyFilled, CheckCircle, Clock, XCircle, AlertCircle, Share as ShareIcon } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -84,10 +84,10 @@ export default function ProfileScreen() {
     }
   }, [params.showReferral, router]);
 
-  // Calculate average rating from reviews
-  const averageRating = reviews.length > 0
+  // Calculate average rating from userProfile (preferred) or reviews array (fallback)
+  const averageRating = userProfile?.rating || (reviews.length > 0
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-    : 0;
+    : 0);
 
   // Load eKYC submission status
   const loadEkycSubmission = useCallback(async () => {
@@ -329,6 +329,8 @@ export default function ProfileScreen() {
       console.log('ℹ️  Job proposal features will be limited until database migration is applied');
     }
   }, [user, fetchProfileData]);
+
+
 
   useEffect(() => {
     if (user) {
@@ -1146,7 +1148,7 @@ export default function ProfileScreen() {
                       <Text style={[styles.ratingText, { color: isDarkMode ? 'white' : 'black' }]}>{averageRating > 0 ? averageRating.toFixed(1) : 'No rating'}</Text>
                       {/* {renderVerificationTick()} */}
                       {averageRating > 0 && renderStars(averageRating)}
-                      <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({reviews.length} reviews)</Text>
+                      <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({userProfile?.review_count || reviews.length} reviews)</Text>
                     </View>
                     {/* Removed large verification status display */}
                   </View>
@@ -1250,6 +1252,8 @@ export default function ProfileScreen() {
                       <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Referral Program</Text>
                     </View>
                   </TouchableOpacity>
+
+
                 </View>
               </View>
 
@@ -1382,6 +1386,8 @@ export default function ProfileScreen() {
                     <Text style={[styles.actionButtonText, { color: colors.text.primary }]}>Referral Program</Text>
                   </View>
                 </TouchableOpacity>
+
+                
 
                 {/* eKYC Verification Prompt - Show different states based on verification status */}
                 {userProfile?.verification_status !== 'verified' && (

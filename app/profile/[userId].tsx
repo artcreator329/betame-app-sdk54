@@ -41,6 +41,8 @@ interface UserProfile {
   avatar_url?: string;
   cover_photo_url?: string;
   created_at: string;
+  rating?: number;
+  review_count?: number;
 }
 
 interface Review {
@@ -69,10 +71,10 @@ export default function UserProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [shareModalVisible, setShareModalVisible] = useState(false);
 
-  // Calculate average rating from reviews
-  const averageRating = reviews.length > 0
+  // Calculate average rating from profile (preferred) or reviews array (fallback)
+  const averageRating = profile?.rating || (reviews.length > 0
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-    : 0;
+    : 0);
 
   useEffect(() => {
     if (userId) {

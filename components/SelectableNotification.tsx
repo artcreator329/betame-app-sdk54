@@ -64,7 +64,7 @@ function getNotificationColor(type: string, colors: any) {
   }
 }
 
-function getNotificationGradient(type: string, data?: any) {
+function getNotificationGradient(type: string, data?: any, colors?: any) {
   if (type === 'order' && data?.action_type) {
     if (data.action_type.includes('revision')) {
       return ['#FF8C00', '#FFA500', '#FFD700'];
@@ -74,6 +74,29 @@ function getNotificationGradient(type: string, data?: any) {
     }
   }
 
+  // For non-gradient notifications, use theme-appropriate backgrounds
+  if (colors) {
+    switch (type) {
+      case 'chat':
+        return [colors.background.tertiary, colors.background.secondary];
+      case 'order':
+        return ['#6B46C1', '#4338CA', '#3B82F6'];
+      case 'service':
+        return [colors.background.tertiary, colors.background.secondary];
+      case 'offer':
+        return [colors.background.tertiary, colors.background.secondary];
+      case 'marketing':
+        return [colors.background.tertiary, colors.background.secondary];
+      case 'check_in':
+        return [colors.background.tertiary, colors.background.secondary];
+      case 'structured_inquiry':
+        return ['#8B5CF6', '#7C3AED', '#6D28D9'];
+      default:
+        return [colors.background.tertiary, colors.background.secondary];
+    }
+  }
+
+  // Fallback for when colors is not available
   switch (type) {
     case 'chat':
       return ['#E8F5E8', '#F0F9F0'];
@@ -129,7 +152,7 @@ export default function SelectableNotification({
   
   const IconComponent = getNotificationIcon(notification.type);
   const iconColor = getNotificationColor(notification.type, colors);
-  const gradientColors = getNotificationGradient(notification.type, notification.data);
+  const gradientColors = getNotificationGradient(notification.type, notification.data, colors);
   
   const isRead = notification.isRead;
   const readOpacity = isRead ? 0.6 : 1;
@@ -137,6 +160,10 @@ export default function SelectableNotification({
   const readIconColor = isRead ? colors.text.secondary : iconColor;
   const readBackgroundColor = isRead ? colors.background.secondary : gradientColors[0];
   const readBorderColor = isRead ? colors.border.light : iconColor + '30';
+  
+  // Ensure proper text contrast for all notification types
+  const messageTextColor = isRead ? colors.text.secondary : colors.text.primary;
+  const titleTextColor = isRead ? colors.text.secondary : colors.text.primary;
 
   const handlePress = () => {
     if (selectionMode) {
@@ -451,7 +478,7 @@ export default function SelectableNotification({
             <View style={styles.contentHeader}>
               <Text style={[
                 styles.notificationTitle,
-                { color: readTextColor },
+                { color: titleTextColor },
                 !notification.isRead && styles.unreadTitle
               ]} numberOfLines={1}>
                 {notification.title}
@@ -467,8 +494,7 @@ export default function SelectableNotification({
             {/* Message content */}
             <Text style={[
               styles.notificationMessage, 
-              { color: readTextColor },
-              !notification.isRead && { color: colors.text.primary }
+              { color: messageTextColor }
             ]} numberOfLines={2}>
               {notification.message}
             </Text>
@@ -482,7 +508,7 @@ export default function SelectableNotification({
                   </Text>
                 )}
                 {notification.data.price && (
-                  <Text style={[styles.priceInfo, { color: readTextColor }]}>
+                  <Text style={[styles.priceInfo, { color: messageTextColor }]}>
                     💰 {notification.data.currency || 'RM'} {notification.data.price}
                   </Text>
                 )}

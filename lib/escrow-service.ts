@@ -2,6 +2,7 @@ import { supabase, supabaseAdmin } from './supabase';
 import { WalletService } from './wallet-service';
 import { notificationService } from './notification-service';
 import { FeeService } from './fee-service';
+import { AutomaticPDFService } from './automatic-pdf-service';
 
 export interface EscrowTransaction {
   id?: string;
@@ -32,7 +33,7 @@ export interface JobStatus {
   buyer_id: string;
   service_provider_id: string;
   seller_id?: string; // Keep for backward compatibility
-  current_status: 'payment_received' | 'acknowledgment_pending' | 'work_in_progress' | 'work_completed' | 'buyer_reviewing' | 'revision_requested' | 'revision_in_progress' | 'revision_completed' | 'completed' | 'disputed' | 'cancelled';
+  current_status: 'payment_received' | 'acknowledgment_pending' | 'work_in_progress' | 'work_completed' | 'buyer_reviewing' | 'payment_release_in_progress' | 'revision_requested' | 'revision_in_progress' | 'revision_completed' | 'completed' | 'disputed' | 'cancelled';
   work_started_at?: string;
   work_completed_at?: string;
   buyer_review_started_at?: string;
@@ -988,6 +989,19 @@ export class EscrowService {
         );
       }
 
+      // Generate PDF receipt
+      try {
+        const pdfResult = await AutomaticPDFService.generateEscrowPaymentReleasePDF(jobStatusId, buyerId);
+        if (pdfResult.success) {
+          console.log('✅ PDF receipt generated successfully');
+        } else {
+          console.error('❌ PDF generation failed:', pdfResult.error);
+        }
+      } catch (pdfError) {
+        console.error('❌ Error generating PDF:', pdfError);
+        // Don't fail the payment release if PDF generation fails
+      }
+
       console.log('✅ Payment released to seller successfully');
       return { success: true };
 
@@ -1186,7 +1200,6 @@ export class EscrowService {
       }
 
       if (!reviews || reviews.length === 0) {
-        console.log('No reviews found for service provider:', serviceProviderId);
         return;
       }
 
@@ -1195,8 +1208,8 @@ export class EscrowService {
       const averageRating = totalRating / reviews.length;
       const reviewCount = reviews.length;
 
-      // Update user profile with new rating and review count
-      const { error: updateError } = await supabase
+      // Update user_profiles table
+      const { error: userProfileUpdateError } = await supabase
         .from('user_profiles')
         .update({
           rating: averageRating,
@@ -1205,10 +1218,8 @@ export class EscrowService {
         })
         .eq('user_id', serviceProviderId);
 
-      if (updateError) {
-        console.error('Error updating service provider rating:', updateError);
-      } else {
-        console.log(`✅ Updated service provider rating: ${averageRating.toFixed(2)} (${reviewCount} reviews)`);
+      if (userProfileUpdateError) {
+        console.error('Error updating service provider rating:', userProfileUpdateError);
       }
     } catch (error) {
       console.error('Error in updateServiceProviderRating:', error);

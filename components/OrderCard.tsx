@@ -11,12 +11,14 @@ interface OrderCardProps {
   order: Order;
   currentUserId: string;
   onOrderUpdate?: () => void;
+  onViewPDFReceipt?: (orderId: string) => void;
 }
 
 export const OrderCard: React.FC<OrderCardProps> = ({ 
   order, 
   currentUserId, 
-  onOrderUpdate 
+  onOrderUpdate,
+  onViewPDFReceipt
 }) => {
   const router = useRouter();
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -144,12 +146,53 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         {
           text: 'Confirm',
           onPress: async () => {
-            const success = await orderManagementService.confirmWorkCompletion(order.id, currentUserId);
-            if (success) {
-              Alert.alert('Success', 'Work confirmed! Payment has been released to the service provider.');
-              onOrderUpdate?.();
-            } else {
-              Alert.alert('Error', 'Failed to confirm completion. Please try again.');
+            try {
+              // Show loading state (you might want to add a loading state to the component)
+              console.log('🔄 Starting work completion confirmation...');
+              
+              const result = await orderManagementService.confirmWorkCompletion(order.id, currentUserId);
+              
+              if (result && typeof result === 'object' && 'success' in result) {
+                // Using improved service with detailed error handling
+                if (result.success) {
+                  Alert.alert('Success', result.userMessage || 'Work confirmed! Payment has been released to the service provider.');
+                  onOrderUpdate?.();
+                } else {
+                  console.error('Confirmation failed:', result.error);
+                  Alert.alert(
+                    'Confirmation Failed', 
+                    result.userMessage || 'Failed to confirm completion. Please try again.',
+                    [
+                      { text: 'OK' },
+                      ...(result.error?.code === 'AUTH_REQUIRED' ? [
+                        { text: 'Login Again', onPress: () => {
+                          // You might want to navigate to login screen here
+                          console.log('Navigate to login screen');
+                        }}
+                      ] : [])
+                    ]
+                  );
+                }
+              } else {
+                // Fallback for legacy service response
+                const success = result as boolean;
+                if (success) {
+                  Alert.alert('Success', 'Work confirmed! Payment has been released to the service provider.');
+                  onOrderUpdate?.();
+                } else {
+                  Alert.alert('Error', 'Failed to confirm completion. Please try again.');
+                }
+              }
+            } catch (error) {
+              console.error('Unexpected error during confirmation:', error);
+              Alert.alert(
+                'Error', 
+                'An unexpected error occurred. Please check your internet connection and try again.',
+                [
+                  { text: 'OK' },
+                  { text: 'Retry', onPress: () => handleConfirmCompletion() }
+                ]
+              );
             }
           }
         }
@@ -205,6 +248,19 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               <Text style={styles.actionButtonText}>Mark Completed</Text>
             </TouchableOpacity>
           );
+        case 'completed':
+          // Show PDF receipt button if payment has been released
+          if (order.payment_released_at) {
+            return (
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.pdfButton]} 
+                onPress={() => onViewPDFReceipt && onViewPDFReceipt(order.id)}
+              >
+                <Text style={styles.actionButtonText}>📄 Download Receipt</Text>
+              </TouchableOpacity>
+            );
+          }
+          return null;
         default:
           return null;
       }
@@ -422,6 +478,9 @@ const styles = StyleSheet.create({
   disputeButton: {
     backgroundColor: '#F44336',
     flex: 1,
+  },
+  pdfButton: {
+    backgroundColor: '#2196F3',
   },
   completionPhotosSection: {
     marginTop: 12,

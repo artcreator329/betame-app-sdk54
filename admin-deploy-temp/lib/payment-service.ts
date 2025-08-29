@@ -1,6 +1,7 @@
 import { WalletService } from './wallet-service';
 import { ActiveJobService } from './active-job-service';
 import { ServiceOffer, ServiceOfferData } from '../types/chat';
+import { FeeService } from './fee-service';
 
 export interface PaymentResult {
   success: boolean;
@@ -268,15 +269,13 @@ export class PaymentService {
     serviceFee: number;
     totalAmount: number;
   } {
-    const finalPrice = orderData.price;
-    const buyerFee = Math.round((finalPrice * 0.022) * 100) / 100; // 2.2% processing fee
-    const totalAmount = finalPrice + buyerFee;
-
+    const feeCalculation = FeeService.calculateFees(orderData.price, orderData.currency);
+    
     return {
-      finalPrice,
+      finalPrice: orderData.price,
       currency: orderData.currency || 'RM',
-      serviceFee: buyerFee,
-      totalAmount
+      serviceFee: feeCalculation.buyerFee,
+      totalAmount: feeCalculation.buyerTotal
     };
   }
 
@@ -293,14 +292,13 @@ export class PaymentService {
     totalAmount: number;
   } {
     const finalPrice = offer.customPrice || serviceData.customPrice || serviceData.price;
-    const buyerFee = Math.round((finalPrice * 0.022) * 100) / 100; // 2.2% processing fee
-    const totalAmount = finalPrice + buyerFee;
-
+    const feeCalculation = FeeService.calculateFees(finalPrice, serviceData.currency);
+    
     return {
       finalPrice,
       currency: serviceData.currency || 'RM',
-      serviceFee: buyerFee,
-      totalAmount
+      serviceFee: feeCalculation.buyerFee,
+      totalAmount: feeCalculation.buyerTotal
     };
   }
 }

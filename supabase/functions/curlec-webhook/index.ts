@@ -189,6 +189,51 @@ serve(async (req) => {
         }
 
         console.log('✅ Active job created successfully:', activeJob.id)
+        
+        // Create transaction records for service payment
+        const buyerId = transaction.user_id
+        const serviceProviderId = metadata.service_provider_id || transaction.user_id
+        const amount = transaction.amount / 100 // Convert from cents to RM
+        
+        // Record transaction for buyer (payment)
+        const { error: buyerTransactionError } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: buyerId,
+            type: 'service_payment',
+            amount: -amount, // Negative amount for payment
+            description: `Payment for service: ${metadata.service_name || 'Service Order'}`,
+            created_at: new Date().toISOString(),
+          })
+
+        if (buyerTransactionError) {
+          console.error('❌ Failed to create buyer transaction record:', buyerTransactionError)
+          return new Response(
+            JSON.stringify({ error: 'Failed to create buyer transaction record' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // Record transaction for service provider (payment received)
+        const { error: providerTransactionError } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: serviceProviderId,
+            type: 'service_payment_received',
+            amount: amount, // Positive amount for received payment
+            description: `Payment received for service: ${metadata.service_name || 'Service Order'}`,
+            created_at: new Date().toISOString(),
+          })
+
+        if (providerTransactionError) {
+          console.error('❌ Failed to create service provider transaction record:', providerTransactionError)
+          return new Response(
+            JSON.stringify({ error: 'Failed to create service provider transaction record' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        console.log(`✅ Transaction records created for service payment`)
       }
 
       console.log('✅ Webhook processed successfully')

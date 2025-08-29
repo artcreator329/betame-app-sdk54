@@ -26,6 +26,7 @@ interface ServiceOfferMessageProps {
   onViewService?: (serviceId: string) => void;
   onViewOrderProgress?: () => void;
   onShareLocation?: (offerId: string, serviceTitle: string) => void;
+  onViewPDFReceipt?: (offerId: string) => void;
 }
 
 export function ServiceOfferMessage({
@@ -38,6 +39,7 @@ export function ServiceOfferMessage({
   onViewService,
   onViewOrderProgress,
   onShareLocation,
+  onViewPDFReceipt,
 }: ServiceOfferMessageProps) {
   const { serviceData, offerId, offerStatus, offerExpiresAt } = message;
   const [showOfferDetailsModal, setShowOfferDetailsModal] = useState(false);
@@ -65,6 +67,11 @@ export function ServiceOfferMessage({
   const isInProgress = offerStatus === 'in_progress';
   const isRejected = offerStatus === 'rejected';
   const isCancelled = offerStatus === 'cancelled';
+  const isCompleted = offerStatus === 'completed';
+  const isPaymentReleased = offerStatus === 'payment_released';
+  const isPaymentReleasePending = offerStatus === 'payment_release_pending';
+  const isWorkCompleted = offerStatus === 'work_completed';
+  const isBuyerReviewing = offerStatus === 'buyer_reviewing';
 
   // Debug status flags
   console.log('🔍 ServiceOfferMessage: Status flags:', {
@@ -501,6 +508,31 @@ export function ServiceOfferMessage({
                 <View style={styles.cancelledButton}>
                   <Text style={styles.cancelledButtonText}>Cancelled</Text>
                 </View>
+              </View>
+            )}
+
+            {/* Show payment released state buttons */}
+            {isPaymentReleased && (
+              <View style={styles.paymentReleasedButtonContainer}>
+                <View style={styles.paymentReleasedButton}>
+                  <Text style={styles.paymentReleasedButtonText}>Payment Released</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.pdfDownloadButton}
+                  onPress={() => onViewPDFReceipt && onViewPDFReceipt(offerId!)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.pdfDownloadButtonText}>📄 Download Receipt</Text>
+                </TouchableOpacity>
+                {onViewOrderProgress && (
+                  <TouchableOpacity
+                    style={styles.orderProgressButton}
+                    onPress={onViewOrderProgress}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.orderProgressButtonText}>View Order</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
@@ -1745,6 +1777,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: Colors.text.white,
+  },
+  paymentReleasedButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 12,
+  },
+  paymentReleasedButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  paymentReleasedButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  pdfDownloadButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  pdfDownloadButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   // Hustle Job Attributes Styles
   hustleDetailsContainer: {

@@ -168,8 +168,7 @@ export function JobOfferModal({
             {(() => {
               const finalPrice = proposedPrice ? parseFloat(proposedPrice) : originalBudget;
               if (finalPrice > 0) {
-                const platformFee = Math.round((finalPrice * 0.07) * 100) / 100;
-                const sellerReceives = finalPrice - platformFee;
+                const feeCalculation = FeeService.calculateFees(finalPrice, job.currency);
                 return (
                   <View style={styles.feeDetails}>
                     <View style={styles.feeRow}>
@@ -177,12 +176,12 @@ export function JobOfferModal({
                       <Text style={styles.feeAmount}>{job.currency}{finalPrice.toFixed(2)}</Text>
                     </View>
                     <View style={styles.feeRow}>
-                      <Text style={styles.feeLabel}>Platform Fee (7%):</Text>
-                      <Text style={styles.feeAmount}>-{job.currency}{platformFee.toFixed(2)}</Text>
+                      <Text style={styles.feeLabel}>Platform Fee ({FeeService.getSellerFeeRateString()} or {FeeService.getMinimumSellerFeeString(job.currency)}, whichever higher):</Text>
+                      <Text style={styles.feeAmount}>-{job.currency}{feeCalculation.platformFee.toFixed(2)}</Text>
                     </View>
                     <View style={[styles.feeRow, styles.totalRow]}>
                       <Text style={styles.totalLabel}>You'll Receive:</Text>
-                      <Text style={styles.totalAmount}>{job.currency}{sellerReceives.toFixed(2)}</Text>
+                      <Text style={styles.totalAmount}>{job.currency}{feeCalculation.sellerReceives.toFixed(2)}</Text>
                     </View>
                   </View>
                 );

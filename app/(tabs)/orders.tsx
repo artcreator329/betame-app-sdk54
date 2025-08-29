@@ -21,6 +21,9 @@ import { useRouter } from 'expo-router';
 import JobCompletionPhotoUpload from '@/components/JobCompletionPhotoUpload';
 import { supabase } from '@/lib/supabase';
 import { formatMalaysianDate, formatMalaysianTime, formatMalaysianDateTime } from '@/lib/malaysian-time-utils';
+import { ServerPDFService } from '@/lib/server-pdf-service';
+import { BuyerReceiptService, BuyerReceiptData } from '@/lib/buyer-receipt-service';
+import PDFViewer from '@/components/PDFViewer';
 
 export default function OrdersScreen() {
   const colors = useColors();
@@ -49,6 +52,9 @@ export default function OrdersScreen() {
   const [showCompletedJobReviewModal, setShowCompletedJobReviewModal] = useState(false);
   const [completedJobRating, setCompletedJobRating] = useState(5);
   const [completedJobFeedback, setCompletedJobFeedback] = useState('');
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [pdfTitle, setPdfTitle] = useState('');
 
   // Initialize animation values for each order
   const initializeAnimation = (orderId: string) => {
@@ -160,31 +166,53 @@ export default function OrdersScreen() {
       }));
 
       // Add perspective flag to active jobs
-      const buyerActiveJobsWithPerspective = activeJobs.asBuyer.map(job => ({
-        ...job,
-        perspective: 'buyer' as const,
-        orderType: 'direct' as const,
-        current_status: job.status === 'pending_confirmation' ? 'payment_received' :
+      const buyerActiveJobsWithPerspective = activeJobs.asBuyer.map(job => {
+        const mappedStatus = job.status === 'pending_confirmation' ? 'payment_received' :
                        job.status === 'in_progress' ? 'work_in_progress' : 
                        job.status === 'completed' ? 'buyer_reviewing' :
+                       job.status === 'payment_release_in_progress' ? 'payment_release_in_progress' :
                        job.status === 'completed_confirmed' ? 'completed' :
                        job.status === 'revision_requested' ? 'revision_requested' :
                        job.status === 'revision_in_progress' ? 'revision_in_progress' :
-                       job.status === 'revision_completed' ? 'revision_completed' : 'payment_received'
-      }));
+                       job.status === 'revision_completed' ? 'revision_completed' : 'payment_received';
+        
+        console.log('🔍 Mapping buyer job status:', { 
+          jobId: job.id, 
+          originalStatus: job.status, 
+          mappedStatus 
+        });
+        
+        return {
+          ...job,
+          perspective: 'buyer' as const,
+          orderType: 'direct' as const,
+          current_status: mappedStatus
+        };
+      });
 
-      const sellerActiveJobsWithPerspective = activeJobs.asServiceProvider.map(job => ({
-        ...job,
-        perspective: 'seller' as const,
-        orderType: 'direct' as const,
-        current_status: job.status === 'pending_confirmation' ? 'payment_received' :
+      const sellerActiveJobsWithPerspective = activeJobs.asServiceProvider.map(job => {
+        const mappedStatus = job.status === 'pending_confirmation' ? 'payment_received' :
                        job.status === 'in_progress' ? 'work_in_progress' : 
                        job.status === 'completed' ? 'buyer_reviewing' :
+                       job.status === 'payment_release_in_progress' ? 'payment_release_in_progress' :
                        job.status === 'completed_confirmed' ? 'completed' :
                        job.status === 'revision_requested' ? 'revision_requested' :
                        job.status === 'revision_in_progress' ? 'revision_in_progress' :
-                       job.status === 'revision_completed' ? 'revision_completed' : 'payment_received'
-      }));
+                       job.status === 'revision_completed' ? 'revision_completed' : 'payment_received';
+        
+        console.log('🔍 Mapping seller job status:', { 
+          jobId: job.id, 
+          originalStatus: job.status, 
+          mappedStatus 
+        });
+        
+        return {
+          ...job,
+          perspective: 'seller' as const,
+          orderType: 'direct' as const,
+          current_status: mappedStatus
+        };
+      });
 
       // Combine all orders and sort by creation date
       const allOrders = [
@@ -193,6 +221,13 @@ export default function OrdersScreen() {
         ...buyerActiveJobsWithPerspective,
         ...sellerActiveJobsWithPerspective
       ].sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime());
+
+      console.log('🔍 Final orders with statuses:', allOrders.map(o => ({ 
+        id: o.id, 
+        status: o.current_status, 
+        perspective: (o as any).perspective,
+        orderType: (o as any).orderType 
+      })));
 
       setOrders(allOrders);
     } catch (error) {
@@ -367,11 +402,24 @@ export default function OrdersScreen() {
   const handleCompleteWork = async () => {
     if (!selectedOrder?.id) return;
 
-    // Require at least one photo
+    // Photos are optional but recommended
     if (completionPhotos.length === 0) {
-      Alert.alert('Photo Required', 'Please upload at least one photo showing the completed work.');
+      Alert.alert(
+        'No Photos Uploaded', 
+        'You haven\'t uploaded any photos. While photos are recommended to show completed work, you can still proceed without them.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Continue Without Photos', onPress: () => proceedWithCompletion() }
+        ]
+      );
       return;
     }
+    
+    proceedWithCompletion();
+  };
+
+  const proceedWithCompletion = async () => {
+    if (!selectedOrder?.id) return;
 
     try {
       // Check if this is a direct order (active job) or escrow order
@@ -403,12 +451,12 @@ export default function OrdersScreen() {
             .single();
 
           if (error || !jobStatus) {
-            // Fallback to original EscrowService if job status not found
-            const result = await EscrowService.completeWork(
-              selectedOrder.id, 
-              user!.id, 
-              completionNotes
-            );
+                      // Fallback to original EscrowService if job status not found
+          const result = await EscrowService.completeWork(
+            selectedOrder.id!, 
+            user!.id, 
+            completionNotes
+          );
             
             if (result.success) {
               Alert.alert(
@@ -452,7 +500,7 @@ export default function OrdersScreen() {
           console.error('Error finding job status:', jobStatusError);
           // Fallback to original EscrowService
           const result = await EscrowService.completeWork(
-            selectedOrder.id, 
+            selectedOrder.id!, 
             user!.id, 
             completionNotes
           );
@@ -822,6 +870,209 @@ export default function OrdersScreen() {
     }
   };
 
+  const handleViewPDFReceipt = async (orderId: string) => {
+    try {
+      console.log('🔍 Looking for buyer receipt for order ID:', orderId);
+      
+      // First, check if a buyer receipt already exists
+      let result = await BuyerReceiptService.getBuyerReceipt(orderId);
+      
+      // If not found, try to find the related active job
+      if (!result.success) {
+        console.log('🔍 Buyer receipt not found with order ID, checking for related active job...');
+        
+        // Check if there's an active job related to this escrow transaction
+        const { data: activeJob, error } = await supabase
+          .from('active_jobs')
+          .select('id')
+          .eq('service_offer_id', orderId)
+          .single();
+        
+        if (!error && activeJob) {
+          console.log('🔍 Found related active job ID:', activeJob.id);
+          result = await BuyerReceiptService.getBuyerReceipt(activeJob.id);
+        }
+      }
+      
+      if (result.success && result.pdfUrl) {
+        console.log('✅ Buyer receipt found, opening in-app viewer:', result.pdfUrl);
+        
+        // Open PDF in in-app viewer
+        setPdfUrl(result.pdfUrl);
+        setPdfTitle('Buyer Receipt');
+        setShowPDFViewer(true);
+      } else {
+        console.log('❌ Buyer receipt not found, generating new one for order ID:', orderId);
+        
+        // Generate new buyer receipt
+        await generateBuyerReceipt(orderId);
+      }
+    } catch (error) {
+      console.error('Error viewing buyer receipt:', error);
+      Alert.alert('Error', 'Failed to open buyer receipt');
+    }
+  };
+
+
+
+  const generateBuyerReceipt = async (orderId: string) => {
+    try {
+      console.log('📄 Generating new buyer receipt for order ID:', orderId);
+      
+      let jobData: any = null;
+      let escrowData: any = null;
+      let tableSource = 'job_status';
+
+      // First, try to find in job_status table
+      let { data: jobStatus, error: jobError } = await supabase
+        .from('job_status')
+        .select(`
+          *,
+          escrow_transactions(*)
+        `)
+        .eq('id', orderId)
+        .single();
+
+      if (jobStatus) {
+        console.log('✅ Found in job_status table');
+        jobData = jobStatus;
+        escrowData = jobStatus.escrow_transactions;
+        tableSource = 'job_status';
+      } else {
+        // Try to find in active_jobs table
+        console.log('🔍 Trying active_jobs table...');
+        const { data: activeJob, error: activeJobError } = await supabase
+          .from('active_jobs')
+          .select('*')
+          .eq('id', orderId)
+          .single();
+
+        if (activeJob) {
+          console.log('✅ Found in active_jobs table');
+          jobData = activeJob;
+          tableSource = 'active_jobs';
+          
+          // For active_jobs, we need to get escrow data differently
+          if (activeJob.payment_transaction_id) {
+            const { data: escrowTransaction } = await supabase
+              .from('escrow_transactions')
+              .select('*')
+              .eq('id', activeJob.payment_transaction_id)
+              .single();
+            escrowData = escrowTransaction;
+          }
+        } else {
+          // Try to find by service_offer_id in job_status
+          console.log('🔍 Trying to find by service_offer_id...');
+          const { data: jobByOffer, error: jobByOfferError } = await supabase
+            .from('job_status')
+            .select(`
+              *,
+              escrow_transactions(*)
+            `)
+            .eq('service_offer_id', orderId)
+            .single();
+
+          if (jobByOffer) {
+            console.log('✅ Found by service_offer_id in job_status');
+            jobData = jobByOffer;
+            escrowData = jobByOffer.escrow_transactions;
+            tableSource = 'job_status';
+          } else {
+            console.error('❌ Order not found in any table');
+            Alert.alert('Error', 'Order details not found');
+            return;
+          }
+        }
+      }
+
+      if (!jobData) {
+        console.error('❌ No job data found');
+        Alert.alert('Error', 'Order details not found');
+        return;
+      }
+
+      // Get user profiles for names
+      const buyerId = jobData.buyer_id;
+      const serviceProviderId = jobData.service_provider_id;
+
+      const { data: buyerProfile } = await supabase
+        .from('user_profiles')
+        .select('full_name')
+        .eq('user_id', buyerId)
+        .single();
+
+      const { data: serviceProviderProfile } = await supabase
+        .from('user_profiles')
+        .select('full_name')
+        .eq('user_id', serviceProviderId)
+        .single();
+
+      // Calculate fees and amounts
+      let serviceAmount = 0;
+      let buyerFee = 0;
+      let totalPaid = 0;
+      let serviceTitle = 'Service';
+      let paymentDate = new Date().toISOString();
+      let completionDate = new Date().toISOString();
+
+      if (escrowData) {
+        serviceAmount = escrowData.amount / 100; // Convert from cents
+        serviceTitle = escrowData.service_title || 'Service';
+        paymentDate = escrowData.created_at;
+      } else if (jobData.price) {
+        serviceAmount = parseFloat(jobData.price);
+        serviceTitle = jobData.title || 'Service';
+        paymentDate = jobData.created_at;
+      }
+
+      buyerFee = serviceAmount * 0.022; // 2.2% processing fee
+      totalPaid = serviceAmount + buyerFee;
+
+      if (jobData.completion_confirmed_at) {
+        completionDate = jobData.completion_confirmed_at;
+      } else if (jobData.completed_at) {
+        completionDate = jobData.completed_at;
+      }
+
+      // Prepare buyer receipt data
+      const buyerReceiptData: BuyerReceiptData = {
+        jobId: orderId,
+        jobTableSource: tableSource,
+        buyerId: buyerId,
+        jobTitle: serviceTitle,
+        serviceProviderName: serviceProviderProfile?.full_name || 'Unknown Service Provider',
+        buyerName: buyerProfile?.full_name || 'Unknown Buyer',
+        serviceAmount: serviceAmount,
+        buyerFee: buyerFee,
+        totalPaid: totalPaid,
+        currency: 'RM',
+        paymentDate: paymentDate,
+        completionDate: completionDate
+      };
+
+      console.log('📄 Buyer receipt data prepared:', buyerReceiptData);
+
+      // Generate and store buyer receipt
+      const result = await BuyerReceiptService.generateAndStoreBuyerReceipt(buyerReceiptData);
+
+      if (result.success && result.pdfUrl) {
+        console.log('✅ Buyer receipt generated successfully:', result.pdfUrl);
+        
+        // Open PDF in in-app viewer
+        setPdfUrl(result.pdfUrl);
+        setPdfTitle('Buyer Receipt');
+        setShowPDFViewer(true);
+      } else {
+        console.error('❌ Failed to generate buyer receipt:', result.error);
+        Alert.alert('Error', 'Failed to generate buyer receipt');
+      }
+    } catch (error) {
+      console.error('Error generating buyer receipt:', error);
+      Alert.alert('Error', 'Failed to generate buyer receipt');
+    }
+  };
+
   const handleContactBuyer = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
     // Get the buyer ID from the order
     const buyerId = order.buyer_id;
@@ -869,6 +1120,7 @@ export default function OrdersScreen() {
       case 'work_in_progress': return '#007AFF';
       case 'work_completed': return '#32CD32';
       case 'buyer_reviewing': return '#9932CC';
+      case 'payment_release_in_progress': return '#FFD700';
       case 'revision_requested': return '#FF6B35';
       case 'revision_in_progress': return '#007AFF';
       case 'revision_completed': return '#9932CC';
@@ -881,29 +1133,34 @@ export default function OrdersScreen() {
 
   const getStatusText = (status: string, perspective: 'buyer' | 'seller') => {
     switch (status) {
-      case 'payment_received': 
-        return perspective === 'buyer' ? 'Waiting for service provider to confirm' : 'Payment Received - Please Confirm';
+      case 'payment_received':
+        return 'Payment Received';
       case 'acknowledgment_pending':
-        return perspective === 'buyer' ? 'Waiting for seller' : 'Acceptance Acknowledged';
-      case 'work_in_progress': 
-        return perspective === 'buyer' ? 'Work in Progress' : 'Working';
-      case 'work_completed': 
-        return perspective === 'buyer' ? 'Work Completed' : 'Work Submitted';
-      case 'buyer_reviewing': 
-        return perspective === 'buyer' ? 'Review & Confirm' : 'Under Review';
+        return 'Acknowledgment Pending';
+      case 'work_in_progress':
+        return 'Work in Progress';
+      case 'work_completed':
+        return 'Work Completed';
+      case 'buyer_reviewing':
+        return 'Under Review';
       case 'revision_requested':
-        return perspective === 'buyer' ? 'Revision Requested' : 'Revision Required';
+        return 'Revision Requested';
       case 'revision_in_progress':
-        return perspective === 'buyer' ? 'Revision in Progress' : 'Working on Revision';
+        return 'Revision in Progress';
       case 'revision_completed':
-        return perspective === 'buyer' ? 'Revision Complete - Review' : 'Revision Submitted';
-      case 'completed': 
+        return 'Revision Completed';
+      case 'completed':
         return 'Completed';
-      case 'disputed': 
+      case 'payment_release_in_progress':
+      case 'ready_for_admin_release': // Added for escrow orders
+        return perspective === 'buyer' ? 'Completed' : 'Payment Release Pending';
+      case 'payment_released':
+        return 'Payment Released';
+      case 'disputed':
         return 'Disputed';
-      case 'cancelled': 
+      case 'cancelled':
         return 'Cancelled';
-      default: 
+      default:
         return status;
     }
   };
@@ -1001,6 +1258,14 @@ export default function OrdersScreen() {
               <Ionicons name="checkmark-circle" size={14} color="#fff" />
               <Text style={styles.quickActionText}>Complete</Text>
             </TouchableOpacity>
+          );
+
+        case 'payment_release_in_progress':
+          return (
+            <View style={[styles.quickActionButton, { backgroundColor: '#FFD700', flexDirection: 'row', alignItems: 'center' }]}>
+              <Ionicons name="time-outline" size={14} color="#fff" />
+              <Text style={styles.quickActionText}>Payment Pending</Text>
+            </View>
           );
         
         default:
@@ -1174,6 +1439,30 @@ export default function OrdersScreen() {
           return (
             <View style={styles.actionButtonContainer}>
               <TouchableOpacity
+                style={[styles.orderCardActionButton, { backgroundColor: '#28a745' }]}
+                onPress={() => order.id && handleViewPDFReceipt(order.id)}
+              >
+                <Ionicons name="document-text-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>📄 Download Receipt</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactBuyer(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                <Text style={styles.contactButtonText}>Contact Buyer</Text>
+              </TouchableOpacity>
+            </View>
+          );
+
+        case 'payment_release_in_progress':
+          return (
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#FFD700' }]}>
+                <Ionicons name="time-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Payment Release Pending</Text>
+              </View>
+              <TouchableOpacity
                 style={[styles.contactButton, { backgroundColor: '#007AFF' }]}
                 onPress={() => handleContactBuyer(order)}
               >
@@ -1266,29 +1555,55 @@ export default function OrdersScreen() {
         
         case 'completed':
           return (
-            <View style={styles.actionButtonContainer}>
-              {isWithinReviewWindow(order) && (
-                <TouchableOpacity
-                  style={[styles.orderCardActionButton, { backgroundColor: '#FFD700' }]}
-                  onPress={() => {
-                    setSelectedOrder(order);
-                    setCompletedJobRating(5);
-                    setCompletedJobFeedback('');
-                    setShowCompletedJobReviewModal(true);
-                  }}
-                >
-                  <Ionicons name="star" size={18} color="#fff" />
-                  <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>
-                    Rate & Review ({getRemainingReviewDays(order)} days left)
-                  </Text>
-                </TouchableOpacity>
-              )}
+            <View style={styles.completedOrderActionsContainer}>
+              {/* Primary Actions Row */}
+              <View style={styles.primaryActionsRow}>
+                              <TouchableOpacity
+                style={[styles.primaryActionButton, { backgroundColor: '#10B981' }]}
+                onPress={() => order.id && handleViewPDFReceipt(order.id)}
+              >
+                <View style={styles.buttonIconContainer}>
+                  <Ionicons name="document-text-outline" size={20} color="#fff" />
+                </View>
+                <Text style={styles.primaryActionButtonText}>Download Buyer Receipt</Text>
+              </TouchableOpacity>
+              
+              {/* Temporary delete button for testing */}
+              
+                
+                {isWithinReviewWindow(order) && (
+                  <TouchableOpacity
+                    style={[styles.primaryActionButton, { backgroundColor: '#F59E0B' }]}
+                    onPress={() => {
+                      setSelectedOrder(order);
+                      setCompletedJobRating(5);
+                      setCompletedJobFeedback('');
+                      setShowCompletedJobReviewModal(true);
+                    }}
+                  >
+                    <View style={styles.buttonIconContainer}>
+                      <Ionicons name="star" size={20} color="#fff" />
+                    </View>
+                    <Text style={styles.primaryActionButtonText}>
+                      Rate & Review
+                    </Text>
+                    <View style={styles.reviewDaysBadge}>
+                      <Text style={styles.reviewDaysText}>{getRemainingReviewDays(order)}d</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </View>
+              
+              {/* Secondary Action Row */}
               <TouchableOpacity
-                style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}
+                style={styles.secondaryActionButton}
                 onPress={() => handleContactServiceProvider(order)}
               >
-                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
-                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Contact Provider</Text>
+                <View style={styles.secondaryButtonContent}>
+                  <Ionicons name="chatbubble-outline" size={18} color="#007AFF" />
+                  <Text style={styles.secondaryActionButtonText}>Contact Provider</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#007AFF" />
+                </View>
               </TouchableOpacity>
             </View>
           );
@@ -1349,6 +1664,23 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
+
+        case 'payment_release_in_progress':
+          return (
+            <View style={styles.actionButtonContainer}>
+              <View style={[styles.orderCardActionButton, { backgroundColor: '#FFD700' }]}>
+                <Ionicons name="time-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Payment Release Pending</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.orderCardActionButton, { backgroundColor: '#007AFF' }]}
+                onPress={() => handleContactServiceProvider(order)}
+              >
+                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                <Text style={[styles.actionButtonText, { marginLeft: 8 }]}>Contact Provider</Text>
+              </TouchableOpacity>
+            </View>
+          );
         
         default:
           return null;
@@ -1363,7 +1695,7 @@ export default function OrdersScreen() {
     
     // Filter by status
     if (statusFilter === 'active') {
-      return ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing', 'revision_requested', 'revision_in_progress', 'revision_completed'].includes(order.current_status);
+      return ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing', 'payment_release_in_progress', 'revision_requested', 'revision_in_progress', 'revision_completed'].includes(order.current_status);
     }
     if (statusFilter === 'completed') {
       return order.current_status === 'completed';
@@ -1376,7 +1708,7 @@ export default function OrdersScreen() {
     const buying = orders.filter(o => (o as any).perspective === 'buyer').length;
     const selling = orders.filter(o => (o as any).perspective === 'seller').length;
     const active = orders.filter(o => 
-      ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing', 'revision_requested', 'revision_in_progress', 'revision_completed'].includes(o.current_status)
+      ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing', 'payment_release_in_progress', 'revision_requested', 'revision_in_progress', 'revision_completed'].includes(o.current_status)
     ).length;
     const completed = orders.filter(o => o.current_status === 'completed').length;
     
@@ -1990,12 +2322,11 @@ export default function OrdersScreen() {
             <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Mark Work Complete</Text>
             <TouchableOpacity 
               onPress={handleCompleteWork}
-              disabled={completionPhotos.length === 0}
             >
               <Text style={[
                 styles.modalDone, 
                 { 
-                  color: completionPhotos.length === 0 ? colors.text.secondary : colors.primary.main 
+                  color: colors.primary.main 
                 }
               ]}>Done</Text>
             </TouchableOpacity>
@@ -2363,6 +2694,14 @@ export default function OrdersScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+
+      {/* PDF Viewer Modal */}
+      <PDFViewer
+        visible={showPDFViewer}
+        pdfUrl={pdfUrl}
+        title={pdfTitle}
+        onClose={() => setShowPDFViewer(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -2806,34 +3145,125 @@ const styles = StyleSheet.create({
   actionButtonContainer: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 16,
+    marginTop: 20,
     alignItems: 'stretch', // Ensure buttons have same height
+  },
+  completedOrderActionsContainer: {
+    marginTop: 16,
+    gap: 12,
+  },
+  primaryActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'stretch',
+  },
+  primaryActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    flex: 1,
+    minHeight: 56,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    position: 'relative',
+  },
+  buttonIconContainer: {
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryActionButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    flex: 1,
+  },
+  reviewDaysBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewDaysText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  secondaryActionButton: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    minHeight: 56,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  secondaryButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  secondaryActionButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#007AFF',
+    flex: 1,
+    textAlign: 'center',
   },
   contactButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     flex: 1,
-    minHeight: 48, // Ensure minimum touch target size
+    minHeight: 56,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   orderCardActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     flex: 1,
-    minHeight: 48, // Ensure minimum touch target size
+    minHeight: 56,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   contactButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    marginLeft: 6,
+    marginLeft: 8,
     color: '#fff',
+    letterSpacing: 0.2,
   },
   expandIndicator: {
     marginTop: 4,
@@ -2889,9 +3319,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+    letterSpacing: 0.2,
   },
   quickActionContainer: {
     marginTop: 8,

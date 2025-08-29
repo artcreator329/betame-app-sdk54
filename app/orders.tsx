@@ -14,6 +14,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { Order, orderManagementService } from '../lib/order-management-service';
 import { OrderCard } from '../components/OrderCard';
 import { OrderTimelineModal } from '../components/OrderTimelineModal';
+import PDFViewer from '../components/PDFViewer';
+import { PaymentReleasePDFService } from '../lib/payment-release-pdf-service';
+import { OnDemandPDFService } from '../lib/on-demand-pdf-service';
 
 type FilterType = 'all' | 'buyer' | 'seller';
 type StatusFilter = 'all' | 'active' | 'completed' | 'disputed';
@@ -27,6 +30,9 @@ export default function OrdersScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [timelineModalVisible, setTimelineModalVisible] = useState(false);
+  const [pdfViewerVisible, setPdfViewerVisible] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
+  const [pdfTitle, setPdfTitle] = useState<string>('');
 
   useEffect(() => {
     if (user) {
@@ -83,6 +89,75 @@ export default function OrdersScreen() {
     setTimelineModalVisible(true);
   };
 
+  const handleViewPDFReceipt = async (orderId: string) => {
+    try {
+      console.log('🔍 Getting PDF receipt for order ID:', orderId);
+      
+      // Show loading state
+      Alert.alert('Loading', 'Preparing your receipt...', [], { cancelable: false });
+      
+      // Find the order data
+      const order = orders.find(o => o.id === orderId);
+      if (!order) {
+        Alert.alert('Error', 'Order not found');
+        return;
+      }
+      
+      // Use the on-demand PDF service - it will either return existing PDF or generate new one
+      const result = await OnDemandPDFService.getOrGeneratePDFReceipt(orderId, {
+        id: order.id,
+        service_title: order.service_title,
+        amount: order.amount,
+        platform_fee: order.platform_fee || 0,
+        payment_released_at: order.payment_released_at,
+        status: order.status,
+        service_provider_id: order.service_provider_id || order.seller_id,
+        seller_id: order.seller_id,
+        buyer_id: order.buyer_id,
+        service_provider_name: order.service_provider_name || 'Service Provider',
+        buyer_name: order.buyer_name || 'Customer'
+      });
+      
+      // Dismiss loading alert
+      Alert.alert('', '', [], { cancelable: true });
+      
+      if (result.success && result.pdfUrl) {
+        console.log(`✅ PDF receipt ${result.generated ? 'generated' : 'retrieved'} successfully`);
+        const title = `Receipt - ${order.service_title}`;
+        setPdfUrl(result.pdfUrl);
+        setPdfTitle(title);
+        setPdfViewerVisible(true);
+        
+        // Show success message if PDF was just generated
+        if (result.generated) {
+          setTimeout(() => {
+            Alert.alert(
+              'Receipt Generated',
+              'Your payment receipt has been generated successfully!',
+              [{ text: 'OK' }]
+            );
+          }, 500);
+        }
+      } else {
+        Alert.alert(
+          'Receipt Not Available',
+          result.error || 'Unable to generate payment receipt. Please contact support.',
+          [{ text: 'OK' }]
+        );
+      }
+      
+    } catch (error) {
+      console.error('❌ Error viewing PDF receipt:', error);
+      // Dismiss any loading alerts
+      Alert.alert('', '', [], { cancelable: true });
+      Alert.alert(
+        'Error',
+        'Failed to load payment receipt. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
   const renderFilterButton = (type: FilterType, label: string) => (
     <TouchableOpacity
       style={[
@@ -126,6 +201,7 @@ export default function OrdersScreen() {
         order={item}
         currentUserId={user?.id || ''}
         onOrderUpdate={loadOrders}
+        onViewPDFReceipt={handleViewPDFReceipt}
       />
     </TouchableOpacity>
   );
@@ -196,6 +272,17 @@ export default function OrdersScreen() {
           orderTitle={selectedOrder.service_title}
         />
       )}
+
+      <PDFViewer
+        visible={pdfViewerVisible}
+        pdfUrl={pdfUrl}
+        title={pdfTitle}
+        onClose={() => {
+          setPdfViewerVisible(false);
+          setPdfUrl('');
+          setPdfTitle('');
+        }}
+      />
     </SafeAreaView>
   );
 }

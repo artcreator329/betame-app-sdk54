@@ -50,21 +50,29 @@ export class NotificationService {
   // Connect for a logged-in user: set current user, hydrate from Supabase, and start realtime
   async connect(userId: string): Promise<void> {
     console.log('🔍 NotificationService: connect called with userId:', userId);
+
+    // Disconnect any existing connection first
+    this.disconnect();
+
     this.setCurrentUser(userId);
     await this.initializeService(userId);
     console.log('🔍 NotificationService: initializeService completed');
+
     await this.hydrateFromSupabase();
     console.log('🔍 NotificationService: hydrateFromSupabase completed');
+
     await this.backfillLocalToSupabase();
     console.log('🔍 NotificationService: backfillLocalToSupabase completed');
-    this.startRealtimeSubscription(userId);
+
+    // Start realtime subscription with retry logic
+    await this.startRealtimeSubscriptionWithRetry(userId);
     console.log('🔍 NotificationService: startRealtimeSubscription completed');
   }
 
   private async loadNotifications(): Promise<void> {
     try {
       if (!this.currentUserId) return;
-      
+
       const userStorageKey = `${NOTIFICATIONS_STORAGE_KEY}_${this.currentUserId}`;
       const stored = await AsyncStorage.getItem(userStorageKey);
       if (stored) {
@@ -111,7 +119,7 @@ export class NotificationService {
   private async saveNotifications(): Promise<void> {
     try {
       if (!this.currentUserId) return;
-      
+
       const userStorageKey = `${NOTIFICATIONS_STORAGE_KEY}_${this.currentUserId}`;
       await AsyncStorage.setItem(userStorageKey, JSON.stringify(this.notifications));
     } catch (error) {
@@ -133,7 +141,7 @@ export class NotificationService {
 
   private generateId(): string {
     // Generate a UUID v4 compatible string
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0;
       const v = c == 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
@@ -142,7 +150,7 @@ export class NotificationService {
 
   subscribe(listener: (notifications: Notification[]) => void): () => void {
     this.listeners.push(listener);
-    
+
     // Use setTimeout to avoid calling listener during render
     setTimeout(async () => {
       if (this.isInitialized) {
@@ -153,7 +161,7 @@ export class NotificationService {
         listener([...this.notifications]);
       }
     }, 0);
-    
+
     // Return unsubscribe function
     return () => {
       const index = this.listeners.indexOf(listener);
@@ -163,21 +171,32 @@ export class NotificationService {
     };
   }
 
-  private startRealtimeSubscription(userId: string) {
+  private async startRealtimeSubscriptionWithRetry(userId: string, retryCount = 0): Promise<void> {
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 seconds
+
     try {
+      console.log(`🔄 NotificationService: Starting realtime subscription (attempt ${retryCount + 1}/${maxRetries + 1})`);
+
       // Clean up any existing channel
       if (this.realtimeChannel) {
+        console.log('🧹 NotificationService: Cleaning up existing realtime channel');
         supabase.removeChannel(this.realtimeChannel);
         this.realtimeChannel = null;
       }
 
+      // Create a unique channel name with timestamp to avoid conflicts
+      const channelName = `notifications_${userId}_${Date.now()}`;
+      console.log('📡 NotificationService: Creating realtime channel:', channelName);
+
       // Subscribe to inserts/updates/deletes for this user's notifications
       const channel = supabase
-        .channel(`notifications_${userId}`)
+        .channel(channelName)
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload: any) => {
+            console.log('🔔 NotificationService: REALTIME INSERT received:', payload.new.title);
             const row = payload.new as any;
             const incoming: Notification = {
               id: row.id,
@@ -193,6 +212,7 @@ export class NotificationService {
             // Avoid duplicates
             const exists = this.notifications.some(n => n.id === incoming.id);
             if (!exists) {
+              console.log('📥 NotificationService: Adding new notification to local store:', incoming.title);
               this.notifications.unshift(incoming);
               // Keep only the last 100
               if (this.notifications.length > 100) {
@@ -203,7 +223,12 @@ export class NotificationService {
               this.notifyListeners();
 
               // Show system notification
-              showLocalNotification(incoming).catch(() => {});
+              console.log('📱 NotificationService: Triggering system notification');
+              showLocalNotification(incoming).catch((error) => {
+                console.error('❌ NotificationService: System notification failed:', error);
+              });
+            } else {
+              console.log('⚠️ NotificationService: Duplicate notification ignored:', incoming.id);
             }
           }
         )
@@ -211,11 +236,11 @@ export class NotificationService {
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload: any) => {
-            console.log('UPDATE event received:', payload);
+            console.log('🔄 NotificationService: REALTIME UPDATE received:', payload.new.id);
             const row = payload.new as any;
             const index = this.notifications.findIndex(n => n.id === row.id);
             if (index !== -1) {
-              console.log('Updating notification:', row.id, 'isRead:', row.is_read);
+              console.log('📝 NotificationService: Updating notification:', row.id, 'isRead:', row.is_read);
               this.notifications[index].isRead = !!row.is_read;
               this.notifications[index].title = row.title ?? this.notifications[index].title;
               this.notifications[index].message = row.message ?? this.notifications[index].message;
@@ -229,6 +254,7 @@ export class NotificationService {
           'postgres_changes',
           { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload: any) => {
+            console.log('🗑️ NotificationService: REALTIME DELETE received:', payload.old.id);
             const row = payload.old as any;
             const index = this.notifications.findIndex(n => n.id === row.id);
             if (index !== -1) {
@@ -239,14 +265,49 @@ export class NotificationService {
           }
         )
         .subscribe((status) => {
+          console.log('📡 NotificationService: Realtime subscription status:', status);
           if (status === 'SUBSCRIBED') {
-            // Subscription established successfully
+            console.log('✅ NotificationService: Realtime subscription established successfully');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ NotificationService: Realtime subscription error');
+            // Retry on error
+            if (retryCount < maxRetries) {
+              console.log(`🔄 NotificationService: Retrying realtime subscription in ${retryDelay}ms...`);
+              setTimeout(() => {
+                this.startRealtimeSubscriptionWithRetry(userId, retryCount + 1);
+              }, retryDelay);
+            }
+          } else if (status === 'TIMED_OUT') {
+            console.error('⏰ NotificationService: Realtime subscription timed out');
+            // Retry on timeout
+            if (retryCount < maxRetries) {
+              console.log(`🔄 NotificationService: Retrying realtime subscription in ${retryDelay}ms...`);
+              setTimeout(() => {
+                this.startRealtimeSubscriptionWithRetry(userId, retryCount + 1);
+              }, retryDelay);
+            }
+          } else if (status === 'CLOSED') {
+            console.log('🔒 NotificationService: Realtime subscription closed');
           }
         });
 
       this.realtimeChannel = channel;
+
+      // Wait a bit to ensure subscription is established
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
     } catch (error) {
-      console.error('Error starting notifications realtime subscription:', error);
+      console.error('❌ NotificationService: Error starting realtime subscription:', error);
+
+      // Retry on error
+      if (retryCount < maxRetries) {
+        console.log(`🔄 NotificationService: Retrying realtime subscription in ${retryDelay}ms...`);
+        setTimeout(() => {
+          this.startRealtimeSubscriptionWithRetry(userId, retryCount + 1);
+        }, retryDelay);
+      } else {
+        console.error('❌ NotificationService: Max retries reached, realtime subscription failed');
+      }
     }
   }
 
@@ -355,7 +416,7 @@ export class NotificationService {
       isForCurrentUser: targetUserId === this.currentUserId,
       isInitialized: this.isInitialized
     });
-    
+
     const newNotification: Notification = {
       ...notification,
       id: this.generateId(),
@@ -363,7 +424,7 @@ export class NotificationService {
       timestamp: new Date().toISOString(),
       isRead: false,
     };
-    
+
     console.log('📝 NotificationService: Created new notification object with ID:', newNotification.id);
 
     // Write-through to Supabase via secure RPC (this will trigger realtime for the target user)
@@ -375,7 +436,7 @@ export class NotificationService {
         p_message: newNotification.message,
         p_id: newNotification.id
       });
-      
+
       const { error } = await supabase.rpc('create_notification', {
         p_user_id: targetUserId,
         p_type: newNotification.type,
@@ -398,9 +459,9 @@ export class NotificationService {
     // If the target user is the current user, add to local notifications and show system notification
     if (targetUserId === this.currentUserId) {
       console.log('📝 NotificationService: Adding to local notifications for current user');
-      
+
       this.notifications.unshift(newNotification);
-      
+
       // Keep only the last 100 notifications
       if (this.notifications.length > 100) {
         this.notifications = this.notifications.slice(0, 100);
@@ -484,7 +545,7 @@ export class NotificationService {
       // Update local state immediately
       this.notifications.splice(index, 1);
       this.notifyListeners(); // Notify listeners immediately
-      
+
       // Save to storage and sync with Supabase in background
       this.saveNotifications().catch(error => {
         console.error('Error saving notifications:', error);
@@ -531,13 +592,13 @@ export class NotificationService {
     if (!this.isInitialized) {
       await this.initializeService();
     }
-    
+
     // If we have a current user but no notifications, try to hydrate from Supabase
     if (this.currentUserId && this.notifications.length === 0) {
       console.log('🔍 NotificationService: No local notifications found, hydrating from Supabase');
       await this.hydrateFromSupabase();
     }
-    
+
     return this.notifications;
   }
 
@@ -612,9 +673,52 @@ export class NotificationService {
   debugState(): void {
     console.log('🔍 NotificationService Debug State:');
     console.log('  - isInitialized:', this.isInitialized);
+    console.log('  - currentUserId:', this.currentUserId);
     console.log('  - notifications count:', this.notifications.length);
     console.log('  - listeners count:', this.listeners.length);
-    console.log('  - notifications:', this.notifications);
+    console.log('  - hasRealtimeChannel:', !!this.realtimeChannel);
+    console.log('  - realtimeChannelState:', this.realtimeChannel?.state);
+    console.log('  - notifications:', this.notifications.slice(0, 3)); // Show first 3 for brevity
+  }
+
+  // Method to force refresh realtime connection
+  async forceReconnectRealtime(): Promise<void> {
+    if (!this.currentUserId) {
+      console.log('❌ NotificationService: Cannot reconnect - no current user');
+      return;
+    }
+
+    console.log('🔄 NotificationService: Force reconnecting realtime...');
+    await this.startRealtimeSubscriptionWithRetry(this.currentUserId);
+  }
+
+  // Method to test system notifications
+  async testSystemNotification(): Promise<boolean> {
+    if (!this.currentUserId) {
+      console.log('❌ NotificationService: Cannot test - no current user');
+      return false;
+    }
+
+    const testNotification: Notification = {
+      id: `test-${Date.now()}`,
+      userId: this.currentUserId,
+      type: 'system',
+      title: 'Test Notification',
+      message: 'This is a test system notification',
+      timestamp: new Date().toISOString(),
+      isRead: false,
+      data: { test: true }
+    };
+
+    try {
+      const { showLocalNotification } = await import('./local-notifications');
+      const result = await showLocalNotification(testNotification);
+      console.log('📱 Test system notification result:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Test system notification error:', error);
+      return false;
+    }
   }
 
   // Helper method to add structured inquiry notification
@@ -653,24 +757,24 @@ export class NotificationService {
       console.log('ℹ️ NotificationService: Skipping self-notification - sender and recipient are the same:', senderId);
       return;
     }
-    
+
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
-       type: 'structured_inquiry' as const,
-       title: `Service inquiry from ${participantName}`,
-       message: `Inquiry about "${serviceTitle}"`,
-       data: {
-         chatId,
-         participantId: senderId, // Always use senderId for navigation (the person who sent the inquiry)
-         participantName,
-         participantImage,
-         serviceTitle,
-       },
-     };
-     
-     console.log('🔔 NotificationService: Created structured inquiry notification object:', notification);
-     console.log('🔔 NotificationService: Structured inquiry notification will be sent TO:', participantId, 'FROM:', participantName);
-     await this.addNotification(notification, participantId);
-     console.log('🔔 NotificationService: addStructuredInquiryNotification completed');
+      type: 'structured_inquiry' as const,
+      title: `Service inquiry from ${participantName}`,
+      message: `Inquiry about "${serviceTitle}"`,
+      data: {
+        chatId,
+        participantId: senderId, // Always use senderId for navigation (the person who sent the inquiry)
+        participantName,
+        participantImage,
+        serviceTitle,
+      },
+    };
+
+    console.log('🔔 NotificationService: Created structured inquiry notification object:', notification);
+    console.log('🔔 NotificationService: Structured inquiry notification will be sent TO:', participantId, 'FROM:', participantName);
+    await this.addNotification(notification, participantId);
+    console.log('🔔 NotificationService: addStructuredInquiryNotification completed');
   }
 
   // Helper method to add chat message notification
@@ -699,20 +803,20 @@ export class NotificationService {
     if (senderId === participantId) {
       return;
     }
-    
+
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
-       type: 'chat' as const,
-       title: `New message from ${participantName}`,
-       message: message.length > 50 ? message.substring(0, 50) + '...' : message,
-       data: {
-         chatId,
-         participantId: senderId, // Always use senderId for navigation (the person who sent the message)
-         participantName,
-         participantImage,
-       },
-     };
-     
-     await this.addNotification(notification, participantId);
+      type: 'chat' as const,
+      title: `New message from ${participantName}`,
+      message: message.length > 50 ? message.substring(0, 50) + '...' : message,
+      data: {
+        chatId,
+        participantId: senderId, // Always use senderId for navigation (the person who sent the message)
+        participantName,
+        participantImage,
+      },
+    };
+
+    await this.addNotification(notification, participantId);
   }
 
   // Helper method to add service offer notification
@@ -771,10 +875,10 @@ export class NotificationService {
         currency,
       },
     };
-    
+
     console.log('🔔 NotificationService: Created offer notification object:', notification);
     console.log('🔔 NotificationService: About to call addNotification for user:', participantId);
-    
+
     try {
       await this.addNotification(notification, participantId);
       console.log('✅ NotificationService: Offer notification sent successfully to:', participantId);
@@ -821,7 +925,7 @@ export class NotificationService {
         currency,
       },
     };
-    
+
     await this.addNotification(notification, participantId);
   }
 
@@ -887,7 +991,7 @@ export class NotificationService {
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'offer' as const,
       title: isRejectedByMe ? `You rejected ${participantName}'s offer` : `Your offer was rejected by ${participantName}`,
-      message: rejectReason 
+      message: rejectReason
         ? `${serviceTitle} - Reason: ${rejectReason}`
         : `${serviceTitle} - ${currency} ${price}`,
       data: {
@@ -903,7 +1007,7 @@ export class NotificationService {
         rejectReason,
       },
     };
-    
+
     await this.addNotification(notification, participantId);
   }
 
@@ -937,7 +1041,7 @@ export class NotificationService {
         actionType: 'location_request',
       },
     };
-    
+
     await this.addNotification(notification, serviceProviderId);
   }
 
@@ -993,7 +1097,7 @@ export class NotificationService {
       };
 
       console.log('🔔 NotificationService: Attempting direct database insert for order notification');
-      
+
       const { data: insertResult, error: insertError } = await supabase
         .from('notifications')
         .insert(notificationData)
@@ -1002,7 +1106,7 @@ export class NotificationService {
 
       if (insertError) {
         console.error('❌ NotificationService: Direct insert failed, trying RPC method:', insertError.message);
-        
+
         // Fallback to RPC method
         const { data: rpcResult, error: rpcError } = await supabase.rpc('create_notification', {
           p_user_id: serviceProviderId,
@@ -1067,7 +1171,7 @@ export class NotificationService {
         canDisable: true,
       },
     };
-    
+
     await this.addNotification(notification, userId);
   }
 
@@ -1086,7 +1190,7 @@ export class NotificationService {
         category: 'reminder',
       },
     };
-    
+
     await this.addNotification(notification, userId);
   }
 
@@ -1119,7 +1223,7 @@ export class NotificationService {
 
     const photoText = hasPhotos ? ' with photos' : '';
     const messageText = completionMessage ? `\n\nMessage: "${completionMessage}"` : '';
-    
+
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'order' as const,
       title: '✅ Work Completed!',
@@ -1170,7 +1274,7 @@ export class NotificationService {
 
     const ratingText = rating ? ` (${rating}/5 stars)` : '';
     const feedbackText = feedback ? `\n\nFeedback: "${feedback}"` : '';
-    
+
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'order' as const,
       title: '🎉 Payment Released!',
@@ -1219,7 +1323,7 @@ export class NotificationService {
 
     const deadlineDate = new Date(revisionDeadline);
     const deadlineText = deadlineDate.toLocaleDateString();
-    
+
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'order' as const,
       title: '🔧 Revision Requested',
@@ -1260,7 +1364,7 @@ export class NotificationService {
       serviceTitle,
       jobId,
     });
-    
+
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'order' as const,
       title: '✅ Revision Acknowledged',
@@ -1301,7 +1405,7 @@ export class NotificationService {
       jobId,
       disputeReason
     });
-    
+
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'order' as const,
       title: '⚠️ Revision Disputed',
@@ -1345,7 +1449,7 @@ export class NotificationService {
     });
 
     const notesText = completionNotes ? `\n\nNotes: "${completionNotes}"` : '';
-    
+
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'order' as const,
       title: '✅ Revision Completed',
@@ -1388,7 +1492,7 @@ export class NotificationService {
     });
 
     const timeText = hoursRemaining <= 1 ? '1 hour' : `${hoursRemaining} hours`;
-    
+
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'order' as const,
       title: '⏰ Review Deadline Approaching',
@@ -1436,7 +1540,7 @@ export class NotificationService {
 
     const feedbackText = feedback ? `\n\nReview: "${feedback}"` : '';
     const stars = '⭐'.repeat(rating);
-    
+
     const notification: Omit<Notification, 'id' | 'timestamp' | 'isRead' | 'userId'> = {
       type: 'order' as const,
       title: '⭐ New Review Received',

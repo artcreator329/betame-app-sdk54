@@ -109,7 +109,7 @@ export interface ChatMessage {
   jobData?: JobData;
   offerId?: string;
   jobOfferId?: string;
-  offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
+  offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress' | 'completed' | 'payment_release_pending' | 'work_completed' | 'buyer_reviewing' | 'payment_released';
   offerExpiresAt?: Date;
   // Quote message fields
   quotedMessageId?: string;
@@ -132,7 +132,7 @@ export interface LiveChatMessage {
   jobData?: JobData;
   offerId?: string;
   jobOfferId?: string;
-  offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress';
+  offerStatus?: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'in_progress' | 'completed' | 'payment_release_pending' | 'work_completed' | 'buyer_reviewing' | 'payment_released';
   offerExpiresAt?: Date;
   // Quote message fields
   quotedMessageId?: string;
