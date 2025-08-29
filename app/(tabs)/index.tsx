@@ -625,6 +625,8 @@ const styles = StyleSheet.create({
   searchSection: {
     paddingHorizontal: isDesktop ? 40 : 20,
     paddingBottom: isDesktop ? 24 : 16,
+    zIndex: 9999,
+    position: 'relative',
   },
   headerIcons: {
     flexDirection: 'row',
@@ -660,6 +662,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    zIndex: 1,
   },
   bannerSlider: {
     width: '100%',
