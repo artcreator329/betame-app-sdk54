@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/lib/auth-service';
 import { supabase } from '@/lib/supabase';
+import { VerificationService } from '@/lib/verification-service';
 
 export default function BecomeServiceProviderScreen() {
   const router = useRouter();
@@ -43,6 +44,18 @@ export default function BecomeServiceProviderScreen() {
   // Function to register user as service provider
   const handleBecomeServiceProvider = async () => {
     if (!user) return;
+
+    // Check verification status before allowing service provider registration
+    const canBecomeServiceProvider = await VerificationService.checkVerificationForAction(
+      'become_service_provider',
+      () => {
+        router.push('/ekyc-verification');
+      }
+    );
+
+    if (!canBecomeServiceProvider) {
+      return; // Verification check will show appropriate alert
+    }
 
     setIsBecomingServiceProvider(true);
     try {

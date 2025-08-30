@@ -23,6 +23,7 @@ import { useColors } from '@/contexts/ThemeContext';
 import { authService } from '@/lib/auth-service';
 import { DirectOrderModal } from '@/components/DirectOrderModal';
 import { supabase } from '@/lib/supabase';
+import { VerificationService } from '@/lib/verification-service';
 
 // Helper function to format joined date
 const formatJoinedDate = (createdAt: string): string => {
@@ -133,8 +134,11 @@ export default function ServiceDetailsScreen() {
       // Create array with main service and its variants
       const variants: Service[] = [serviceData]; // Main service first
       
-      // Load child variants from database if service has variants
-      if (serviceData.id) {
+      // Use variants from serviceData if available (from updated getServiceById)
+      if (serviceData.service_variants && serviceData.service_variants.length > 0) {
+        variants.push(...serviceData.service_variants);
+      } else if (serviceData.id) {
+        // Fallback: Load child variants from database if not already included
         const childVariants = await ServiceService.getServiceVariants(serviceData.id);
         if (childVariants && childVariants.length > 0) {
           variants.push(...childVariants);
@@ -142,6 +146,7 @@ export default function ServiceDetailsScreen() {
       }
       
       setServiceVariants(variants);
+      console.log('🔍 ServiceDetailsScreen: Loaded', variants.length - 1, 'service variants');
     } catch (error) {
       console.error('Error loading service variants:', error);
     } finally {
@@ -377,7 +382,7 @@ export default function ServiceDetailsScreen() {
     });
   };
 
-  const handleOrderNow = () => {
+  const handleOrderNow = async () => {
     // Check if user is authenticated
     if (!user) {
       Alert.alert(
@@ -391,12 +396,36 @@ export default function ServiceDetailsScreen() {
       return;
     }
 
+    // Check verification status before allowing order placement
+    const canPlaceOrder = await VerificationService.checkVerificationForAction(
+      'place_order',
+      () => {
+        router.push('/ekyc-verification');
+      }
+    );
+
+    if (!canPlaceOrder) {
+      return; // Verification check will show appropriate alert
+    }
+
     // Proceed directly to direct order
     setSelectedServiceForOrder(service);
     setPaymentModalVisible(true);
   };
 
-  const handleVariantSelectionForOrder = (selectedVariant: Service) => {
+  const handleVariantSelectionForOrder = async (selectedVariant: Service) => {
+    // Check verification status before allowing order placement
+    const canPlaceOrder = await VerificationService.checkVerificationForAction(
+      'place_order',
+      () => {
+        router.push('/ekyc-verification');
+      }
+    );
+
+    if (!canPlaceOrder) {
+      return; // Verification check will show appropriate alert
+    }
+
     setSelectedServiceForOrder(selectedVariant);
     setPaymentModalVisible(true);
   };

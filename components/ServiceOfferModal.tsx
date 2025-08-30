@@ -20,6 +20,7 @@ import { GOOGLE_PLACES_API_KEY } from '../config/maps';
 import Colors from '../constants/Colors';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { FeeService } from '../lib/fee-service';
+import { VerificationService } from '../lib/verification-service';
 
 // Conditional import for MapView to handle native module availability
 let MapView: any = null;
@@ -167,8 +168,24 @@ export function ServiceOfferModal({
     service_variants: service.service_variants || []
   };
 
-  const handleSendOffer = () => {
+  const handleSendOffer = async () => {
     if (!service) return;
+
+    // Check verification status before allowing order placement
+    const canPlaceOrder = await VerificationService.checkVerificationForAction(
+      'place_order',
+      () => {
+        // Navigate to verification page
+        const { useRouter } = require('expo-router');
+        const router = useRouter();
+        router.push('/ekyc-verification');
+        onClose(); // Close the modal
+      }
+    );
+
+    if (!canPlaceOrder) {
+      return; // Verification check will show appropriate alert
+    }
 
     const price = customPrice ? parseFloat(customPrice) : undefined;
     const deliveryTime = customDeliveryTime ? parseInt(customDeliveryTime) : undefined;

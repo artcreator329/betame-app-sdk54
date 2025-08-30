@@ -17,6 +17,7 @@ import { OrderTimelineModal } from '../components/OrderTimelineModal';
 import PDFViewer from '../components/PDFViewer';
 import { PaymentReleasePDFService } from '../lib/payment-release-pdf-service';
 import { OnDemandPDFService } from '../lib/on-demand-pdf-service';
+import { VerificationGuard } from '../components/VerificationGuard';
 
 type FilterType = 'all' | 'buyer' | 'seller';
 type StatusFilter = 'all' | 'active' | 'completed' | 'disputed';
@@ -217,12 +218,23 @@ export default function OrdersScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Role Filter */}
-      <View style={styles.filterContainer}>
-        {renderFilterButton('all', 'All Orders')}
-        {renderFilterButton('buyer', 'As Buyer')}
-        {renderFilterButton('seller', 'As Seller')}
-      </View>
+      <VerificationGuard 
+        action="place_order"
+        fallbackComponent={
+          <View style={styles.verificationFallback}>
+            <Text style={styles.verificationTitle}>Orders Require Verification</Text>
+            <Text style={styles.verificationMessage}>
+              Complete eKYC verification to view and place orders on our platform.
+            </Text>
+          </View>
+        }
+      >
+        {/* Role Filter */}
+        <View style={styles.filterContainer}>
+          {renderFilterButton('all', 'All Orders')}
+          {renderFilterButton('buyer', 'As Buyer')}
+          {renderFilterButton('seller', 'As Seller')}
+        </View>
 
       {/* Status Filter */}
       <View style={styles.statusFilterContainer}>
@@ -272,6 +284,7 @@ export default function OrdersScreen() {
           orderTitle={selectedOrder.service_title}
         />
       )}
+      </VerificationGuard>
 
       <PDFViewer
         visible={pdfViewerVisible}
@@ -380,6 +393,25 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emptySubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  verificationFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  verificationTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  verificationMessage: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',

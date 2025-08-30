@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { AutomaticPDFService } from './automatic-pdf-service';
+import { VerificationService } from './verification-service';
 
 export interface Order {
   id: string;
@@ -96,6 +97,13 @@ class OrderManagementService {
     service_description?: string;
   }): Promise<Order | null> {
     try {
+      // Check if buyer is verified before creating order
+      const canPlaceOrder = await VerificationService.canPlaceOrders();
+      if (!canPlaceOrder.allowed) {
+        console.error('Order creation blocked: User not verified');
+        throw new Error('eKYC verification required to place orders');
+      }
+
       const total_amount = orderData.amount + (orderData.platform_fee || 0);
       
       const { data, error } = await supabase

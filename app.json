@@ -47,7 +47,7 @@
       "package": "com.betame.app",
       "enableProguardInReleaseBuilds": false,
       "enableSeparateBuildPerCPUArchitecture": false,
-      "versionCode": 11,
+      "versionCode": 13,
       "versionName": "1.0.0",
       "edgeToEdgeEnabled": true,
       "backgroundColor": "#0f1419"

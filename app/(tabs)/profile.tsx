@@ -22,6 +22,7 @@ import { JobProposalNotifications } from '@/components/JobProposalNotifications'
 import { JobNotificationService, JobNotificationPayload } from '@/lib/job-notification-service';
 import { EKYCService, EKYCSubmission } from '@/lib/ekyc-service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { VerificationStatusBadge } from '@/components/VerificationStatusBadge';
 
 // Helper function to format joined date
 const formatJoinedDate = (createdAt: string): string => {
@@ -1150,7 +1151,11 @@ export default function ProfileScreen() {
                       {averageRating > 0 && renderStars(averageRating)}
                       <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({userProfile?.review_count || reviews.length} reviews)</Text>
                     </View>
-                    {/* Removed large verification status display */}
+                    
+                    {/* Verification Status Badge */}
+                    <View style={styles.verificationContainer}>
+                      <VerificationStatusBadge />
+                    </View>
                   </View>
                 </View>
               )}
@@ -1773,6 +1778,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     justifyContent: 'flex-end',
     maxWidth: '70%', // Limit width to avoid overlap
+  },
+  verificationContainer: {
+    alignItems: 'flex-end',
+    marginTop: 8,
   },
   ratingText: {
     fontSize: 16,

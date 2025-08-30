@@ -250,8 +250,8 @@ export class ServiceService {
    */
   static async getTrendingServices(): Promise<Service[]> {
     try {
-      // First get trending services
-      const { data: services, error: servicesError } = await supabase
+      // Get all trending services including variants
+      const { data: allServices, error: servicesError } = await supabase
         .from('services')
         .select('*')
         .eq('is_trending', true)
@@ -263,12 +263,26 @@ export class ServiceService {
         return [];
       }
 
-      if (!services || services.length === 0) {
+      if (!allServices || allServices.length === 0) {
         return [];
       }
 
-      // Get unique user IDs
-      const userIds = [...new Set(services.map(s => s.user_id))];
+      // Separate main services from variants
+      const mainServices = allServices.filter(service => !service.parent_service_id);
+      const serviceVariants = allServices.filter(service => service.parent_service_id);
+
+      // Group variants by parent service ID
+      const variantsMap = new Map<string, Service[]>();
+      serviceVariants.forEach(variant => {
+        const parentId = variant.parent_service_id!;
+        if (!variantsMap.has(parentId)) {
+          variantsMap.set(parentId, []);
+        }
+        variantsMap.get(parentId)!.push(variant);
+      });
+
+      // Get unique user IDs from main services
+      const userIds = [...new Set(mainServices.map(s => s.user_id))];
 
       // Get profiles for these users
       const { data: profiles, error: profilesError } = await supabase
@@ -278,29 +292,45 @@ export class ServiceService {
 
       if (profilesError) {
         console.error('Error fetching profiles:', profilesError);
-        // Return services without profile data
-        return services.map(service => ({
-          ...service,
-          provider_name: 'Service Provider',
-          provider_avatar: undefined
-        }));
+        // Return main services without profile data but with variants
+        return mainServices.map(service => {
+          const variants = variantsMap.get(service.id) || [];
+          const lowestPrice = variants.length > 0 
+            ? Math.min(...variants.map(v => v.price))
+            : service.price;
+          
+          return {
+            ...service,
+            price: lowestPrice,
+            provider_name: 'Service Provider',
+            provider_avatar: undefined,
+            service_variants: variants
+          };
+        });
       }
 
       // Create a map for quick lookup
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
       // Get active features for all services
-      const serviceIds = services.map(s => s.id);
+      const serviceIds = mainServices.map(s => s.id);
       const activeFeaturesMap = await FeatureService.getActiveFeaturesForServices(serviceIds);
 
-      // Combine services with profile data and active features
-      return services.map(service => {
+      // Combine main services with profile data, variants, and active features
+      return mainServices.map(service => {
         const profile = profileMap.get(service.user_id);
+        const variants = variantsMap.get(service.id) || [];
+        const lowestPrice = variants.length > 0 
+          ? Math.min(...variants.map(v => v.price))
+          : service.price;
         const activeFeatures = activeFeaturesMap[service.id] || [];
+        
         return {
           ...service,
+          price: lowestPrice,
           provider_name: profile?.full_name || 'Service Provider',
           provider_avatar: profile?.avatar_url,
+          service_variants: variants,
           active_features: activeFeatures
         };
       });
@@ -555,6 +585,22 @@ export class ServiceService {
 
       console.log('✅ ServiceService.getServiceById: Service found:', service.title);
 
+      // Get service variants if this is a main service
+      let serviceVariants: Service[] = [];
+      if (!service.parent_service_id) {
+        const { data: variants, error: variantsError } = await supabase
+          .from('services')
+          .select('*')
+          .eq('parent_service_id', service.id)
+          .order('created_at', { ascending: true });
+
+        if (variantsError) {
+          console.error('⚠️ ServiceService.getServiceById: Error fetching service variants:', variantsError);
+        } else {
+          serviceVariants = variants || [];
+        }
+      }
+
       // Get the profile for this service's user
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -564,22 +610,24 @@ export class ServiceService {
 
       if (profileError) {
         console.error('⚠️ ServiceService.getServiceById: Error fetching profile:', profileError);
-        // Return service without profile data
+        // Return service without profile data but with variants
         return {
           ...service,
           provider_name: 'Service Provider',
-          provider_avatar: undefined
+          provider_avatar: undefined,
+          service_variants: serviceVariants
         };
       }
 
-      // Combine service with profile data
+      // Combine service with profile data and variants
       const result = {
         ...service,
         provider_name: profile?.full_name || 'Service Provider',
-        provider_avatar: profile?.avatar_url
+        provider_avatar: profile?.avatar_url,
+        service_variants: serviceVariants
       };
 
-      console.log('📦 ServiceService.getServiceById: Returning service with profile data');
+      console.log('📦 ServiceService.getServiceById: Returning service with profile data and', serviceVariants.length, 'variants');
       return result;
     } catch (error) {
       console.error('❌ ServiceService.getServiceById: Unexpected error:', error);
