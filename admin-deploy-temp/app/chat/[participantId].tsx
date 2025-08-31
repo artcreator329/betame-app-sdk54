@@ -1328,7 +1328,7 @@ export default function ChatScreen() {
       // Show payment options to the buyer
       Alert.alert(
         'Choose Payment Method',
-        `Service: ${serviceData.title}\nAmount: RM ${amount}\nProcessing Fee: RM ${buyerFee}\nTotal: RM ${totalAmount}\n\nHow would you like to pay?`,
+        `Service: ${serviceData.title}\nAmount: RM ${amount} + 2.2% Processing fee\nTotal: RM ${totalAmount}\n\nHow would you like to pay?`,
         [
           {
             text: 'Cancel',

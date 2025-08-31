@@ -2,7 +2,7 @@ import * as Print from 'expo-print';
 import * as FileSystem from 'expo-file-system';
 import { supabase, supabaseAdmin } from './supabase';
 
-export interface BuyerReceiptData {
+export interface BuyerInvoiceData {
   jobId: string;
   jobTableSource: string;
   buyerId: string;
@@ -17,12 +17,12 @@ export interface BuyerReceiptData {
   completionDate: string;
 }
 
-export class BuyerReceiptService {
+export class BuyerInvoiceService {
   /**
-   * Generate buyer receipt PDF content as HTML
+   * Generate buyer invoice PDF content as HTML
    */
-  static generateBuyerReceiptHTML(data: BuyerReceiptData): string {
-    const receiptNumber = `BR-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+  static generateBuyerInvoiceHTML(data: BuyerInvoiceData): string {
+    const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     const paymentDate = new Date(data.paymentDate).toLocaleDateString('en-MY', {
       year: 'numeric',
       month: 'long',
@@ -44,7 +44,7 @@ export class BuyerReceiptService {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Buyer Receipt - ${data.jobTitle}</title>
+        <title>Invoice - ${data.jobTitle}</title>
         <style>
           body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -55,7 +55,7 @@ export class BuyerReceiptService {
             page-break-after: avoid;
             page-break-inside: avoid;
           }
-          .receipt-container {
+          .invoice-container {
             max-width: 800px;
             margin: 0 auto;
             background: white;
@@ -83,7 +83,7 @@ export class BuyerReceiptService {
           .content {
             padding: 30px;
           }
-          .receipt-number {
+          .invoice-number {
             background: #f8f9fa;
             padding: 12px;
             border-radius: 8px;
@@ -91,12 +91,12 @@ export class BuyerReceiptService {
             text-align: center;
             border-left: 4px solid #3B82F6;
           }
-          .receipt-number h3 {
+          .invoice-number h3 {
             margin: 0;
             color: #3B82F6;
             font-size: 18px;
           }
-          .receipt-number p {
+          .invoice-number p {
             margin: 5px 0 0 0;
             font-family: monospace;
             font-size: 16px;
@@ -185,7 +185,7 @@ export class BuyerReceiptService {
         </style>
       </head>
       <body>
-        <div class="receipt-container">
+        <div class="invoice-container">
           <div class="header">
             <div class="logo">
               <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -196,14 +196,14 @@ export class BuyerReceiptService {
               </svg>
               BetaMe
             </div>
-            <h1>Buyer Receipt</h1>
+            <h1>Invoice</h1>
             <p>Official payment confirmation for completed service</p>
           </div>
           
           <div class="content">
-            <div class="receipt-number">
-              <h3>Receipt Number</h3>
-              <p>${receiptNumber}</p>
+            <div class="invoice-number">
+              <h3>Invoice Number</h3>
+              <p>${invoiceNumber}</p>
             </div>
             
             <div class="job-details">
@@ -255,7 +255,7 @@ export class BuyerReceiptService {
           </div>
           
           <div class="footer">
-            <p>This is an official buyer receipt from BetaMe Platform</p>
+            <p>This is an official invoice from BetaMe Platform</p>
             <p>Generated on ${new Date().toLocaleString('en-MY')}</p>
           </div>
         </div>
@@ -265,9 +265,9 @@ export class BuyerReceiptService {
   }
 
   /**
-   * Check if a buyer receipt already exists for a job
+   * Check if a buyer invoice already exists for a job
    */
-  static async checkBuyerReceiptExists(jobId: string): Promise<{ exists: boolean; receipt?: any }> {
+  static async checkBuyerInvoiceExists(jobId: string): Promise<{ exists: boolean; invoice?: any }> {
     try {
       const { data, error } = await supabaseAdmin
         .from('buyer_receipts')
@@ -278,39 +278,39 @@ export class BuyerReceiptService {
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-        console.error('Error checking buyer receipt:', error);
+        console.error('Error checking buyer invoice:', error);
         return { exists: false };
       }
 
       return {
         exists: !!data,
-        receipt: data
+        invoice: data
       };
     } catch (error) {
-      console.error('Error checking buyer receipt:', error);
+      console.error('Error checking buyer invoice:', error);
       return { exists: false };
     }
   }
 
   /**
-   * Generate and store buyer receipt
+   * Generate and store buyer invoice
    */
-  static async generateAndStoreBuyerReceipt(data: BuyerReceiptData): Promise<{ success: boolean; pdfUrl?: string; error?: string }> {
+  static async generateAndStoreBuyerInvoice(data: BuyerInvoiceData): Promise<{ success: boolean; pdfUrl?: string; error?: string }> {
     try {
-      console.log('📄 Generating buyer receipt for job:', data.jobId);
+      console.log('📄 Generating buyer invoice for job:', data.jobId);
 
-      // Check if receipt already exists
-      const existingReceipt = await this.checkBuyerReceiptExists(data.jobId);
-      if (existingReceipt.exists && existingReceipt.receipt) {
-        console.log('✅ Buyer receipt already exists, returning existing URL');
+      // Check if invoice already exists
+      const existingInvoice = await this.checkBuyerInvoiceExists(data.jobId);
+      if (existingInvoice.exists && existingInvoice.invoice) {
+        console.log('✅ Buyer invoice already exists, returning existing URL');
         return {
           success: true,
-          pdfUrl: existingReceipt.receipt.pdf_file_url
+          pdfUrl: existingInvoice.invoice.pdf_file_url
         };
       }
 
       // Generate HTML content
-      const htmlContent = this.generateBuyerReceiptHTML(data);
+      const htmlContent = this.generateBuyerInvoiceHTML(data);
 
       // Generate PDF file
       const { uri } = await Print.printToFileAsync({
@@ -332,10 +332,10 @@ export class BuyerReceiptService {
       // Generate unique filename
       const timestamp = Date.now();
       const sanitizedTitle = data.jobTitle.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-');
-      const fileName = `buyer-receipt-${sanitizedTitle}-${timestamp}.pdf`;
-      const filePath = `buyer-receipts/${data.jobId}/${fileName}`;
+      const fileName = `buyer-invoice-${sanitizedTitle}-${timestamp}.pdf`;
+      const filePath = `buyer-invoices/${data.jobId}/${fileName}`;
 
-      console.log('📄 Uploading buyer receipt to path:', filePath);
+      console.log('📄 Uploading buyer invoice to path:', filePath);
 
       // Upload to Supabase storage using admin client to bypass RLS
       const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
@@ -346,11 +346,11 @@ export class BuyerReceiptService {
         });
 
       if (uploadError) {
-        console.error('❌ Buyer receipt upload error:', uploadError);
-        throw new Error(`Failed to upload buyer receipt: ${uploadError.message}`);
+        console.error('❌ Buyer invoice upload error:', uploadError);
+        throw new Error(`Failed to upload buyer invoice: ${uploadError.message}`);
       }
 
-      console.log('✅ Buyer receipt uploaded successfully:', uploadData);
+      console.log('✅ Buyer invoice uploaded successfully:', uploadData);
 
       // Get public URL
       const { data: urlData } = supabase.storage
@@ -358,7 +358,7 @@ export class BuyerReceiptService {
         .getPublicUrl(filePath);
 
       const publicUrl = urlData.publicUrl;
-      console.log('✅ Buyer receipt public URL:', publicUrl);
+      console.log('✅ Buyer invoice public URL:', publicUrl);
 
       // Clean up temporary file
       try {
@@ -367,8 +367,8 @@ export class BuyerReceiptService {
         console.warn('⚠️ Could not clean up temporary PDF file:', cleanupError);
       }
 
-      // Store receipt record in database
-      const receiptNumber = `BR-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      // Store invoice record in database
+      const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
       const { error: dbError } = await supabaseAdmin
         .from('buyer_receipts')
@@ -378,7 +378,7 @@ export class BuyerReceiptService {
           buyer_id: data.buyerId,
           pdf_file_url: publicUrl,
           pdf_filename: fileName,
-          receipt_number: receiptNumber,
+          receipt_number: invoiceNumber,
           job_title: data.jobTitle,
           service_provider_name: data.serviceProviderName,
           buyer_name: data.buyerName,
@@ -391,10 +391,10 @@ export class BuyerReceiptService {
 
       if (dbError) {
         console.error('❌ Database insert error:', dbError);
-        throw new Error(`Failed to store buyer receipt record: ${dbError.message}`);
+        throw new Error(`Failed to store buyer invoice record: ${dbError.message}`);
       }
 
-      console.log('✅ Buyer receipt record stored in database');
+      console.log('✅ Buyer invoice record stored in database');
 
       return {
         success: true,
@@ -405,7 +405,7 @@ export class BuyerReceiptService {
       console.error('❌ Error in generateAndStoreBuyerReceipt:', error);
       return {
         success: false,
-        error: error.message || 'Failed to generate and store buyer receipt'
+        error: error.message || 'Failed to generate and store buyer invoice'
       };
     }
   }

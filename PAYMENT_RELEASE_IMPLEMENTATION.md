@@ -40,10 +40,11 @@ The Payment Release feature allows administrators to manually release payments f
 - **Real-time Filtering**: Instant results as filters are applied
 
 #### **Fee Calculation & Display**
-- **Original Amount**: Shows the full job price
-- **Platform Fee**: Automatic 2.2% deduction
-- **Service Fee**: Automatic 11% deduction  
+- **Original Amount**: Shows the full job price (service provider's offer amount)
+- **Service Fee**: Automatic deduction (RM4.90 or 11%, whichever is higher)
 - **Final Payout**: Calculated amount service provider receives
+
+*Note: Platform fee (2.2%) is paid by buyer and not displayed on service provider's receipt*
 - **Visual Breakdown**: Clear display of all deductions
 - **Example**: RM 10.22 → RM 8.87 final payout (RM 1.35 total fees)
 
@@ -206,9 +207,10 @@ Use `scripts/test-payment-release.js` to:
 - Service Provider: "Akmal B Razak"
 - Job: "Service Offer" 
 - Original Amount: RM 10.22
-- Platform Fee (2.2%): -RM 0.22
-- Service Fee (11%): -RM 1.12  
-- Final Payout: RM 8.87
+- Service Fee (RM4.90 or 11%): -RM 1.12  
+- Final Payout: RM 9.10
+
+*Platform fee (2.2%) is paid by buyer, not deducted from service provider*
 - Banking Status: ⚠️ Missing (will show alert to update banking details)
 
 ## Next Steps

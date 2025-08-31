@@ -28,8 +28,13 @@ export class PaymentReleasePDFService {
 
     const jobTitle = jobData.title || jobData.service_title || 'Service';
     const originalAmount = jobData.price || jobData.amount || 0;
-    const platformFee = jobData.platform_fee || 0;
-    const finalPayout = originalAmount - platformFee;
+    // Platform fee is paid by buyer, not deducted from service provider
+    const platformFee = 0;
+    // Service provider gets original amount minus only service fee (11% or RM4.90)
+    const serviceFeePercentage = originalAmount * 0.11;
+    const serviceFeeFixed = 4.90;
+    const serviceFee = Math.max(serviceFeePercentage, serviceFeeFixed);
+    const finalPayout = originalAmount - serviceFee;
     const receiptNumber = `PR-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
     return `
@@ -212,8 +217,8 @@ export class PaymentReleasePDFService {
                 <span>RM ${originalAmount.toFixed(2)}</span>
               </div>
               <div class="breakdown-row">
-                <span>Platform Fee:</span>
-                <span>- RM ${platformFee.toFixed(2)}</span>
+                <span>Service Fee (RM4.90 or 11%):</span>
+                <span>- RM ${serviceFee.toFixed(2)}</span>
               </div>
               <div class="breakdown-row total">
                 <span>Final Payout:</span>

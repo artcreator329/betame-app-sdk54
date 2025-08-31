@@ -52,7 +52,7 @@ interface ModeratedMessage extends ChatMessage {
 export default function ChatScreen() {
   const router = useRouter();
   const { smartBack } = useSmartNavigation();
-  const { 
+  const {
     participantId,
     chatId: routeChatId,
     selectedServiceId,
@@ -131,7 +131,7 @@ export default function ChatScreen() {
     image: string;
     isOnline: boolean;
   } | null>(null);
-  
+
   // Quote message state
   const [quotedMessage, setQuotedMessage] = useState<{
     id: string;
@@ -139,20 +139,20 @@ export default function ChatScreen() {
     senderName: string;
     messageType: 'text' | 'service' | 'offer' | 'job_offer';
   } | null>(null);
-  
+
 
   const scrollViewRef = useRef<ScrollView>(null);
   const { chatService: supabaseChatService } = useSupabaseChatContext();
-  
+
   // Always call useUserChats but with safe default values to avoid hook order issues
   const safeUserId = user?.id || '';
   const safeChatId = chatId || undefined;
   const { markChatAsRead } = useUserChats(safeUserId, safeChatId);
-  
+
   // Check for pending location requests
   const checkPendingLocationRequests = async () => {
     if (!user?.id || !chatId) return;
-    
+
     try {
       // Check if there are any accepted offers in this chat where the service provider hasn't shared location yet
       const { data: acceptedOffers } = await supabase
@@ -160,7 +160,7 @@ export default function ChatScreen() {
         .select('id, service_title, buyer_id, seller_id, status')
         .eq('status', 'in_progress')
         .or(`and(seller_id.eq.${user.id},buyer_id.eq.${participantId}),and(seller_id.eq.${participantId},buyer_id.eq.${user.id})`);
-      
+
       if (acceptedOffers && acceptedOffers.length > 0) {
         // Check if location has been shared for any of these offers
         const { data: locationMessages } = await supabase
@@ -169,7 +169,7 @@ export default function ChatScreen() {
           .eq('chat_id', chatId)
           .eq('message_type', 'location')
           .in('offer_id', acceptedOffers.map(offer => offer.id));
-        
+
         // If there are accepted offers but no location messages, show the modal
         if (locationMessages && locationMessages.length === 0) {
           const pendingOffer = acceptedOffers[0]; // Use the first pending offer
@@ -203,13 +203,13 @@ export default function ChatScreen() {
         );
         return;
       }
-      
+
       // If we have a chatId from the route, use it directly
       if (routeChatId) {
         const chatIdStr = Array.isArray(routeChatId) ? routeChatId[0] : routeChatId;
         console.log('🔄 CHAT INIT: Using provided chatId:', chatIdStr);
         setChatId(chatIdStr);
-        
+
         // Fetch participant info for the chat
         try {
           const { data: chatData } = await supabase
@@ -217,12 +217,12 @@ export default function ChatScreen() {
             .select('participant1_id, participant2_id')
             .eq('id', chatIdStr)
             .single();
-          
+
           if (chatData) {
-            const otherParticipantId = chatData.participant1_id === user.id 
-              ? chatData.participant2_id 
+            const otherParticipantId = chatData.participant1_id === user.id
+              ? chatData.participant2_id
               : chatData.participant1_id;
-            
+
             const participant = await chatService.getChatParticipant(otherParticipantId);
             if (participant) {
               setParticipantInfo(participant);
@@ -232,18 +232,18 @@ export default function ChatScreen() {
         } catch (error) {
           console.error('Error fetching chat data:', error);
         }
-        
+
         setChatLoading(false);
         return;
       }
-      
+
       // Fall back to participantId logic for backward compatibility
       if (!participantId) {
         console.log('Missing participant ID');
         setChatLoading(false);
         return;
       }
-      
+
       // Validate participantId format
       const participantIdStr = Array.isArray(participantId) ? participantId[0] : participantId;
       if (!participantIdStr || participantIdStr.trim() === '') {
@@ -252,26 +252,26 @@ export default function ChatScreen() {
         router.replace('/messages');
         return;
       }
-      
+
       setChatLoading(true);
       try {
         console.log('🔄 CHAT INIT: Initializing chat with:', { participantId: participantIdStr, userId: user.id });
-        
+
         // Initialize chat and fetch participant info in parallel
         const [chat, participant] = await Promise.all([
           supabaseChatService.createOrGetChat(participantIdStr, user.id),
           chatService.getChatParticipant(participantIdStr)
         ]);
-        
+
         console.log('🔄 CHAT INIT: Chat initialization results:', { chat: chat?.id, participant: participant?.name });
-        
+
         if (chat) {
           setChatId(chat.id);
           console.log('Chat initialized successfully:', chat.id);
         } else {
           console.error('Failed to create or get chat');
         }
-        
+
         if (participant) {
           setParticipantInfo(participant);
         }
@@ -286,14 +286,14 @@ export default function ChatScreen() {
     fetchUserServices();
     fetchUserServices();
   }, [user?.id, participantId, supabaseChatService, router, routeChatId]);
-  
+
   // Check for pending location requests after chat is loaded
   useEffect(() => {
     if (chatId && user?.id && !chatLoading) {
       checkPendingLocationRequests();
     }
   }, [chatId, user?.id, chatLoading]);
-  
+
   // Handle pre-selected service variant from service detail page
   useEffect(() => {
     // Only show service selection modal if it's NOT a text message inquiry or structured inquiry
@@ -313,12 +313,12 @@ export default function ChatScreen() {
         parent_service_id: undefined,
         service_variants: []
       };
-      
+
       setSelectedService(preSelectedService);
       setServiceSelectionModalVisible(true);
     }
   }, [selectedServiceId, selectedServiceTitle, selectedServicePrice, selectedServiceCurrency, selectedServiceDescription, selectedServiceImage, selectedServiceCategory, prefilledMessage, structuredInquiry]);
-  
+
   // Handle prefilled message for job applications and service inquiries
   useEffect(() => {
     if (prefilledMessage) {
@@ -341,19 +341,19 @@ export default function ChatScreen() {
         serviceImage: Array.isArray(selectedServiceImage) ? selectedServiceImage[0] : selectedServiceImage || '',
         serviceCategory: Array.isArray(selectedServiceCategory) ? selectedServiceCategory[0] : selectedServiceCategory || '',
       };
-      
+
       setStructuredInquiryDraft(inquiryMessage);
     }
   }, [structuredInquiry, selectedServiceId, selectedServiceTitle, selectedServicePrice, selectedServiceCurrency, selectedServiceDescription, selectedServiceImage, selectedServiceCategory]);
 
   // Note: Job offer sending is now handled directly from the job page for better reliability
-  
+
   const sendStructuredInquiry = async (inquiryData: any) => {
     try {
       if (!chatId || !user?.id || !userProfile) return;
-      
+
       console.log('🔍 Sending structured inquiry:', inquiryData);
-      
+
       // Use the chat service to send the structured inquiry message
       const success = await supabaseChatService.sendStructuredInquiryMessage(
         chatId,
@@ -362,12 +362,12 @@ export default function ChatScreen() {
         userProfile.avatar_url || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
         inquiryData
       );
-      
+
       if (success) {
         console.log('✅ Structured inquiry sent successfully');
         // Clear the draft after successful send
         setStructuredInquiryDraft(null);
-        
+
         // Scroll to bottom after sending
         setTimeout(() => {
           scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -409,7 +409,7 @@ export default function ChatScreen() {
       serviceImage: variant.image_url,
       serviceCategory: variant.category_name,
     };
-    
+
     // Set the inquiry as a draft message that user can review and send
     setStructuredInquiryDraft(inquiryMessage);
     setServiceVariantSelectionModalVisible(false);
@@ -432,7 +432,7 @@ export default function ChatScreen() {
       }
 
       const serviceData = offerMessage.serviceData;
-      
+
       // Set up editing state
       setEditingOffer({
         offerId: offerId,
@@ -477,10 +477,10 @@ export default function ChatScreen() {
   };
 
 
-  
+
   const fetchUserServices = async () => {
     if (!user?.id) return;
-    
+
     try {
       setLoadingServices(true);
       const services = await ServiceService.getUserServices(user.id);
@@ -495,7 +495,7 @@ export default function ChatScreen() {
   };
 
   const isUserSeller = userServices.length > 0;
-  
+
   // Mark messages as read when chat is opened
   useEffect(() => {
     const markAsRead = async () => {
@@ -509,15 +509,15 @@ export default function ChatScreen() {
         }
       }
     };
-    
+
     markAsRead();
   }, [chatId, user?.id, supabaseChatService, markChatAsRead]);
-  
+
   // Use stable parameters for useSupabaseChat to avoid hook order issues
   const stableChatId = chatId || '';
   const stableUserId = user?.id || '';
   const stableUserName = userProfile?.full_name || user?.email?.split('@')[0] || 'User';
-  
+
   const {
     messages,
     isLoading,
@@ -530,16 +530,20 @@ export default function ChatScreen() {
     blockUser,
     reportUser,
     reportMessage,
-    deleteMessage
-  } = useSupabaseChat({ 
+    deleteMessage,
+    refreshOfferStatuses,
+    updateMessageOfferStatus,
+    forceBilateralSync,
+    rejectServiceOffer: rejectOfferFromHook
+  } = useSupabaseChat({
     chatId: stableChatId,
     currentUserId: stableUserId,
     currentUserName: stableUserName
   });
 
   // Chat info from participant data
-  const chat = { 
-    participantName: participantInfo?.name || 'Chat Participant', 
+  const chat = {
+    participantName: participantInfo?.name || 'Chat Participant',
     participantImage: participantInfo?.image || 'https://images.pexels.com/photos/3777931/pexels-photo-3777931.jpeg?auto=compress&cs=tinysrgb&w=400',
     lastActive: participantInfo?.isOnline ? 'Active now' : (connectionStatus === 'connected' ? 'Recently active' : 'Connecting...')
   };
@@ -562,7 +566,7 @@ export default function ChatScreen() {
   const isLoadingState = chatLoading || (isLoading && chatId);
   const shouldRedirect = !chatLoading && !chatId;
   const hasValidChat = !shouldRedirect && chatId;
-  
+
   // Redirect if needed (but after all hooks are called)
   useEffect(() => {
     if (shouldRedirect) {
@@ -574,22 +578,22 @@ export default function ChatScreen() {
     const now = new Date();
     const msgTime = new Date(timestamp);
     const diffInDays = Math.floor((now.getTime() - msgTime.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffInDays === 0) {
-      return msgTime.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
+      return msgTime.toLocaleTimeString('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       });
     } else {
-      return msgTime.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      }) + ', ' + msgTime.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
+      return msgTime.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }) + ', ' + msgTime.toLocaleTimeString('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       });
     }
   };
@@ -605,7 +609,7 @@ export default function ChatScreen() {
 
   const moderateMessage = (messageText: string): { isHidden: boolean; moderationReason?: string } => {
     const lowerMessage = messageText.toLowerCase();
-    
+
     // Check for phone numbers
     if (/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g.test(messageText)) {
       return {
@@ -613,7 +617,7 @@ export default function ChatScreen() {
         moderationReason: 'Message contains phone number and has been blocked for safety.'
       };
     }
-    
+
     // Check for email addresses
     if (/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g.test(messageText)) {
       return {
@@ -621,7 +625,7 @@ export default function ChatScreen() {
         moderationReason: 'Message contains email address and has been blocked for safety.'
       };
     }
-    
+
     // Check for social media platforms
     if (/(?:whatsapp|telegram|wechat|line|instagram|facebook|twitter|snapchat)/gi.test(lowerMessage)) {
       return {
@@ -629,7 +633,7 @@ export default function ChatScreen() {
         moderationReason: 'Message contains social media platform and has been blocked for safety.'
       };
     }
-    
+
     // Check for contact requests
     if (/(?:call me|text me|dm me|contact me at|contact me)/gi.test(lowerMessage)) {
       return {
@@ -637,7 +641,7 @@ export default function ChatScreen() {
         moderationReason: 'Message contains contact request and has been blocked for safety.'
       };
     }
-    
+
     // Check for personal info sharing
     if (/(?:my number is|my phone is|my email is|my number|my phone|my email)/gi.test(lowerMessage)) {
       return {
@@ -645,7 +649,7 @@ export default function ChatScreen() {
         moderationReason: 'Message contains personal information sharing and has been blocked for safety.'
       };
     }
-    
+
     return { isHidden: false };
   };
 
@@ -653,10 +657,10 @@ export default function ChatScreen() {
     if (!message.trim() || !user?.id || !userProfile) return;
 
     const messageText = message.trim();
-    
+
     // Check for moderation before sending
     const moderation = moderateMessage(messageText);
-    
+
     if (moderation.isHidden) {
       Alert.alert(
         'Message Blocked',
@@ -665,9 +669,9 @@ export default function ChatScreen() {
       );
       return; // Don't send the message
     }
-    
+
     setMessage(''); // Clear input immediately for better UX
-    
+
     const result = await sendChatMessage(
       messageText,
       userProfile.full_name || user.email?.split('@')[0] || 'User',
@@ -767,12 +771,12 @@ export default function ChatScreen() {
       try {
         // Update existing offer
         await supabaseChatService.updateServiceOffer(editingOffer.offerId, offerData);
-        
+
         Alert.alert('Success', 'Offer updated successfully!');
         setServiceOfferModalVisible(false);
         setSelectedService(null);
         setEditingOffer(null);
-        
+
         // Refresh messages to show updated offer
         // The real-time subscription should handle this automatically
       } catch (error) {
@@ -864,11 +868,11 @@ export default function ChatScreen() {
       // We just need to update the offer status and send notifications
       if (selectedOfferForPayment && user?.id) {
         console.log('🔔 Processing payment success for offer:', selectedOfferForPayment.offer.id);
-        
+
         // Update the service offer status to in_progress (payment completed, job created)
         await supabase
           .from('service_offers')
-          .update({ 
+          .update({
             status: 'in_progress',
             accepted_at: new Date().toISOString()
           })
@@ -879,9 +883,9 @@ export default function ChatScreen() {
           .from('chat_messages')
           .update({ offer_status: 'in_progress' })
           .eq('offer_id', selectedOfferForPayment.offer.id);
-        
+
         console.log('✅ Offer status updated to in_progress');
-        
+
         // Add notification for offer acceptance (to the seller)
         await notificationService.addOfferAcceptedNotification({
           participantId: selectedOfferForPayment.sellerId,
@@ -906,10 +910,10 @@ export default function ChatScreen() {
           setLocationRequestModalVisible(true);
         }
       }
-      
+
       setPaymentModalVisible(false);
       setSelectedOfferForPayment(null);
-      
+
       // Navigate to orders to track the job (only for buyer)
       if (user?.id !== selectedOfferForPayment?.sellerId) {
         router.push('/(tabs)/orders');
@@ -929,11 +933,11 @@ export default function ChatScreen() {
   const manuallyUpdateOfferStatus = async (offerId: string, status: 'accepted' | 'rejected') => {
     try {
       console.log(`🔄 Manually updating offer ${offerId} status to ${status}`);
-      
+
       // Update service offer status
       await supabase
         .from('service_offers')
-        .update({ 
+        .update({
           status: status,
           accepted_at: new Date().toISOString()
         })
@@ -944,7 +948,7 @@ export default function ChatScreen() {
         .from('chat_messages')
         .update({ offer_status: status })
         .eq('offer_id', offerId);
-      
+
       console.log(`✅ Offer ${offerId} status manually updated to ${status}`);
     } catch (error) {
       console.error('❌ Error manually updating offer status:', error);
@@ -955,10 +959,10 @@ export default function ChatScreen() {
   const checkPaymentStatusImmediately = async (offerId: string) => {
     try {
       console.log('🔍 Checking payment status immediately for offer:', offerId);
-      
+
       // Wait a moment for the payment to be processed
       await new Promise(resolve => setTimeout(resolve, 3000));
-      
+
       // Check if payment transaction exists and is completed
       const { data: transaction, error } = await supabase
         .from('payment_transactions')
@@ -973,11 +977,11 @@ export default function ChatScreen() {
       }
 
       console.log('✅ Payment completed! Updating offer status to accepted');
-      
+
       // Update service offer status to accepted
       await supabase
         .from('service_offers')
-        .update({ 
+        .update({
           status: 'accepted',
           updated_at: new Date().toISOString()
         })
@@ -998,16 +1002,16 @@ export default function ChatScreen() {
   // Poll for payment status (fallback for webhook issues)
   const startPaymentStatusPolling = (offerId: string, checkoutId: string) => {
     console.log('🔄 Starting payment status polling for offer:', offerId, 'checkout:', checkoutId);
-    
+
     let pollCount = 0;
     const maxPolls = 30; // Poll for 5 minutes (30 * 10 seconds)
     const pollInterval = 10000; // 10 seconds
-    
+
     const pollPaymentStatus = async () => {
       try {
         pollCount++;
         console.log(`🔄 Polling payment status (${pollCount}/${maxPolls}) for offer:`, offerId);
-        
+
         // Check if payment transaction exists and is completed
         const { data: transaction, error } = await supabase
           .from('payment_transactions')
@@ -1015,14 +1019,14 @@ export default function ChatScreen() {
           .eq('curlec_checkout_id', checkoutId)
           .eq('status', 'completed')
           .single();
-        
+
         if (transaction && !error) {
           console.log('✅ Payment completed, updating offer status to in_progress');
-          
+
           // Update service offer status to in_progress
           await supabase
             .from('service_offers')
-            .update({ 
+            .update({
               status: 'in_progress',
               accepted_at: new Date().toISOString()
             })
@@ -1033,11 +1037,11 @@ export default function ChatScreen() {
             .from('chat_messages')
             .update({ offer_status: 'in_progress' })
             .eq('offer_id', offerId);
-          
+
           console.log('✅ Offer status updated to in_progress via polling');
           return; // Stop polling
         }
-        
+
         // Continue polling if not completed yet
         if (pollCount < maxPolls) {
           setTimeout(pollPaymentStatus, pollInterval);
@@ -1051,7 +1055,7 @@ export default function ChatScreen() {
         }
       }
     };
-    
+
     // Start polling after a short delay
     setTimeout(pollPaymentStatus, pollInterval);
   };
@@ -1059,7 +1063,7 @@ export default function ChatScreen() {
   const cancelServiceOffer = async (offerId: string) => {
     try {
       console.log('Cancelling service offer:', offerId);
-      
+
       // Find the message with this offer ID to get offer and service data
       const offerMessage = messages.find(msg => msg.offerId === offerId);
       if (!offerMessage || !offerMessage.serviceData) {
@@ -1071,30 +1075,24 @@ export default function ChatScreen() {
       console.log('🔄 Chat: About to cancel offer:', offerId);
       await supabaseChatService.cancelServiceOffer(offerId, 'Cancelled by seller');
       console.log('✅ Chat: Offer cancellation completed successfully');
-      
-      // Force a small delay to ensure the real-time update has time to propagate
-      setTimeout(() => {
-        console.log('🔄 Chat: Checking if offer status updated via real-time...');
-        const updatedMessage = messages.find(msg => msg.offerId === offerId);
-        if (updatedMessage && updatedMessage.offerStatus !== 'cancelled') {
-          console.log('⚠️ Chat: Real-time update may have failed, status still:', updatedMessage.offerStatus);
-        }
-      }, 2000);
-      
-              // Add notification for offer cancellation (to the buyer)
-        await notificationService.addOfferRejectedNotification({
-          participantId: participantId as string, // This is the buyer who will receive the notification
-          participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User', // This is the seller who cancelled
-          participantImage: userProfile?.avatar_url || '',
-          chatId: chatId || '',
-          offerId: offerId,
-          serviceTitle: offerMessage.serviceData.title,
-          price: offerMessage.serviceData.customPrice || offerMessage.serviceData.price,
-          currency: offerMessage.serviceData.currency,
-          rejectReason: 'Cancelled by seller',
-          isRejectedByMe: true, // From buyer's perspective, the seller cancelled it
-        });
-      
+
+      // Immediately update the local message state to reflect the status change
+      updateMessageOfferStatus(offerId, 'cancelled');
+
+      // Add notification for offer cancellation (to the buyer)
+      await notificationService.addOfferRejectedNotification({
+        participantId: participantId as string, // This is the buyer who will receive the notification
+        participantName: userProfile?.full_name || user?.email?.split('@')[0] || 'User', // This is the seller who cancelled
+        participantImage: userProfile?.avatar_url || '',
+        chatId: chatId || '',
+        offerId: offerId,
+        serviceTitle: offerMessage.serviceData.title,
+        price: offerMessage.serviceData.customPrice || offerMessage.serviceData.price,
+        currency: offerMessage.serviceData.currency,
+        rejectReason: 'Cancelled by seller',
+        isRejectedByMe: true, // From buyer's perspective, the seller cancelled it
+      });
+
       Alert.alert('Success', 'Service offer cancelled.');
     } catch (error) {
       console.error('Error cancelling service offer:', error);
@@ -1105,7 +1103,7 @@ export default function ChatScreen() {
   const handleShareLocation = (offerId: string, serviceTitle: string) => {
     // Get buyer name from participant info
     const buyerName = participantInfo?.name || 'the buyer';
-    
+
     setLocationShareData({
       offerId,
       serviceTitle,
@@ -1135,7 +1133,7 @@ export default function ChatScreen() {
         Alert.alert('Success', 'Job location shared successfully!');
         setLocationShareModalVisible(false);
         setLocationShareData(null);
-        
+
         // Scroll to bottom after sending
         setTimeout(() => {
           scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -1189,7 +1187,7 @@ export default function ChatScreen() {
 
   const handleBlockUser = async () => {
     if (!participantId) return;
-    
+
     Alert.alert(
       'Block User',
       `Are you sure you want to block ${chat?.participantName}? You won't receive messages from them anymore.`,
@@ -1217,11 +1215,11 @@ export default function ChatScreen() {
 
   const submitReport = async (reason: string) => {
     if (!participantId || !user?.id) return;
-    
+
     setReportModalVisible(false);
-    
+
     const success = await reportUser(participantId as string, reason);
-    
+
     if (success) {
       Alert.alert(
         'Report Submitted',
@@ -1261,12 +1259,12 @@ export default function ChatScreen() {
       // and then scroll up by a calculated amount based on the message index
       const estimatedMessageHeight = 80; // Approximate height of each message
       const scrollPosition = Math.max(0, (messages.length - messageIndex - 1) * estimatedMessageHeight);
-      
+
       scrollViewRef.current.scrollTo({
         y: scrollPosition,
         animated: true,
       });
-      
+
       console.log(`📱 Scrolled to message ${messageId} at index ${messageIndex}, position ${scrollPosition}`);
     } else {
       console.log(`❌ Message ${messageId} not found or ScrollView ref not available`);
@@ -1275,7 +1273,7 @@ export default function ChatScreen() {
 
   const handleMessageLongPress = (messageId: string, isMyMessage: boolean) => {
     setSelectedMessageId(messageId);
-    
+
     if (isMyMessage) {
       // Options for user's own messages
       if (Platform.OS === 'ios') {
@@ -1340,7 +1338,7 @@ export default function ChatScreen() {
 
   const handleReportMessage = async (messageId: string) => {
     const success = await reportMessage(messageId, 'Inappropriate content');
-    
+
     if (success) {
       Alert.alert(
         'Message Reported',
@@ -1358,8 +1356,8 @@ export default function ChatScreen() {
       'Are you sure you want to delete this message?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             const success = await deleteMessage(messageId);
@@ -1378,8 +1376,8 @@ export default function ChatScreen() {
       'Are you sure you want to delete this entire conversation? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -1388,12 +1386,12 @@ export default function ChatScreen() {
                 .from('messages')
                 .delete()
                 .eq('chat_id', chatId);
-              
+
               if (error) {
                 Alert.alert('Error', 'Failed to delete conversation. Please try again.');
                 return;
               }
-              
+
               // Navigate back after successful deletion
               router.back();
             } catch (error) {
@@ -1441,7 +1439,7 @@ export default function ChatScreen() {
   const acceptServiceOffer = async (offerId: string) => {
     try {
       console.log('🔄 Accepting service offer:', offerId);
-      
+
       // Find the offer message
       const offerMessage = messages.find(m => m.offerId === offerId);
       if (!offerMessage || !offerMessage.serviceData) {
@@ -1452,16 +1450,20 @@ export default function ChatScreen() {
       const serviceData = offerMessage.serviceData;
       const amount = serviceData.customPrice || serviceData.price || 0;
       const sellerId = offerMessage.senderId;
-      
+
       if (!user?.id || !sellerId) {
         Alert.alert('Error', 'User information not available');
         return;
       }
 
+      // Calculate the final price with processing fee
+      const buyerFee = Math.round((amount * 0.022) * 100) / 100; // 2.2% processing fee
+      const totalAmount = amount + buyerFee;
+
       // Show confirmation dialog
       Alert.alert(
         'Confirm Service Offer',
-        `Service: ${serviceData.title}\nAmount: RM ${amount}\n\nAre you sure you want to accept this offer and proceed to payment?`,
+        `Service: ${serviceData.title}\nAmount: RM ${amount} + 2.2% Processing fee\nTotal: RM ${totalAmount}\n\nAre you sure you want to accept this offer and proceed to payment?`,
         [
           {
             text: 'Cancel',
@@ -1485,7 +1487,7 @@ export default function ChatScreen() {
   const processCurlecPayment = async (offerId: string, offerMessage: any, serviceData: any, amount: number, sellerId: string) => {
     try {
       console.log('🔄 Processing Curlec payment for offer:', offerId);
-      
+
       // Set up the offer data
       const offerData = {
         id: offerId,
@@ -1512,7 +1514,7 @@ export default function ChatScreen() {
       // Import CurlecPaymentService
       const { CurlecPaymentService } = await import('@/lib/curlec-payment-service');
       const { FeeService } = await import('@/lib/fee-service');
-      
+
       const paymentService = CurlecPaymentService.getInstance();
 
       // Calculate fees using FeeService
@@ -1552,10 +1554,10 @@ export default function ChatScreen() {
         const supported = await Linking.canOpenURL(response.checkout_url);
         if (supported) {
           await Linking.openURL(response.checkout_url);
-          
+
           // Start polling for payment status (fallback for webhook issues)
           startPaymentStatusPolling(offerId, response.checkout_id || '');
-          
+
           // Also start immediate status checking
           checkPaymentStatusImmediately(offerId);
         } else {
@@ -1574,7 +1576,7 @@ export default function ChatScreen() {
   const rejectServiceOffer = async (offerId: string, reason?: string) => {
     try {
       console.log('🔄 Rejecting service offer:', offerId, 'Reason:', reason);
-      
+
       // Find the offer message
       const offerMessage = messages.find(m => m.offerId === offerId);
       if (!offerMessage || !offerMessage.serviceData) {
@@ -1583,15 +1585,20 @@ export default function ChatScreen() {
       }
 
       const sellerId = offerMessage.senderId;
-      
-      // Update offer status
-      await supabase
-        .from('service_offers')
-        .update({ 
-          status: 'rejected',
-          rejection_reason: reason 
-        })
-        .eq('id', offerId);
+
+      // CRITICAL: Use emergency bilateral sync to ensure both sides update
+      console.log('�  CRITICAL: Using emergency bilateral sync for rejection:', offerId);
+
+      // First, try the normal service method
+      try {
+        await supabaseChatService.rejectServiceOffer(offerId, reason || 'Rejected by buyer');
+        console.log('✅ Service method completed');
+      } catch (error) {
+        console.error('⚠️ Service method failed, continuing with emergency sync:', error);
+      }
+
+      // Immediately update the local message state to reflect the status change
+      updateMessageOfferStatus(offerId, 'rejected');
 
       // Send notification to seller
       if (sellerId) {
@@ -1617,11 +1624,11 @@ export default function ChatScreen() {
   };
 
   const renderMessage = (msg: LiveChatMessage, index: number) => {
-    const showTimestamp = index === 0 || 
-      (index > 0 && 
-       Math.abs(new Date(msg.timestamp).getTime() - new Date(messages[index - 1].timestamp).getTime()) > 60000);
+    const showTimestamp = index === 0 ||
+      (index > 0 &&
+        Math.abs(new Date(msg.timestamp).getTime() - new Date(messages[index - 1].timestamp).getTime()) > 60000);
 
-    const showAvatar = !(msg.senderId === user?.id) && (index === messages.length - 1 || 
+    const showAvatar = !(msg.senderId === user?.id) && (index === messages.length - 1 ||
       messages[index + 1]?.senderId !== msg.senderId);
 
     // Messages from blocked users are already filtered by the hook
@@ -1680,7 +1687,7 @@ export default function ChatScreen() {
                   currentEstimatedHours: offerMessage.serviceData.estimatedHours,
                   currentRequirements: offerMessage.serviceData.requirements,
                 };
-                
+
                 // Set the selected service with the current offer data
                 const serviceWithOfferData: Service = {
                   id: offerMessage.serviceData.id || '',
@@ -1694,7 +1701,7 @@ export default function ChatScreen() {
                   rating: 0,
                   review_count: 0,
                 };
-                
+
                 // Set editing state first, then open modal
                 setEditingOffer(editingOfferData);
                 setSelectedService(serviceWithOfferData);
@@ -1753,76 +1760,76 @@ export default function ChatScreen() {
                     }}
                   />
                 ) : msg.messageType === 'service' && msg.serviceData ? (
-                <View style={styles.serviceMessageContent}>
-                  <View style={styles.serviceHeader}>
-                    <Package size={16} color={(msg.senderId === user?.id) ? '#FFFFFF' : '#007AFF'} />
+                  <View style={styles.serviceMessageContent}>
+                    <View style={styles.serviceHeader}>
+                      <Package size={16} color={(msg.senderId === user?.id) ? '#FFFFFF' : '#007AFF'} />
+                      <Text style={[
+                        styles.serviceLabel,
+                        (msg.senderId === user?.id) ? styles.myServiceLabel : styles.theirServiceLabel
+                      ]}>Service Shared</Text>
+                    </View>
+                    {msg.serviceData.image_url && (
+                      <Image
+                        source={{ uri: msg.serviceData.image_url }}
+                        style={styles.serviceImage}
+                        resizeMode="cover"
+                      />
+                    )}
                     <Text style={[
-                    styles.serviceLabel,
-                    (msg.senderId === user?.id) ? styles.myServiceLabel : styles.theirServiceLabel
-                  ]}>Service Shared</Text>
-                  </View>
-                  {msg.serviceData.image_url && (
-                    <Image 
-                      source={{ uri: msg.serviceData.image_url }} 
-                      style={styles.serviceImage}
-                      resizeMode="cover"
-                    />
-                  )}
-                  <Text style={[
-                    styles.serviceTitle,
-                    (msg.senderId === user?.id) ? styles.myServiceTitle : styles.theirServiceTitle
-                  ]}>
-                    {msg.serviceData.title}
-                  </Text>
-                  <Text style={[
-                    styles.servicePrice,
-                    (msg.senderId === user?.id) ? styles.myServicePrice : styles.theirServicePrice
-                  ]}>
-                    {msg.serviceData.currency} {msg.serviceData.price}
-                  </Text>
-                  <Text style={[
-                    styles.serviceDescription,
-                    (msg.senderId === user?.id) ? styles.myServiceDescription : styles.theirServiceDescription
-                  ]} numberOfLines={2}>
-                    {msg.serviceData.description}
-                  </Text>
-                  <TouchableOpacity 
-                    style={[
-                      styles.viewServiceButton,
-                      (msg.senderId === user?.id) ? styles.myViewServiceButton : styles.theirViewServiceButton
-                    ]}
-                    onPress={() => {
-                      console.log('🔗 Chat: View Service clicked with serviceData:', msg.serviceData);
-                      console.log('🔗 Chat: Service ID:', msg.serviceData?.id);
-                      console.log('🔗 Chat: Service title:', msg.serviceData?.title);
-                      
-                      if (msg.serviceData?.id) {
-                        // Check if this is a custom offer with no service reference
-                        if (msg.serviceData.isCustomOffer && 
-                            (msg.serviceData.id.startsWith('custom-offer-') || 
-                             msg.serviceData.id.startsWith('fallback-'))) {
-                          console.log('🔗 Chat: This is a custom offer with no service reference, showing details in alert');
-                          Alert.alert(
-                            'Custom Service Offer',
-                            `Title: ${msg.serviceData.title}\n\nDescription: ${msg.serviceData.description}\n\nPrice: ${msg.serviceData.currency} ${msg.serviceData.price}\n\nThis is a custom offer sent in chat.`,
-                            [{ text: 'OK' }]
-                          );
+                      styles.serviceTitle,
+                      (msg.senderId === user?.id) ? styles.myServiceTitle : styles.theirServiceTitle
+                    ]}>
+                      {msg.serviceData.title}
+                    </Text>
+                    <Text style={[
+                      styles.servicePrice,
+                      (msg.senderId === user?.id) ? styles.myServicePrice : styles.theirServicePrice
+                    ]}>
+                      {msg.serviceData.currency} {msg.serviceData.price}
+                    </Text>
+                    <Text style={[
+                      styles.serviceDescription,
+                      (msg.senderId === user?.id) ? styles.myServiceDescription : styles.theirServiceDescription
+                    ]} numberOfLines={2}>
+                      {msg.serviceData.description}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.viewServiceButton,
+                        (msg.senderId === user?.id) ? styles.myViewServiceButton : styles.theirViewServiceButton
+                      ]}
+                      onPress={() => {
+                        console.log('🔗 Chat: View Service clicked with serviceData:', msg.serviceData);
+                        console.log('🔗 Chat: Service ID:', msg.serviceData?.id);
+                        console.log('🔗 Chat: Service title:', msg.serviceData?.title);
+
+                        if (msg.serviceData?.id) {
+                          // Check if this is a custom offer with no service reference
+                          if (msg.serviceData.isCustomOffer &&
+                            (msg.serviceData.id.startsWith('custom-offer-') ||
+                              msg.serviceData.id.startsWith('fallback-'))) {
+                            console.log('🔗 Chat: This is a custom offer with no service reference, showing details in alert');
+                            Alert.alert(
+                              'Custom Service Offer',
+                              `Title: ${msg.serviceData.title}\n\nDescription: ${msg.serviceData.description}\n\nPrice: ${msg.serviceData.currency} ${msg.serviceData.price}\n\nThis is a custom offer sent in chat.`,
+                              [{ text: 'OK' }]
+                            );
+                          } else {
+                            // This is a regular service or custom offer based on existing service, navigate to service details
+                            router.push(`/service/${msg.serviceData.id}`);
+                          }
                         } else {
-                          // This is a regular service or custom offer based on existing service, navigate to service details
-                          router.push(`/service/${msg.serviceData.id}`);
+                          console.error('❌ Chat: No service ID found in serviceData');
+                          Alert.alert('Error', 'Service ID not found');
                         }
-                      } else {
-                        console.error('❌ Chat: No service ID found in serviceData');
-                        Alert.alert('Error', 'Service ID not found');
-                      }
-                    }}
-                  >
-                    <Text style={[
-                      styles.viewServiceText,
-                      (msg.senderId === user?.id) ? styles.myViewServiceText : styles.theirViewServiceText
-                    ]}>View Service</Text>
-                  </TouchableOpacity>
-                </View>
+                      }}
+                    >
+                      <Text style={[
+                        styles.viewServiceText,
+                        (msg.senderId === user?.id) ? styles.myViewServiceText : styles.theirViewServiceText
+                      ]}>View Service</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : false ? (
                   <View style={styles.locationMessageContent}>
                     <View style={styles.locationHeader}>
@@ -1863,7 +1870,7 @@ export default function ChatScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Please sign in to access chat</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.signInButton}
             onPress={() => router.push('/auth/login')}
           >
@@ -1881,7 +1888,7 @@ export default function ChatScreen() {
           <Text style={styles.loadingText}>Redirecting...</Text>
         </View>
       ) : (
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={styles.keyboardAvoid}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
@@ -1890,465 +1897,465 @@ export default function ChatScreen() {
             <TouchableOpacity onPress={smartBack}>
               <ArrowLeft size={24} color="#1D1D1F" />
             </TouchableOpacity>
-            
+
             {isLoadingState || !hasValidChat ? (
               <Text style={styles.headerTitle}>Loading...</Text>
             ) : (
-            <>
-              <View style={styles.headerInfo}>
-                <TouchableOpacity onPress={() => {
-                  const targetParticipantId = Array.isArray(participantId) ? participantId[0] : participantId;
-                  if (targetParticipantId) {
-                    router.push(`/profile/${targetParticipantId}`);
-                  }
-                }}>
-                  <Image source={{ uri: chat.participantImage }} style={styles.headerAvatar} />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.headerText}
-                  onPress={() => {
+              <>
+                <View style={styles.headerInfo}>
+                  <TouchableOpacity onPress={() => {
                     const targetParticipantId = Array.isArray(participantId) ? participantId[0] : participantId;
                     if (targetParticipantId) {
                       router.push(`/profile/${targetParticipantId}`);
                     }
-                  }}
+                  }}>
+                    <Image source={{ uri: chat.participantImage }} style={styles.headerAvatar} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.headerText}
+                    onPress={() => {
+                      const targetParticipantId = Array.isArray(participantId) ? participantId[0] : participantId;
+                      if (targetParticipantId) {
+                        router.push(`/profile/${targetParticipantId}`);
+                      }
+                    }}
+                  >
+                    <Text style={styles.headerName}>{chat.participantName}</Text>
+                    <Text style={styles.headerStatus}>{chat.lastActive}</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.headerActions}>
+                  <TouchableOpacity
+                    style={styles.headerActionButton}
+                    onPress={() => setReportUserModalVisible(true)}
+                  >
+                    <Flag size={24} color="#FF9500" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.headerActionButton}
+                    onPress={handleDeleteConversation}
+                  >
+                    <Trash2 size={24} color="#FF3B30" />
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* Main Content - Loading or Messages */}
+          {isLoadingState ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.loadingText}>Setting up chat...</Text>
+            </View>
+          ) : (
+            <>
+              {/* Messages */}
+              <ScrollView
+                ref={scrollViewRef}
+                style={styles.messagesContainer}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.messagesContent}
+              >
+                {messages.map(renderMessage)}
+                {/* Typing Indicators */}
+                {typingUsers.length > 0 && (
+                  <View style={styles.typingContainer}>
+                    <View style={styles.typingBubble}>
+                      <Text style={styles.typingText}>
+                        {typingUsers.length === 1
+                          ? `${typingUsers[0]} is typing...`
+                          : `${typingUsers.length} people are typing...`
+                        }
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+
+              {/* Structured Inquiry Draft */}
+              {structuredInquiryDraft && (
+                <StructuredInquiryDraft
+                  inquiryData={structuredInquiryDraft}
+                  onSend={handleSendStructuredInquiry}
+                  onCancel={handleCancelStructuredInquiry}
+                />
+              )}
+
+
+
+              {/* Quoted Message Display */}
+              {quotedMessage && (
+                <View style={styles.quotedMessageInputContainer}>
+                  <View style={styles.quotedMessageInputContent}>
+                    <QuotedMessage
+                      content={quotedMessage.content}
+                      senderName={quotedMessage.senderName}
+                      messageType={quotedMessage.messageType}
+                      isMyMessage={false}
+                      quotedMessageId={quotedMessage.id}
+                      onPress={() => scrollToMessage(quotedMessage.id)}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.cancelQuoteButton}
+                    onPress={handleCancelQuote}
+                  >
+                    <X size={16} color="#8E8E93" />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Input */}
+              <View style={styles.inputContainer}>
+                <View style={styles.inputWrapper}>
+                  {isUserSeller && (
+                    <TouchableOpacity
+                      style={styles.serviceButton}
+                      onPress={() => setServiceModalVisible(true)}
+                    >
+                      <Package size={20} color="#007AFF" />
+                    </TouchableOpacity>
+                  )}
+                  <TextInput
+                    style={styles.textInput}
+                    value={message}
+                    onChangeText={(text) => {
+                      setMessage(text);
+                      // Handle typing indicators here if needed
+                    }}
+                    placeholder="Message..."
+                    placeholderTextColor="#8E8E93"
+                    multiline
+                    maxLength={500}
+                  />
+                  <TouchableOpacity style={styles.emojiButton}>
+                    <Smile size={24} color="#8E8E93" />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.sendButton,
+                    message.trim() ? styles.sendButtonActive : styles.sendButtonInactive
+                  ]}
+                  onPress={sendMessage}
+                  disabled={!message.trim()}
                 >
-                  <Text style={styles.headerName}>{chat.participantName}</Text>
-                  <Text style={styles.headerStatus}>{chat.lastActive}</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.headerActions}>
-                <TouchableOpacity 
-                  style={styles.headerActionButton}
-                  onPress={() => setReportUserModalVisible(true)}
-                >
-                  <Flag size={24} color="#FF9500" />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.headerActionButton}
-                  onPress={handleDeleteConversation}
-                >
-                  <Trash2 size={24} color="#FF3B30" />
+                  <Send size={20} color="white" />
                 </TouchableOpacity>
               </View>
             </>
           )}
-        </View>
-
-        {/* Main Content - Loading or Messages */}
-        {isLoadingState ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.loadingText}>Setting up chat...</Text>
-          </View>
-        ) : (
-          <>
-            {/* Messages */}
-            <ScrollView 
-              ref={scrollViewRef}
-              style={styles.messagesContainer}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.messagesContent}
-            >
-              {messages.map(renderMessage)}
-          {/* Typing Indicators */}
-          {typingUsers.length > 0 && (
-            <View style={styles.typingContainer}>
-              <View style={styles.typingBubble}>
-                <Text style={styles.typingText}>
-                  {typingUsers.length === 1 
-                    ? `${typingUsers[0]} is typing...`
-                    : `${typingUsers.length} people are typing...`
-                  }
-                </Text>
-              </View>
-            </View>
-          )}
-        </ScrollView>
-
-        {/* Structured Inquiry Draft */}
-        {structuredInquiryDraft && (
-          <StructuredInquiryDraft
-            inquiryData={structuredInquiryDraft}
-            onSend={handleSendStructuredInquiry}
-            onCancel={handleCancelStructuredInquiry}
-          />
-        )}
-
-
-        
-        {/* Quoted Message Display */}
-        {quotedMessage && (
-          <View style={styles.quotedMessageInputContainer}>
-            <View style={styles.quotedMessageInputContent}>
-              <QuotedMessage
-                content={quotedMessage.content}
-                senderName={quotedMessage.senderName}
-                messageType={quotedMessage.messageType}
-                isMyMessage={false}
-                quotedMessageId={quotedMessage.id}
-                onPress={() => scrollToMessage(quotedMessage.id)}
-              />
-            </View>
-            <TouchableOpacity 
-              style={styles.cancelQuoteButton}
-              onPress={handleCancelQuote}
-            >
-              <X size={16} color="#8E8E93" />
-            </TouchableOpacity>
-          </View>
-        )}
-        
-        {/* Input */}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            {isUserSeller && (
-              <TouchableOpacity 
-                style={styles.serviceButton}
-                onPress={() => setServiceModalVisible(true)}
-              >
-                <Package size={20} color="#007AFF" />
-              </TouchableOpacity>
-            )}
-            <TextInput
-              style={styles.textInput}
-              value={message}
-              onChangeText={(text) => {
-                setMessage(text);
-                // Handle typing indicators here if needed
-              }}
-              placeholder="Message..."
-              placeholderTextColor="#8E8E93"
-              multiline
-              maxLength={500}
-            />
-            <TouchableOpacity style={styles.emojiButton}>
-              <Smile size={24} color="#8E8E93" />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity 
-            style={[
-              styles.sendButton,
-              message.trim() ? styles.sendButtonActive : styles.sendButtonInactive
-            ]}
-            onPress={sendMessage}
-            disabled={!message.trim()}
-          >
-            <Send size={20} color="white" />
-          </TouchableOpacity>
-        </View>
-          </>
-        )}
         </KeyboardAvoidingView>
       )}
-        
-        {/* Report Modal */}
-        <Modal
-          visible={reportModalVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setReportModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Report User</Text>
-              <Text style={styles.modalSubtitle}>
-                Why are you reporting {chat?.participantName}?
-              </Text>
-              
-              <TouchableOpacity
-                style={styles.reportOption}
-                onPress={() => submitReport('Inappropriate content')}
-              >
-                <Text style={styles.reportOptionText}>Inappropriate content</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.reportOption}
-                onPress={() => submitReport('Harassment or bullying')}
-              >
-                <Text style={styles.reportOptionText}>Harassment or bullying</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.reportOption}
-                onPress={() => submitReport('Spam or scam')}
-              >
-                <Text style={styles.reportOptionText}>Spam or scam</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.reportOption}
-                onPress={() => submitReport('Fake profile')}
-              >
-                <Text style={styles.reportOptionText}>Fake profile</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.reportOption}
-                onPress={() => submitReport('Other')}
-              >
-                <Text style={styles.reportOptionText}>Other</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setReportModalVisible(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+
+      {/* Report Modal */}
+      <Modal
+        visible={reportModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setReportModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Report User</Text>
+            <Text style={styles.modalSubtitle}>
+              Why are you reporting {chat?.participantName}?
+            </Text>
+
+            <TouchableOpacity
+              style={styles.reportOption}
+              onPress={() => submitReport('Inappropriate content')}
+            >
+              <Text style={styles.reportOptionText}>Inappropriate content</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.reportOption}
+              onPress={() => submitReport('Harassment or bullying')}
+            >
+              <Text style={styles.reportOptionText}>Harassment or bullying</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.reportOption}
+              onPress={() => submitReport('Spam or scam')}
+            >
+              <Text style={styles.reportOptionText}>Spam or scam</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.reportOption}
+              onPress={() => submitReport('Fake profile')}
+            >
+              <Text style={styles.reportOptionText}>Fake profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.reportOption}
+              onPress={() => submitReport('Other')}
+            >
+              <Text style={styles.reportOptionText}>Other</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={() => setReportModalVisible(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Service Selection Modal */}
+      <Modal
+        visible={serviceModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setServiceModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.serviceModalContent}>
+            <View style={styles.serviceModalHeader}>
+              <Text style={styles.modalTitle}>Share a Service</Text>
+              <TouchableOpacity onPress={() => setServiceModalVisible(false)}>
+                <X size={24} color="#8E8E93" />
               </TouchableOpacity>
             </View>
-          </View>
-        </Modal>
 
-        {/* Service Selection Modal */}
-        <Modal
-          visible={serviceModalVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setServiceModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.serviceModalContent}>
-              <View style={styles.serviceModalHeader}>
-                <Text style={styles.modalTitle}>Share a Service</Text>
-                <TouchableOpacity onPress={() => setServiceModalVisible(false)}>
-                  <X size={24} color="#8E8E93" />
+            {loadingServices ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.loadingText}>Loading services...</Text>
+              </View>
+            ) : userServices.length === 0 ? (
+              <View style={styles.emptyServicesContainer}>
+                <Package size={48} color="#8E8E93" />
+                <Text style={styles.emptyServicesText}>No services available</Text>
+                <Text style={styles.emptyServicesSubtext}>Create a service to share with others</Text>
+                <TouchableOpacity
+                  style={styles.createServiceButton}
+                  onPress={() => {
+                    setServiceModalVisible(false);
+                    router.push('/create-service-listing');
+                  }}
+                >
+                  <Text style={styles.createServiceButtonText}>Create Service</Text>
                 </TouchableOpacity>
               </View>
-              
-              {loadingServices ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#007AFF" />
-                  <Text style={styles.loadingText}>Loading services...</Text>
-                </View>
-              ) : userServices.length === 0 ? (
-                <View style={styles.emptyServicesContainer}>
-                  <Package size={48} color="#8E8E93" />
-                  <Text style={styles.emptyServicesText}>No services available</Text>
-                  <Text style={styles.emptyServicesSubtext}>Create a service to share with others</Text>
-                  <TouchableOpacity 
-                    style={styles.createServiceButton}
-                    onPress={() => {
-                      setServiceModalVisible(false);
-                      router.push('/create-service-listing');
-                    }}
+            ) : (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.servicesList}
+              >
+                {(userServices || []).filter(service => service.id && service.id.trim() !== '').map((item) => (
+                  <TouchableOpacity
+                    key={item.id || ''}
+                    style={styles.serviceItem}
+                    onPress={() => handleShareService(item)}
                   >
-                    <Text style={styles.createServiceButtonText}>Create Service</Text>
+                    {item.image_url && (
+                      <Image
+                        source={{ uri: item.image_url }}
+                        style={styles.serviceItemImage}
+                      />
+                    )}
+                    <View style={styles.serviceItemContent}>
+                      <Text style={styles.serviceItemTitle}>{item.title}</Text>
+                      <Text style={styles.serviceItemPrice}>
+                        {item.currency} {item.price}
+                      </Text>
+                      <Text style={styles.serviceItemDescription} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Service Offer Modal */}
+      <ServiceOfferModal
+        visible={serviceOfferModalVisible}
+        service={selectedService}
+        onClose={() => {
+          setServiceOfferModalVisible(false);
+          setSelectedService(null);
+          setEditingOffer(null);
+        }}
+        onSendOffer={handleSendServiceOffer}
+        isEditing={!!editingOffer}
+        editingOfferId={editingOffer?.offerId}
+        existingOfferData={editingOffer ? {
+          customPrice: editingOffer.currentPrice,
+          customDescription: editingOffer.currentDescription,
+          customDeliveryTime: editingOffer.currentDeliveryTime,
+          startDate: editingOffer.currentStartDate,
+          endDate: editingOffer.currentEndDate,
+          preferredStartTime: editingOffer.currentPreferredStartTime,
+          preferredEndTime: editingOffer.currentPreferredEndTime,
+          locationAddress: editingOffer.currentLocationAddress,
+          urgencyLevel: editingOffer.currentUrgencyLevel,
+          workType: editingOffer.currentWorkType,
+          estimatedHours: editingOffer.currentEstimatedHours,
+          requirements: editingOffer.currentRequirements,
+        } : undefined}
+      />
+
+
+      {/* Service Selection Modal */}
+      <Modal
+        visible={serviceSelectionModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setServiceSelectionModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.selectionModalContent}>
+            <View style={styles.selectionModalHeader}>
+              <Text style={styles.modalTitle}>Share Service</Text>
+              <TouchableOpacity onPress={() => {
+                setServiceSelectionModalVisible(false);
+                setSelectedService(null);
+              }}>
+                <X size={24} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedService && (
+              <View style={styles.selectedServicePreview}>
+                {selectedService.image_url && (
+                  <Image
+                    source={{ uri: selectedService.image_url }}
+                    style={styles.selectedServiceImage}
+                  />
+                )}
+                <View style={styles.selectedServiceInfo}>
+                  <Text style={styles.selectedServiceTitle}>{selectedService.title}</Text>
+                  <Text style={styles.selectedServicePrice}>
+                    {selectedService.currency} {selectedService.price}
+                  </Text>
+                  <Text style={styles.selectedServiceDescription} numberOfLines={2}>
+                    {selectedService.description}
+                  </Text>
                 </View>
-              ) : (
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.servicesList}
-                >
-                  {(userServices || []).filter(service => service.id && service.id.trim() !== '').map((item) => (
-                    <TouchableOpacity 
-                      key={item.id || ''}
-                      style={styles.serviceItem}
-                      onPress={() => handleShareService(item)}
-                    >
-                      {item.image_url && (
-                        <Image 
-                          source={{ uri: item.image_url }} 
-                          style={styles.serviceItemImage}
-                        />
-                      )}
-                      <View style={styles.serviceItemContent}>
-                        <Text style={styles.serviceItemTitle}>{item.title}</Text>
-                        <Text style={styles.serviceItemPrice}>
-                          {item.currency} {item.price}
-                        </Text>
-                        <Text style={styles.serviceItemDescription} numberOfLines={2}>
-                          {item.description}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
+              </View>
+            )}
+
+            <View style={styles.selectionButtons}>
+              <TouchableOpacity
+                style={styles.sendDirectlyButton}
+                onPress={handleSendServiceDirectly}
+              >
+                <Text style={styles.sendDirectlyButtonText}>Send As-Is</Text>
+                <Text style={styles.sendDirectlyButtonSubtext}>Share the service without modifications</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.customizeButton}
+                onPress={handleCustomizeService}
+              >
+                <Text style={styles.customizeButtonText}>Customize Offer</Text>
+                <Text style={styles.customizeButtonSubtext}>Modify price, description, or delivery time</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
-
-        {/* Service Offer Modal */}
-        <ServiceOfferModal
-           visible={serviceOfferModalVisible}
-           service={selectedService}
-           onClose={() => {
-             setServiceOfferModalVisible(false);
-             setSelectedService(null);
-             setEditingOffer(null);
-           }}
-           onSendOffer={handleSendServiceOffer}
-           isEditing={!!editingOffer}
-           editingOfferId={editingOffer?.offerId}
-           existingOfferData={editingOffer ? {
-             customPrice: editingOffer.currentPrice,
-             customDescription: editingOffer.currentDescription,
-             customDeliveryTime: editingOffer.currentDeliveryTime,
-             startDate: editingOffer.currentStartDate,
-             endDate: editingOffer.currentEndDate,
-             preferredStartTime: editingOffer.currentPreferredStartTime,
-             preferredEndTime: editingOffer.currentPreferredEndTime,
-             locationAddress: editingOffer.currentLocationAddress,
-             urgencyLevel: editingOffer.currentUrgencyLevel,
-             workType: editingOffer.currentWorkType,
-             estimatedHours: editingOffer.currentEstimatedHours,
-             requirements: editingOffer.currentRequirements,
-           } : undefined}
-        />
-
-
-        {/* Service Selection Modal */}
-        <Modal
-          visible={serviceSelectionModalVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setServiceSelectionModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.selectionModalContent}>
-              <View style={styles.selectionModalHeader}>
-                <Text style={styles.modalTitle}>Share Service</Text>
-                <TouchableOpacity onPress={() => {
-                  setServiceSelectionModalVisible(false);
-                  setSelectedService(null);
-                }}>
-                  <X size={24} color="#8E8E93" />
-                </TouchableOpacity>
-              </View>
-              
-              {selectedService && (
-                <View style={styles.selectedServicePreview}>
-                  {selectedService.image_url && (
-                    <Image 
-                      source={{ uri: selectedService.image_url }} 
-                      style={styles.selectedServiceImage}
-                    />
-                  )}
-                  <View style={styles.selectedServiceInfo}>
-                    <Text style={styles.selectedServiceTitle}>{selectedService.title}</Text>
-                    <Text style={styles.selectedServicePrice}>
-                      {selectedService.currency} {selectedService.price}
-                    </Text>
-                    <Text style={styles.selectedServiceDescription} numberOfLines={2}>
-                      {selectedService.description}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              <View style={styles.selectionButtons}>
-                <TouchableOpacity 
-                  style={styles.sendDirectlyButton}
-                  onPress={handleSendServiceDirectly}
-                >
-                  <Text style={styles.sendDirectlyButtonText}>Send As-Is</Text>
-                  <Text style={styles.sendDirectlyButtonSubtext}>Share the service without modifications</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.customizeButton}
-                  onPress={handleCustomizeService}
-                >
-                  <Text style={styles.customizeButtonText}>Customize Offer</Text>
-                  <Text style={styles.customizeButtonSubtext}>Modify price, description, or delivery time</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
+        </View>
+      </Modal>
 
 
 
-        {/* Job Progress Monitor */}
-        <JobProgressMonitor
-          isVisible={showJobProgress}
-          jobId={currentJobId || ''}
-          onClose={() => {
-            setShowJobProgress(false);
-            setCurrentJobId(null);
-          }}
-          onSendMessage={() => {
-            setShowJobProgress(false);
-            setCurrentJobId(null);
-          }}
-        />
+      {/* Job Progress Monitor */}
+      <JobProgressMonitor
+        isVisible={showJobProgress}
+        jobId={currentJobId || ''}
+        onClose={() => {
+          setShowJobProgress(false);
+          setCurrentJobId(null);
+        }}
+        onSendMessage={() => {
+          setShowJobProgress(false);
+          setCurrentJobId(null);
+        }}
+      />
 
-        {/* Service Offer Modal */}
-        <ServiceOfferModal
-          visible={serviceOfferModalVisible}
-          onClose={() => {
-            setServiceOfferModalVisible(false);
-            setSelectedService(null);
-            setEditingOffer(null);
-          }}
-          service={selectedService}
-          onSendOffer={handleSendServiceOffer}
-          isLoading={false}
-          isEditing={!!editingOffer}
-          editingOfferId={editingOffer?.offerId}
-          existingOfferData={editingOffer ? {
-            customPrice: editingOffer.currentPrice,
-            customDescription: editingOffer.currentDescription,
-            customDeliveryTime: editingOffer.currentDeliveryTime,
-            startDate: editingOffer.currentStartDate,
-            endDate: editingOffer.currentEndDate,
-            preferredStartTime: editingOffer.currentPreferredStartTime,
-            preferredEndTime: editingOffer.currentPreferredEndTime,
-            locationAddress: editingOffer.currentLocationAddress,
-            urgencyLevel: editingOffer.currentUrgencyLevel,
-            workType: editingOffer.currentWorkType,
-            estimatedHours: editingOffer.currentEstimatedHours,
-            requirements: editingOffer.currentRequirements,
-          } : undefined}
-        />
+      {/* Service Offer Modal */}
+      <ServiceOfferModal
+        visible={serviceOfferModalVisible}
+        onClose={() => {
+          setServiceOfferModalVisible(false);
+          setSelectedService(null);
+          setEditingOffer(null);
+        }}
+        service={selectedService}
+        onSendOffer={handleSendServiceOffer}
+        isLoading={false}
+        isEditing={!!editingOffer}
+        editingOfferId={editingOffer?.offerId}
+        existingOfferData={editingOffer ? {
+          customPrice: editingOffer.currentPrice,
+          customDescription: editingOffer.currentDescription,
+          customDeliveryTime: editingOffer.currentDeliveryTime,
+          startDate: editingOffer.currentStartDate,
+          endDate: editingOffer.currentEndDate,
+          preferredStartTime: editingOffer.currentPreferredStartTime,
+          preferredEndTime: editingOffer.currentPreferredEndTime,
+          locationAddress: editingOffer.currentLocationAddress,
+          urgencyLevel: editingOffer.currentUrgencyLevel,
+          workType: editingOffer.currentWorkType,
+          estimatedHours: editingOffer.currentEstimatedHours,
+          requirements: editingOffer.currentRequirements,
+        } : undefined}
+      />
 
-        {/* Location Share Modal */}
-        <LocationShareModal
-          visible={locationShareModalVisible}
-          onClose={handleLocationShareCancel}
-          onLocationShare={handleLocationShare}
-          serviceTitle={locationShareData?.serviceTitle || ''}
-          buyerName={locationShareData?.buyerName || ''}
-        />
+      {/* Location Share Modal */}
+      <LocationShareModal
+        visible={locationShareModalVisible}
+        onClose={handleLocationShareCancel}
+        onLocationShare={handleLocationShare}
+        serviceTitle={locationShareData?.serviceTitle || ''}
+        buyerName={locationShareData?.buyerName || ''}
+      />
 
-        {/* Location Request Modal */}
-        <LocationRequestModal
-          visible={locationRequestModalVisible}
-          onClose={handleLocationRequestClose}
-          onSendLocation={handleLocationRequestSendLocation}
-          onSendMessage={handleLocationRequestSendMessage}
-          serviceTitle={locationRequestData?.serviceTitle || ''}
-          buyerName={locationRequestData?.buyerName || ''}
-        />
+      {/* Location Request Modal */}
+      <LocationRequestModal
+        visible={locationRequestModalVisible}
+        onClose={handleLocationRequestClose}
+        onSendLocation={handleLocationRequestSendLocation}
+        onSendMessage={handleLocationRequestSendMessage}
+        serviceTitle={locationRequestData?.serviceTitle || ''}
+        buyerName={locationRequestData?.buyerName || ''}
+      />
 
-        {/* Service Variant Selection Modal for Structured Inquiry */}
-        <ServiceVariantSelectionModal
-          visible={serviceVariantSelectionModalVisible}
-          onClose={handleServiceVariantSelectionCancel}
-          onVariantSelect={handleServiceVariantSelected}
-          serviceId={inquiryServiceData?.serviceId || ''}
-          serviceTitle={inquiryServiceData?.serviceTitle || ''}
-        />
+      {/* Service Variant Selection Modal for Structured Inquiry */}
+      <ServiceVariantSelectionModal
+        visible={serviceVariantSelectionModalVisible}
+        onClose={handleServiceVariantSelectionCancel}
+        onVariantSelect={handleServiceVariantSelected}
+        serviceId={inquiryServiceData?.serviceId || ''}
+        serviceTitle={inquiryServiceData?.serviceTitle || ''}
+      />
 
-        {/* Report User Modal */}
-        <ReportUserModal
-          visible={reportUserModalVisible}
-          onClose={() => setReportUserModalVisible(false)}
-          reportedUserId={participantId as string}
-          reporterId={user?.id || ''}
-          reportedUserName={chat?.participantName || 'User'}
-          context={{
-            chatId: chatId || undefined,
-            profileContext: 'chat'
-          }}
-        />
+      {/* Report User Modal */}
+      <ReportUserModal
+        visible={reportUserModalVisible}
+        onClose={() => setReportUserModalVisible(false)}
+        reportedUserId={participantId as string}
+        reporterId={user?.id || ''}
+        reportedUserName={chat?.participantName || 'User'}
+        context={{
+          chatId: chatId || undefined,
+          profileContext: 'chat'
+        }}
+      />
 
-      </SafeAreaView>
-    );
-  }
+    </SafeAreaView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -3036,7 +3043,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  
+
   // New styles for enhanced edit modal
   editSectionTitle: {
     fontSize: 18,
@@ -3119,7 +3126,7 @@ const styles = StyleSheet.create({
   editUrgencyButtonTextActive: {
     color: '#FFFFFF',
   },
-  
+
   // Edit location styles
   editLocationContainer: {
     position: 'relative',
@@ -3178,7 +3185,7 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     fontStyle: 'italic',
   },
-  
+
   // Edit Location Button Styles
   editLocationButton: {
     flexDirection: 'row',
@@ -3209,7 +3216,7 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontStyle: 'italic',
   },
-  
+
   // Edit Map Modal Styles
   editMapModalContainer: {
     flex: 1,

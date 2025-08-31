@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabaseChatService } from '@/lib/supabase-chat-service';
+import { supabase } from '@/lib/supabase';
 import { LiveChatMessage } from '@/types/chat';
 
 interface UseSupabaseChatProps {
@@ -17,6 +18,8 @@ export function useSupabaseChat({ chatId, currentUserId, currentUserName }: UseS
   
   const unsubscribeMessagesRef = useRef<(() => void) | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // REMOVED: No longer need to track recent actions since we removed the problematic refresh
 
 
   // Load initial messages
@@ -72,15 +75,27 @@ export function useSupabaseChat({ chatId, currentUserId, currentUserName }: UseS
 
     const handleUpdateMessage = (updatedMessage: LiveChatMessage) => {
       console.log('🔄 useSupabaseChat: Handling message update:', updatedMessage);
+      console.log('🔄 useSupabaseChat: Updated message offer status:', updatedMessage.offerStatus);
       setMessages(prev => {
         const updated = prev.map(msg => {
           if (msg.id === updatedMessage.id) {
             console.log('🔄 useSupabaseChat: Updating message:', {
               oldStatus: msg.offerStatus,
               newStatus: updatedMessage.offerStatus,
-              messageId: msg.id
+              messageId: msg.id,
+              offerId: msg.offerId
             });
             return updatedMessage;
+          }
+          // Also check for offer ID match in case message ID doesn't match
+          if (msg.offerId && updatedMessage.offerId && msg.offerId === updatedMessage.offerId) {
+            console.log('🔄 useSupabaseChat: Updating message by offer ID:', {
+              oldStatus: msg.offerStatus,
+              newStatus: updatedMessage.offerStatus,
+              messageId: msg.id,
+              offerId: msg.offerId
+            });
+            return { ...msg, offerStatus: updatedMessage.offerStatus };
           }
           return msg;
         });
@@ -105,6 +120,67 @@ export function useSupabaseChat({ chatId, currentUserId, currentUserName }: UseS
       }
     };
   }, [chatId, currentUserId]);
+
+  // Function to update a specific message's offer status
+  const updateMessageOfferStatus = useCallback((offerId: string, newStatus: string) => {
+    console.log('🔄 useSupabaseChat: Updating offer status locally:', { offerId, newStatus });
+    
+    // Simple, direct status update - no complex tracking needed
+    setMessages(prev => 
+      prev.map(msg => 
+        msg.offerId === offerId 
+          ? { ...msg, offerStatus: newStatus }
+          : msg
+      )
+    );
+  }, []);
+
+  // EMERGENCY: Force bilateral sync for critical offer status changes
+  const forceBilateralSync = useCallback(async (offerId: string, newStatus: string) => {
+    console.log('🚨 useSupabaseChat: EMERGENCY - Forcing bilateral sync:', { offerId, newStatus });
+    
+    try {
+      // 1. Update local state immediately
+      updateMessageOfferStatus(offerId, newStatus);
+      
+      // 2. Force database update with timestamp
+      const { error: dbError } = await supabase
+        .from('chat_messages')
+        .update({ 
+          offer_status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('offer_id', offerId);
+      
+      if (dbError) {
+        console.error('🚨 EMERGENCY: Database update failed:', dbError);
+      } else {
+        console.log('🚨 EMERGENCY: Database updated successfully');
+      }
+      
+      // 3. Trigger realtime by updating message timestamps
+      const { data: messages } = await supabase
+        .from('chat_messages')
+        .select('id')
+        .eq('offer_id', offerId);
+      
+      if (messages) {
+        for (const msg of messages) {
+          await supabase
+            .from('chat_messages')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', msg.id);
+        }
+        console.log('🚨 EMERGENCY: Triggered realtime for', messages.length, 'messages');
+      }
+      
+    } catch (error) {
+      console.error('🚨 EMERGENCY: Bilateral sync failed:', error);
+    }
+  }, [updateMessageOfferStatus]);
+
+  // REMOVED: The problematic refresh mechanism that was causing status reversions
+  // Status updates now rely ONLY on realtime subscriptions and direct user actions
 
   // Send message function
   const sendMessage = useCallback(async (
@@ -258,6 +334,8 @@ export function useSupabaseChat({ chatId, currentUserId, currentUserName }: UseS
     reportMessage,
     reportUser,
     deleteMessage,
+    updateMessageOfferStatus,
+    forceBilateralSync,
     isConnected: connectionStatus === 'connected',
     isConnecting: connectionStatus === 'connecting',
     isDisconnected: connectionStatus === 'disconnected' || connectionStatus === 'failed',

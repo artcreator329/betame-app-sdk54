@@ -447,10 +447,7 @@ export class UserPDFService {
                   <span>Original Amount:</span>
                   <span>${data.currency} ${data.serviceAmount.toFixed(2)}</span>
                 </div>
-                <div class="breakdown-row fee">
-                  <span>Platform Fee (2.2%):</span>
-                  <span>- ${data.currency} ${data.platformFee.toFixed(2)}</span>
-                </div>
+                <!-- Platform fee already deducted from original amount -->
                 <div class="breakdown-row fee">
                   <span>Service Fee (RM4.90 or 11%):</span>
                   <span>- ${data.currency} ${data.serviceFee.toFixed(2)}</span>

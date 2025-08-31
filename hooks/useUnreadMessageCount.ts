@@ -95,25 +95,35 @@ export function useUnreadMessageCount() {
                 .single();
 
               if (chat) {
-                console.log('🚨 MESSAGE IS FOR CURRENT USER - GETTING PARTICIPANT INFO');
+                console.log('🚨 MESSAGE IS FOR CURRENT USER - Message type:', payload.new.message_type);
                 
-                // Get participant info
-                const participant = await supabaseChatService.getParticipantById(payload.new.sender_id);
-                
-                if (participant) {
-                  console.log('🚨 CREATING NOTIFICATION FROM:', participant.name);
+                // For regular chat messages, notification is handled by SupabaseChatService.sendMessage()
+                // But for offer messages, we need backup notification creation since primary might fail
+                if (payload.new.message_type === 'offer') {
+                  console.log('🔔 useUnreadMessageCount: Offer message detected, creating backup notification...');
                   
-                  await notificationService.addChatNotification({
-                    participantId: payload.new.sender_id,
-                    participantName: participant.name,
-                    participantImage: participant.image,
-                    message: payload.new.message,
-                    chatId: payload.new.chat_id
-                  });
+                  // Get participant info
+                  const participant = await supabaseChatService.getParticipantById(payload.new.sender_id);
                   
-                  console.log('🎉🎉🎉 NOTIFICATION CREATED SUCCESSFULLY IN UNREAD HOOK!!! 🎉🎉🎉');
+                  if (participant) {
+                    console.log('🔔 useUnreadMessageCount: Creating offer notification from:', participant.name);
+                    await notificationService.addOfferNotification({
+                      participantId: userId, // Send notification TO the current user
+                      participantName: participant.name,
+                      participantImage: participant.image,
+                      chatId: payload.new.chat_id,
+                      offerId: payload.new.offer_id || 'unknown',
+                      serviceTitle: 'Service Offer', // We don't have full service data here
+                      price: payload.new.custom_price || 0,
+                      currency: 'USD',
+                      senderId: payload.new.sender_id,
+                      isIncoming: true,
+                    });
+                    console.log('✅ useUnreadMessageCount: Offer notification created successfully');
+                  }
                 } else {
-                  console.log('❌ Could not get participant info');
+                  // For regular chat messages, notification is handled by sender
+                  console.log('🔔 useUnreadMessageCount: Regular message, notification handled by sender');
                 }
               } else {
                 console.log('ℹ️ Message not for current user');

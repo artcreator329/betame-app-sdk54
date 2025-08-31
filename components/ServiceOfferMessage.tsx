@@ -149,7 +149,7 @@ export function ServiceOfferMessage({
       requirements: serviceData.requirements,
       skillsRequired: serviceData.skillsRequired
     });
-    
+
     // Always show the detailed offer modal for all service offers
     setShowOfferDetailsModal(true);
   };
@@ -238,7 +238,7 @@ export function ServiceOfferMessage({
                   RM {serviceData.customPrice || serviceData.price || '0'}
                 </Text>
               )}
-              
+
               {/* Fee Breakdown */}
               {!isCurrentUser && !isRejected && !isCancelled && (
                 <View style={styles.feeBreakdown}>
@@ -246,14 +246,9 @@ export function ServiceOfferMessage({
                     const finalPrice = serviceData.customPrice || serviceData.price || 0;
                     const fees = FeeService.calculateFees(finalPrice);
                     return (
-                      <>
-                        <Text style={styles.feeText}>
-                          You pay: RM{fees.buyerTotal.toFixed(2)} (incl. RM{fees.buyerFee.toFixed(2)} processing fee)
-                        </Text>
-                        <Text style={styles.sellerFeeText}>
-                          Provider receives: RM{fees.sellerReceives.toFixed(2)}
-                        </Text>
-                      </>
+                      <Text style={styles.feeText}>
+                        You pay: RM{finalPrice.toFixed(2)} + 2.2% Processing fee
+                      </Text>
                     );
                   })()}
                 </View>
@@ -304,7 +299,7 @@ export function ServiceOfferMessage({
             {(serviceData.startDate || serviceData.endDate || serviceData.workType || serviceData.urgencyLevel) && (
               <View style={styles.hustleDetailsContainer}>
                 <Text style={styles.hustleDetailsLabel}>Job Details:</Text>
-                
+
                 {/* Date Range */}
                 {(serviceData.startDate || serviceData.endDate) && (
                   <View style={styles.hustleDetailRow}>
@@ -313,7 +308,7 @@ export function ServiceOfferMessage({
                     </Text>
                   </View>
                 )}
-                
+
                 {/* Time Preferences */}
                 {(serviceData.preferredStartTime || serviceData.preferredEndTime) && (
                   <View style={styles.hustleDetailRow}>
@@ -322,7 +317,7 @@ export function ServiceOfferMessage({
                     </Text>
                   </View>
                 )}
-                
+
                 {/* Location - Hidden: Will be shared after offer acceptance */}
                 {/* 
                 {serviceData.locationAddress && (
@@ -333,7 +328,7 @@ export function ServiceOfferMessage({
                   </View>
                 )}
                 */}
-                
+
                 {/* Work Type & Urgency */}
                 <View style={styles.hustleTagsRow}>
                   {serviceData.workType && (
@@ -342,14 +337,14 @@ export function ServiceOfferMessage({
                     </Text>
                   )}
                   {serviceData.urgencyLevel && (
-                    <Text style={[styles.hustleTag, styles.urgencyTag, 
-                      serviceData.urgencyLevel === 'urgent' ? styles.urgentTag : 
+                    <Text style={[styles.hustleTag, styles.urgencyTag,
+                    serviceData.urgencyLevel === 'urgent' ? styles.urgentTag :
                       serviceData.urgencyLevel === 'high' ? styles.highTag : styles.normalTag]}>
                       ⚡ {serviceData.urgencyLevel.toUpperCase()}
                     </Text>
                   )}
                 </View>
-                
+
                 {/* Estimated Hours */}
                 {serviceData.estimatedHours && (
                   <View style={styles.hustleDetailRow}>
@@ -358,7 +353,7 @@ export function ServiceOfferMessage({
                     </Text>
                   </View>
                 )}
-                
+
                 {/* Skills Required */}
                 {serviceData.skillsRequired && serviceData.skillsRequired.length > 0 && (
                   <View style={styles.hustleDetailRow}>
@@ -367,7 +362,7 @@ export function ServiceOfferMessage({
                     </Text>
                   </View>
                 )}
-                
+
                 {/* Requirements */}
                 {serviceData.requirements && (
                   <View style={styles.hustleDetailRow}>
@@ -395,8 +390,8 @@ export function ServiceOfferMessage({
         <View style={styles.bottomRow}>
           {/* Action Buttons */}
           <View style={styles.actionsRow}>
-            <TouchableOpacity 
-              style={styles.viewButton} 
+            <TouchableOpacity
+              style={styles.viewButton}
               onPress={handleViewService}
               activeOpacity={0.7}
             >
@@ -407,15 +402,15 @@ export function ServiceOfferMessage({
               <>
                 {isCurrentUser ? (
                   <>
-                    <TouchableOpacity 
-                      style={styles.editButton} 
+                    <TouchableOpacity
+                      style={styles.editButton}
                       onPress={handleEdit}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.editButtonText}>Edit</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.cancelButton} 
+                    <TouchableOpacity
+                      style={styles.cancelButton}
                       onPress={handleCancel}
                       activeOpacity={0.7}
                     >
@@ -424,15 +419,17 @@ export function ServiceOfferMessage({
                   </>
                 ) : (
                   <>
-                    <TouchableOpacity 
-                      style={styles.rejectButton} 
+                    {/* Temporarily hidden reject button - keeping code intact
+                    <TouchableOpacity
+                      style={styles.rejectButton}
                       onPress={handleReject}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.rejectButtonText}>Reject</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.acceptButton} 
+                    */}
+                    <TouchableOpacity
+                      style={styles.acceptButton}
                       onPress={handleAccept}
                       activeOpacity={0.7}
                     >
@@ -458,22 +455,22 @@ export function ServiceOfferMessage({
                 <View style={styles.acceptedButton}>
                   <Text style={styles.acceptedButtonText}>Accepted</Text>
                 </View>
-                
+
                 {/* Show location sharing button for seller if work is on-site */}
-                {isCurrentUser && 
-                 serviceData.workType === 'on_site' && 
-                 onShareLocation && (
-                  <TouchableOpacity 
-                    style={styles.shareLocationButton}
-                    onPress={() => onShareLocation(offerId!, serviceData.title)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.shareLocationButtonText}>Share Location</Text>
-                  </TouchableOpacity>
-                )}
-                
+                {isCurrentUser &&
+                  serviceData.workType === 'on_site' &&
+                  onShareLocation && (
+                    <TouchableOpacity
+                      style={styles.shareLocationButton}
+                      onPress={() => onShareLocation(offerId!, serviceData.title)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.shareLocationButtonText}>Share Location</Text>
+                    </TouchableOpacity>
+                  )}
+
                 {onViewOrderProgress && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.orderProgressButton}
                     onPress={onViewOrderProgress}
                     activeOpacity={0.7}
@@ -491,7 +488,7 @@ export function ServiceOfferMessage({
                   <Text style={styles.inProgressButtonText}>In Progress</Text>
                 </View>
                 {onViewOrderProgress && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.orderProgressButton}
                     onPress={onViewOrderProgress}
                     activeOpacity={0.7}
@@ -558,7 +555,7 @@ export function ServiceOfferMessage({
                 {/* Header */}
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>Service Offer Details</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.closeButton}
                     onPress={() => setShowOfferDetailsModal(false)}
                   >
@@ -626,7 +623,7 @@ export function ServiceOfferMessage({
                         RM {serviceData.customPrice || serviceData.price || '0'}
                       </Text>
                     )}
-                    
+
                     {/* Fee Breakdown in Modal */}
                     {!isCurrentUser && !isRejected && !isCancelled && (
                       <View style={styles.modalFeeBreakdown}>
@@ -635,21 +632,10 @@ export function ServiceOfferMessage({
                           const fees = FeeService.calculateFees(finalPrice);
                           return (
                             <>
-                              <View style={styles.modalFeeRow}>
-                                <Text style={styles.modalFeeLabel}>Service Amount:</Text>
-                                <Text style={styles.modalFeeAmount}>RM{finalPrice.toFixed(2)}</Text>
-                              </View>
-                              <View style={styles.modalFeeRow}>
-                                <Text style={styles.modalFeeLabel}>Processing Fee (2.2%):</Text>
-                                <Text style={styles.modalFeeAmount}>+RM{fees.buyerFee.toFixed(2)}</Text>
-                              </View>
                               <View style={[styles.modalFeeRow, styles.modalFeeTotal]}>
                                 <Text style={styles.modalFeeTotalLabel}>You Pay:</Text>
-                                <Text style={styles.modalFeeTotalAmount}>RM{fees.buyerTotal.toFixed(2)}</Text>
+                                <Text style={styles.modalFeeTotalAmount}>RM{finalPrice.toFixed(2)} + 2.2% Processing fee</Text>
                               </View>
-                              <Text style={styles.modalSellerNote}>
-                                Provider receives RM{fees.sellerReceives.toFixed(2)} after platform fee
-                              </Text>
                             </>
                           );
                         })()}
@@ -699,10 +685,10 @@ export function ServiceOfferMessage({
                         )}
                         */}
                         {serviceData.urgencyLevel && (
-                          <Text style={[styles.jobSummaryText, 
-                            serviceData.urgencyLevel === 'urgent' ? { color: '#FF5722' } :
-                            serviceData.urgencyLevel === 'high' ? { color: '#FF9800' } : 
-                            { color: Colors.text.primary }
+                          <Text style={[styles.jobSummaryText,
+                          serviceData.urgencyLevel === 'urgent' ? { color: '#FF5722' } :
+                            serviceData.urgencyLevel === 'high' ? { color: '#FF9800' } :
+                              { color: Colors.text.primary }
                           ]}>
                             ⚡ {serviceData.urgencyLevel.toUpperCase()} Priority
                           </Text>
@@ -788,22 +774,22 @@ export function ServiceOfferMessage({
                       <View style={styles.locationContainer}>
                         {serviceData.workType && (
                           <View style={styles.workTypeContainer}>
-                            <View style={[styles.workTypeBadge, 
-                              serviceData.workType === 'remote' ? styles.remoteBadge :
+                            <View style={[styles.workTypeBadge,
+                            serviceData.workType === 'remote' ? styles.remoteBadge :
                               serviceData.workType === 'on_site' ? styles.onsiteBadge : styles.hybridBadge
                             ]}>
                               <Text style={[styles.workTypeText,
-                                serviceData.workType === 'remote' ? styles.remoteText :
+                              serviceData.workType === 'remote' ? styles.remoteText :
                                 serviceData.workType === 'on_site' ? styles.onsiteText : styles.hybridText
                               ]}>
                                 {serviceData.workType === 'remote' ? '🏠 Remote Work' :
-                                 serviceData.workType === 'on_site' ? '🏢 On-site Work' : '🔄 Hybrid Work'}
+                                  serviceData.workType === 'on_site' ? '🏢 On-site Work' : '🔄 Hybrid Work'}
                               </Text>
                             </View>
                             <Text style={styles.workTypeDescription}>
                               {serviceData.workType === 'remote' ? 'Work can be completed remotely from any location' :
-                               serviceData.workType === 'on_site' ? 'Physical presence required. Location will be shared after offer acceptance.' :
-                               'Combination of remote and on-site work as needed'}
+                                serviceData.workType === 'on_site' ? 'Physical presence required. Location will be shared after offer acceptance.' :
+                                  'Combination of remote and on-site work as needed'}
                             </Text>
                           </View>
                         )}
@@ -829,25 +815,25 @@ export function ServiceOfferMessage({
                       <Text style={styles.modalSectionTitle}>⚡ Priority Level</Text>
                       <View style={styles.urgencyContainer}>
                         <View style={[styles.urgencyBadge,
-                           serviceData.urgencyLevel === 'urgent' ? styles.urgentModalBadge :
-                           serviceData.urgencyLevel === 'high' ? styles.highUrgencyModalBadge :
-                           serviceData.urgencyLevel === 'medium' ? styles.mediumUrgencyModalBadge : styles.lowUrgencyModalBadge
-                         ]}>
-                           <Text style={[styles.urgencyModalText,
-                             serviceData.urgencyLevel === 'urgent' ? styles.urgentModalText :
-                             serviceData.urgencyLevel === 'high' ? styles.highUrgencyModalText :
-                             serviceData.urgencyLevel === 'medium' ? styles.mediumUrgencyModalText : styles.lowUrgencyModalText
-                           ]}>
+                        serviceData.urgencyLevel === 'urgent' ? styles.urgentModalBadge :
+                          serviceData.urgencyLevel === 'high' ? styles.highUrgencyModalBadge :
+                            serviceData.urgencyLevel === 'medium' ? styles.mediumUrgencyModalBadge : styles.lowUrgencyModalBadge
+                        ]}>
+                          <Text style={[styles.urgencyModalText,
+                          serviceData.urgencyLevel === 'urgent' ? styles.urgentModalText :
+                            serviceData.urgencyLevel === 'high' ? styles.highUrgencyModalText :
+                              serviceData.urgencyLevel === 'medium' ? styles.mediumUrgencyModalText : styles.lowUrgencyModalText
+                          ]}>
                             {serviceData.urgencyLevel === 'urgent' ? '🔥 URGENT' :
-                             serviceData.urgencyLevel === 'high' ? '⚠️ HIGH PRIORITY' :
-                             serviceData.urgencyLevel === 'medium' ? '📋 MEDIUM PRIORITY' : '📝 LOW PRIORITY'}
+                              serviceData.urgencyLevel === 'high' ? '⚠️ HIGH PRIORITY' :
+                                serviceData.urgencyLevel === 'medium' ? '📋 MEDIUM PRIORITY' : '📝 LOW PRIORITY'}
                           </Text>
                         </View>
                         <Text style={styles.urgencyDescription}>
                           {serviceData.urgencyLevel === 'urgent' ? 'Immediate attention required - ASAP delivery' :
-                           serviceData.urgencyLevel === 'high' ? 'High priority - Quick turnaround needed' :
-                           serviceData.urgencyLevel === 'medium' ? 'Standard priority - Normal timeline' :
-                           'Low priority - Flexible timeline'}
+                            serviceData.urgencyLevel === 'high' ? 'High priority - Quick turnaround needed' :
+                              serviceData.urgencyLevel === 'medium' ? 'Standard priority - Normal timeline' :
+                                'Low priority - Flexible timeline'}
                         </Text>
                       </View>
                     </View>
@@ -882,7 +868,7 @@ export function ServiceOfferMessage({
                         <Text style={styles.modalSectionText}>
                           {serviceData.jobData.description}
                         </Text>
-                        
+
                         <View style={styles.jobMetaContainer}>
                           {serviceData.jobData.budget_amount && (
                             <View style={styles.jobMetaRow}>
@@ -892,7 +878,7 @@ export function ServiceOfferMessage({
                               </Text>
                             </View>
                           )}
-                          
+
                           {serviceData.jobData.payment_type && (
                             <View style={styles.jobMetaRow}>
                               <Text style={styles.jobMetaLabel}>💳 Payment:</Text>
@@ -901,7 +887,7 @@ export function ServiceOfferMessage({
                               </Text>
                             </View>
                           )}
-                          
+
                           {serviceData.jobData.location_address && (
                             <View style={styles.jobMetaRow}>
                               <Text style={styles.jobMetaLabel}>📍 Job Location:</Text>
@@ -948,10 +934,10 @@ export function ServiceOfferMessage({
                             })}
                           </Text>
                           <Text style={[styles.expirationTime, isExpired && { color: Colors.status.error }]}>
-                            at {offerExpiresAt.toLocaleTimeString('en-MY', { 
-                              hour: '2-digit', 
+                            at {offerExpiresAt.toLocaleTimeString('en-MY', {
+                              hour: '2-digit',
                               minute: '2-digit',
-                              hour12: true 
+                              hour12: true
                             })}
                           </Text>
                           {!isExpired && (
@@ -961,7 +947,7 @@ export function ServiceOfferMessage({
                                 const timeLeft = offerExpiresAt.getTime() - now.getTime();
                                 const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
                                 const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                                
+
                                 if (daysLeft > 0) {
                                   return `${daysLeft} day${daysLeft > 1 ? 's' : ''} remaining`;
                                 } else if (hoursLeft > 0) {
@@ -970,7 +956,7 @@ export function ServiceOfferMessage({
                                   return 'Expires soon';
                                 }
                               })()
-                            }
+                              }
                             </Text>
                           )}
                         </View>
@@ -988,7 +974,7 @@ export function ServiceOfferMessage({
                           {serviceData.isCustomOffer ? 'Custom Offer' : 'Standard Service'}
                         </Text>
                       </View>
-                      
+
                       {message.timestamp && (
                         <View style={styles.offerInfoRow}>
                           <Text style={styles.offerInfoLabel}>Created:</Text>
@@ -1008,7 +994,7 @@ export function ServiceOfferMessage({
 
                   <View style={styles.modalFooter}>
                     <Text style={styles.modalNote}>
-                      {serviceData.isCustomOffer ? 
+                      {serviceData.isCustomOffer ?
                         'This is a custom offer created specifically for this conversation with tailored terms and conditions.' :
                         'This offer is based on an existing service with customized details for your specific requirements.'}
                     </Text>
@@ -1017,7 +1003,7 @@ export function ServiceOfferMessage({
               </ScrollView>
 
               {/* Close Button */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={() => setShowOfferDetailsModal(false)}
               >
@@ -1039,7 +1025,7 @@ export function ServiceOfferMessage({
               {/* Header */}
               <View style={styles.rejectModalHeader}>
                 <Text style={styles.rejectModalTitle}>Reject Offer</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.closeButton}
                   onPress={() => setShowRejectModal(false)}
                 >
@@ -1052,7 +1038,7 @@ export function ServiceOfferMessage({
                 <Text style={styles.rejectModalDescription}>
                   Please provide a reason for rejecting this offer (optional):
                 </Text>
-                
+
                 <TextInput
                   style={styles.rejectReasonInput}
                   placeholder="e.g., Price too high, timeline doesn't work, etc."
@@ -1067,14 +1053,14 @@ export function ServiceOfferMessage({
 
               {/* Buttons */}
               <View style={styles.rejectModalButtons}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.rejectCancelButton}
                   onPress={() => setShowRejectModal(false)}
                 >
                   <Text style={styles.rejectCancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.rejectConfirmButton}
                   onPress={handleConfirmReject}
                 >

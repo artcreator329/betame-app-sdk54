@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +23,7 @@ import JobCompletionPhotoUpload from '@/components/JobCompletionPhotoUpload';
 import { supabase } from '@/lib/supabase';
 import { formatMalaysianDate, formatMalaysianTime, formatMalaysianDateTime } from '@/lib/malaysian-time-utils';
 import { ServerPDFService } from '@/lib/server-pdf-service';
-import { BuyerReceiptService, BuyerReceiptData } from '@/lib/buyer-receipt-service';
+import { BuyerInvoiceService, BuyerInvoiceData } from '@/lib/buyer-receipt-service';
 import { UserPDFService, UserPDFData } from '@/lib/user-pdf-service';
 import PDFViewer from '@/components/PDFViewer';
 
@@ -56,6 +57,8 @@ export default function OrdersScreen() {
   const [showPDFViewer, setShowPDFViewer] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
   const [pdfTitle, setPdfTitle] = useState('');
+  const [generatingPDF, setGeneratingPDF] = useState<string | null>(null); // Track which order is generating PDF
+  const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null); // Track which order is generating invoice
 
   // Initialize animation values for each order
   const initializeAnimation = (orderId: string) => {
@@ -67,12 +70,12 @@ export default function OrdersScreen() {
   const toggleExpandAll = () => {
     const newExpandAll = !expandAll;
     setExpandAll(newExpandAll);
-    
+
     if (newExpandAll) {
       // Expand all orders
       const allOrderIds = new Set(filteredOrders.map(order => order.id || ''));
       setExpandedOrders(allOrderIds);
-      
+
       // Animate all expansions
       filteredOrders.forEach(order => {
         const orderId = order.id || '';
@@ -86,7 +89,7 @@ export default function OrdersScreen() {
     } else {
       // Collapse all orders
       setExpandedOrders(new Set());
-      
+
       // Animate all collapses
       filteredOrders.forEach(order => {
         const orderId = order.id || '';
@@ -103,7 +106,7 @@ export default function OrdersScreen() {
   const toggleOrderExpansion = (orderId: string) => {
     const newExpandedOrders = new Set(expandedOrders);
     const isExpanded = newExpandedOrders.has(orderId);
-    
+
     if (isExpanded) {
       newExpandedOrders.delete(orderId);
       // Animate collapse
@@ -121,19 +124,19 @@ export default function OrdersScreen() {
         useNativeDriver: false,
       }).start();
     }
-    
+
     setExpandedOrders(newExpandedOrders);
   };
 
   const fetchOrders = async () => {
     if (!user?.id) return;
-    
+
     console.log('🔄 fetchOrders called for user:', user.id);
-    
+
     try {
       // Import ActiveJobService dynamically
       const { ActiveJobService } = await import('@/lib/active-job-service');
-      
+
       // Fetch both escrow-based and direct orders
       const [buyerEscrowOrders, sellerEscrowOrders, activeJobs] = await Promise.all([
         EscrowService.getBuyerJobs(user.id),
@@ -169,20 +172,20 @@ export default function OrdersScreen() {
       // Add perspective flag to active jobs
       const buyerActiveJobsWithPerspective = activeJobs.asBuyer.map(job => {
         const mappedStatus = job.status === 'pending_confirmation' ? 'payment_received' :
-                       job.status === 'in_progress' ? 'work_in_progress' : 
-                       job.status === 'completed' ? 'buyer_reviewing' :
-                       job.status === 'payment_release_in_progress' ? 'payment_release_in_progress' :
-                       job.status === 'completed_confirmed' ? 'completed' :
-                       job.status === 'revision_requested' ? 'revision_requested' :
-                       job.status === 'revision_in_progress' ? 'revision_in_progress' :
-                       job.status === 'revision_completed' ? 'revision_completed' : 'payment_received';
-        
-        console.log('🔍 Mapping buyer job status:', { 
-          jobId: job.id, 
-          originalStatus: job.status, 
-          mappedStatus 
+          job.status === 'in_progress' ? 'work_in_progress' :
+            job.status === 'completed' ? 'buyer_reviewing' :
+              job.status === 'payment_release_in_progress' ? 'payment_release_in_progress' :
+                job.status === 'completed_confirmed' ? 'completed' :
+                  job.status === 'revision_requested' ? 'revision_requested' :
+                    job.status === 'revision_in_progress' ? 'revision_in_progress' :
+                      job.status === 'revision_completed' ? 'revision_completed' : 'payment_received';
+
+        console.log('🔍 Mapping buyer job status:', {
+          jobId: job.id,
+          originalStatus: job.status,
+          mappedStatus
         });
-        
+
         return {
           ...job,
           perspective: 'buyer' as const,
@@ -193,20 +196,20 @@ export default function OrdersScreen() {
 
       const sellerActiveJobsWithPerspective = activeJobs.asServiceProvider.map(job => {
         const mappedStatus = job.status === 'pending_confirmation' ? 'payment_received' :
-                       job.status === 'in_progress' ? 'work_in_progress' : 
-                       job.status === 'completed' ? 'buyer_reviewing' :
-                       job.status === 'payment_release_in_progress' ? 'payment_release_in_progress' :
-                       job.status === 'completed_confirmed' ? 'completed' :
-                       job.status === 'revision_requested' ? 'revision_requested' :
-                       job.status === 'revision_in_progress' ? 'revision_in_progress' :
-                       job.status === 'revision_completed' ? 'revision_completed' : 'payment_received';
-        
-        console.log('🔍 Mapping seller job status:', { 
-          jobId: job.id, 
-          originalStatus: job.status, 
-          mappedStatus 
+          job.status === 'in_progress' ? 'work_in_progress' :
+            job.status === 'completed' ? 'buyer_reviewing' :
+              job.status === 'payment_release_in_progress' ? 'payment_release_in_progress' :
+                job.status === 'completed_confirmed' ? 'completed' :
+                  job.status === 'revision_requested' ? 'revision_requested' :
+                    job.status === 'revision_in_progress' ? 'revision_in_progress' :
+                      job.status === 'revision_completed' ? 'revision_completed' : 'payment_received';
+
+        console.log('🔍 Mapping seller job status:', {
+          jobId: job.id,
+          originalStatus: job.status,
+          mappedStatus
         });
-        
+
         return {
           ...job,
           perspective: 'seller' as const,
@@ -217,17 +220,17 @@ export default function OrdersScreen() {
 
       // Combine all orders and sort by creation date
       const allOrders = [
-        ...buyerEscrowOrdersWithPerspective, 
+        ...buyerEscrowOrdersWithPerspective,
         ...sellerEscrowOrdersWithPerspective,
         ...buyerActiveJobsWithPerspective,
         ...sellerActiveJobsWithPerspective
       ].sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime());
 
-      console.log('🔍 Final orders with statuses:', allOrders.map(o => ({ 
-        id: o.id, 
-        status: o.current_status, 
+      console.log('🔍 Final orders with statuses:', allOrders.map(o => ({
+        id: o.id,
+        status: o.current_status,
         perspective: (o as any).perspective,
-        orderType: (o as any).orderType 
+        orderType: (o as any).orderType
       })));
 
       setOrders(allOrders);
@@ -361,7 +364,7 @@ export default function OrdersScreen() {
         // Import ActiveJobService dynamically
         const { ActiveJobService } = await import('@/lib/active-job-service');
         const success = await ActiveJobService.confirmJob(order.id, user!.id);
-        
+
         if (success) {
           Alert.alert('Order Confirmed!', 'You have confirmed the order and can now start working. The buyer has been notified.');
           fetchOrders();
@@ -406,7 +409,7 @@ export default function OrdersScreen() {
     // Photos are optional but recommended
     if (completionPhotos.length === 0) {
       Alert.alert(
-        'No Photos Uploaded', 
+        'No Photos Uploaded',
         'You haven\'t uploaded any photos. While photos are recommended to show completed work, you can still proceed without them.',
         [
           { text: 'Cancel', style: 'cancel' },
@@ -415,7 +418,7 @@ export default function OrdersScreen() {
       );
       return;
     }
-    
+
     proceedWithCompletion();
   };
 
@@ -428,10 +431,10 @@ export default function OrdersScreen() {
         // For direct orders, use ActiveJobService
         const { ActiveJobService } = await import('@/lib/active-job-service');
         const success = await ActiveJobService.completeJob(selectedOrder.id);
-        
+
         if (success) {
           Alert.alert(
-            'Work Completed!', 
+            'Work Completed!',
             'The job has been marked as completed. The buyer will be notified and can review your work.'
           );
           setShowCompletionModal(false);
@@ -452,16 +455,16 @@ export default function OrdersScreen() {
             .single();
 
           if (error || !jobStatus) {
-                      // Fallback to original EscrowService if job status not found
-          const result = await EscrowService.completeWork(
-            selectedOrder.id!, 
-            user!.id, 
-            completionNotes
-          );
-            
+            // Fallback to original EscrowService if job status not found
+            const result = await EscrowService.completeWork(
+              selectedOrder.id!,
+              user!.id,
+              completionNotes
+            );
+
             if (result.success) {
               Alert.alert(
-                'Work Completed!', 
+                'Work Completed!',
                 'The buyer has been notified and will review your work. Payment will be released upon their confirmation.'
               );
               setShowCompletionModal(false);
@@ -483,10 +486,10 @@ export default function OrdersScreen() {
             completionPhotos,
             completionNotes.trim() || undefined
           );
-          
+
           if (success) {
             Alert.alert(
-              'Work Completed!', 
+              'Work Completed!',
               'The job has been marked as completed with photos. The buyer will be notified and can review your work.'
             );
             setShowCompletionModal(false);
@@ -501,14 +504,14 @@ export default function OrdersScreen() {
           console.error('Error finding job status:', jobStatusError);
           // Fallback to original EscrowService
           const result = await EscrowService.completeWork(
-            selectedOrder.id!, 
-            user!.id, 
+            selectedOrder.id!,
+            user!.id,
             completionNotes
           );
-          
+
           if (result.success) {
             Alert.alert(
-              'Work Completed!', 
+              'Work Completed!',
               'The buyer has been notified and will review your work. Payment will be released upon their confirmation.'
             );
             setShowCompletionModal(false);
@@ -543,10 +546,10 @@ export default function OrdersScreen() {
           user!.id,
           revisionReason.trim()
         );
-        
+
         if (result.success) {
           Alert.alert(
-            'Revision Requested', 
+            'Revision Requested',
             'Your revision request has been sent to the service provider. They will respond within the deadline.'
           );
           setShowReviewModal(false);
@@ -564,10 +567,10 @@ export default function OrdersScreen() {
           user!.id,
           revisionReason.trim()
         );
-        
+
         if (result.success) {
           Alert.alert(
-            'Revision Requested', 
+            'Revision Requested',
             'Your revision request has been sent to the service provider. They will respond within the deadline.'
           );
           setShowReviewModal(false);
@@ -593,10 +596,10 @@ export default function OrdersScreen() {
         // Handle direct orders
         const { ActiveJobService } = await import('@/lib/active-job-service');
         const result = await ActiveJobService.acknowledgeRevision(order.id!, user!.id);
-        
+
         if (result.success) {
           Alert.alert(
-            'Revision Confirmed!', 
+            'Revision Confirmed!',
             'You have confirmed the revision request and can now start working on the improvements.'
           );
           fetchOrders();
@@ -606,10 +609,10 @@ export default function OrdersScreen() {
       } else {
         // Handle escrow orders
         const result = await EscrowService.acknowledgeRevision(order.id!, user!.id);
-        
+
         if (result.success) {
           Alert.alert(
-            'Revision Confirmed!', 
+            'Revision Confirmed!',
             'You have confirmed the revision request and can now start working on the improvements.'
           );
           fetchOrders();
@@ -631,8 +634,8 @@ export default function OrdersScreen() {
       'Please provide a reason for disputing this revision request:',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Submit Dispute', 
+        {
+          text: 'Submit Dispute',
           onPress: async (disputeReason) => {
             if (!disputeReason || disputeReason.trim().length === 0) {
               Alert.alert('Required Field', 'Please provide a reason for disputing the revision.');
@@ -645,10 +648,10 @@ export default function OrdersScreen() {
                 // Handle direct orders
                 const { ActiveJobService } = await import('@/lib/active-job-service');
                 const result = await ActiveJobService.disputeRevision(order.id!, user!.id, disputeReason.trim());
-                
+
                 if (result.success) {
                   Alert.alert(
-                    'Dispute Filed', 
+                    'Dispute Filed',
                     'Your dispute has been filed and the buyer has been notified.'
                   );
                   fetchOrders();
@@ -658,10 +661,10 @@ export default function OrdersScreen() {
               } else {
                 // Handle escrow orders
                 const result = await EscrowService.disputeRevision(order.id!, user!.id, disputeReason.trim());
-                
+
                 if (result.success) {
                   Alert.alert(
-                    'Dispute Filed', 
+                    'Dispute Filed',
                     'Your dispute has been filed and the buyer has been notified.'
                   );
                   fetchOrders();
@@ -688,10 +691,10 @@ export default function OrdersScreen() {
         // Import ActiveJobService dynamically
         const { ActiveJobService } = await import('@/lib/active-job-service');
         const success = await ActiveJobService.confirmJobCompletion(selectedOrder.id, user!.id, rating, feedback);
-        
+
         if (success) {
           Alert.alert(
-            'Job Confirmed!', 
+            'Job Confirmed!',
             'You have confirmed the job completion. The service provider has been notified and payment has been released.'
           );
           setShowReviewModal(false);
@@ -710,10 +713,10 @@ export default function OrdersScreen() {
           rating,
           feedback
         );
-        
+
         if (result.success) {
           Alert.alert(
-            'Payment Released!', 
+            'Payment Released!',
             'The seller has been paid and the job is now complete. Thank you for your business!'
           );
           setShowReviewModal(false);
@@ -740,11 +743,11 @@ export default function OrdersScreen() {
         startNow,
         startNow ? undefined : scheduledStartDate
       );
-      
+
       if (result.success) {
         Alert.alert(
-          'Order Acknowledged!', 
-          startNow 
+          'Order Acknowledged!',
+          startNow
             ? 'You have started working on this order. The buyer has been notified.'
             : `You have scheduled to start this order on ${formatMalaysianDate(scheduledStartDate)}. The buyer has been notified.`
         );
@@ -782,17 +785,17 @@ export default function OrdersScreen() {
     try {
       // Check if this is a direct order or escrow order
       if ((selectedOrder as any).orderType === 'direct') {
-                          // For direct orders, create a review record
-                  const { error: reviewError } = await supabase
-                    .from('reviews')
-                    .insert({
-                      reviewer_id: user!.id,
-                      reviewee_id: (selectedOrder as any).service_provider_id,
-                      service_id: (selectedOrder as any).service_id || null,
-                      order_id: null, // Set to null for active_jobs orders
-                      rating: completedJobRating,
-                      comment: completedJobFeedback
-                    });
+        // For direct orders, create a review record
+        const { error: reviewError } = await supabase
+          .from('reviews')
+          .insert({
+            reviewer_id: user!.id,
+            reviewee_id: (selectedOrder as any).service_provider_id,
+            service_id: (selectedOrder as any).service_id || null,
+            order_id: null, // Set to null for active_jobs orders
+            rating: completedJobRating,
+            comment: completedJobFeedback
+          });
 
         if (reviewError) {
           console.error('Error creating review:', reviewError);
@@ -817,21 +820,21 @@ export default function OrdersScreen() {
         });
 
         Alert.alert(
-          'Review Submitted!', 
+          'Review Submitted!',
           'Thank you for your review. The service provider has been notified.'
         );
       } else {
-                          // For escrow orders, create a review record
-                  const { error: reviewError } = await supabase
-                    .from('reviews')
-                    .insert({
-                      reviewer_id: user!.id,
-                      reviewee_id: (selectedOrder as any).service_provider_id,
-                      service_id: (selectedOrder as any).service_id || null,
-                      order_id: null, // Set to null since we don't have legacy_orders reference
-                      rating: completedJobRating,
-                      comment: completedJobFeedback
-                    });
+        // For escrow orders, create a review record
+        const { error: reviewError } = await supabase
+          .from('reviews')
+          .insert({
+            reviewer_id: user!.id,
+            reviewee_id: (selectedOrder as any).service_provider_id,
+            service_id: (selectedOrder as any).service_id || null,
+            order_id: null, // Set to null since we don't have legacy_orders reference
+            rating: completedJobRating,
+            comment: completedJobFeedback
+          });
 
         if (reviewError) {
           console.error('Error creating review:', reviewError);
@@ -855,7 +858,7 @@ export default function OrdersScreen() {
         });
 
         Alert.alert(
-          'Review Submitted!', 
+          'Review Submitted!',
           'Thank you for your review. The service provider has been notified.'
         );
       }
@@ -871,55 +874,61 @@ export default function OrdersScreen() {
     }
   };
 
-  const handleViewPDFReceipt = async (orderId: string) => {
+  const handleViewPDFInvoice = async (orderId: string) => {
     try {
-      console.log('🔍 Looking for buyer receipt for order ID:', orderId);
-      
-      // First, check if a buyer receipt already exists
-      let result = await BuyerReceiptService.getBuyerReceipt(orderId);
-      
+      // Set loading state for this specific order
+      setGeneratingInvoice(orderId);
+
+      console.log('🔍 Looking for buyer invoice for order ID:', orderId);
+
+      // First, check if a buyer invoice already exists
+      let result = await BuyerInvoiceService.getBuyerReceipt(orderId);
+
       // If not found, try to find the related active job
       if (!result.success) {
-        console.log('🔍 Buyer receipt not found with order ID, checking for related active job...');
-        
+        console.log('🔍 Buyer invoice not found with order ID, checking for related active job...');
+
         // Check if there's an active job related to this escrow transaction
         const { data: activeJob, error } = await supabase
           .from('active_jobs')
           .select('id')
           .eq('service_offer_id', orderId)
           .single();
-        
+
         if (!error && activeJob) {
           console.log('🔍 Found related active job ID:', activeJob.id);
-          result = await BuyerReceiptService.getBuyerReceipt(activeJob.id);
+          result = await BuyerInvoiceService.getBuyerReceipt(activeJob.id);
         }
       }
-      
+
       if (result.success && result.pdfUrl) {
-        console.log('✅ Buyer receipt found, opening in-app viewer:', result.pdfUrl);
-        
+        console.log('✅ Buyer invoice found, opening in-app viewer:', result.pdfUrl);
+
         // Open PDF in in-app viewer
         setPdfUrl(result.pdfUrl);
-        setPdfTitle('Buyer Receipt');
+        setPdfTitle('Invoice');
         setShowPDFViewer(true);
       } else {
-        console.log('❌ Buyer receipt not found, generating new one for order ID:', orderId);
-        
-        // Generate new buyer receipt
-        await generateBuyerReceipt(orderId);
+        console.log('❌ Buyer invoice not found, generating new one for order ID:', orderId);
+
+        // Generate new buyer invoice
+        await generateBuyerInvoice(orderId);
       }
     } catch (error) {
-      console.error('Error viewing buyer receipt:', error);
-      Alert.alert('Error', 'Failed to open buyer receipt');
+      console.error('Error viewing buyer invoice:', error);
+      Alert.alert('Error', 'Failed to open buyer invoice');
+    } finally {
+      // Clear loading state
+      setGeneratingInvoice(null);
     }
   };
 
 
 
-  const generateBuyerReceipt = async (orderId: string) => {
+  const generateBuyerInvoice = async (orderId: string) => {
     try {
-      console.log('📄 Generating new buyer receipt for order ID:', orderId);
-      
+      console.log('📄 Generating new buyer invoice for order ID:', orderId);
+
       let jobData: any = null;
       let escrowData: any = null;
       let tableSource = 'job_status';
@@ -952,7 +961,7 @@ export default function OrdersScreen() {
           console.log('✅ Found in active_jobs table');
           jobData = activeJob;
           tableSource = 'active_jobs';
-          
+
           // For active_jobs, we need to get escrow data differently
           if (activeJob.payment_transaction_id) {
             const { data: escrowTransaction } = await supabase
@@ -1018,17 +1027,30 @@ export default function OrdersScreen() {
       let completionDate = new Date().toISOString();
 
       if (escrowData) {
-        serviceAmount = escrowData.amount / 100; // Convert from cents
+        // For escrow data, the amount is what the buyer actually paid (total including fee)
+        totalPaid = escrowData.amount / 100; // Convert from cents - this is what buyer actually paid
+        // IMPORTANT: The service amount should be calculated by removing the 2.2% fee from total
+        // If total = service + (service * 0.022), then service = total / 1.022
+        serviceAmount = totalPaid / 1.022; // Original service provider price (background calculation)
+        buyerFee = totalPaid - serviceAmount; // The actual 2.2% fee paid
         serviceTitle = escrowData.service_title || 'Service';
         paymentDate = escrowData.created_at;
       } else if (jobData.price) {
-        serviceAmount = parseFloat(jobData.price);
+        // For job data, check if this is the total paid or the service amount
+        if (jobData.total_paid) {
+          totalPaid = parseFloat(jobData.total_paid);
+          // IMPORTANT: The service amount should be calculated by removing the 2.2% fee from total
+          serviceAmount = totalPaid / 1.022; // Original service provider price (background calculation)
+          buyerFee = totalPaid - serviceAmount; // The actual 2.2% fee paid
+        } else {
+          // If only price is available, treat it as total paid amount
+          totalPaid = parseFloat(jobData.price);
+          serviceAmount = totalPaid / 1.022; // Original service provider price (background calculation)
+          buyerFee = totalPaid - serviceAmount; // The actual 2.2% fee paid
+        }
         serviceTitle = jobData.title || 'Service';
         paymentDate = jobData.created_at;
       }
-
-      buyerFee = serviceAmount * 0.022; // 2.2% processing fee
-      totalPaid = serviceAmount + buyerFee;
 
       if (jobData.completion_confirmed_at) {
         completionDate = jobData.completion_confirmed_at;
@@ -1036,8 +1058,8 @@ export default function OrdersScreen() {
         completionDate = jobData.completed_at;
       }
 
-      // Prepare buyer receipt data
-      const buyerReceiptData: BuyerReceiptData = {
+      // Prepare buyer invoice data
+      const buyerInvoiceData: BuyerInvoiceData = {
         jobId: orderId,
         jobTableSource: tableSource,
         buyerId: buyerId,
@@ -1052,68 +1074,74 @@ export default function OrdersScreen() {
         completionDate: completionDate
       };
 
-      console.log('📄 Buyer receipt data prepared:', buyerReceiptData);
+      console.log('📄 Buyer invoice data prepared:', buyerInvoiceData);
 
-      // Generate and store buyer receipt
-      const result = await BuyerReceiptService.generateAndStoreBuyerReceipt(buyerReceiptData);
+      // Generate and store buyer invoice
+      const result = await BuyerInvoiceService.generateAndStoreBuyerInvoice(buyerInvoiceData);
 
       if (result.success && result.pdfUrl) {
-        console.log('✅ Buyer receipt generated successfully:', result.pdfUrl);
-        
+        console.log('✅ Buyer invoice generated successfully:', result.pdfUrl);
+
         // Open PDF in in-app viewer
         setPdfUrl(result.pdfUrl);
-        setPdfTitle('Buyer Receipt');
+        setPdfTitle('Invoice');
         setShowPDFViewer(true);
       } else {
-        console.error('❌ Failed to generate buyer receipt:', result.error);
-        Alert.alert('Error', 'Failed to generate buyer receipt');
+        console.error('❌ Failed to generate buyer invoice:', result.error);
+        Alert.alert('Error', 'Failed to generate buyer invoice');
       }
     } catch (error) {
-      console.error('Error generating buyer receipt:', error);
-      Alert.alert('Error', 'Failed to generate buyer receipt');
+      console.error('Error generating buyer invoice:', error);
+      Alert.alert('Error', 'Failed to generate buyer invoice');
     }
   };
 
   const handleViewTransactionSlip = async (orderId: string) => {
     try {
+      // Set loading state for this specific order
+      setGeneratingPDF(orderId);
+
       console.log('🔍 Looking for existing transaction slip for order ID:', orderId);
-      
+
       // First, check if a user PDF already exists
       let result = await UserPDFService.getPDFReceipt(orderId);
-      
+
       // If not found, try to find the related active job
       if (!result.success) {
         console.log('🔍 Transaction slip not found with order ID, checking for related active job...');
-        
+
         // Check if there's an active job related to this escrow transaction
         const { data: activeJob, error } = await supabase
           .from('active_jobs')
           .select('id')
           .eq('service_offer_id', orderId)
           .single();
-        
+
         if (!error && activeJob) {
           console.log('🔍 Found related active job ID:', activeJob.id);
           result = await UserPDFService.getPDFReceipt(activeJob.id);
         }
       }
-      
+
       if (result.success && result.pdfUrl) {
         console.log('✅ Existing transaction slip found, opening:', result.pdfUrl);
-        
+
         // Open existing PDF in in-app viewer
         setPdfUrl(result.pdfUrl);
         setPdfTitle('Transaction Slip');
         setShowPDFViewer(true);
       } else {
         console.log('📄 No existing slip found, generating new transaction slip (one-time action)...');
-        
+
         // Generate new transaction slip (one-time action - will be stored permanently)
         await generateTransactionSlip(orderId);
       }
     } catch (error) {
       console.error('Error viewing transaction slip:', error);
       Alert.alert('Error', 'Failed to open transaction slip');
+    } finally {
+      // Clear loading state
+      setGeneratingPDF(null);
     }
   };
 
@@ -1121,7 +1149,10 @@ export default function OrdersScreen() {
     try {
       console.log('📄 Generating new transaction slip for order ID:', orderId);
       console.log('💾 This is a one-time action - slip will be permanently stored in Supabase');
-      
+
+      // Show user feedback that generation is in progress
+      Alert.alert('Generating Transaction Slip', 'Please wait while we prepare your transaction slip...', [], { cancelable: false });
+
       let jobData: any = null;
       let tableSource = 'job_status';
 
@@ -1206,18 +1237,24 @@ export default function OrdersScreen() {
       let paymentDate = new Date().toISOString();
       let completionDate = new Date().toISOString();
 
+      let rawAmount = 0;
       if (jobData.escrow_transactions) {
-        serviceAmount = jobData.escrow_transactions.amount / 100; // Convert from cents
+        rawAmount = jobData.escrow_transactions.amount / 100; // Convert from cents
         serviceTitle = jobData.escrow_transactions.service_title || 'Service';
         paymentDate = jobData.escrow_transactions.created_at;
       } else if (jobData.price) {
-        serviceAmount = parseFloat(jobData.price);
+        rawAmount = parseFloat(jobData.price);
         serviceTitle = jobData.title || 'Service';
         paymentDate = jobData.created_at;
       }
 
-      platformFee = serviceAmount * 0.022; // 2.2% platform fee
-      netPayout = serviceAmount - platformFee;
+      // IMPORTANT: The Original Amount should be the raw amount MINUS the 2.2% platform fee
+      // This is what the service provider actually receives before service fee deduction
+      serviceAmount = rawAmount * (1 - 0.022); // Deduct 2.2% platform fee
+
+      // Platform fee is paid by buyer, not shown to service provider
+      platformFee = 0;
+      netPayout = serviceAmount; // Service provider gets amount after platform fee deduction
 
       if (jobData.completion_confirmed_at) {
         completionDate = jobData.completion_confirmed_at;
@@ -1225,11 +1262,11 @@ export default function OrdersScreen() {
         completionDate = jobData.completed_at;
       }
 
-      // Calculate service fee (RM4.90 or 11%, whichever is higher)
+      // Calculate service fee (RM4.90 or 11%, whichever is higher) - this is the only deduction for service provider
       const serviceFeePercentage = serviceAmount * 0.11;
       const serviceFeeFixed = 4.90;
       const serviceFee = Math.max(serviceFeePercentage, serviceFeeFixed);
-      const finalNetPayout = serviceAmount - platformFee - serviceFee;
+      const finalNetPayout = serviceAmount - serviceFee; // Only deduct service fee, not platform fee
 
       // Get user emails (using profiles table which should have email info)
       const { data: buyerProfileWithEmail } = await supabase
@@ -1246,20 +1283,20 @@ export default function OrdersScreen() {
 
       // Get current user's profile (the service provider generating the slip)
       console.log('🔍 Current user ID:', user?.id);
-      
+
       let currentUserProfile = null;
       let currentUserError = null;
-      
+
       if (user?.id) {
         const { data, error } = await supabase
           .from('user_profiles')
           .select('full_name, display_name, email')
           .eq('user_id', user.id)
           .single();
-        
+
         currentUserProfile = data;
         currentUserError = error;
-        
+
         if (currentUserError) {
           console.error('❌ Error fetching current user profile:', currentUserError);
         } else {
@@ -1303,11 +1340,18 @@ export default function OrdersScreen() {
 
       if (result.success && result.pdfUrl) {
         console.log('✅ Transaction slip generated successfully:', result.pdfUrl);
-        
-        // Open PDF in in-app viewer
-        setPdfUrl(result.pdfUrl);
-        setPdfTitle('Transaction Slip');
-        setShowPDFViewer(true);
+
+        // Dismiss loading alert
+        Alert.alert('Success', 'Transaction slip generated successfully!', [
+          {
+            text: 'View Transaction Slip', onPress: () => {
+              // Open PDF in in-app viewer
+              setPdfUrl(result.pdfUrl);
+              setPdfTitle('Transaction Slip');
+              setShowPDFViewer(true);
+            }
+          }
+        ]);
       } else {
         console.error('❌ Failed to generate transaction slip:', result.error);
         Alert.alert('Error', 'Failed to generate transaction slip');
@@ -1323,7 +1367,7 @@ export default function OrdersScreen() {
   const handleContactBuyer = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
     // Get the buyer ID from the order
     const buyerId = order.buyer_id;
-    
+
     if (!buyerId) {
       Alert.alert('Error', 'Buyer information not available');
       return;
@@ -1332,7 +1376,7 @@ export default function OrdersScreen() {
     // Navigate to chat with the buyer
     router.push({
       pathname: '/chat/[participantId]',
-      params: { 
+      params: {
         participantId: buyerId,
         chatId: '',
         prefilledMessage: `Hi! I'm contacting you about our order: ${(order as any).escrow_transactions?.service_title || 'Service Order'}`
@@ -1343,7 +1387,7 @@ export default function OrdersScreen() {
   const handleContactServiceProvider = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
     // Get the service provider ID from the order
     const serviceProviderId = order.service_provider_id;
-    
+
     if (!serviceProviderId) {
       Alert.alert('Error', 'Service provider information not available');
       return;
@@ -1352,7 +1396,7 @@ export default function OrdersScreen() {
     // Navigate to chat with the service provider
     router.push({
       pathname: '/chat/[participantId]',
-      params: { 
+      params: {
         participantId: serviceProviderId,
         chatId: '',
         prefilledMessage: `Hi! I'm contacting you about our order: ${(order as any).escrow_transactions?.service_title || 'Service Order'}`
@@ -1417,10 +1461,10 @@ export default function OrdersScreen() {
    */
   const isWithinReviewWindow = (order: any): boolean => {
     if (order.current_status !== 'completed') return false;
-    
+
     // Get completion date from different sources based on order type
     let completionDate: string | null = null;
-    
+
     if ((order as any).orderType === 'escrow') {
       // For escrow orders, check completion_confirmed_at
       completionDate = order.completion_confirmed_at;
@@ -1428,13 +1472,13 @@ export default function OrdersScreen() {
       // For direct orders, check completed_at or updated_at when status changed to completed_confirmed
       completionDate = (order as any).completed_at || (order as any).updated_at;
     }
-    
+
     if (!completionDate) return false;
-    
+
     const completionTime = new Date(completionDate).getTime();
     const currentTime = new Date().getTime();
     const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-    
+
     return (currentTime - completionTime) <= sevenDaysInMs;
   };
 
@@ -1443,28 +1487,28 @@ export default function OrdersScreen() {
    */
   const getRemainingReviewDays = (order: any): number => {
     if (!isWithinReviewWindow(order)) return 0;
-    
+
     let completionDate: string | null = null;
-    
+
     if ((order as any).orderType === 'escrow') {
       completionDate = order.completion_confirmed_at;
     } else {
       completionDate = (order as any).completed_at || (order as any).updated_at;
     }
-    
+
     if (!completionDate) return 0;
-    
+
     const completionTime = new Date(completionDate).getTime();
     const currentTime = new Date().getTime();
     const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
     const remainingMs = sevenDaysInMs - (currentTime - completionTime);
-    
+
     return Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
   };
 
   const getQuickActionButton = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
     const escrowTransaction = (order as any).escrow_transactions;
-    
+
     if (order.perspective === 'seller') {
       // Seller perspective quick actions
       switch (order.current_status) {
@@ -1481,7 +1525,7 @@ export default function OrdersScreen() {
               <Text style={styles.quickActionText}>Acknowledge</Text>
             </TouchableOpacity>
           );
-        
+
         case 'payment_received':
           return (
             <TouchableOpacity
@@ -1492,7 +1536,7 @@ export default function OrdersScreen() {
               <Text style={styles.quickActionText}>Confirm</Text>
             </TouchableOpacity>
           );
-        
+
         case 'work_in_progress':
           return (
             <TouchableOpacity
@@ -1514,7 +1558,7 @@ export default function OrdersScreen() {
               <Text style={styles.quickActionText}>Payment Pending</Text>
             </View>
           );
-        
+
         default:
           return null;
       }
@@ -1535,7 +1579,7 @@ export default function OrdersScreen() {
               <Text style={styles.quickActionText}>Review</Text>
             </TouchableOpacity>
           );
-        
+
         default:
           return null;
       }
@@ -1544,7 +1588,7 @@ export default function OrdersScreen() {
 
   const getActionButton = (order: JobStatus & { perspective: 'buyer' | 'seller' }) => {
     const escrowTransaction = (order as any).escrow_transactions;
-    
+
     if (order.perspective === 'seller') {
       // Seller perspective actions
       switch (order.current_status) {
@@ -1575,7 +1619,7 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'payment_received':
           return (
             <View style={styles.actionButtonContainer}>
@@ -1600,7 +1644,7 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'work_in_progress':
           return (
             <View style={styles.actionButtonContainer}>
@@ -1628,7 +1672,7 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'work_completed':
         case 'buyer_reviewing':
           return (
@@ -1717,22 +1761,33 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'completed':
           return (
             <View style={styles.completedOrderActionsContainer}>
               {/* Primary Actions Row */}
               <View style={styles.primaryActionsRow}>
                 <TouchableOpacity
-                  style={[styles.optimizedActionButton, styles.downloadTransactionSlipButton]}
-                  onPress={() => order.id && handleViewTransactionSlip(order.id)}
-                  activeOpacity={0.8}
+                  style={[
+                    styles.optimizedActionButton,
+                    styles.downloadTransactionSlipButton,
+                    generatingPDF === order.id && styles.buttonDisabled
+                  ]}
+                  onPress={() => order.id && !generatingPDF && handleViewTransactionSlip(order.id)}
+                  activeOpacity={generatingPDF === order.id ? 1 : 0.8}
+                  disabled={generatingPDF === order.id}
                 >
                   <View style={styles.buttonContent}>
                     <View style={styles.buttonIconContainer}>
-                      <Ionicons name="receipt-outline" size={20} color="#fff" />
+                      {generatingPDF === order.id ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Ionicons name="document-text-outline" size={20} color="#fff" />
+                      )}
                     </View>
-                    <Text style={styles.optimizedButtonText}>Download Transaction Slip</Text>
+                    <Text style={styles.optimizedButtonText}>
+                      {generatingPDF === order.id ? 'Generating...' : 'Download Transaction Slip'}
+                    </Text>
                   </View>
                   <View style={styles.buttonShine} />
                 </TouchableOpacity>
@@ -1750,7 +1805,7 @@ export default function OrdersScreen() {
                   <View style={styles.buttonShine} />
                 </TouchableOpacity>
               </View>
-              
+
 
             </View>
           );
@@ -1777,7 +1832,7 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
-        
+
         default:
           return null;
       }
@@ -1800,7 +1855,7 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'payment_received':
           return (
             <View style={styles.actionButtonContainer}>
@@ -1817,7 +1872,7 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'work_in_progress':
           return (
             <View style={styles.actionButtonContainer}>
@@ -1834,7 +1889,7 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'work_completed':
         case 'buyer_reviewing':
           return (
@@ -1858,25 +1913,35 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'completed':
           return (
             <View style={styles.completedOrderActionsContainer}>
               {/* Primary Actions Row */}
               <View style={styles.primaryActionsRow}>
-                              <TouchableOpacity
-                style={[styles.primaryActionButton, { backgroundColor: '#10B981' }]}
-                onPress={() => order.id && handleViewPDFReceipt(order.id)}
-              >
-                <View style={styles.buttonIconContainer}>
-                  <Ionicons name="document-text-outline" size={20} color="#fff" />
-                </View>
-                <Text style={styles.primaryActionButtonText}>Download Buyer Receipt</Text>
-              </TouchableOpacity>
-              
-              {/* Temporary delete button for testing */}
-              
-                
+                <TouchableOpacity
+                  style={[
+                    styles.primaryActionButton,
+                    { backgroundColor: '#10B981' },
+                    generatingInvoice === order.id && styles.buttonDisabled
+                  ]}
+                  onPress={() => order.id && !generatingInvoice && handleViewPDFInvoice(order.id)}
+                  activeOpacity={generatingInvoice === order.id ? 1 : 0.8}
+                  disabled={generatingInvoice === order.id}
+                >
+                  <View style={styles.buttonIconContainer}>
+                    {generatingInvoice === order.id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="document-text-outline" size={20} color="#fff" />
+                    )}
+                  </View>
+                  <Text style={styles.primaryActionButtonText}>
+                    {generatingInvoice === order.id ? 'Generating...' : 'Download Invoice'}
+                  </Text>
+                </TouchableOpacity>
+
+
                 {isWithinReviewWindow(order) && (
                   <TouchableOpacity
                     style={[styles.primaryActionButton, { backgroundColor: '#F59E0B' }]}
@@ -1899,7 +1964,7 @@ export default function OrdersScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-              
+
               {/* Secondary Action Row */}
               <TouchableOpacity
                 style={styles.secondaryActionButton}
@@ -1987,7 +2052,7 @@ export default function OrdersScreen() {
               </TouchableOpacity>
             </View>
           );
-        
+
         default:
           return null;
       }
@@ -1998,7 +2063,7 @@ export default function OrdersScreen() {
     // Filter by perspective (buying/selling)
     if (filter === 'buying' && (order as any).perspective !== 'buyer') return false;
     if (filter === 'selling' && (order as any).perspective !== 'seller') return false;
-    
+
     // Filter by status
     if (statusFilter === 'active') {
       return ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing', 'payment_release_in_progress', 'revision_requested', 'revision_in_progress', 'revision_completed'].includes(order.current_status);
@@ -2006,18 +2071,18 @@ export default function OrdersScreen() {
     if (statusFilter === 'completed') {
       return order.current_status === 'completed';
     }
-    
+
     return true;
   });
 
   const getOrderCounts = () => {
     const buying = orders.filter(o => (o as any).perspective === 'buyer').length;
     const selling = orders.filter(o => (o as any).perspective === 'seller').length;
-    const active = orders.filter(o => 
+    const active = orders.filter(o =>
       ['acknowledgment_pending', 'payment_received', 'work_in_progress', 'work_completed', 'buyer_reviewing', 'payment_release_in_progress', 'revision_requested', 'revision_in_progress', 'revision_completed'].includes(o.current_status)
     ).length;
     const completed = orders.filter(o => o.current_status === 'completed').length;
-    
+
     return { buying, selling, active, completed };
   };
 
@@ -2062,7 +2127,7 @@ export default function OrdersScreen() {
     const diffTime = job.getTime() - now.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
+
     if (diffDays < 0) {
       return 'Job completed';
     } else if (diffDays === 0) {
@@ -2083,7 +2148,7 @@ export default function OrdersScreen() {
     const job = new Date(jobDate);
     const diffTime = job.getTime() - now.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) {
       return '#32CD32'; // Green for completed
     } else if (diffDays === 0) {
@@ -2100,7 +2165,7 @@ export default function OrdersScreen() {
     const job = new Date(jobDate);
     const diffTime = job.getTime() - now.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) {
       return "checkmark-circle-outline";
     } else if (diffDays === 0) {
@@ -2117,7 +2182,7 @@ export default function OrdersScreen() {
     const job = new Date(jobDate);
     const diffTime = job.getTime() - now.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) {
       return '#32CD32'; // Green for completed
     } else if (diffDays === 0) {
@@ -2134,7 +2199,7 @@ export default function OrdersScreen() {
     const job = new Date(jobDate);
     const diffTime = job.getTime() - now.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) {
       return "checkmark-circle-outline";
     } else if (diffDays === 0) {
@@ -2181,11 +2246,11 @@ export default function OrdersScreen() {
       </View>
 
       {/* Stats */}
-      <View style={[styles.statsContainer, { 
+      <View style={[styles.statsContainer, {
         backgroundColor: colors.background.secondary,
         borderWidth: 1,
         borderColor: colors.border.light,
-      }]}> 
+      }]}>
         <TouchableOpacity
           style={styles.statItem}
           onPress={() => {
@@ -2242,7 +2307,7 @@ export default function OrdersScreen() {
         <View style={styles.filterRow}>
           <TouchableOpacity
             style={[
-              styles.filterTab, 
+              styles.filterTab,
               styles.activeFilterTab,
               { backgroundColor: colors.background.secondary }
             ]}
@@ -2254,13 +2319,13 @@ export default function OrdersScreen() {
             accessibilityLabel="Show All Status"
           >
             <Text numberOfLines={1} ellipsizeMode="tail" style={[
-              styles.filterText, 
+              styles.filterText,
               { color: colors.text.secondary }
             ]}>
               All Status
             </Text>
           </TouchableOpacity>
-          
+
           {filteredOrders.length > 0 && (
             <TouchableOpacity
               style={[
@@ -2271,10 +2336,10 @@ export default function OrdersScreen() {
               accessibilityRole="button"
               accessibilityLabel={expandAll ? "Collapse All Orders" : "Expand All Orders"}
             >
-              <Ionicons 
-                name={expandAll ? "contract" : "expand"} 
-                size={16} 
-                color="#fff" 
+              <Ionicons
+                name={expandAll ? "contract" : "expand"}
+                size={16}
+                color="#fff"
               />
               <Text style={styles.expandAllText}>
                 {expandAll ? 'Collapse All' : 'Expand All'}
@@ -2299,12 +2364,12 @@ export default function OrdersScreen() {
         {filteredOrders.length === 0 ? (
           <View style={[styles.emptyState, { backgroundColor: colors.background.secondary }]}>
             <View style={[styles.emptyIconContainer, { backgroundColor: colors.primary.light + '20' }]}>
-              <Ionicons name="receipt-outline" size={48} color={colors.primary.main} />
+              <Ionicons name="document-text-outline" size={48} color={colors.primary.main} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>
-              {filter === 'buying' ? 'No purchases yet' : 
-               filter === 'selling' ? 'No sales yet' : 
-               'No orders yet'}
+              {filter === 'buying' ? 'No purchases yet' :
+                filter === 'selling' ? 'No sales yet' :
+                  'No orders yet'}
             </Text>
             <Text style={[styles.emptySubtext, { color: colors.text.secondary }]}>
               Your service orders will appear here
@@ -2316,14 +2381,14 @@ export default function OrdersScreen() {
             const perspective = (order as any).perspective;
             const orderId = order.id || '';
             initializeAnimation(orderId);
-            
+
             return (
               <Animated.View
                 key={`${order.id}-${perspective}-${(order as any).orderType || 'direct'}`}
                 style={[
-                  styles.orderCard, 
-                  { 
-                    backgroundColor: colors.background.secondary, 
+                  styles.orderCard,
+                  {
+                    backgroundColor: colors.background.secondary,
                     opacity: animationValues[orderId]?.interpolate({
                       inputRange: [0, 1],
                       outputRange: [0.7, 1],
@@ -2363,10 +2428,10 @@ export default function OrdersScreen() {
                       </View>
                       {escrowTransaction?.work_start_date && (
                         <View style={[styles.jobStatusIndicator, { backgroundColor: getJobStatusColor(escrowTransaction.work_start_date) }]}>
-                          <Ionicons 
-                            name={getJobStatusIcon(escrowTransaction.work_start_date)} 
-                            size={12} 
-                            color="#fff" 
+                          <Ionicons
+                            name={getJobStatusIcon(escrowTransaction.work_start_date)}
+                            size={12}
+                            color="#fff"
                           />
                         </View>
                       )}
@@ -2393,8 +2458,8 @@ export default function OrdersScreen() {
                   </View>
                   <View style={styles.orderAmountContainer}>
                     <Text style={[styles.orderAmount, { color: colors.primary.main }]}>
-                      {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
-                       `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
+                      {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` :
+                        `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
                     </Text>
                     {perspective === 'buyer' && escrowTransaction?.platform_fee > 0 && (
                       <Text style={[styles.platformFee, { color: colors.text.secondary }]}>
@@ -2402,10 +2467,10 @@ export default function OrdersScreen() {
                       </Text>
                     )}
                     <View style={styles.expandIndicator}>
-                      <Ionicons 
-                        name={expandedOrders.has(orderId) ? "chevron-up" : "chevron-down"} 
-                        size={16} 
-                        color={colors.text.secondary} 
+                      <Ionicons
+                        name={expandedOrders.has(orderId) ? "chevron-up" : "chevron-down"}
+                        size={16}
+                        color={colors.text.secondary}
                       />
                     </View>
                   </View>
@@ -2422,13 +2487,13 @@ export default function OrdersScreen() {
                     <View style={styles.orderDetails}>
                       <View style={[styles.detailsSection, { borderBottomWidth: 1, borderBottomColor: colors.border.light }]}>
                         <Text style={[styles.detailsSectionTitle, { color: colors.text.primary }]}>Timeline</Text>
-                        
+
                         <View style={styles.detailRow}>
                           <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
                           <Text style={[styles.detailText, { color: colors.text.secondary }]}>
                             Created: {(() => {
                               console.log('🔍 Debug timestamp:', order.created_at);
-                              console.log('🔍 Malaysian time result:', formatMalaysianDateTime(order.created_at!, { 
+                              console.log('🔍 Malaysian time result:', formatMalaysianDateTime(order.created_at!, {
                                 year: 'numeric',
                                 month: 'short',
                                 day: 'numeric',
@@ -2436,7 +2501,7 @@ export default function OrdersScreen() {
                                 minute: '2-digit',
                                 hour12: true
                               }));
-                              return formatMalaysianDateTime(order.created_at!, { 
+                              return formatMalaysianDateTime(order.created_at!, {
                                 year: 'numeric',
                                 month: 'short',
                                 day: 'numeric',
@@ -2447,12 +2512,12 @@ export default function OrdersScreen() {
                             })()}
                           </Text>
                         </View>
-                        
+
                         {order.work_started_at && (
                           <View style={styles.detailRow}>
                             <Ionicons name="play-outline" size={16} color={colors.text.secondary} />
                             <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                              Started: {formatMalaysianDateTime(order.work_started_at, { 
+                              Started: {formatMalaysianDateTime(order.work_started_at, {
                                 year: 'numeric',
                                 month: 'short',
                                 day: 'numeric',
@@ -2463,12 +2528,12 @@ export default function OrdersScreen() {
                             </Text>
                           </View>
                         )}
-                        
+
                         {order.work_completed_at && (
                           <View style={styles.detailRow}>
                             <Ionicons name="checkmark-outline" size={16} color="#32CD32" />
                             <Text style={[styles.detailText, { color: '#32CD32' }]}>
-                              Completed: {formatMalaysianDateTime(order.work_completed_at, { 
+                              Completed: {formatMalaysianDateTime(order.work_completed_at, {
                                 year: 'numeric',
                                 month: 'short',
                                 day: 'numeric',
@@ -2492,13 +2557,13 @@ export default function OrdersScreen() {
 
                       <View style={styles.detailsSection}>
                         <Text style={[styles.detailsSectionTitle, { color: colors.text.primary }]}>Job Info</Text>
-                        
+
                         {/* Service Price and Details */}
                         <View style={styles.detailRow}>
                           <Ionicons name="pricetag-outline" size={16} color={colors.text.secondary} />
                           <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                            Price: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` : 
-                                   `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
+                            Price: {escrowTransaction?.amount ? `${escrowTransaction.amount} credits` :
+                              `${(order as any).currency || 'RM'} ${(order as any).price || 0}`}
                           </Text>
                         </View>
 
@@ -2517,9 +2582,9 @@ export default function OrdersScreen() {
                           <View style={styles.detailRow}>
                             <Ionicons name="card-outline" size={16} color={colors.text.secondary} />
                             <Text style={[styles.detailText, { color: colors.text.secondary }]}>
-                              Payment: {(order as any).payment_status === 'paid' ? 'Paid' : 
-                                        (order as any).payment_status === 'pending' ? 'Pending' : 
-                                        (order as any).payment_status}
+                              Payment: {(order as any).payment_status === 'paid' ? 'Paid' :
+                                (order as any).payment_status === 'pending' ? 'Pending' :
+                                  (order as any).payment_status}
                             </Text>
                           </View>
                         )}
@@ -2531,7 +2596,7 @@ export default function OrdersScreen() {
                             Order Type: {(order as any).orderType === 'direct' ? 'Direct Order' : 'Escrow Order'}
                           </Text>
                         </View>
-                        
+
                         {/* Job Date and Countdown */}
                         {escrowTransaction?.work_start_date && (
                           <View style={styles.detailRow}>
@@ -2544,10 +2609,10 @@ export default function OrdersScreen() {
                               </Text>
                               <View style={styles.countdownContainer}>
                                 <View style={[styles.countdownBadge, { backgroundColor: getCountdownColor(escrowTransaction.work_start_date) + '20' }]}>
-                                  <Ionicons 
-                                    name={getCountdownIcon(escrowTransaction.work_start_date)} 
-                                    size={12} 
-                                    color={getCountdownColor(escrowTransaction.work_start_date)} 
+                                  <Ionicons
+                                    name={getCountdownIcon(escrowTransaction.work_start_date)}
+                                    size={12}
+                                    color={getCountdownColor(escrowTransaction.work_start_date)}
                                   />
                                   <Text style={[styles.countdownText, { color: getCountdownColor(escrowTransaction.work_start_date) }]}>
                                     {getCountdownToJob(escrowTransaction.work_start_date)}
@@ -2594,17 +2659,17 @@ export default function OrdersScreen() {
                       </View>
                     </View>
 
-                                         {getActionButton(order as JobStatus & { perspective: 'buyer' | 'seller' })}
-                   </>
-                 )}
-                 
-                 {/* Quick Action Button for Collapsed State */}
-                 {!expandedOrders.has(orderId) && (
-                   <View style={styles.quickActionContainer}>
-                     {getQuickActionButton(order as JobStatus & { perspective: 'buyer' | 'seller' })}
-                   </View>
-                 )}
-               </Animated.View>
+                    {getActionButton(order as JobStatus & { perspective: 'buyer' | 'seller' })}
+                  </>
+                )}
+
+                {/* Quick Action Button for Collapsed State */}
+                {!expandedOrders.has(orderId) && (
+                  <View style={styles.quickActionContainer}>
+                    {getQuickActionButton(order as JobStatus & { perspective: 'buyer' | 'seller' })}
+                  </View>
+                )}
+              </Animated.View>
             );
           })
         )}
@@ -2626,13 +2691,13 @@ export default function OrdersScreen() {
               <Text style={[styles.modalCancel, { color: colors.text.secondary }]}>Cancel</Text>
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Mark Work Complete</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleCompleteWork}
             >
               <Text style={[
-                styles.modalDone, 
-                { 
-                  color: colors.primary.main 
+                styles.modalDone,
+                {
+                  color: colors.primary.main
                 }
               ]}>Done</Text>
             </TouchableOpacity>
@@ -2641,10 +2706,10 @@ export default function OrdersScreen() {
           <View style={styles.modalContent}>
             <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Completion Notes (Optional)</Text>
             <TextInput
-              style={[styles.notesInput, { 
-                backgroundColor: colors.background.secondary, 
+              style={[styles.notesInput, {
+                backgroundColor: colors.background.secondary,
                 borderColor: colors.border.main,
-                color: colors.text.primary 
+                color: colors.text.primary
               }]}
               placeholder="Describe what you've completed, any deliverables, or additional notes for the buyer..."
               placeholderTextColor={colors.text.secondary}
@@ -2654,7 +2719,7 @@ export default function OrdersScreen() {
               numberOfLines={6}
               textAlignVertical="top"
             />
-            
+
             {/* Photo Upload Section */}
             <View style={styles.photoUploadSection}>
               <JobCompletionPhotoUpload
@@ -2664,7 +2729,7 @@ export default function OrdersScreen() {
                 maxPhotos={5}
               />
             </View>
-            
+
             <View style={[styles.modalInfo, { backgroundColor: colors.background.secondary }]}>
               <Ionicons name="information-circle-outline" size={20} color={colors.primary.main} />
               <Text style={[styles.modalInfoText, { color: colors.primary.main }]}>
@@ -2703,7 +2768,7 @@ export default function OrdersScreen() {
                     {((selectedOrder as any).escrow_transactions)?.service_title || (selectedOrder as any).title}
                   </Text>
                   <Text style={[styles.summaryAmount, { color: colors.primary.main }]}>
-                    {((selectedOrder as any).escrow_transactions)?.amount ? 
+                    {((selectedOrder as any).escrow_transactions)?.amount ?
                       `${((selectedOrder as any).escrow_transactions).amount} credits will be released to the seller` :
                       `${(selectedOrder as any).currency || 'RM'} ${(selectedOrder as any).price || 0} was paid for this service`}
                   </Text>
@@ -2713,7 +2778,7 @@ export default function OrdersScreen() {
                 {!reviewAction && (
                   <View style={styles.actionSelectionSection}>
                     <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Choose an action:</Text>
-                    
+
                     <TouchableOpacity
                       style={[styles.actionButton, { backgroundColor: colors.primary.main }]}
                       onPress={() => setReviewAction('confirm')}
@@ -2756,10 +2821,10 @@ export default function OrdersScreen() {
                     <View style={styles.feedbackSection}>
                       <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Feedback (Optional)</Text>
                       <TextInput
-                        style={[styles.feedbackInput, { 
-                          backgroundColor: colors.background.secondary, 
+                        style={[styles.feedbackInput, {
+                          backgroundColor: colors.background.secondary,
                           borderColor: colors.border.main,
-                          color: colors.text.primary 
+                          color: colors.text.primary
                         }]}
                         placeholder="Share your experience with this service..."
                         placeholderTextColor={colors.text.secondary}
@@ -2794,10 +2859,10 @@ export default function OrdersScreen() {
                     <View style={styles.feedbackSection}>
                       <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Reason for Changes (Required)</Text>
                       <TextInput
-                        style={[styles.feedbackInput, { 
-                          backgroundColor: colors.background.secondary, 
+                        style={[styles.feedbackInput, {
+                          backgroundColor: colors.background.secondary,
                           borderColor: colors.border.main,
-                          color: colors.text.primary 
+                          color: colors.text.primary
                         }]}
                         placeholder="Describe what changes or improvements you need..."
                         placeholderTextColor={colors.text.secondary}
@@ -2855,7 +2920,7 @@ export default function OrdersScreen() {
                     {((selectedOrder as any).escrow_transactions)?.service_title || (selectedOrder as any).title}
                   </Text>
                   <Text style={[styles.summaryAmount, { color: colors.primary.main }]}>
-                    {((selectedOrder as any).escrow_transactions)?.amount ? 
+                    {((selectedOrder as any).escrow_transactions)?.amount ?
                       `${((selectedOrder as any).escrow_transactions).amount} credits` :
                       `${(selectedOrder as any).currency || 'RM'} ${(selectedOrder as any).price || 0}`}
                   </Text>
@@ -2863,7 +2928,7 @@ export default function OrdersScreen() {
 
                 <View style={styles.acknowledgmentSection}>
                   <Text style={[styles.modalLabel, { color: colors.text.primary }]}>When would you like to start?</Text>
-                  
+
                   <TouchableOpacity
                     style={[styles.acknowledgmentButton, { backgroundColor: colors.primary.main }]}
                     onPress={() => handleAcknowledgeOffer(true)}
@@ -2881,8 +2946,8 @@ export default function OrdersScreen() {
                         'Enter the date you want to start (YYYY-MM-DD):',
                         [
                           { text: 'Cancel', style: 'cancel' },
-                          { 
-                            text: 'Schedule', 
+                          {
+                            text: 'Schedule',
                             onPress: (date) => {
                               if (date) {
                                 setScheduledStartDate(date);
@@ -2966,10 +3031,10 @@ export default function OrdersScreen() {
                 <View style={styles.feedbackSection}>
                   <Text style={[styles.modalLabel, { color: colors.text.primary }]}>Share your experience (Optional)</Text>
                   <TextInput
-                    style={[styles.feedbackInput, { 
-                      backgroundColor: colors.background.secondary, 
+                    style={[styles.feedbackInput, {
+                      backgroundColor: colors.background.secondary,
                       borderColor: colors.border.main,
-                      color: colors.text.primary 
+                      color: colors.text.primary
                     }]}
                     placeholder="Tell us about your experience with this service..."
                     placeholderTextColor={colors.text.secondary}
@@ -3692,11 +3757,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     opacity: 0.5,
   },
-  downloadReceiptButton: {
+  downloadInvoiceButton: {
     backgroundColor: '#10B981',
   },
   downloadTransactionSlipButton: {
     backgroundColor: '#059669',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+    backgroundColor: '#6B7280',
   },
   contactBuyerButton: {
     backgroundColor: '#007AFF',

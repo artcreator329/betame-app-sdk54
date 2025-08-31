@@ -191,22 +191,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
               .single();
 
             if (chat && (chat.participant1_id === userId || chat.participant2_id === userId)) {
-              console.log('🔔 AuthContext: Message is for this user, creating notification...');
+              console.log('🔔 AuthContext: Message is for this user, message type:', payload.new.message_type);
               
-              // Get participant info
-              const participant = await supabaseChatService.getParticipantById(payload.new.sender_id);
-              
-              if (participant) {
-                console.log('🔔 AuthContext: Creating notification from:', participant.name);
-                await notificationService.addChatNotification({
-                  participantId: userId, // Send notification TO the current user
-                  participantName: participant.name,
-                  participantImage: participant.image,
-                  message: payload.new.message,
-                  chatId: payload.new.chat_id,
-                  senderId: payload.new.sender_id
-                });
-                console.log('🎉🎉🎉 AuthContext: NOTIFICATION CREATED SUCCESSFULLY!!! 🎉🎉🎉');
+              // For regular chat messages, notification is handled by SupabaseChatService.sendMessage()
+              // But for offer messages, we need backup notification creation since primary might fail
+              if (payload.new.message_type === 'offer') {
+                console.log('🔔 AuthContext: Offer message detected, creating backup notification...');
+                
+                // Get participant info
+                const participant = await supabaseChatService.getParticipantById(payload.new.sender_id);
+                
+                if (participant) {
+                  console.log('🔔 AuthContext: Creating offer notification from:', participant.name);
+                  await notificationService.addOfferNotification({
+                    participantId: userId, // Send notification TO the current user
+                    participantName: participant.name,
+                    participantImage: participant.image,
+                    chatId: payload.new.chat_id,
+                    offerId: payload.new.offer_id || 'unknown',
+                    serviceTitle: 'Service Offer', // We don't have full service data here
+                    price: payload.new.custom_price || 0,
+                    currency: 'USD',
+                    senderId: payload.new.sender_id,
+                    isIncoming: true,
+                  });
+                  console.log('✅ AuthContext: Offer notification created successfully');
+                }
+              } else {
+                // For regular chat messages, notification is handled by sender
+                console.log('🔔 AuthContext: Regular message, notification handled by sender');
               }
             }
           } catch (error) {

@@ -239,14 +239,9 @@ export function ServiceOfferMessage({
                     const finalPrice = serviceData.customPrice || serviceData.price || 0;
                     const fees = FeeService.calculateFees(finalPrice);
                     return (
-                      <>
-                        <Text style={styles.feeText}>
-                          You pay: RM{fees.buyerTotal.toFixed(2)} (incl. RM{fees.buyerFee.toFixed(2)} processing fee)
-                        </Text>
-                        <Text style={styles.sellerFeeText}>
-                          Provider receives: RM{fees.sellerReceives.toFixed(2)}
-                        </Text>
-                      </>
+                      <Text style={styles.feeText}>
+                        You pay: RM{finalPrice.toFixed(2)} + 2.2% Processing fee
+                      </Text>
                     );
                   })()}
                 </View>
@@ -603,21 +598,10 @@ export function ServiceOfferMessage({
                           const fees = FeeService.calculateFees(finalPrice);
                           return (
                             <>
-                              <View style={styles.modalFeeRow}>
-                                <Text style={styles.modalFeeLabel}>Service Amount:</Text>
-                                <Text style={styles.modalFeeAmount}>RM{finalPrice.toFixed(2)}</Text>
-                              </View>
-                              <View style={styles.modalFeeRow}>
-                                <Text style={styles.modalFeeLabel}>Processing Fee (2.2%):</Text>
-                                <Text style={styles.modalFeeAmount}>+RM{fees.buyerFee.toFixed(2)}</Text>
-                              </View>
                               <View style={[styles.modalFeeRow, styles.modalFeeTotal]}>
                                 <Text style={styles.modalFeeTotalLabel}>You Pay:</Text>
-                                <Text style={styles.modalFeeTotalAmount}>RM{fees.buyerTotal.toFixed(2)}</Text>
+                                <Text style={styles.modalFeeTotalAmount}>RM{finalPrice.toFixed(2)} + 2.2% Processing fee</Text>
                               </View>
-                              <Text style={styles.modalSellerNote}>
-                                Provider receives RM{fees.sellerReceives.toFixed(2)} after platform fee
-                              </Text>
                             </>
                           );
                         })()}

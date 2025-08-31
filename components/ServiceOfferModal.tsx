@@ -444,7 +444,10 @@ export function ServiceOfferModal({
             <Text style={styles.feeBreakdownTitle}>Payment Breakdown</Text>
             {(() => {
               const finalPrice = customPrice ? parseFloat(customPrice) : safeService.price;
-              const fees = FeeService.calculateFees(finalPrice);
+              // Calculate the correct processing fee (2.2% of service amount)
+              const processingFee = finalPrice * 0.022;
+              const totalToPay = finalPrice + processingFee;
+              
               return (
                 <View style={styles.feeDetails}>
                   <View style={styles.feeRow}>
@@ -452,17 +455,12 @@ export function ServiceOfferModal({
                     <Text style={styles.feeAmount}>{safeService.currency}{finalPrice.toFixed(2)}</Text>
                   </View>
                   <View style={styles.feeRow}>
-                    <Text style={styles.feeLabel}>Your Processing Fee (2.2%):</Text>
-                    <Text style={styles.feeAmount}>+{safeService.currency}{fees.buyerFee.toFixed(2)}</Text>
+                    <Text style={styles.feeLabel}>Processing Fee (2.2%):</Text>
+                    <Text style={styles.feeAmount}>+{safeService.currency}{processingFee.toFixed(2)}</Text>
                   </View>
                   <View style={[styles.feeRow, styles.totalRow]}>
                     <Text style={styles.totalLabel}>You Pay:</Text>
-                    <Text style={styles.totalAmount}>{safeService.currency}{fees.buyerTotal.toFixed(2)}</Text>
-                  </View>
-                  <View style={styles.sellerInfo}>
-                    <Text style={styles.sellerInfoText}>
-                      Service provider receives {safeService.currency}{fees.sellerReceives.toFixed(2)} after platform fee
-                    </Text>
+                    <Text style={styles.totalAmount}>{safeService.currency}{totalToPay.toFixed(2)}</Text>
                   </View>
                 </View>
               );

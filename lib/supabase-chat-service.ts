@@ -644,14 +644,14 @@ export class SupabaseChatService {
 
       // Add notification for the buyer about the new offer
       try {
-        console.log('🔔 Creating offer notification for chat:', chatId, 'seller:', sellerId);
+        console.log('🔔 Creating offer notification for chat:', chatId, 'sender:', senderId);
         
         // Get the buyer ID (the other participant in the chat)
         const { data: participants } = await supabase
           .from('chat_participants')
           .select('user_id')
           .eq('chat_id', chatId)
-          .neq('user_id', sellerId);
+          .neq('user_id', senderId);
 
         console.log('🔔 Found participants:', participants);
 
@@ -668,7 +668,7 @@ export class SupabaseChatService {
             serviceTitle: serviceData.title,
             price: serviceData.customPrice || serviceData.price,
             currency: serviceData.currency,
-            senderId: sellerId, // Add seller ID for navigation
+            senderId: senderId, // Add sender ID for navigation
             isIncoming: true,
           });
           console.log('✅ Offer notification sent successfully');
@@ -687,7 +687,7 @@ export class SupabaseChatService {
             .from('chat_participants')
             .select('user_id')
             .eq('chat_id', chatId)
-            .neq('user_id', sellerId);
+            .neq('user_id', senderId);
 
           if (participants && participants.length > 0) {
             const buyerId = participants[0].user_id;
@@ -699,7 +699,7 @@ export class SupabaseChatService {
               p_message: `${serviceData.title} - ${serviceData.currency} ${serviceData.customPrice || serviceData.price}`,
               p_data: {
                 chatId,
-                participantId: sellerId,
+                participantId: senderId,
                 participantName: senderName,
                 participantImage: senderImage,
                 offerId: offerData.id,
@@ -1232,48 +1232,12 @@ export class SupabaseChatService {
     }
   }
 
-  async acceptServiceOffer(offerId: string): Promise<any> {
-    try {
-      const { data, error } = await supabase
-        .from('service_offers')
-        .update({
-          status: 'in_progress',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', offerId)
-        .select()
-        .single();
 
-      if (error) {
-        console.error('Error accepting service offer:', error);
-        throw error;
-      }
-
-      // Update the corresponding message
-      console.log('🔄 SupabaseChatService: Updating chat message status for accepted offer:', offerId);
-      const { data: messageUpdateData, error: messageError } = await supabase
-        .from('chat_messages')
-        .update({ offer_status: 'in_progress' })
-        .eq('offer_id', offerId)
-        .select();
-
-      if (messageError) {
-        console.error('❌ SupabaseChatService: Error updating chat message status:', messageError);
-        // Don't throw here as the main offer update succeeded
-      } else {
-        console.log('✅ SupabaseChatService: Chat message status updated successfully');
-        console.log('✅ SupabaseChatService: Updated messages:', messageUpdateData);
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error accepting service offer:', error);
-      throw error;
-    }
-  }
 
   async rejectServiceOffer(offerId: string, reason?: string): Promise<any> {
     try {
+      console.log('🚨 REJECTION START: Rejecting offer:', offerId, 'with reason:', reason);
+      
       const updateData: any = {
         status: 'rejected',
         updated_at: new Date().toISOString(),
@@ -1288,33 +1252,82 @@ export class SupabaseChatService {
         .from('service_offers')
         .update(updateData)
         .eq('id', offerId)
-        .select()
-        .single();
+        .select();
 
       if (error) {
-        console.error('Error rejecting service offer:', error);
+        console.error('❌ SupabaseChatService: Error rejecting service offer:', error);
         throw error;
       }
 
+      // Check if any rows were updated
+      if (!data || data.length === 0) {
+        console.warn('⚠️ SupabaseChatService: No service offer found with ID:', offerId);
+        console.log('🔄 SupabaseChatService: This might be an orphaned offer - attempting to create it first...');
+        
+        // Try to get the chat message to extract offer details
+        const { data: messageData } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('offer_id', offerId)
+          .single();
+        
+        if (messageData) {
+          console.log('🔄 SupabaseChatService: Found chat message, attempting to create missing service offer...');
+          
+          // Create a minimal service offer record
+          const { data: createdOffer, error: createError } = await supabase
+            .from('service_offers')
+            .insert({
+              id: offerId, // Use the same ID
+              chat_id: messageData.chat_id,
+              service_id: 'unknown', // We don't have the original service ID
+              service_provider_id: messageData.sender_id,
+              buyer_id: 'unknown', // We don't have the original buyer ID
+              original_price: 0,
+              custom_price: 0,
+              status: 'rejected', // Set it directly to rejected
+              created_at: messageData.created_at,
+              updated_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+          
+          if (createError) {
+            console.error('❌ SupabaseChatService: Failed to create missing service offer:', createError);
+          } else {
+            console.log('✅ SupabaseChatService: Created missing service offer:', createdOffer);
+          }
+        }
+      } else {
+        console.log('✅ SupabaseChatService: Service offer rejected successfully:', data[0]);
+      }
+
       // Update the corresponding message
-      console.log('🔄 SupabaseChatService: Updating chat message status for offer:', offerId);
+      console.log('🚨 REJECTION: Updating chat message status for rejected offer:', offerId);
       const { data: messageUpdateData, error: messageError } = await supabase
         .from('chat_messages')
-        .update({ offer_status: 'rejected' })
+        .update({ 
+          offer_status: 'rejected',
+          updated_at: new Date().toISOString() // Force timestamp update for realtime
+        })
         .eq('offer_id', offerId)
         .select();
 
       if (messageError) {
-        console.error('❌ SupabaseChatService: Error updating chat message status:', messageError);
+        console.error('❌ REJECTION ERROR: Error updating chat message status:', messageError);
         // Don't throw here as the main offer update succeeded
       } else {
-        console.log('✅ SupabaseChatService: Chat message status updated successfully');
-        console.log('✅ SupabaseChatService: Updated messages:', messageUpdateData);
+        console.log('✅ REJECTION SUCCESS: Chat message status updated successfully');
+        console.log('✅ REJECTION SUCCESS: Updated messages count:', messageUpdateData?.length || 0);
+        console.log('✅ REJECTION SUCCESS: Updated messages:', messageUpdateData);
       }
 
-      return data;
+      // Return the first item if it exists, or a success indicator
+      const result = data && data.length > 0 ? data[0] : { success: true, message: 'Chat message updated successfully' };
+      console.log('🚨 REJECTION COMPLETE: Returning result:', result);
+      return result;
     } catch (error) {
-      console.error('Error rejecting service offer:', error);
+      console.error('🚨 REJECTION ERROR: Error rejecting service offer:', error);
       throw error;
     }
   }
@@ -1335,12 +1348,19 @@ export class SupabaseChatService {
         .from('service_offers')
         .update(updateData)
         .eq('id', offerId)
-        .select()
-        .single();
+        .select();
 
       if (error) {
-        console.error('Error cancelling service offer:', error);
+        console.error('❌ SupabaseChatService: Error cancelling service offer:', error);
         throw error;
+      }
+
+      // Check if any rows were updated
+      if (!data || data.length === 0) {
+        console.warn('⚠️ SupabaseChatService: No service offer found with ID:', offerId);
+        console.log('🔄 SupabaseChatService: Continuing with chat message update only...');
+      } else {
+        console.log('✅ SupabaseChatService: Service offer cancelled successfully:', data[0]);
       }
 
       // Update the corresponding message
@@ -1359,7 +1379,8 @@ export class SupabaseChatService {
         console.log('✅ SupabaseChatService: Updated messages:', messageUpdateData);
       }
 
-      return data;
+      // Return the first item if it exists, or a success indicator
+      return data && data.length > 0 ? data[0] : { success: true, message: 'Chat message updated successfully' };
     } catch (error) {
       console.error('Error cancelling service offer:', error);
       throw error;
@@ -1550,13 +1571,39 @@ export class SupabaseChatService {
           console.log('📡 SupabaseChatService: Updated fields:', payload.new);
           console.log('📡 SupabaseChatService: Old fields:', payload.old);
           
-          if (onUpdate) {
-            const transformedMessage = await this.transformMessage(payload.new, currentUserId);
-            console.log('📡 SupabaseChatService: Transformed updated message:', transformedMessage);
-            console.log('📡 SupabaseChatService: Message offer status:', transformedMessage.offerStatus);
-            onUpdate(transformedMessage);
+          // Check if offer status changed
+          if (payload.new.offer_status && payload.old?.offer_status !== payload.new.offer_status) {
+            console.log('🚨 CRITICAL: Offer status changed from', payload.old?.offer_status, 'to', payload.new.offer_status);
+            console.log('🚨 CRITICAL: Forcing full chat refresh for offer status change');
+            
+            // Force a full chat refresh when offer status changes
+            const { data: allMessages } = await supabase
+              .from('chat_messages')
+              .select('*')
+              .eq('chat_id', chatId)
+              .order('created_at', { ascending: true });
+            
+            if (allMessages && allMessages.length > 0) {
+              console.log('🚨 CRITICAL: Refreshing', allMessages.length, 'messages due to offer status change');
+              
+              for (const msg of allMessages) {
+                if (onUpdate) {
+                  const transformedMessage = await this.transformMessage(msg, currentUserId);
+                  console.log('🚨 CRITICAL: Refreshing message:', msg.id, 'with offer status:', transformedMessage.offerStatus);
+                  onUpdate(transformedMessage);
+                }
+              }
+            }
           } else {
-            console.log('📡 SupabaseChatService: No onUpdate callback provided');
+            // Regular message update
+            if (onUpdate) {
+              const transformedMessage = await this.transformMessage(payload.new, currentUserId);
+              console.log('📡 SupabaseChatService: Transformed updated message:', transformedMessage);
+              console.log('📡 SupabaseChatService: Message offer status:', transformedMessage.offerStatus);
+              onUpdate(transformedMessage);
+            } else {
+              console.log('📡 SupabaseChatService: No onUpdate callback provided');
+            }
           }
         }
       )
@@ -1582,18 +1629,31 @@ export class SupabaseChatService {
         },
         async (payload) => {
           console.log('📡 SupabaseChatService: Service offer UPDATE event received:', payload);
+          console.log('📡 SupabaseChatService: New offer status:', payload.new.status);
+          console.log('📡 SupabaseChatService: Old offer status:', payload.old?.status);
           
-          // Find the corresponding chat message and trigger an update
-          const { data: messageData } = await supabase
+          // CRITICAL: Force a refresh of ALL messages in this chat to ensure bilateral sync
+          console.log('🚨 CRITICAL: Forcing full chat refresh for offer status change');
+          
+          // Get all messages in this chat
+          const { data: allMessages } = await supabase
             .from('chat_messages')
             .select('*')
-            .eq('offer_id', payload.new.id)
-            .single();
+            .eq('chat_id', chatId)
+            .order('created_at', { ascending: true });
           
-          if (messageData && onUpdate) {
-            const transformedMessage = await this.transformMessage(messageData, currentUserId);
-            console.log('📡 SupabaseChatService: Transformed updated service offer message:', transformedMessage);
-            onUpdate(transformedMessage);
+          if (allMessages && allMessages.length > 0) {
+            console.log('🚨 CRITICAL: Refreshing', allMessages.length, 'messages in chat');
+            
+            for (const msg of allMessages) {
+              if (onUpdate) {
+                const transformedMessage = await this.transformMessage(msg, currentUserId);
+                console.log('🚨 CRITICAL: Refreshing message:', msg.id, 'with offer status:', transformedMessage.offerStatus);
+                onUpdate(transformedMessage);
+              }
+            }
+          } else {
+            console.log('📡 SupabaseChatService: No messages found in chat for refresh');
           }
         }
       )

@@ -14,9 +14,10 @@ Alert.alert(
   `Are you sure you want to release payment for "${job.title}"?
 
 Original Amount: ${job.price} ${job.currency}
-Platform Fee (2.2%): -${(job.price * 0.022).toFixed(2)} ${job.currency}
-Service Fee (11%): -${(job.price * 0.11).toFixed(2)} ${job.currency}
-Final Payout: ${finalPayout.toFixed(2)} ${job.currency}
+Service Fee (RM4.90 or 11%): -${Math.max((job.price * 0.11), 4.90).toFixed(2)} ${job.currency}
+Final Payout: ${(job.price - Math.max((job.price * 0.11), 4.90)).toFixed(2)} ${job.currency}
+
+*Platform fee (2.2%) is paid by buyer and not shown on service provider receipt*
 
 Service Provider: ${job.service_provider_name}
 Bank: ${job.bank_name}
@@ -166,9 +167,10 @@ WHERE id = 'b2a93208-88b0-4f34-a06f-e1ff0b6c491a';
 
 **2. Fee Calculation:**
 - Original Amount: RM 10.22
-- Platform Fee (2.2%): -RM 0.22
-- Service Fee (11%): -RM 1.12
-- **Final Payout**: RM 8.87
+- Service Fee (RM4.90 or 11%): -RM 1.12
+- **Final Payout**: RM 9.10
+
+*Note: Platform fee (2.2%) is paid by buyer, not deducted from service provider*
 
 **3. Notification Sent:**
 ```json

@@ -445,15 +445,45 @@ export class NotificationService {
         p_data: newNotification.data ?? null,
         p_id: newNotification.id,
       });
+      
       if (error) {
-        console.error('❌ NotificationService: Failed to insert notification to Supabase:', error);
-        throw error;
+        console.error('❌ NotificationService: Failed to insert notification via RPC:', error);
+        
+        // Fallback: Try direct insert (this might work if user has proper permissions)
+        console.log('🔄 NotificationService: Attempting fallback direct insert...');
+        try {
+          const { error: insertError } = await supabase
+            .from('notifications')
+            .insert({
+              id: newNotification.id,
+              user_id: targetUserId,
+              type: newNotification.type,
+              title: newNotification.title,
+              message: newNotification.message,
+              data: newNotification.data ?? null,
+              is_read: false,
+              created_at: newNotification.timestamp
+            });
+
+          if (insertError) {
+            console.error('❌ NotificationService: Fallback direct insert also failed:', insertError);
+            throw insertError;
+          } else {
+            console.log('✅ NotificationService: Fallback direct insert successful for user:', targetUserId);
+          }
+        } catch (fallbackError) {
+          console.error('❌ NotificationService: Both RPC and direct insert failed:', fallbackError);
+          // Don't throw - allow app to continue functioning
+          console.log('⚠️ NotificationService: Notification delivery failed, but app will continue');
+          return; // Exit gracefully without throwing
+        }
       } else {
-        console.log('✅ NotificationService: Notification saved to Supabase for user:', targetUserId);
+        console.log('✅ NotificationService: Notification saved to Supabase via RPC for user:', targetUserId);
       }
     } catch (error) {
-      console.error('❌ NotificationService: Exception inserting notification to Supabase:', error);
-      throw error;
+      console.error('❌ NotificationService: Exception during notification creation:', error);
+      console.log('⚠️ NotificationService: Notification delivery failed, but app will continue');
+      return; // Exit gracefully without throwing
     }
 
     // If the target user is the current user, add to local notifications and show system notification
