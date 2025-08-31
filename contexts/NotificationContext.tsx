@@ -3,6 +3,7 @@ import { Notification, NotificationContextType } from '@/types/notification';
 import { notificationService } from '@/lib/notification-service';
 import { notificationScheduler } from '@/lib/notification-scheduler';
 import { jobNotificationScheduler } from '@/lib/job-notification-scheduler';
+import { pushNotificationService } from '@/lib/push-notification-service';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -33,6 +34,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         try {
           (notificationService as any).disconnect?.();
           notificationScheduler.disconnect();
+          pushNotificationService.clearToken().catch(error => {
+            console.error('Error clearing push token:', error);
+          });
         } catch (error) {
           console.error('Error disconnecting notification services:', error);
         }
@@ -44,6 +48,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         
         // Connect notification service with proper error handling
         await (notificationService as any).connect?.(user.id);
+        
+        // Initialize push notification service
+        await pushNotificationService.initialize(user.id);
+        await pushNotificationService.setupNotificationHandlers();
         
         // Initialize schedulers
         await notificationScheduler.initialize(user.id);
@@ -101,6 +109,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       try {
         notificationScheduler.disconnect();
         jobNotificationScheduler.stop();
+        pushNotificationService.clearToken().catch(error => {
+          console.error('Error clearing push token:', error);
+        });
       } catch (error) {
         console.error('Error disconnecting schedulers:', error);
       }

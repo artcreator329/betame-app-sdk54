@@ -108,7 +108,7 @@ export function useUnreadMessageCount() {
                   if (participant) {
                     console.log('🔔 useUnreadMessageCount: Creating offer notification from:', participant.name);
                     await notificationService.addOfferNotification({
-                      participantId: userId, // Send notification TO the current user
+                      participantId: user.id, // Send notification TO the current user
                       participantName: participant.name,
                       participantImage: participant.image,
                       chatId: payload.new.chat_id,

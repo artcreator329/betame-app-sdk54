@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Bell, BellOff, MapPin, Megaphone, Volume2, Play } from 'lucide-react-native';
+import { Bell, BellOff, MapPin, Megaphone, Volume2, Play, TestTube } from 'lucide-react-native';
 import { useColors } from '@/contexts/ThemeContext';
 import { notificationScheduler, NotificationPreferences } from '@/lib/notification-scheduler';
 import { Audio } from 'expo-av';
@@ -206,6 +206,36 @@ export default function NotificationSettings({ onClose }: NotificationSettingsPr
             />
           </TouchableOpacity>
         </View>
+
+        {/* Test Notifications */}
+        <View style={[styles.settingItem, { borderBottomColor: colors.border.light }]}>
+          <View style={styles.settingInfo}>
+            <View style={styles.settingHeader}>
+              <TestTube size={20} color={colors.primary.main} />
+              <Text style={[styles.settingTitle, { color: colors.text.primary }]}>
+                Test Notifications
+              </Text>
+            </View>
+            <Text style={[styles.settingDescription, { color: colors.text.secondary }]}>
+              Test notification sounds and push notifications on your device
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: colors.primary.main }]}
+            onPress={() => {
+              // This would open a test panel - for now just show an alert
+              Alert.alert(
+                'Notification Test',
+                'Use the test panel in the admin section or development tools to test notifications with custom sound.',
+                [{ text: 'OK' }]
+              );
+            }}
+          >
+            <Text style={[styles.testButtonText, { color: colors.text.white }]}>
+              Test
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.infoContainer}>
@@ -314,5 +344,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  testButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  testButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

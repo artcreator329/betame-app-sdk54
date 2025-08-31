@@ -72,11 +72,11 @@ export async function configureLocalNotifications() {
         importance: mod.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#007AFF',
-        sound: 'sfx.wav',
+        sound: 'sfx.wav', // Custom sound file
         enableVibrate: true,
         showBadge: true,
       });
-      console.log('📱 Android notification channel created with custom sound');
+      console.log('📱 Android notification channel created with custom sound: sfx.wav');
     }
 
     // Request permissions after configuration
@@ -124,7 +124,7 @@ export async function showLocalNotification(notification: AppNotification) {
       title: notification.title,
       body: notification.message,
       data: notification.data ?? {},
-      sound: 'default', // Use default sound instead of custom
+      sound: 'sfx.wav', // Use custom sound file
       badge: 1,
       // Ensure notifications show even when app is in foreground
       autoDismiss: false,
@@ -135,11 +135,12 @@ export async function showLocalNotification(notification: AppNotification) {
       notificationContent.channelId = 'default';
       notificationContent.priority = mod.AndroidImportance.HIGH;
       notificationContent.vibrate = [0, 250, 250, 250];
+      notificationContent.sound = 'sfx.wav'; // Ensure custom sound for Android
     }
 
     // Add iOS-specific properties
     if (Platform.OS === 'ios') {
-      notificationContent.sound = 'default';
+      notificationContent.sound = 'sfx.wav'; // Use custom sound for iOS
       notificationContent.badge = 1;
     }
 

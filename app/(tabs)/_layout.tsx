@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter, useSegments } from 'expo-router';
 
@@ -33,10 +34,14 @@ function DesktopSidebar() {
   const { user } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const { unreadCount } = useNotifications();
+  const { totalUnreadCount } = useUnreadMessageCount();
   const router = useRouter();
   const segments = useSegments();
   const currentRoute = segments[segments.length - 1] || 'index';
   const isAuthenticated = !!user;
+  
+  // Combine notification and message unread counts
+  const totalBadgeCount = unreadCount + totalUnreadCount;
 
   const NotificationBadge = ({ count }: { count: number }) => {
     if (count === 0) return null;
@@ -103,7 +108,7 @@ function DesktopSidebar() {
                   size={20} 
                   color={isActive ? theme.primary.main : theme.text.secondary} 
                 />
-                {item.name === 'notifications' && <NotificationBadge count={unreadCount} />}
+                {item.name === 'notifications' && <NotificationBadge count={totalBadgeCount} />}
               </View>
               <Text style={[
                 styles.navItemText, 
@@ -129,9 +134,13 @@ export default function TabLayout() {
   const { theme } = useTheme();
   const isAuthenticated = !!user;
   const { unreadCount } = useNotifications();
+  const { totalUnreadCount } = useUnreadMessageCount();
   const segments = useSegments();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  
+  // Combine notification and message unread counts for the badge
+  const totalBadgeCount = unreadCount + totalUnreadCount;
   
   const screenWidth = Dimensions.get('window').width;
   
@@ -288,7 +297,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <View style={{ position: 'relative' }}>
               <Bell size={size} color={color} />
-              <NotificationBadge count={unreadCount} />
+              <NotificationBadge count={totalBadgeCount} />
             </View>
           ),
           href: isAuthenticated ? '/notifications' : null,
