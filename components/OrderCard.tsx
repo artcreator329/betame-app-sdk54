@@ -282,8 +282,16 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         <Text style={styles.title} numberOfLines={2}>
           {order.service_title}
         </Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-          <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
+        <View style={styles.headerRight}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
+            <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.helpButton}
+            onPress={() => router.push('/order-help')}
+          >
+            <Text style={styles.helpText}>Need Help?</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -389,10 +397,24 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
+  headerRight: {
+    alignItems: 'flex-end',
+  },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    marginBottom: 4,
+  },
+  helpButton: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  helpText: {
+    fontSize: 13,
+    color: '#2196F3',
+    textDecorationLine: 'underline',
+    fontWeight: '500',
   },
   statusText: {
     color: '#fff',

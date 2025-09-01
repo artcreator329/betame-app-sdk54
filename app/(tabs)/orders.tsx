@@ -2414,10 +2414,18 @@ export default function OrdersScreen() {
                       <Text style={[styles.orderTitle, { color: colors.text.primary }]} numberOfLines={expandedOrders.has(orderId) ? 2 : 1}>
                         {escrowTransaction?.service_title || (order as any).title}
                       </Text>
-                      <View style={[styles.perspectiveBadge, { backgroundColor: colors.primary.light + '20' }]}>
-                        <Text style={[styles.perspectiveText, { color: colors.primary.main }]}>
-                          {perspective === 'buyer' ? 'BUYING' : 'SELLING'}
-                        </Text>
+                      <View style={styles.headerRight}>
+                        <View style={[styles.perspectiveBadge, { backgroundColor: colors.primary.light + '20' }]}>
+                          <Text style={[styles.perspectiveText, { color: colors.primary.main }]}>
+                            {perspective === 'buyer' ? 'BUYING' : 'SELLING'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity 
+                          style={styles.helpButton}
+                          onPress={() => router.push('/order-help')}
+                        >
+                          <Text style={styles.helpText}>Need Help?</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
                     <View style={styles.statusRow}>
@@ -3268,6 +3276,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
     textAlign: 'center',
+  },
+  headerRight: {
+    alignItems: 'flex-end',
+  },
+  helpButton: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    marginTop: 4,
+  },
+  helpText: {
+    fontSize: 12,
+    color: '#2196F3',
+    textDecorationLine: 'underline',
+    fontWeight: '500',
   },
   statusRow: {
     flexDirection: 'row',

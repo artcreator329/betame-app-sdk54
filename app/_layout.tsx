@@ -201,7 +201,7 @@ function RootLayoutNav() {
     // Public pages that don't require authentication
     const publicPages = [
       'about-us', 'contact-us', 'faq', 'legal', 'privacy-policy', 'terms-of-service',
-      'safety-security', 'payment-help', 'support', 'user-guide'
+      'safety-security', 'payment-help', 'support', 'user-guide', 'order-help'
     ];
     
     const currentPage = segments[0];
@@ -645,6 +645,10 @@ function RootLayoutNav() {
         />
         <Stack.Screen 
           name="user-guide" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="order-help" 
           options={stackScreenOptions}
         />
         
