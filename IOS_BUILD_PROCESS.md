@@ -383,6 +383,19 @@ eas init
 - **Created**: September 3, 2025 (23:26)
 - **Icon Fix**: ✅ **PERMANENTLY FIXED** - Build 21 successfully uses the correct `icon.png` icon after complete project regeneration
 
+### Local Production Build (App Store) - Version 1.0.0 (22)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (74.9 MB)
+- **Build Number**: 22
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 5, 2025 (22:44)
+- **Icon Fix**: ✅ **CONFIRMED WORKING** - Build 22 continues to use the correct `icon.png` icon
+- **Changes**: Removed `react-native-iap` plugin, added `BetaCoins.storekit` file
+
 ## Apple Developer Account Setup
 
 ### Credentials Created

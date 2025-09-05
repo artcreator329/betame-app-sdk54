@@ -10,7 +10,7 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		1B315D2D6BDBAF0AAE491A3B /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83D239E1C1BC7A4B2E964C42 /* ExpoModulesProvider.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		9D0F5BA82E6B18EE001ACEB2 /* BetaCoins.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 9D0F5BA72E6B18EE001ACEB1 /* BetaCoins.storekit */; };
+
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		CBDBF31646A6FD4181D70D4D /* libPods-BetaMe.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 761B590F48FA367C145B7D4D /* libPods-BetaMe.a */; };
 		DB54E7CBE9F54EEDAC786434 /* sfx.wav in Resources */ = {isa = PBXBuildFile; fileRef = 0CDF70173F5A48C58F640265 /* sfx.wav */; };
@@ -27,7 +27,7 @@
 		57D7DC8EB276E4A3356A9E95 /* Pods-BetaMe.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BetaMe.debug.xcconfig"; path = "Target Support Files/Pods-BetaMe/Pods-BetaMe.debug.xcconfig"; sourceTree = "<group>"; };
 		761B590F48FA367C145B7D4D /* libPods-BetaMe.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BetaMe.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		83D239E1C1BC7A4B2E964C42 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-BetaMe/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		9D0F5BA72E6B18EE001ACEB1 /* BetaCoins.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = BetaCoins.storekit; path = BetaMe/BetaCoins.storekit; sourceTree = "<group>"; };
+
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = BetaMe/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
@@ -53,7 +53,7 @@
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
 				F11748442D0722820044C1D9 /* BetaMe-Bridging-Header.h */,
-				9D0F5BA72E6B18EE001ACEB1 /* BetaCoins.storekit */,
+
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
@@ -201,7 +201,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				9D0F5BA82E6B18EE001ACEB2 /* BetaCoins.storekit in Resources */,
+
 				DB54E7CBE9F54EEDAC786434 /* sfx.wav in Resources */,
 				DD250D53ADA9CEF16F5CDD13 /* PrivacyInfo.xcprivacy in Resources */,
 			);
@@ -372,7 +372,7 @@
 				CODE_SIGN_ENTITLEMENTS = BetaMe/BetaMe.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = T72JDH8ZL6;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -411,7 +411,7 @@
 				CODE_SIGN_ENTITLEMENTS = BetaMe/BetaMe.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = T72JDH8ZL6;
 				INFOPLIST_FILE = BetaMe/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;

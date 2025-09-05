@@ -164,23 +164,37 @@ export class RevenueCatIAPService {
   }
 
   /**
-   * Load products from RevenueCat and StoreKit
+   * Load products from RevenueCat and App Store with comprehensive fallback
    */
   private async loadProducts(): Promise<void> {
-    console.log('🔍 Loading products for StoreKit testing...');
+    console.log('🔍 Loading products...');
     
-    // For StoreKit testing, we'll load products directly from StoreKit
-    // This bypasses RevenueCat's offerings system which doesn't work with unapproved products
-    const storeKitSuccess = await this.loadFromStoreKit();
-    
-    if (storeKitSuccess) {
-      console.log('✅ Products loaded successfully from StoreKit');
+    // Strategy 1: Try RevenueCat offerings first (works when dashboard is configured)
+    const offeringsSuccess = await this.loadFromRevenueCatOfferings();
+    if (offeringsSuccess) {
+      console.log('✅ Products loaded from RevenueCat offerings (Dashboard configured)');
       return;
     }
 
-    // If StoreKit fails, try RevenueCat offerings as fallback
+    // Strategy 2: Try direct App Store loading (works in sandbox mode)
+    const appStoreSuccess = await this.loadFromAppStore();
+    if (appStoreSuccess) {
+      console.log('✅ Products loaded from App Store (Sandbox testing)');
+      return;
+    }
+
+    // Strategy 3: Final fallback to static products for testing
+    console.log('🔄 Using static fallback products for testing...');
+    console.log('⚠️  RevenueCat dashboard needs configuration for production use');
+    await this.loadStaticProducts();
+  }
+
+  /**
+   * Try to load products from RevenueCat offerings (when dashboard is configured)
+   */
+  private async loadFromRevenueCatOfferings(): Promise<boolean> {
     try {
-      console.log('🔄 Trying RevenueCat offerings as fallback...');
+      console.log('🔄 Trying RevenueCat offerings (checking dashboard configuration)...');
       const offerings = await Purchases.getOfferings();
       this.currentOffering = offerings.current;
 
@@ -196,24 +210,37 @@ export class RevenueCatIAPService {
             productId: productId,
             title: `${betacoinAmount} BetaCoins`,
             description: `Purchase ${betacoinAmount} BetaCoins`,
-            price: `RM${this.getFallbackPrice(productId).toFixed(2)}`,
-            priceAmount: this.getFallbackPrice(productId),
-            currency: 'MYR',
+            price: pkg.storeProduct?.priceString || `RM${this.getFallbackPrice(productId).toFixed(2)}`,
+            priceAmount: pkg.storeProduct?.price || this.getFallbackPrice(productId),
+            currency: pkg.storeProduct?.currencyCode || 'MYR',
             betacoinAmount,
             package: pkg,
+            storeProduct: pkg.storeProduct,
           };
         });
         
         console.log('✅ Products loaded from RevenueCat offerings:', this.products.length);
-        return;
+        console.log('📋 Available products:', this.products.map(p => `${p.productId}: ${p.betacoinAmount} BetaCoins - ${p.price}`));
+        return true;
+      } else {
+        console.log('⚠️ No RevenueCat offerings found');
+        console.log('   This means products are not configured in RevenueCat dashboard');
+        console.log('   Run: node scripts/fix-revenuecat-configuration.js for setup guide');
+        return false;
       }
-    } catch (error) {
-      console.log('⚠️ RevenueCat offerings also failed:', error);
+    } catch (error: any) {
+      console.log('⚠️ RevenueCat offerings failed:', error?.message || error);
+      
+      // Check for specific RevenueCat configuration errors
+      if (error?.message?.includes('None of the products')) {
+        console.log('🔧 Configuration Issue Detected:');
+        console.log('   Products exist in App Store Connect but not in RevenueCat dashboard');
+        console.log('   Solution: Configure products in RevenueCat dashboard');
+        console.log('   Guide: node scripts/fix-revenuecat-configuration.js');
+      }
+      
+      return false;
     }
-
-    // Final fallback to static products
-    console.log('🔄 Using static fallback products for testing...');
-    await this.loadStaticProducts();
   }
 
   /**
@@ -232,21 +259,21 @@ export class RevenueCatIAPService {
   }
 
   /**
-   * Try to load products directly from StoreKit
+   * Try to load products directly from App Store (for sandbox testing)
    */
-  private async loadFromStoreKit(): Promise<boolean> {
+  private async loadFromAppStore(): Promise<boolean> {
     try {
-      console.log('🛒 Loading products directly from StoreKit for testing...');
+      console.log('🛒 Loading products directly from App Store for sandbox testing...');
       
-      // Get products directly from StoreKit - this should work with StoreKit configuration
+      // Get products directly from App Store - this works in sandbox mode
       const products = await Purchases.getProducts(this.productIds);
       
       if (products && products.length > 0) {
-        console.log(`🎉 Found ${products.length} products from StoreKit configuration!`);
+        console.log(`🎉 Found ${products.length} products from App Store!`);
         
         this.products = products.map((product) => {
           const betacoinAmount = this.productMapping[product.identifier] || 0;
-          console.log(`📦 StoreKit Product: ${product.identifier} - ${product.title} - ${product.priceString}`);
+          console.log(`📦 App Store Product: ${product.identifier} - ${product.title} - ${product.priceString}`);
           
           return {
             productId: product.identifier,
@@ -257,31 +284,34 @@ export class RevenueCatIAPService {
             currency: product.currencyCode || 'MYR',
             betacoinAmount,
             storeProduct: product,
-            package: undefined, // No RevenueCat package for direct StoreKit
+            package: undefined, // No RevenueCat package for direct App Store
           };
         });
         
-        console.log('✅ Products loaded from StoreKit configuration:', this.products.length);
+        console.log('✅ Products loaded from App Store:', this.products.length);
         console.log('📋 Available products:', this.products.map(p => `${p.productId}: ${p.betacoinAmount} BetaCoins - ${p.price}`));
         return true;
       } else {
-        console.log('⚠️ No products returned from StoreKit');
-        console.log('   This means the StoreKit configuration file is not properly loaded');
-        console.log('   Check that BetaCoins.storekit is linked in Xcode project');
+        console.log('⚠️ No products returned from App Store');
+        console.log('   This means products are not approved in App Store Connect');
+        console.log('   Or RevenueCat is not properly configured');
       }
     } catch (error) {
-      console.log('❌ Error loading from StoreKit:', error);
-      console.log('   Make sure StoreKit configuration is properly set up in Xcode');
+      console.log('❌ Error loading from App Store:', error);
+      console.log('   Make sure products are approved in App Store Connect');
     }
     
     return false;
   }
 
   /**
-   * Load static products for testing when StoreKit is not available
+   * Load static products for testing when RevenueCat dashboard is not configured
    */
   private async loadStaticProducts(): Promise<void> {
     console.log('🔄 Loading static products for testing...');
+    console.log('📝 Note: These are fallback products for development/testing');
+    console.log('   For production, configure products in RevenueCat dashboard');
+    
     this.products = [
       {
         productId: 'betacoins_20',
@@ -340,6 +370,8 @@ export class RevenueCatIAPService {
     ];
     
     console.log('✅ Static products loaded for testing:', this.products.length);
+    console.log('⚠️  Important: Configure RevenueCat dashboard for production use');
+    console.log('   Run: node scripts/fix-revenuecat-configuration.js');
   }
 
   /**
@@ -447,11 +479,64 @@ export class RevenueCatIAPService {
   }
 
   /**
-   * Purchase a product directly from StoreKit (when no package available)
+   * Purchase via RevenueCat package (TestFlight/Production)
    */
-  private async purchaseDirectFromStoreKit(productId: string, userId: string): Promise<IAPPurchaseResult> {
+  private async purchaseViaRevenueCatPackage(
+    rcPackage: PurchasesPackage, 
+    productId: string, 
+    userId: string
+  ): Promise<IAPPurchaseResult> {
     try {
-      console.log(`🛒 Purchasing ${productId} directly from StoreKit...`);
+      console.log(`🛒 Purchasing via RevenueCat package: ${productId}`);
+      
+      // Purchase the package through RevenueCat
+      const { customerInfo, productIdentifier } = await Purchases.purchasePackage(rcPackage);
+      
+      if (productIdentifier === productId) {
+        console.log('✅ RevenueCat package purchase successful:', productId);
+        
+        // Process the purchase with the actual user ID
+        await this.processBetaCoinPurchase(productId, userId);
+        
+        return {
+          success: true,
+          transactionId: customerInfo.originalAppUserId,
+          betacoinAmount: this.productMapping[productId] || 0
+        };
+      } else {
+        return {
+          success: false,
+          error: 'Product identifier mismatch'
+        };
+      }
+    } catch (error: unknown) {
+      console.error('❌ RevenueCat package purchase failed:', error);
+      
+      // Handle different error types
+      let errorMessage = 'Purchase failed';
+      
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMsg = (error as Error).message;
+        if (errorMsg.includes('cancelled')) {
+          errorMessage = 'Purchase cancelled by user';
+        } else {
+          errorMessage = errorMsg;
+        }
+      }
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }
+
+  /**
+   * Purchase a product directly from App Store (Sandbox testing)
+   */
+  private async purchaseDirectFromAppStore(productId: string, userId: string): Promise<IAPPurchaseResult> {
+    try {
+      console.log(`🛒 Purchasing ${productId} directly from App Store...`);
       
       // First check if the product exists in our loaded products
       const product = this.products.find(p => p.productId === productId);
@@ -477,7 +562,7 @@ export class RevenueCatIAPService {
       const { customerInfo, productIdentifier } = result;
       
       if (productIdentifier === productId) {
-        console.log('✅ StoreKit purchase successful:', productId);
+        console.log('✅ App Store purchase successful:', productId);
         
         // Process the purchase manually with the actual user ID
         await this.processBetaCoinPurchase(productId, userId);
@@ -494,7 +579,7 @@ export class RevenueCatIAPService {
         };
       }
     } catch (error: unknown) {
-      console.error('❌ StoreKit purchase failed:', error);
+      console.error('❌ App Store purchase failed:', error);
       
       // Handle different error types
       let errorMessage = 'Purchase failed';
@@ -502,7 +587,7 @@ export class RevenueCatIAPService {
       if (error && typeof error === 'object' && 'message' in error) {
         const errorMsg = (error as Error).message;
         if (errorMsg.includes('Couldn\'t find product')) {
-          errorMessage = 'Product not available in StoreKit configuration';
+          errorMessage = 'Product not available in App Store Connect';
         } else if (errorMsg.includes('cancelled')) {
           errorMessage = 'Purchase cancelled by user';
         } else {
@@ -545,9 +630,17 @@ export class RevenueCatIAPService {
         };
       }
 
-      // For StoreKit testing, always use direct purchase
-      console.log(`🛒 Initiating StoreKit purchase for ${productId}...`);
-      return await this.purchaseDirectFromStoreKit(productId, userId);
+      // Handle different purchase methods based on product source
+      if (product.package) {
+        console.log(`🛒 Using RevenueCat package for ${productId} (Dashboard configured)...`);
+        return await this.purchaseViaRevenueCatPackage(product.package, productId, userId);
+      } else if (product.storeProduct) {
+        console.log(`🛒 Using direct App Store purchase for ${productId} (Sandbox testing)...`);
+        return await this.purchaseDirectFromAppStore(productId, userId);
+      } else {
+        console.log(`🛒 Using static product purchase for ${productId} (Testing mode)...`);
+        return await this.purchaseStaticProduct(productId, userId);
+      }
       
     } catch (error: unknown) {
       console.error('❌ Purchase error:', error);
@@ -558,6 +651,52 @@ export class RevenueCatIAPService {
         errorMessage = (error as Error).message;
       }
 
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }
+
+  /**
+   * Purchase a static product (for testing when RevenueCat dashboard not configured)
+   */
+  private async purchaseStaticProduct(productId: string, userId: string): Promise<IAPPurchaseResult> {
+    try {
+      console.log(`🧪 Simulating purchase for ${productId} (testing mode)...`);
+      
+      const product = this.products.find(p => p.productId === productId);
+      if (!product) {
+        return {
+          success: false,
+          error: 'Product not found in static products'
+        };
+      }
+
+      // Simulate purchase delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('✅ Static product purchase simulated successfully');
+      console.log('⚠️  Note: This is a test purchase - no real money charged');
+      console.log('   Configure RevenueCat dashboard for real purchases');
+      
+      // Process the purchase manually
+      await this.processBetaCoinPurchase(productId, userId);
+      
+      return {
+        success: true,
+        transactionId: `test_${Date.now()}`,
+        betacoinAmount: product.betacoinAmount
+      };
+      
+    } catch (error: unknown) {
+      console.error('❌ Static product purchase failed:', error);
+      
+      let errorMessage = 'Test purchase failed';
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = (error as Error).message;
+      }
+      
       return {
         success: false,
         error: errorMessage
