@@ -313,6 +313,76 @@ eas init
 - **Provisioning Profile**: iOS Team Store Provisioning Profile
 - **Created**: September 1, 2025 (10:16)
 
+### Local Production Build (App Store) - Version 1.0.0 (16)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (71.3 MB)
+- **Build Number**: 16
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 3, 2025 (22:07)
+
+### Local Production Build (App Store) - Version 1.0.0 (17)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (71.3 MB)
+- **Build Number**: 17
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 3, 2025 (22:23)
+
+### Local Production Build (App Store) - Version 1.0.0 (18)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (71.3 MB)
+- **Build Number**: 18
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 3, 2025 (22:39)
+- **Icon Fix**: ✅ Corrected to use `icon.png` instead of `icon_android.png`
+
+### Local Production Build (App Store) - Version 1.0.0 (19)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (71.6 MB)
+- **Build Number**: 19
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 3, 2025 (22:55)
+- **Icon Fix**: ✅ **FIXED** - Native iOS icon now correctly uses `icon.png` instead of `icon_android.png`
+
+### Local Production Build (App Store) - Version 1.0.0 (20)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (75.1 MB)
+- **Build Number**: 20
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 3, 2025 (23:10)
+- **Icon Fix**: ✅ **CONFIRMED FIXED** - Build 20 successfully uses the correct `icon.png` icon
+
+### Local Production Build (App Store) - Version 1.0.0 (21)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (75.1 MB)
+- **Build Number**: 21
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 3, 2025 (23:26)
+- **Icon Fix**: ✅ **PERMANENTLY FIXED** - Build 21 successfully uses the correct `icon.png` icon after complete project regeneration
+
 ## Apple Developer Account Setup
 
 ### Credentials Created

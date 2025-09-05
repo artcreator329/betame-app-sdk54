@@ -8,28 +8,32 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		1B315D2D6BDBAF0AAE491A3B /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83D239E1C1BC7A4B2E964C42 /* ExpoModulesProvider.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		9D0F5BA82E6B18EE001ACEB2 /* BetaCoins.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 9D0F5BA72E6B18EE001ACEB1 /* BetaCoins.storekit */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		CAA44FEC926D84FAE3C87BBA /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37EAA87A7F38641C2ABBFA2D /* ExpoModulesProvider.swift */; };
-		EBC23E536DD9DCB39DFB0BED /* libPods-BetaMe.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A9704B2C12F6E8C8591B810 /* libPods-BetaMe.a */; };
+		CBDBF31646A6FD4181D70D4D /* libPods-BetaMe.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 761B590F48FA367C145B7D4D /* libPods-BetaMe.a */; };
+		DB54E7CBE9F54EEDAC786434 /* sfx.wav in Resources */ = {isa = PBXBuildFile; fileRef = 0CDF70173F5A48C58F640265 /* sfx.wav */; };
+		DD250D53ADA9CEF16F5CDD13 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4064D97245A7127E66F3525B /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		F57E94538D3A6AC32D475F39 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 62D0069E5B3194EF0672D191 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0CDF70173F5A48C58F640265 /* sfx.wav */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = sfx.wav; path = BetaMe/sfx.wav; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* BetaMe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BetaMe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = BetaMe/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = BetaMe/Info.plist; sourceTree = "<group>"; };
-		37EAA87A7F38641C2ABBFA2D /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-BetaMe/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		62D0069E5B3194EF0672D191 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = BetaMe/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		762877331D321FAC861A8D5D /* Pods-BetaMe.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BetaMe.release.xcconfig"; path = "Target Support Files/Pods-BetaMe/Pods-BetaMe.release.xcconfig"; sourceTree = "<group>"; };
-		7A9704B2C12F6E8C8591B810 /* libPods-BetaMe.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BetaMe.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		8E19C92345F44757E216169D /* Pods-BetaMe.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BetaMe.debug.xcconfig"; path = "Target Support Files/Pods-BetaMe/Pods-BetaMe.debug.xcconfig"; sourceTree = "<group>"; };
+		4064D97245A7127E66F3525B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = BetaMe/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		57D7DC8EB276E4A3356A9E95 /* Pods-BetaMe.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BetaMe.debug.xcconfig"; path = "Target Support Files/Pods-BetaMe/Pods-BetaMe.debug.xcconfig"; sourceTree = "<group>"; };
+		761B590F48FA367C145B7D4D /* libPods-BetaMe.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BetaMe.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		83D239E1C1BC7A4B2E964C42 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-BetaMe/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		9D0F5BA72E6B18EE001ACEB1 /* BetaCoins.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = BetaCoins.storekit; path = BetaMe/BetaCoins.storekit; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = BetaMe/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = BetaMe/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* BetaMe-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "BetaMe-Bridging-Header.h"; path = "BetaMe/BetaMe-Bridging-Header.h"; sourceTree = "<group>"; };
+		F95CC73EB2750F24381FBE17 /* Pods-BetaMe.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BetaMe.release.xcconfig"; path = "Target Support Files/Pods-BetaMe/Pods-BetaMe.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,31 +41,25 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EBC23E536DD9DCB39DFB0BED /* libPods-BetaMe.a in Frameworks */,
+				CBDBF31646A6FD4181D70D4D /* libPods-BetaMe.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0EF22131B67693B5525A027B /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				FE74080627C04418C960AB3E /* BetaMe */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
 		13B07FAE1A68108700A75B9A /* BetaMe */ = {
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
 				F11748442D0722820044C1D9 /* BetaMe-Bridging-Header.h */,
+				9D0F5BA72E6B18EE001ACEB1 /* BetaCoins.storekit */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				62D0069E5B3194EF0672D191 /* PrivacyInfo.xcprivacy */,
+				0CDF70173F5A48C58F640265 /* sfx.wav */,
+				4064D97245A7127E66F3525B /* PrivacyInfo.xcprivacy */,
 			);
 			name = BetaMe;
 			sourceTree = "<group>";
@@ -70,7 +68,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				7A9704B2C12F6E8C8591B810 /* libPods-BetaMe.a */,
+				761B590F48FA367C145B7D4D /* libPods-BetaMe.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -89,8 +87,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				D116222E35867BB7524ACCCF /* Pods */,
-				0EF22131B67693B5525A027B /* ExpoModulesProviders */,
+				B90CC67586CF7B42A207559F /* Pods */,
+				ECBEFCCEE48BA78078F2CEA3 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -105,6 +103,23 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		8B0059093922ADB0B373CABF /* BetaMe */ = {
+			isa = PBXGroup;
+			children = (
+				83D239E1C1BC7A4B2E964C42 /* ExpoModulesProvider.swift */,
+			);
+			name = BetaMe;
+			sourceTree = "<group>";
+		};
+		B90CC67586CF7B42A207559F /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				57D7DC8EB276E4A3356A9E95 /* Pods-BetaMe.debug.xcconfig */,
+				F95CC73EB2750F24381FBE17 /* Pods-BetaMe.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -114,21 +129,12 @@
 			path = BetaMe/Supporting;
 			sourceTree = "<group>";
 		};
-		D116222E35867BB7524ACCCF /* Pods */ = {
+		ECBEFCCEE48BA78078F2CEA3 /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				8E19C92345F44757E216169D /* Pods-BetaMe.debug.xcconfig */,
-				762877331D321FAC861A8D5D /* Pods-BetaMe.release.xcconfig */,
+				8B0059093922ADB0B373CABF /* BetaMe */,
 			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		FE74080627C04418C960AB3E /* BetaMe */ = {
-			isa = PBXGroup;
-			children = (
-				37EAA87A7F38641C2ABBFA2D /* ExpoModulesProvider.swift */,
-			);
-			name = BetaMe;
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -139,13 +145,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "BetaMe" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				36D2DA5D20FDA7C4FA9C4A07 /* [Expo] Configure project */,
+				8EA8B5590AF91D9909255FC4 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				0F278133596FD636B9418251 /* [CP] Embed Pods Frameworks */,
+				5506A6FB84EEF36C108C0789 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -166,7 +172,6 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1250;
-						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -196,7 +201,9 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				F57E94538D3A6AC32D475F39 /* PrivacyInfo.xcprivacy in Resources */,
+				9D0F5BA82E6B18EE001ACEB2 /* BetaCoins.storekit in Resources */,
+				DB54E7CBE9F54EEDAC786434 /* sfx.wav in Resources */,
+				DD250D53ADA9CEF16F5CDD13 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,7 +247,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		0F278133596FD636B9418251 /* [CP] Embed Pods Frameworks */ = {
+		5506A6FB84EEF36C108C0789 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -258,25 +265,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BetaMe/Pods-BetaMe-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		36D2DA5D20FDA7C4FA9C4A07 /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-BetaMe/expo-configure-project.sh\"\n";
-		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -292,11 +280,13 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoSystemUI/ExpoSystemUI_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/GoogleMaps/GoogleMapsResources.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/PurchasesHybridCommon/PurchasesHybridCommon.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RCT-Folly/RCT-Folly_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RNSVG/RNSVGFilters.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RevenueCat/RevenueCat.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/boost/boost_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-launcher/EXDevLauncher.bundle",
@@ -317,11 +307,13 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoSystemUI_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleMapsResources.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PurchasesHybridCommon.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RCT-Folly_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNSVGFilters.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RevenueCat.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SDWebImage.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/boost_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevLauncher.bundle",
@@ -337,6 +329,25 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BetaMe/Pods-BetaMe-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		8EA8B5590AF91D9909255FC4 /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-BetaMe/expo-configure-project.sh\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -345,7 +356,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				CAA44FEC926D84FAE3C87BBA /* ExpoModulesProvider.swift in Sources */,
+				1B315D2D6BDBAF0AAE491A3B /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -354,14 +365,14 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8E19C92345F44757E216169D /* Pods-BetaMe.debug.xcconfig */;
+			baseConfigurationReference = 57D7DC8EB276E4A3356A9E95 /* Pods-BetaMe.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = BetaMe/BetaMe.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 21;
 				DEVELOPMENT_TEAM = T72JDH8ZL6;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -393,14 +404,14 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 762877331D321FAC861A8D5D /* Pods-BetaMe.release.xcconfig */;
+			baseConfigurationReference = F95CC73EB2750F24381FBE17 /* Pods-BetaMe.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = BetaMe/BetaMe.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 21;
 				DEVELOPMENT_TEAM = T72JDH8ZL6;
 				INFOPLIST_FILE = BetaMe/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -479,10 +490,7 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -537,10 +545,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

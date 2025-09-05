@@ -1,0 +1,160 @@
+{
+  "identifier" : "BetaMe_IAP_Configuration",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.90",
+      "familyShareable" : false,
+      "internalID" : "1234567890",
+      "localizations" : [
+        {
+          "description" : "Purchase 20 BetaCoins for RM4.90",
+          "displayName" : "20 BetaCoins",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "betacoins_20",
+      "referenceName" : "20 BetaCoins",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "19.90",
+      "familyShareable" : false,
+      "internalID" : "1234567891",
+      "localizations" : [
+        {
+          "description" : "Purchase 100 BetaCoins for RM19.90",
+          "displayName" : "100 BetaCoins",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "betacoins_100",
+      "referenceName" : "100 BetaCoins",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "34.90",
+      "familyShareable" : false,
+      "internalID" : "1234567892",
+      "localizations" : [
+        {
+          "description" : "Purchase 250 BetaCoins for RM34.90",
+          "displayName" : "250 BetaCoins",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "betacoins_250",
+      "referenceName" : "250 BetaCoins",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "79.90",
+      "familyShareable" : false,
+      "internalID" : "1234567893",
+      "localizations" : [
+        {
+          "description" : "Purchase 600 BetaCoins for RM79.90",
+          "displayName" : "600 BetaCoins",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "betacoins_600",
+      "referenceName" : "600 BetaCoins",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "99.90",
+      "familyShareable" : false,
+      "internalID" : "1234567894",
+      "localizations" : [
+        {
+          "description" : "Purchase 1000 BetaCoins for RM99.90",
+          "displayName" : "1000 BetaCoins",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "betacoins_1000",
+      "referenceName" : "1000 BetaCoins",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "179.90",
+      "familyShareable" : false,
+      "internalID" : "1234567895",
+      "localizations" : [
+        {
+          "description" : "Purchase 2000 BetaCoins for RM179.90",
+          "displayName" : "2000 BetaCoins",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "betacoins_2000",
+      "referenceName" : "2000 BetaCoins",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "com.betame.app",
+    "_developerTeamID" : "YOUR_TEAM_ID",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 738864000.0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

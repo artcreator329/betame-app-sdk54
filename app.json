@@ -4,7 +4,7 @@
     "slug": "betame",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon_android.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "betame",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -35,8 +35,8 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-      "buildNumber": "15",
-      "backgroundColor": "#0f1419"
+              "buildNumber": "21",
+              "backgroundColor": "#0f1419"
     },
     "android": {
       "config": {

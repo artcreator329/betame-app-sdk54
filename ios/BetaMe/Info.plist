@@ -39,7 +39,7 @@
       </dict>
     </array>
     	<key>CFBundleVersion</key>
-	<string>16</string>
+	<string>21</string>
     <key>GMSApiKey</key>
     <string><REDACTED_GOOGLE_API_KEY></string>
     <key>LSMinimumSystemVersion</key>

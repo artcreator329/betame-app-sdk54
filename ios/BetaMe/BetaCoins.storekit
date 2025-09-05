@@ -1,0 +1,113 @@
+{
+  "identifier" : "A2C4B0A0",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.90",
+      "familyShareable" : false,
+      "internalID" : "6736045347",
+      "localizations" : [
+        {
+          "description" : "Get 20 BetaCoins to boost your services",
+          "displayName" : "20 BetaCoins",
+          "locale" : "en_MY"
+        }
+      ],
+      "productID" : "betacoins_20",
+      "referenceName" : "20 BetaCoins",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "19.90",
+      "familyShareable" : false,
+      "internalID" : "6736045348",
+      "localizations" : [
+        {
+          "description" : "Get 100 BetaCoins to boost your services",
+          "displayName" : "100 BetaCoins",
+          "locale" : "en_MY"
+        }
+      ],
+      "productID" : "betacoins_100",
+      "referenceName" : "100 BetaCoins",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "34.90",
+      "familyShareable" : false,
+      "internalID" : "6736045349",
+      "localizations" : [
+        {
+          "description" : "Get 250 BetaCoins to boost your services",
+          "displayName" : "250 BetaCoins",
+          "locale" : "en_MY"
+        }
+      ],
+      "productID" : "betacoins_250",
+      "referenceName" : "250 BetaCoins",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "79.90",
+      "familyShareable" : false,
+      "internalID" : "6736045350",
+      "localizations" : [
+        {
+          "description" : "Get 600 BetaCoins to boost your services",
+          "displayName" : "600 BetaCoins",
+          "locale" : "en_MY"
+        }
+      ],
+      "productID" : "betacoins_600",
+      "referenceName" : "600 BetaCoins",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "99.90",
+      "familyShareable" : false,
+      "internalID" : "6736045351",
+      "localizations" : [
+        {
+          "description" : "Get 1000 BetaCoins to boost your services",
+          "displayName" : "1000 BetaCoins",
+          "locale" : "en_MY"
+        }
+      ],
+      "productID" : "betacoins_1000",
+      "referenceName" : "1000 BetaCoins",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "179.90",
+      "familyShareable" : false,
+      "internalID" : "6736045352",
+      "localizations" : [
+        {
+          "description" : "Get 2000 BetaCoins to boost your services",
+          "displayName" : "2000 BetaCoins",
+          "locale" : "en_MY"
+        }
+      ],
+      "productID" : "betacoins_2000",
+      "referenceName" : "2000 BetaCoins",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6736045346",
+    "_developerTeamID" : "GL5D52YR89",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 759344742.12748396,
+    "_locale" : "en_MY",
+    "_storefront" : "MYS"
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

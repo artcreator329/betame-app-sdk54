@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,20 +12,24 @@ import {
   Pressable,
   Linking,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { X, ShoppingCart } from 'lucide-react-native';
+import { X, ShoppingCart, Apple, CreditCard } from 'lucide-react-native';
 import { useColors } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { WalletService } from '@/lib/wallet-service';
 import CurlecPaymentService from '@/lib/curlec-payment-service';
+import RevenueCatIAPService from '@/lib/revenuecat-iap-service';
 
 interface BetaCoinBundle {
   id: string;
   betacoins: number;
   priceValue: number;
-  image: any;
+  image: any; // Android/Web image
+  imageIOS: any; // iOS image (required for iOS)
   badge?: string;
+  iapProductId?: string; // iOS IAP product ID
 }
 
 interface BetaCoinPurchaseProps {
@@ -38,40 +42,52 @@ const betacoinBundles: BetaCoinBundle[] = [
   {
     id: '1',
     betacoins: 20,
-    priceValue: 5,
+    priceValue: 4.90,
     image: require('../assets/images/credit-purchase/RM5.png'),
+    imageIOS: require('../assets/images/credit-purchase-ios/RM4.90.png'),
+    iapProductId: 'betacoins_20',
   },
   {
     id: '2',
     betacoins: 100,
-    priceValue: 20,
+    priceValue: 19.90,
     image: require('../assets/images/credit-purchase/RM20.png'),
+    imageIOS: require('../assets/images/credit-purchase-ios/RM19.90.png'),
+    iapProductId: 'betacoins_100',
   },
   {
     id: '3',
     betacoins: 250,
-    priceValue: 35,
+    priceValue: 34.90,
     image: require('../assets/images/credit-purchase/RM35.png'),
+    imageIOS: require('../assets/images/credit-purchase-ios/RM34.90.png'),
     badge: 'Popular',
+    iapProductId: 'betacoins_250',
   },
   {
     id: '4',
     betacoins: 600,
-    priceValue: 80,
+    priceValue: 79.90,
     image: require('../assets/images/credit-purchase/RM80.png'),
+    imageIOS: require('../assets/images/credit-purchase-ios/RM79.90.png'),
+    iapProductId: 'betacoins_600',
   },
   {
     id: '5',
     betacoins: 1000,
-    priceValue: 100,
+    priceValue: 99.90,
     image: require('../assets/images/credit-purchase/RM100.png'),
+    imageIOS: require('../assets/images/credit-purchase-ios/RM99.90.png'),
+    iapProductId: 'betacoins_1000',
   },
   {
     id: '6',
     betacoins: 2000,
-    priceValue: 180,
+    priceValue: 179.90,
     image: require('../assets/images/credit-purchase/RM180.png'),
+    imageIOS: require('../assets/images/credit-purchase-ios/RM179.90.png'),
     badge: 'Best Value',
+    iapProductId: 'betacoins_2000',
   },
 ];
 
@@ -81,6 +97,57 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
   const [isProcessing, setIsProcessing] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmationData, setConfirmationData] = useState<{bundle: BetaCoinBundle, fees: any} | null>(null);
+  const [iapProducts, setIapProducts] = useState<any[]>([]);
+
+  // Initialize IAP service on iOS
+  useEffect(() => {
+    if (Platform.OS === 'ios' && visible) {
+      console.log('🍎 iOS device detected, initializing IAP and loading iOS images');
+      initializeIAP();
+    } else if (Platform.OS !== 'ios') {
+      console.log('🤖 Non-iOS device detected, using Curlec payment system');
+    }
+  }, [visible]);
+
+  const initializeIAP = async () => {
+    // Only initialize IAP on iOS
+    if (Platform.OS !== 'ios') {
+      console.log('📱 IAP not available on this platform, using Curlec instead');
+      return;
+    }
+
+    try {
+      const iapService = RevenueCatIAPService.getInstance();
+      const initialized = await iapService.initialize();
+      
+      if (initialized) {
+        // Get IAP products
+        const products = iapService.getProducts();
+        setIapProducts(products);
+        console.log('✅ RevenueCat IAP initialized with', products.length, 'products');
+        
+        // Check IAP status for user feedback
+        const status = await iapService.getIAPStatus();
+        if (!status.canPurchase) {
+          console.log('⚠️ IAP Status:', status.message);
+          // Could show a toast or alert here if needed
+        }
+        
+        // If no products are available, try refreshing
+        if (products.length === 0) {
+          console.log('🔄 No products found, attempting to refresh...');
+          await iapService.refreshProducts();
+          const refreshedProducts = iapService.getProducts();
+          setIapProducts(refreshedProducts);
+          console.log('🔄 After refresh:', refreshedProducts.length, 'products available');
+        }
+      } else {
+        console.log('⚠️ RevenueCat IAP initialization failed, falling back to Curlec');
+      }
+    } catch (error) {
+      console.error('Failed to initialize RevenueCat IAP:', error);
+    }
+  };
 
   const handlePurchase = async (bundle: BetaCoinBundle) => {
     if (!user) {
@@ -112,6 +179,52 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
     setConfirmationData(null);
   };
 
+  const handleRestorePurchases = async () => {
+    if (!user) {
+      Alert.alert('Error', 'Please log in to restore purchases');
+      return;
+    }
+
+    // Only available on iOS with RevenueCat
+    if (Platform.OS !== 'ios') {
+      Alert.alert(
+        'Not Available',
+        'Purchase restoration is only available on iOS. Android users can check their transaction history in the wallet.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const iapService = RevenueCatIAPService.getInstance();
+      const result = await iapService.restorePurchases();
+
+      if (result) {
+        Alert.alert(
+          'Purchases Restored',
+          'Your previous purchases have been restored. BetaCoins will be added to your wallet.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                onPurchaseSuccess();
+                onClose();
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Restore Failed', 'Failed to restore purchases');
+      }
+    } catch (error) {
+      console.error('Restore purchases error:', error);
+      Alert.alert('Restore Failed', 'Failed to restore purchases');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const processPurchase = async (bundle: BetaCoinBundle, fees: any) => {
     if (!user) {
       Alert.alert('Error', 'Please log in to purchase BetaCoins');
@@ -121,11 +234,82 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
     setIsProcessing(true);
     
     try {
+      if (Platform.OS === 'ios') {
+        // Use RevenueCat IAP on iOS
+        await processIAPPurchase(bundle);
+      } else {
+        // Use Curlec on Android/Web
+        await processCurlecPurchase(bundle);
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      Alert.alert('Payment Failed', 'Something went wrong. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const processIAPPurchase = async (bundle: BetaCoinBundle) => {
+    if (!bundle.iapProductId) {
+      Alert.alert('Error', 'IAP product not configured for this bundle');
+      return;
+    }
+
+    try {
+      const iapService = RevenueCatIAPService.getInstance();
+      
+      // Check if IAP is available before attempting purchase
+      const status = await iapService.getIAPStatus();
+      if (!status.canPurchase) {
+        Alert.alert(
+          'Purchase Not Available',
+          status.message + '\n\nPlease ensure StoreKit configuration is properly set up in Xcode and try again.',
+          [{ text: 'OK', style: 'default' }]
+        );
+        return;
+      }
+      
+      const result = await iapService.purchaseProduct(bundle.iapProductId, user!.id);
+      
+      if (result.success) {
+        Alert.alert(
+          'Purchase Initiated',
+          'Your purchase is being processed through the App Store. BetaCoins will be added to your wallet once the transaction is complete.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                onPurchaseSuccess();
+                onClose();
+              }
+            }
+          ]
+        );
+      } else {
+        // Show error message with StoreKit troubleshooting
+        Alert.alert(
+          'Purchase Failed',
+          (result.error || 'Failed to initiate purchase') + '\n\nPlease check:\n• StoreKit configuration is properly linked\n• Product IDs match exactly\n• StoreKit testing is enabled in Xcode scheme',
+          [{ text: 'OK', style: 'default' }]
+        );
+      }
+    } catch (error) {
+      console.error('IAP purchase error:', error);
+      Alert.alert(
+        'Purchase Failed',
+        'Failed to initiate in-app purchase.\n\nTroubleshooting:\n• Ensure StoreKit configuration is linked in Xcode\n• Check that product IDs match exactly\n• Verify StoreKit testing is enabled\n• Try restarting the app',
+        [{ text: 'OK', style: 'default' }]
+      );
+    }
+  };
+
+  const processCurlecPurchase = async (bundle: BetaCoinBundle) => {
+    try {
       const paymentService = CurlecPaymentService.getInstance();
 
       // Create Curlec payment session
       const response = await paymentService.createCheckoutSession({
-        user_id: user.id,
+        user_id: user!.id,
         payment_type: 'betacoin_purchase',
         amount: bundle.priceValue * 100, // Convert to cents
         currency: 'MYR',
@@ -156,10 +340,8 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
         Alert.alert('Error', 'No payment URL received');
       }
     } catch (error) {
-      console.error('Payment error:', error);
-      Alert.alert('Payment Failed', 'Something went wrong. Please try again.');
-    } finally {
-      setIsProcessing(false);
+      console.error('Curlec payment error:', error);
+      Alert.alert('Payment Failed', 'Failed to create payment session');
     }
   };
 
@@ -179,28 +361,54 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
           disabled={isProcessing}
           android_ripple={{ color: 'rgba(0, 0, 0, 0.1)' }}
         >
-              <ImageBackground
-        source={bundle.image}
-        style={styles.bundleImage}
-        imageStyle={styles.bundleImageStyle}
-      >
-        {bundle.badge && (
-          <View style={[styles.badge, { backgroundColor: colors.primary.main }]}>
-            <Text style={styles.badgeText}>{bundle.badge}</Text>
-          </View>
-        )}
-        
-        <ImageBackground
-          source={bundle.image}
-          style={styles.bundleContent}
-          imageStyle={styles.bundleImageStyle}
-        >
-          <View style={styles.bundleContentOverlay} />
-        </ImageBackground>
-      </ImageBackground>
+          <ImageBackground
+            source={Platform.OS === 'ios' ? bundle.imageIOS : bundle.image}
+            style={styles.bundleImage}
+            imageStyle={styles.bundleImageStyle}
+            onLoad={() => {
+              console.log(`🍎 iOS: Loading ${bundle.betacoins} BetaCoins image:`, 
+                Platform.OS === 'ios' ? 'iOS image' : 'Android/Web image');
+            }}
+          >
+            {bundle.badge && (
+              <View style={[styles.badge, { backgroundColor: colors.primary.main }]}>
+                <Text style={styles.badgeText}>{bundle.badge}</Text>
+              </View>
+            )}
+            
+
+            
+            <ImageBackground
+              source={Platform.OS === 'ios' ? bundle.imageIOS : bundle.image}
+              style={styles.bundleContent}
+              imageStyle={styles.bundleImageStyle}
+              onLoad={() => {
+                console.log(`🍎 iOS: Loading ${bundle.betacoins} BetaCoins content image:`, 
+                  Platform.OS === 'ios' ? 'iOS image' : 'Android/Web image');
+              }}
+            >
+              <View style={styles.bundleContentOverlay} />
+            </ImageBackground>
+          </ImageBackground>
         </Pressable>
       </Animated.View>
     );
+  };
+
+  const getPaymentMethodIcon = () => {
+    if (Platform.OS === 'ios') {
+      return <Apple size={16} color={colors.text.secondary} />;
+    } else {
+      return <CreditCard size={16} color={colors.text.secondary} />;
+    }
+  };
+
+  const getPaymentMethodText = () => {
+    if (Platform.OS === 'ios') {
+      return 'Apple App Store';
+    } else {
+      return 'Credit Card / Online Banking';
+    }
   };
 
   return (
@@ -230,14 +438,27 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
               </Text>
             </View>
 
+            {/* Payment Method Info */}
+            <View style={[styles.paymentMethodInfo, { backgroundColor: colors.background.secondary }]}>
+              <View style={styles.paymentMethodRow}>
+                {getPaymentMethodIcon()}
+                <Text style={[styles.paymentMethodText, { color: colors.text.secondary }]}>
+                  Payment via {getPaymentMethodText()}
+                </Text>
+              </View>
+              {Platform.OS === 'ios' && (
+                <Text style={[styles.paymentMethodSubtext, { color: colors.text.secondary }]}>
+                  Secure payment through Apple App Store
+                </Text>
+              )}
+            </View>
+
             <View style={styles.bundlesGrid}>
               {betacoinBundles.map(renderBundle)}
             </View>
 
             <View style={styles.footer}>
               <View style={styles.infoCard}>
-
-                
                 <View style={styles.infoItem}>
                   <View style={[styles.bulletPoint, { backgroundColor: colors.primary.main }]} />
                   <Text style={[styles.infoText, { color: colors.text.secondary }]}>
@@ -251,8 +472,6 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
                     Can be exchanged with Diamonds (10 diamonds = 1 BetaCoin)
                   </Text>
                 </View>
-                
-
               </View>
             </View>
           </ScrollView>
@@ -267,7 +486,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
                 Confirm Purchase
               </Text>
               <Text style={[styles.confirmationSubtitle, { color: colors.text.secondary }]}>
-                You're about to purchase BetaCoins
+                You're about to purchase BetaCoins via {getPaymentMethodText()}
               </Text>
             </View>
 
@@ -350,13 +569,15 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
               Processing Payment...
             </Text>
             <Text style={[styles.loadingSubtext, { color: colors.text.secondary }]}>
-              Please wait while we redirect you to the payment gateway
+              {Platform.OS === 'ios' 
+                ? 'Please complete the purchase in the App Store'
+                : 'Please wait while we redirect you to the payment gateway'
+              }
             </Text>
           </View>
         </View>
       </Modal>
     )}
-
     </>
   );
 }
@@ -391,6 +612,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
+  },
+  paymentMethodInfo: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  paymentMethodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  paymentMethodText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  paymentMethodSubtext: {
+    fontSize: 12,
+    marginTop: 4,
+    opacity: 0.8,
   },
   bundlesGrid: {
     gap: 8,
@@ -634,4 +874,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+
 });
