@@ -20,7 +20,8 @@ import { useColors } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { WalletService } from '@/lib/wallet-service';
 import CurlecPaymentService from '@/lib/curlec-payment-service';
-import RevenueCatIAPService from '@/lib/revenuecat-iap-service';
+import { RevenueCatIAPService } from '@/lib/revenuecat-iap-service';
+import RevenueCatPaywall from './RevenueCatPaywall';
 
 interface BetaCoinBundle {
   id: string;
@@ -45,7 +46,7 @@ const betacoinBundles: BetaCoinBundle[] = [
     priceValue: 4.90,
     image: require('../assets/images/credit-purchase/RM5.png'),
     imageIOS: require('../assets/images/credit-purchase-ios/RM4.90.png'),
-    iapProductId: 'betacoins_20',
+    iapProductId: 'betacoins_new_20',
   },
   {
     id: '2',
@@ -53,41 +54,8 @@ const betacoinBundles: BetaCoinBundle[] = [
     priceValue: 19.90,
     image: require('../assets/images/credit-purchase/RM20.png'),
     imageIOS: require('../assets/images/credit-purchase-ios/RM19.90.png'),
-    iapProductId: 'betacoins_100',
-  },
-  {
-    id: '3',
-    betacoins: 250,
-    priceValue: 34.90,
-    image: require('../assets/images/credit-purchase/RM35.png'),
-    imageIOS: require('../assets/images/credit-purchase-ios/RM34.90.png'),
     badge: 'Popular',
-    iapProductId: 'betacoins_250',
-  },
-  {
-    id: '4',
-    betacoins: 600,
-    priceValue: 79.90,
-    image: require('../assets/images/credit-purchase/RM80.png'),
-    imageIOS: require('../assets/images/credit-purchase-ios/RM79.90.png'),
-    iapProductId: 'betacoins_600',
-  },
-  {
-    id: '5',
-    betacoins: 1000,
-    priceValue: 99.90,
-    image: require('../assets/images/credit-purchase/RM100.png'),
-    imageIOS: require('../assets/images/credit-purchase-ios/RM99.90.png'),
-    iapProductId: 'betacoins_1000',
-  },
-  {
-    id: '6',
-    betacoins: 2000,
-    priceValue: 179.90,
-    image: require('../assets/images/credit-purchase/RM180.png'),
-    imageIOS: require('../assets/images/credit-purchase-ios/RM179.90.png'),
-    badge: 'Best Value',
-    iapProductId: 'betacoins_2000',
+    iapProductId: 'betacoins_new_100',
   },
 ];
 
@@ -97,13 +65,13 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
   const [isProcessing, setIsProcessing] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmationData, setConfirmationData] = useState<{bundle: BetaCoinBundle, fees: any} | null>(null);
-  const [iapProducts, setIapProducts] = useState<any[]>([]);
+  const [showRevenueCatPaywall, setShowRevenueCatPaywall] = useState(false);
 
-  // Initialize IAP service on iOS
+  // Show RevenueCat Paywall for iOS, custom UI for Android
   useEffect(() => {
     if (Platform.OS === 'ios' && visible) {
-      console.log('🍎 iOS device detected, initializing IAP and loading iOS images');
-      initializeIAP();
+      console.log('🍎 iOS device detected, using RevenueCat Paywall');
+      setShowRevenueCatPaywall(true);
     } else if (Platform.OS !== 'ios') {
       console.log('🤖 Non-iOS device detected, using Curlec payment system');
     }
@@ -123,7 +91,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
       if (initialized) {
         // Get IAP products
         const products = iapService.getProducts();
-        setIapProducts(products);
+        // setIapProducts(products); // Commented out - state not needed for RevenueCatPaywall
         console.log('✅ RevenueCat IAP initialized with', products.length, 'products');
         
         // Check IAP status for user feedback
@@ -138,7 +106,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
           console.log('🔄 No products found, attempting to refresh...');
           await iapService.refreshProducts();
           const refreshedProducts = iapService.getProducts();
-          setIapProducts(refreshedProducts);
+          // setIapProducts(refreshedProducts); // Commented out - state not needed for RevenueCatPaywall
           console.log('🔄 After refresh:', refreshedProducts.length, 'products available');
         }
       } else {
@@ -411,6 +379,18 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
     }
   };
 
+  // iOS: Use RevenueCat Paywall
+  if (Platform.OS === 'ios') {
+    return (
+      <RevenueCatPaywall
+        visible={visible}
+        onClose={onClose}
+        onPurchaseSuccess={onPurchaseSuccess}
+      />
+    );
+  }
+
+  // Android/Web: Use custom Curlec payment UI
   return (
     <>
     <Modal

@@ -35,7 +35,7 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-              "buildNumber": "22",
+              "buildNumber": "26",
               "backgroundColor": "#0f1419"
     },
     "android": {

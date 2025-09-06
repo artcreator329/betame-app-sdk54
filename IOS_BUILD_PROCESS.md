@@ -396,6 +396,45 @@ eas init
 - **Icon Fix**: ✅ **CONFIRMED WORKING** - Build 22 continues to use the correct `icon.png` icon
 - **Changes**: Removed `react-native-iap` plugin, added `BetaCoins.storekit` file
 
+### Local Production Build (App Store) - Version 1.0.0 (23)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (74.9 MB)
+- **Build Number**: 23
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 6, 2025 (01:44)
+- **Icon Fix**: ✅ **CONFIRMED WORKING** - Build 23 continues to use the correct `icon.png` icon
+- **Changes**: Removed `BetaCoins.storekit` file from iOS project
+
+### Local Production Build (App Store) - Version 1.0.0 (24)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (77.3 MB)
+- **Build Number**: 24
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 6, 2025 (12:34)
+- **Icon Fix**: ✅ **CONFIRMED WORKING** - Build 24 continues to use the correct `icon.png` icon
+- **Changes**: Added `BetaCoins.storekit` file back to iOS project, integrated RevenueCat UI bundle
+
+### Local Production Build (App Store) - Version 1.0.0 (26)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (77.3 MB)
+- **Build Number**: 26
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 6, 2025 (14:14)
+- **Icon Fix**: ✅ **CONFIRMED WORKING** - Build 26 continues to use the correct `icon.png` icon
+- **Changes**: Updated Xcode project settings (LastUpgradeCheck to 1640, BuildIndependentTargetsInParallel, disabled ENABLE_USER_SCRIPT_SANDBOXING for compatibility)
+
 ## Apple Developer Account Setup
 
 ### Credentials Created

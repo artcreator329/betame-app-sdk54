@@ -1,0 +1,110 @@
+{
+  "identifier" : "CE192D61",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.90",
+      "familyShareable" : false,
+      "internalID" : "44FB24A0",
+      "localizations" : [
+        {
+          "description" : "Purchase 20 BetaCoins to boost your services and unlock premium features in the BetaMe marketplace app",
+          "displayName" : "20 BetaCoins Pack",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Beli 20 BetaCoins untuk meningkatkan perkhidmatan anda dan membuka kunci ciri premium dalam aplikasi BetaMe",
+          "displayName" : "Pakej 20 BetaCoins",
+          "locale" : "ms"
+        }
+      ],
+      "productID" : "betacoins_new_20",
+      "referenceName" : "20 BetaCoins Pack",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "19.90",
+      "familyShareable" : false,
+      "internalID" : "A60CC4B7",
+      "localizations" : [
+        {
+          "description" : "Purchase 100 BetaCoins to boost your services and unlock premium features in the BetaMe marketplace app",
+          "displayName" : "100 BetaCoins Pack",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Beli 100 BetaCoins untuk meningkatkan perkhidmatan anda dan membuka kunci ciri premium dalam aplikasi BetaMe",
+          "displayName" : "Pakej 100 BetaCoins",
+          "locale" : "ms"
+        }
+      ],
+      "productID" : "betacoins_new_100",
+      "referenceName" : "100 BetaCoins Pack",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6670416133",
+    "_developerTeamID" : "T72JDH8ZL6",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 748108800.0,
+    "_locale" : "en_MY",
+    "_storefront" : "MYS",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

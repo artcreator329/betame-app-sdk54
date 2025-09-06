@@ -11,32 +11,20 @@ export const REVENUECAT_CONFIG = {
   
   // App Store Product IDs (must match your App Store Connect configuration)
   PRODUCT_IDS: {
-    BETACOINS_20: 'betacoins_20',
-    BETACOINS_100: 'betacoins_100',
-    BETACOINS_250: 'betacoins_250',
-    BETACOINS_600: 'betacoins_600',
-    BETACOINS_1000: 'betacoins_1000',
-    BETACOINS_2000: 'betacoins_2000',
+    BETACOINS_NEW_20: 'betacoins_new_20',
+    BETACOINS_NEW_100: 'betacoins_new_100',
   },
   
   // BetaCoin amounts for each product
   BETACOIN_AMOUNTS: {
-    'betacoins_20': 20,
-    'betacoins_100': 100,
-    'betacoins_250': 250,
-    'betacoins_600': 600,
-    'betacoins_1000': 1000,
-    'betacoins_2000': 2000,
+    'betacoins_new_20': 20,
+    'betacoins_new_100': 100,
   },
   
   // Pricing in Malaysian Ringgit (MYR) - Updated for iOS App Store IAP
   PRICING: {
-    'betacoins_20': 4.90,
-    'betacoins_100': 19.90,
-    'betacoins_250': 34.90,
-    'betacoins_600': 79.90,
-    'betacoins_1000': 99.90,
-    'betacoins_2000': 179.90,
+    'betacoins_new_20': 4.90,
+    'betacoins_new_100': 19.90,
   },
 };
 
