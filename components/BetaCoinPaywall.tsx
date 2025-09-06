@@ -11,6 +11,7 @@ import {
   Platform,
   StyleSheet,
   Dimensions,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,12 +83,15 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
       }
       
       const availableProducts = iapService.getProducts();
-      setProducts(availableProducts);
+      
+      // Sort products from lowest to highest amount
+      const sortedProducts = availableProducts.sort((a, b) => a.betacoinAmount - b.betacoinAmount);
+      setProducts(sortedProducts);
       
       // Auto-select most popular (100 BetaCoins)
-      if (availableProducts.length > 0) {
-        const popularProduct = availableProducts.find(p => p.betacoinAmount === 100);
-        setSelectedProduct(popularProduct?.productId || availableProducts[0].productId);
+      if (sortedProducts.length > 0) {
+        const popularProduct = sortedProducts.find(p => p.betacoinAmount === 100);
+        setSelectedProduct(popularProduct?.productId || sortedProducts[0].productId);
       }
     } catch (error) {
       console.error('Error loading products:', error);
@@ -152,10 +156,25 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
     return savings > 0 ? Math.round(savings) : 0;
   };
 
+  const getProductImage = (price: string) => {
+    const imageMap: Record<string, any> = {
+      'RM4.90': require('../assets/images/credit-purchase-ios/RM4.90.png'),
+      'RM19.90': require('../assets/images/credit-purchase-ios/RM19.90.png'),
+      'RM34.90': require('../assets/images/credit-purchase-ios/RM34.90.png'),
+      'RM79.90': require('../assets/images/credit-purchase-ios/RM79.90.png'),
+      'RM99.90': require('../assets/images/credit-purchase-ios/RM99.90.png'),
+      'RM179.90': require('../assets/images/credit-purchase-ios/RM179.90.png'),
+    };
+    return imageMap[price];
+  };
+
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background.primary }]}>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: colorScheme === 'dark' ? '#0f1419' : '#f8fafc' }]}>
         <ActivityIndicator size="large" color={theme.primary.main} />
+        <Text style={[styles.loadingText, { color: theme.text.primary }]}>
+          Loading BetaCoin packages...
+        </Text>
       </View>
     );
   }
@@ -165,7 +184,7 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
       style={[
         styles.container, 
         { 
-          backgroundColor: theme.background.primary,
+          backgroundColor: colorScheme === 'dark' ? '#0f1419' : '#f8fafc',
           opacity: fadeAnim,
         }
       ]}
@@ -190,9 +209,6 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
               </Text>
             </View>
             
-            <View style={styles.coinIcon}>
-              <Ionicons name="logo-bitcoin" size={40} color="#FFD700" />
-            </View>
           </View>
         </BlurView>
       </LinearGradient>
@@ -221,11 +237,14 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
                   styles.productCard,
                   { 
                     transform: [{ scale: scaleAnims[index] }],
-                    borderColor: isSelected ? theme.primary.main : theme.border.light,
-                    borderWidth: isSelected ? 2 : 1,
-                    backgroundColor: isSelected 
-                      ? theme.background.secondary 
-                      : theme.background.tertiary,
+                    backgroundColor: '#ffffff',
+                    borderWidth: isSelected ? 3 : 0,
+                    borderColor: isSelected ? theme.primary.main : 'transparent',
+                    elevation: isSelected ? 8 : 4,
+                    shadowColor: isSelected ? theme.primary.main : '#000',
+                    shadowOffset: { width: 0, height: isSelected ? 4 : 2 },
+                    shadowOpacity: isSelected ? 0.3 : 0.1,
+                    shadowRadius: isSelected ? 8 : 4,
                   }
                 ]}
               >
@@ -241,32 +260,14 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
                     </View>
                   )}
 
-                  {/* Coin Amount */}
-                  <View style={styles.productHeader}>
-                    <Text style={[styles.coinAmount, { color: theme.text.primary }]}>
-                      {product.betacoinAmount.toLocaleString()}
-                    </Text>
-                    <Text style={[styles.coinLabel, { color: theme.text.secondary }]}>
-                      BetaCoins
-                    </Text>
+                  {/* Product Image Bar */}
+                  <View style={styles.imageContainer}>
+                    <Image 
+                      source={getProductImage(product.price)}
+                      style={styles.productImage}
+                      resizeMode="contain"
+                    />
                   </View>
-
-                  {/* Price */}
-                  <View style={styles.priceContainer}>
-                    <Text style={[styles.price, { color: theme.primary.main }]}>
-                      {product.price}
-                    </Text>
-                    {savings > 0 && (
-                      <Text style={[styles.savings, { color: theme.status.success }]}>
-                        Save {savings}%
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Description */}
-                  <Text style={[styles.description, { color: theme.text.tertiary }]}>
-                    {product.description}
-                  </Text>
 
                   {/* Selection Indicator */}
                   {isSelected && (
@@ -281,8 +282,15 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
         </Animated.View>
 
         {/* Features */}
-        <View style={[styles.featuresContainer, { backgroundColor: theme.background.secondary }]}>
-          <Text style={[styles.featuresTitle, { color: theme.text.primary }]}>
+        <View style={[styles.featuresContainer, { 
+          backgroundColor: colorScheme === 'dark' ? '#1a2332' : '#ffffff',
+          borderWidth: 1,
+          borderColor: colorScheme === 'dark' ? '#334155' : 'rgba(0, 0, 0, 0.1)',
+        }]}>
+          <Text style={[styles.featuresTitle, { 
+            color: colorScheme === 'dark' ? '#e2e8f0' : '#1e293b',
+            fontWeight: '700',
+          }]}>
             What can you do with BetaCoins?
           </Text>
           {[
@@ -293,7 +301,10 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
           ].map((feature, index) => (
             <View key={index} style={styles.featureRow}>
               <Ionicons name={feature.icon as any} size={20} color={theme.primary.main} />
-              <Text style={[styles.featureText, { color: theme.text.secondary }]}>
+              <Text style={[styles.featureText, { 
+                color: colorScheme === 'dark' ? '#94a3b8' : '#475569',
+                fontWeight: '500',
+              }]}>
                 {feature.text}
               </Text>
             </View>
@@ -302,7 +313,10 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
       </ScrollView>
 
       {/* Purchase Button */}
-      <View style={[styles.footer, { backgroundColor: theme.background.primary }]}>
+      <View style={[styles.footer, { 
+        backgroundColor: colorScheme === 'dark' ? '#0f1419' : '#ffffff',
+        borderTopColor: colorScheme === 'dark' ? '#334155' : 'rgba(0, 0, 0, 0.1)',
+      }]}>
         <TouchableOpacity
           onPress={handlePurchase}
           disabled={!selectedProduct || purchasing}
@@ -348,6 +362,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   header: {
     height: 180,
     paddingTop: Platform.OS === 'ios' ? 50 : 30,
@@ -381,14 +405,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.9)',
   },
-  coinIcon: {
-    position: 'absolute',
-    bottom: -20,
-    right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 30,
-    padding: 10,
-  },
   scrollView: {
     flex: 1,
   },
@@ -396,76 +412,67 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   productsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 10,
+    paddingHorizontal: 20,
     paddingTop: 30,
   },
   productCard: {
-    width: (screenWidth - 30) / 2,
-    margin: 5,
+    width: '100%',
+    marginBottom: 20,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: 'visible',
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    height: 80,
+    position: 'relative',
   },
   productTouchable: {
-    padding: 16,
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageContainer: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  productImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
   },
   badge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    top: -10,
+    right: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    zIndex: 100,
   },
   badgeText: {
     fontSize: 10,
     fontWeight: 'bold',
     color: '#fff',
   },
-  productHeader: {
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  coinAmount: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  coinLabel: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  priceContainer: {
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  price: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  savings: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  description: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 4,
-  },
   selectedIndicator: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
+    bottom: 5,
+    right: 15,
     borderRadius: 12,
   },
   featuresContainer: {
-    margin: 15,
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 15,
     padding: 20,
     borderRadius: 16,
   },

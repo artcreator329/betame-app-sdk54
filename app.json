@@ -35,8 +35,9 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-              "buildNumber": "26",
-              "backgroundColor": "#0f1419"
+      "buildNumber": "26",
+      "backgroundColor": "#0f1419",
+      "appleTeamId": "T72JDH8ZL6"
     },
     "android": {
       "config": {
@@ -71,7 +72,9 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#007AFF",
-          "sounds": ["./assets/sfx.wav"]
+          "sounds": [
+            "./assets/sfx.wav"
+          ]
         }
       ]
     ],

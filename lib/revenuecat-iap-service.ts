@@ -239,6 +239,9 @@ export class RevenueCatIAPService {
           };
         });
         
+        // Sort products by betacoin amount (lowest to highest)
+        this.products.sort((a, b) => a.betacoinAmount - b.betacoinAmount);
+        
         console.log('✅ Products loaded from RevenueCat offerings:', this.products.length);
         console.log('📋 Available products:', this.products.map(p => `${p.productId}: ${p.betacoinAmount} BetaCoins - ${p.price}`));
         return true;
@@ -277,6 +280,7 @@ export class RevenueCatIAPService {
       
       // Create products based on StoreKit configuration
       // These match the products in your BetaCoins.storekit file
+      // Sorted from lowest to highest amount
       this.products = [
         {
           productId: 'betacoins_new_20',
@@ -401,6 +405,9 @@ export class RevenueCatIAPService {
             package: undefined, // No RevenueCat package for direct App Store
           };
         });
+        
+        // Sort products by betacoin amount (lowest to highest)
+        this.products.sort((a, b) => a.betacoinAmount - b.betacoinAmount);
         
         console.log('✅ Products loaded from App Store:', this.products.length);
         console.log('📋 Available products:', this.products.map(p => `${p.productId}: ${p.betacoinAmount} BetaCoins - ${p.price}`));
@@ -528,7 +535,7 @@ export class RevenueCatIAPService {
       // Add missing products to the list
       this.products = [...this.products, ...missingProducts];
       
-      // Sort products by betacoin amount
+      // Sort products by betacoin amount (lowest to highest)
       this.products.sort((a, b) => a.betacoinAmount - b.betacoinAmount);
       
       console.log('✅ All 6 products now available for display');
