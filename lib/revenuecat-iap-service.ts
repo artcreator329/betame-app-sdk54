@@ -48,12 +48,20 @@ export class RevenueCatIAPService {
   private readonly productIds = [
     'betacoins_new_20',    // 20 BetaCoins for RM4.90
     'betacoins_new_100',   // 100 BetaCoins for RM19.90
+    'betacoins_new_250',   // 250 BetaCoins for RM34.90
+    'betacoins_new_600',   // 600 BetaCoins for RM79.90
+    'betacoins_new_1000',  // 1000 BetaCoins for RM99.90
+    'betacoins_new_2000',  // 2000 BetaCoins for RM179.90
   ];
 
   // Product mapping to BetaCoin amounts
   private readonly productMapping: Record<string, number> = {
     'betacoins_new_20': 20,
     'betacoins_new_100': 100,
+    'betacoins_new_250': 250,
+    'betacoins_new_600': 600,
+    'betacoins_new_1000': 1000,
+    'betacoins_new_2000': 2000,
   };
 
   // RevenueCat API Key from configuration
@@ -272,25 +280,69 @@ export class RevenueCatIAPService {
       this.products = [
         {
           productId: 'betacoins_new_20',
-          title: '20 BetaCoins Pack',
-          description: 'Purchase 20 BetaCoins to boost your services and unlock premium features',
+          title: '20 BetaCoins',
+          description: 'Perfect for trying out features',
           price: 'RM4.90',
           priceAmount: 4.90,
           currency: 'MYR',
           betacoinAmount: 20,
-          package: undefined, // No RevenueCat package
-          storeProduct: undefined, // Will be populated when actual purchase happens
+          package: undefined,
+          storeProduct: undefined,
         },
         {
           productId: 'betacoins_new_100',
-          title: '100 BetaCoins Pack', 
-          description: 'Purchase 100 BetaCoins to boost your services and unlock premium features',
+          title: '100 BetaCoins', 
+          description: 'Most popular choice',
           price: 'RM19.90',
           priceAmount: 19.90,
           currency: 'MYR',
           betacoinAmount: 100,
-          package: undefined, // No RevenueCat package
-          storeProduct: undefined, // Will be populated when actual purchase happens
+          package: undefined,
+          storeProduct: undefined,
+        },
+        {
+          productId: 'betacoins_new_250',
+          title: '250 BetaCoins',
+          description: 'Great value pack',
+          price: 'RM34.90',
+          priceAmount: 34.90,
+          currency: 'MYR',
+          betacoinAmount: 250,
+          package: undefined,
+          storeProduct: undefined,
+        },
+        {
+          productId: 'betacoins_new_600',
+          title: '600 BetaCoins',
+          description: 'Power user pack',
+          price: 'RM79.90',
+          priceAmount: 79.90,
+          currency: 'MYR',
+          betacoinAmount: 600,
+          package: undefined,
+          storeProduct: undefined,
+        },
+        {
+          productId: 'betacoins_new_1000',
+          title: '1000 BetaCoins',
+          description: 'Best value per coin',
+          price: 'RM99.90',
+          priceAmount: 99.90,
+          currency: 'MYR',
+          betacoinAmount: 1000,
+          package: undefined,
+          storeProduct: undefined,
+        },
+        {
+          productId: 'betacoins_new_2000',
+          title: '2000 BetaCoins',
+          description: 'Ultimate pack',
+          price: 'RM179.90',
+          priceAmount: 179.90,
+          currency: 'MYR',
+          betacoinAmount: 2000,
+          package: undefined,
+          storeProduct: undefined,
         }
       ];
 
@@ -312,6 +364,10 @@ export class RevenueCatIAPService {
     const fallbackPrices: Record<string, number> = {
       'betacoins_new_20': 4.90,
       'betacoins_new_100': 19.90,
+      'betacoins_new_250': 34.90,
+      'betacoins_new_600': 79.90,
+      'betacoins_new_1000': 99.90,
+      'betacoins_new_2000': 179.90,
     };
     return fallbackPrices[productId] || 0;
   }
@@ -386,6 +442,97 @@ export class RevenueCatIAPService {
     } catch (error) {
       console.log('⚠️ Could not determine TestFlight status:', error);
       return false;
+    }
+  }
+
+  /**
+   * Merge existing products with StoreKit Configuration to show all 6 options
+   */
+  private async mergeWithStoreKitProducts(): Promise<void> {
+    console.log('🔄 Merging with StoreKit Configuration to show all 6 options...');
+    
+    const allProductIds = [
+      'betacoins_new_20',
+      'betacoins_new_100', 
+      'betacoins_new_250',
+      'betacoins_new_600',
+      'betacoins_new_1000',
+      'betacoins_new_2000',
+    ];
+    
+    const existingProductIds = new Set(this.products.map(p => p.productId));
+    const missingProductIds = allProductIds.filter(id => !existingProductIds.has(id));
+    
+    if (missingProductIds.length > 0) {
+      console.log(`📦 Adding ${missingProductIds.length} missing products from StoreKit Configuration...`);
+      
+      // Define the missing products
+      const missingProducts: IAPProduct[] = [];
+      
+      if (missingProductIds.includes('betacoins_new_250')) {
+        missingProducts.push({
+          productId: 'betacoins_new_250',
+          title: '250 BetaCoins',
+          description: 'Great value pack',
+          price: 'RM34.90',
+          priceAmount: 34.90,
+          currency: 'MYR',
+          betacoinAmount: 250,
+          package: undefined,
+          storeProduct: undefined,
+        });
+      }
+      
+      if (missingProductIds.includes('betacoins_new_600')) {
+        missingProducts.push({
+          productId: 'betacoins_new_600',
+          title: '600 BetaCoins',
+          description: 'Power user pack',
+          price: 'RM79.90',
+          priceAmount: 79.90,
+          currency: 'MYR',
+          betacoinAmount: 600,
+          package: undefined,
+          storeProduct: undefined,
+        });
+      }
+      
+      if (missingProductIds.includes('betacoins_new_1000')) {
+        missingProducts.push({
+          productId: 'betacoins_new_1000',
+          title: '1000 BetaCoins',
+          description: 'Best value per coin',
+          price: 'RM99.90',
+          priceAmount: 99.90,
+          currency: 'MYR',
+          betacoinAmount: 1000,
+          package: undefined,
+          storeProduct: undefined,
+        });
+      }
+      
+      if (missingProductIds.includes('betacoins_new_2000')) {
+        missingProducts.push({
+          productId: 'betacoins_new_2000',
+          title: '2000 BetaCoins',
+          description: 'Ultimate pack',
+          price: 'RM179.90',
+          priceAmount: 179.90,
+          currency: 'MYR',
+          betacoinAmount: 2000,
+          package: undefined,
+          storeProduct: undefined,
+        });
+      }
+      
+      // Add missing products to the list
+      this.products = [...this.products, ...missingProducts];
+      
+      // Sort products by betacoin amount
+      this.products.sort((a, b) => a.betacoinAmount - b.betacoinAmount);
+      
+      console.log('✅ All 6 products now available for display');
+      console.log('📋 Product list:', this.products.map(p => `${p.productId}: ${p.betacoinAmount} BetaCoins`));
     }
   }
 
@@ -730,22 +877,25 @@ export class RevenueCatIAPService {
       } else if (product.storeProduct) {
         console.log(`🛒 Using direct App Store purchase for ${productId} (Sandbox)...`);
         return await this.purchaseDirectFromAppStore(productId, userId);
-      } else if (isTestFlight) {
-        // For TestFlight, try StoreKit Configuration purchase
-        console.log(`🚀 TestFlight detected - using StoreKit Configuration for ${productId}...`);
-        return await this.purchaseFromStoreKitConfiguration(productId, userId);
       } else {
+        // For products not yet in App Store, show helpful message
+        const product = this.products.find(p => p.productId === productId);
+        if (product && !product.storeProduct) {
+          console.log(`⚠️ Product ${productId} not yet available in App Store`);
+          
+          return {
+            success: false,
+            error: `${product.betacoinAmount} BetaCoins pack is coming soon! Currently only 20 and 100 BetaCoin packs are available for purchase.`
+          };
+        }
+        
         // No valid purchase method available
         console.log(`❌ No valid purchase method for ${productId}`);
         console.log('   Product has no RevenueCat package or App Store product');
-        console.log('   This means:');
-        console.log('   1. Real device needs sandbox Apple ID, OR');
-        console.log('   2. Products need approval in App Store Connect, OR');
-        console.log('   3. Simulator can use StoreKit Configuration');
         
         return {
           success: false,
-          error: 'Purchase not available. Real device requires sandbox Apple ID or approved products.'
+          error: 'Purchase not available. Please try again later.'
         };
       }
       

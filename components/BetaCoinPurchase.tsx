@@ -21,7 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { WalletService } from '@/lib/wallet-service';
 import CurlecPaymentService from '@/lib/curlec-payment-service';
 import { RevenueCatIAPService } from '@/lib/revenuecat-iap-service';
-import RevenueCatPaywall from './RevenueCatPaywall';
+import { BetaCoinPaywall } from './BetaCoinPaywall';
 
 interface BetaCoinBundle {
   id: string;
@@ -382,11 +382,19 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
   // iOS: Use RevenueCat Paywall
   if (Platform.OS === 'ios') {
     return (
-      <RevenueCatPaywall
+      <Modal
+        animationType="slide"
+        transparent={false}
         visible={visible}
-        onClose={onClose}
-        onPurchaseSuccess={onPurchaseSuccess}
-      />
+        onRequestClose={onClose}
+      >
+        <BetaCoinPaywall
+          onClose={onClose}
+          onPurchaseSuccess={(betacoins) => {
+            onPurchaseSuccess();
+          }}
+        />
+      </Modal>
     );
   }
 

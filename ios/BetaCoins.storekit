@@ -43,6 +43,86 @@
       "productID" : "betacoins_new_100",
       "referenceName" : "100 BetaCoins Pack",
       "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "34.90",
+      "familyShareable" : false,
+      "internalID" : "A60CC4B8",
+      "localizations" : [
+        {
+          "description" : "Purchase 250 BetaCoins - Great value pack for frequent users",
+          "displayName" : "250 BetaCoins Pack",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Beli 250 BetaCoins - Pakej nilai hebat untuk pengguna kerap",
+          "displayName" : "Pakej 250 BetaCoins",
+          "locale" : "ms"
+        }
+      ],
+      "productID" : "betacoins_new_250",
+      "referenceName" : "250 BetaCoins Pack",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "79.90",
+      "familyShareable" : false,
+      "internalID" : "A60CC4B9",
+      "localizations" : [
+        {
+          "description" : "Purchase 600 BetaCoins - Power user pack with bonus coins",
+          "displayName" : "600 BetaCoins Pack",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Beli 600 BetaCoins - Pakej pengguna kuasa dengan syiling bonus",
+          "displayName" : "Pakej 600 BetaCoins",
+          "locale" : "ms"
+        }
+      ],
+      "productID" : "betacoins_new_600",
+      "referenceName" : "600 BetaCoins Pack",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "99.90",
+      "familyShareable" : false,
+      "internalID" : "A60CC4BA",
+      "localizations" : [
+        {
+          "description" : "Purchase 1000 BetaCoins - Best value per coin",
+          "displayName" : "1000 BetaCoins Pack",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Beli 1000 BetaCoins - Nilai terbaik setiap syiling",
+          "displayName" : "Pakej 1000 BetaCoins",
+          "locale" : "ms"
+        }
+      ],
+      "productID" : "betacoins_new_1000",
+      "referenceName" : "1000 BetaCoins Pack",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "179.90",
+      "familyShareable" : false,
+      "internalID" : "A60CC4BB",
+      "localizations" : [
+        {
+          "description" : "Purchase 2000 BetaCoins - Ultimate pack for business users",
+          "displayName" : "2000 BetaCoins Pack",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Beli 2000 BetaCoins - Pakej muktamad untuk pengguna perniagaan",
+          "displayName" : "Pakej 2000 BetaCoins",
+          "locale" : "ms"
+        }
+      ],
+      "productID" : "betacoins_new_2000",
+      "referenceName" : "2000 BetaCoins Pack",
+      "type" : "Consumable"
     }
   ],
   "settings" : {
