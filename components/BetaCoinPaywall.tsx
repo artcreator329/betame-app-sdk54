@@ -233,20 +233,20 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
             return (
               <Animated.View
                 key={product.productId}
-                style={[
-                  styles.productCard,
-                  { 
-                    transform: [{ scale: scaleAnims[index] }],
-                    backgroundColor: '#ffffff',
-                    borderWidth: isSelected ? 3 : 0,
-                    borderColor: isSelected ? theme.primary.main : 'transparent',
-                    elevation: isSelected ? 8 : 4,
-                    shadowColor: isSelected ? theme.primary.main : '#000',
-                    shadowOffset: { width: 0, height: isSelected ? 4 : 2 },
-                    shadowOpacity: isSelected ? 0.3 : 0.1,
-                    shadowRadius: isSelected ? 8 : 4,
-                  }
-                ]}
+                  style={[
+                    styles.productCard,
+                    { 
+                      transform: [{ scale: scaleAnims[index] }],
+                      backgroundColor: '#ffffff',
+                      borderWidth: isSelected ? 5 : 0,
+                      borderColor: isSelected ? theme.primary.main : 'transparent',
+                      elevation: isSelected ? 8 : 4,
+                      shadowColor: isSelected ? theme.primary.main : '#000',
+                      shadowOffset: { width: 0, height: isSelected ? 4 : 2 },
+                      shadowOpacity: isSelected ? 0.3 : 0.1,
+                      shadowRadius: isSelected ? 8 : 4,
+                    }
+                  ]}
               >
                 <TouchableOpacity
                   onPress={() => setSelectedProduct(product.productId)}
