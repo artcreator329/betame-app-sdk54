@@ -57,6 +57,40 @@ const betacoinBundles: BetaCoinBundle[] = [
     badge: 'Popular',
     iapProductId: 'betacoins_new_100',
   },
+  {
+    id: '3',
+    betacoins: 250,
+    priceValue: 34.90,
+    image: require('../assets/images/credit-purchase/RM35.png'),
+    imageIOS: require('../assets/images/credit-purchase-ios/RM34.90.png'),
+    iapProductId: 'betacoins_new_250',
+  },
+  {
+    id: '4',
+    betacoins: 600,
+    priceValue: 79.90,
+    image: require('../assets/images/credit-purchase/RM80.png'),
+    imageIOS: require('../assets/images/credit-purchase-ios/RM79.90.png'),
+    iapProductId: 'betacoins_new_600',
+  },
+  {
+    id: '5',
+    betacoins: 1000,
+    priceValue: 99.90,
+    image: require('../assets/images/credit-purchase/RM100.png'),
+    imageIOS: require('../assets/images/credit-purchase-ios/RM99.90.png'),
+    badge: 'Best Value',
+    iapProductId: 'betacoins_new_1000',
+  },
+  {
+    id: '6',
+    betacoins: 2000,
+    priceValue: 179.90,
+    image: require('../assets/images/credit-purchase/RM180.png'),
+    imageIOS: require('../assets/images/credit-purchase-ios/RM179.90.png'),
+    badge: 'Ultimate',
+    iapProductId: 'betacoins_new_2000',
+  },
 ];
 
 export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCoinPurchaseProps) {
@@ -279,7 +313,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
       const response = await paymentService.createCheckoutSession({
         user_id: user!.id,
         payment_type: 'betacoin_purchase',
-        amount: bundle.priceValue * 100, // Convert to cents
+        amount: Math.round(bundle.priceValue * 100), // Convert to cents
         currency: 'MYR',
         success_url: 'betame://payment/success',
         cancel_url: 'betame://payment/cancel',
@@ -434,11 +468,6 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
                   Payment via {getPaymentMethodText()}
                 </Text>
               </View>
-              {Platform.OS === 'ios' && (
-                <Text style={[styles.paymentMethodSubtext, { color: colors.text.secondary }]}>
-                  Secure payment through Apple App Store
-                </Text>
-              )}
             </View>
 
             <View style={styles.bundlesGrid}>
@@ -557,10 +586,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
               Processing Payment...
             </Text>
             <Text style={[styles.loadingSubtext, { color: colors.text.secondary }]}>
-              {Platform.OS === 'ios' 
-                ? 'Please complete the purchase in the App Store'
-                : 'Please wait while we redirect you to the payment gateway'
-              }
+              Please wait while we redirect you to the payment gateway
             </Text>
           </View>
         </View>
