@@ -30,8 +30,8 @@ export default function PrivacyPolicyScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
           <Text style={[styles.title, { color: colors.text.primary }]}>BetaMe – Privacy Policy</Text>
-          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Effective Date: 26/8/2025</Text>
-          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Last Updated: 26/8/2025</Text>
+          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Effective Date: 7th September 2025</Text>
+          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Last Updated: 7th September 2025</Text>
         </View>
 
         <View style={styles.section}>
@@ -297,10 +297,10 @@ export default function PrivacyPolicyScreen() {
             {'\n'}Email: dpo@betame.com
             {'\n'}Address: [Insert DPO Address]
             {'\n\n'}<Text style={styles.bold}>Response Times:</Text>
-            {'\n'}• General inquiries: within 5 business days
-            {'\n'}• Requests to access or correct Personal Data: within 30 days of receipt of a complete request.
-            {'\n'}• Urgent matters: 24--72 hours, where practicable.
-            {'\n\n'}If we require more time to process your request, we will notify you in writing of the reason for the delay and the estimated timeframe for completion.
+            {'\n'}• General inquiries: We aim to respond within 14 business days.
+            {'\n'}• Requests to access or correct personal data: We will respond within 21 days from the date we receive a complete request.
+            {'\n'}• Urgent matters: We will respond within 14 business days, where reasonably practicable.
+            {'\n\n'}If we need more time than the stated timeframe, we will notify you in writing with the reason for the delay and let you know when you can expect a full response.
           </Text>
         </View>
 

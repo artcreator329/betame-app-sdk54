@@ -11,6 +11,7 @@ import {
   Share,
   Linking,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -75,6 +76,8 @@ export default function SettingsScreen() {
   const { userProfile, signOut } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const colors = useColors();
+  const { width: screenWidth } = useWindowDimensions();
+  const isDesktop = screenWidth >= 1024;
 
   const handleLogout = () => {
     Alert.alert(
@@ -162,24 +165,33 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={isDesktop ? styles.desktopScrollContent : undefined}
+      >
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
+        <View style={[styles.header, isDesktop && styles.headerDesktop, { backgroundColor: colors.background.tertiary }]}>
           <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color={colors.text.primary} />
+            <ArrowLeft size={isDesktop ? 28 : 24} color={colors.text.primary} />
           </TouchableOpacity>
-          <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Wallet size={24} color={colors.text.primary} />
+          <View style={[styles.headerIcons, isDesktop && styles.headerIconsDesktop]}>
+            <TouchableOpacity 
+              style={[styles.headerIcon, isDesktop && styles.headerIconDesktop]}
+              onPress={() => router.push('/wallet')}
+            >
+              <Wallet size={isDesktop ? 28 : 24} color={colors.text.primary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Trophy size={24} color={colors.text.primary} />
+            <TouchableOpacity 
+              style={[styles.headerIcon, isDesktop && styles.headerIconDesktop]}
+              onPress={() => router.push('/check-in')}
+            >
+              <Trophy size={isDesktop ? 28 : 24} color={colors.text.primary} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Profile Section */}
-        <View style={[styles.profileSection, { backgroundColor: colors.background.tertiary }]}>
+        <View style={[styles.profileSection, isDesktop && styles.profileSectionDesktop, { backgroundColor: colors.background.tertiary }]}>
           <TouchableOpacity 
             onPress={() => {
               if (userProfile) {
@@ -376,6 +388,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  desktopScrollContent: {
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -383,11 +400,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
+  headerDesktop: {
+    paddingHorizontal: 40,
+    paddingVertical: 24,
+  },
   headerIcons: {
     flexDirection: 'row',
   },
+  headerIconsDesktop: {
+    gap: 8,
+  },
   headerIcon: {
     marginLeft: 16,
+    padding: 8,
+    borderRadius: 8,
+  },
+  headerIconDesktop: {
+    marginLeft: 0,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileSection: {
     flexDirection: 'row',
@@ -395,6 +431,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
     marginBottom: 20,
+  },
+  profileSectionDesktop: {
+    paddingHorizontal: 40,
+    paddingVertical: 32,
+    marginBottom: 32,
   },
   profileImageContainer: {
     position: 'relative',

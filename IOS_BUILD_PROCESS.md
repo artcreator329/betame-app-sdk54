@@ -435,6 +435,19 @@ eas init
 - **Icon Fix**: ✅ **CONFIRMED WORKING** - Build 26 continues to use the correct `icon.png` icon
 - **Changes**: Updated Xcode project settings (LastUpgradeCheck to 1640, BuildIndependentTargetsInParallel, disabled ENABLE_USER_SCRIPT_SANDBOXING for compatibility)
 
+### Local Production Build (App Store) - Version 1.0.0 (27)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (77.5 MB)
+- **Build Number**: 27
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 6, 2025 (15:39)
+- **Icon Fix**: ✅ **CONFIRMED WORKING** - Build 27 continues to use the correct `icon.png` icon
+- **Changes**: Added `appleTeamId` to app.json, updated project.pbxproj with additional development team settings
+
 ## Apple Developer Account Setup
 
 ### Credentials Created

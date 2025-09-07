@@ -30,8 +30,8 @@ export default function TermsOfServiceScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
           <Text style={[styles.title, { color: colors.text.primary }]}>BetaMe – Terms of Service</Text>
-          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Effective Date: 26/8/2025</Text>
-          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Last Updated: 26/8/2025</Text>
+          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Effective Date: 7th September 2025</Text>
+          <Text style={[styles.lastUpdated, { color: colors.text.secondary }]}>Last Updated: 7th September 2025</Text>
         </View>
 
         <View style={styles.section}>
@@ -132,6 +132,16 @@ export default function TermsOfServiceScreen() {
             {'\n'}• Maintain adequate insurance coverage, where required;
             {'\n'}• Follow all applicable laws and regulations including trade licensing requirements; and
             {'\n'}• Honor confirmed bookings.
+          </Text>
+          
+          <Text style={[styles.subsectionTitle, { color: colors.text.primary }]}>7.1A Non-Malaysian Service Providers</Text>
+          <Text style={[styles.paragraph, { color: colors.text.secondary }]}>
+            Non-Malaysian Service Providers must:
+            {'\n'}• Ensure compliance with all legal and immigration requirements to work in Malaysia;
+            {'\n'}• Be fully responsible for obtaining any necessary visas or permits before accepting jobs on the Platform;
+            {'\n'}• Be responsible for declaring and paying any income tax or other applicable taxes in accordance with Malaysian law or the laws of the country of residence;
+            {'\n'}• Confirm, by ticking the relevant box during registration, that these responsibilities are understood and accepted; and
+            {'\n'}• Acknowledge and confirm that the Platform shall not be held responsible for any issues or consequences arising from the failure to comply with these requirements.
           </Text>
           
           <Text style={[styles.subsectionTitle, { color: colors.text.primary }]}>7.2 Service Standards</Text>

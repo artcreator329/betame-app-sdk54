@@ -1,7 +1,4 @@
-# Service Provider Agreement
-**Effective Date:** 26/8/2025  
-**Last Updated:** 26/8/2025
-
+Service Provider Agreement
 (BetaMe Platform)
 This Service Provider Agreement (“Agreement”) is entered into between you (“Provider” or “Service Provider”) and BetaMe (“Company,” “Platform,” “we,” or “us”). By registering as a Provider on the Platform, you agree to the terms and conditions set forth herein.
  
@@ -19,8 +16,6 @@ This Agreement governs the relationship between Providers and the Platform. Prov
 
 ●	Successfully complete identity verification (eKYC), as required.
 
-●	For foreign passport holders: Provide Nomad Visa or equivalent residency permit during bank statement verification.
-
 ●	Maintain accurate, complete, and updated profile and service information.
 2.2 Where the Provider is a company, partnership, or other legal entity, the Provider must:
 •	Be duly incorporated, registered, or otherwise validly existing under the laws of Malaysia (or its place of incorporation, if foreign) and authorised to carry on business in Malaysia, where applicable.
@@ -31,7 +26,12 @@ This Agreement governs the relationship between Providers and the Platform. Prov
 2.3 The Company reserves the right to request supporting documents to verify the Provider’s eligibility, which may include, but is not limited to:
 •	For individual Providers: national identification card, passport, or other government-issued identification, and any licences or permits required to provide the services.
 •	For corporate or business Providers: business registration certificates, corporate resolutions, licences, or other relevant regulatory approvals.
-
+2.4 Non-Malaysian Service Providers must:
+•	Ensure compliance with all legal and immigration requirements to work in Malaysia;
+•	Be fully responsible for obtaining any necessary visas or permits before accepting jobs on the Platform;
+•	Be responsible for declaring and paying any income tax or other applicable taxes in accordance with Malaysian law or the laws of the country of residence;
+•	Confirm, by ticking the relevant box during registration, that these responsibilities are understood and accepted; and
+•	Acknowledge and confirm that the Platform shall not be held responsible for any issues or consequences arising from the failure to comply with these requirements.
 
  
 3. Provider Obligations
@@ -42,7 +42,7 @@ This Agreement governs the relationship between Providers and the Platform. Prov
 
 ●	Honor commitments and deadlines.
 
-●	Get Customer approval through the Platform before making any changes to agreed services..
+●	Get Customer approval through the Platform before making any changes to agreed services.
 
 3.2 If a Provider is unable to meet a service deadline, the Provider must:
 ●	Immediately notify the Customer, and
@@ -56,12 +56,12 @@ This Agreement governs the relationship between Providers and the Platform. Prov
 ●	Providers must accurately represent the availability, nature, and scope of their services.
 
 ●	Services offered must comply with all applicable Malaysian laws and must not include illegal, harmful, offensive, or prohibited content.
-.
 
 ●	 Providers must not engage in fraudulent, misleading, or deceptive practices in relation to their listings.
 ●	The Platform reserves the right to review, suspend, or remove any service listings at its discretion, including for violations of this Agreement or applicable law.
 
  
+
 5. Payments
 5.1 Payment Processing
 •	All payments for services must go through the Platform’s payment system.
@@ -123,7 +123,6 @@ This Agreement governs the relationship between Providers and the Platform. Prov
  
 11. Independent Contractor Status
 11.1 Providers act solely as independent contractors, and nothing in this Agreement shall be construed as creating any relationship of employment, partnership, agency, fiduciary duty, or joint venture between the Providers and the Company. For avoidance of doubt, the Platform does not employ or engage Providers as employees, agents, or representatives. 
-
 11.2 Nothing in this Agreement shall be construed as creating an employment relationship. Providers are solely responsible for their own:
 ●	Taxes,
 
@@ -146,18 +145,17 @@ For avoidance of doubt, the Company shall not be liable for any failure by the P
 14.3 Nothing in this Agreement shall exclude or limit liability for fraud, wilful misconduct, or any liability that cannot lawfully be excluded under Malaysian law.
 14.4 In any event, the Company’s total maximum aggregate liability to any Provider, shall not exceed the total Platform fees paid by the Provider in the preceding six (6) months.
 14.5 The Provider shall fully indemnify, defend, and hold harmless the Company, its directors, officers, employees, and affiliates (“Indemnified Parties”) from and against any and all claims, demands, actions, proceedings, losses, liabilities, damages, costs, and expenses (including reasonable legal fees) arising out of or in connection with:
-(a) the Provider’s breach of this Agreement, applicable laws, or regulations;
-(b) any negligence, wilful misconduct, or fraud by the Provider;
-(c) any claim by a Customer or third party relating to the Provider’s services, content, or conduct;
-(d) any infringement or alleged infringement of intellectual property rights or other rights of a third party by the Provider’s services or content; and
-(e) any taxes, duties, or statutory charges arising from the Provider’s activities on the Platform.
+(a)	the Provider’s breach of this Agreement, applicable laws, or regulations;
+(b)	any negligence, wilful misconduct, or fraud by the Provider;
+(c)	any claim by a Customer or third party relating to the Provider’s services, content, or conduct;
+(d)	any infringement or alleged infringement of intellectual property rights or other rights of a third party by the Provider’s services or content; and
+(e)	any taxes, duties, or statutory charges arising from the Provider’s activities on the Platform.
 14.6 The indemnity under this Clause shall survive the termination or expiry of this Agreement.
  
 15. Force Majeure
 15.1 Neither party shall be liable for any failure or delay in performing its obligations under this Agreement (other than payment obligations) if such failure or delay is caused by events beyond its reasonable control, including but not limited to acts of God, natural disasters, epidemics or pandemics, fire, flood, war, terrorism, strikes, lockouts, industrial disputes, governmental orders or restrictions, or failure of telecommunications, utilities, or internet services (“Force Majeure Event”).
 15.2 The affected party shall notify the other party in writing as soon as reasonably practicable of the occurrence of a Force Majeure Event and take all reasonable steps to mitigate its effects.
 15.3 If a Force Majeure Event continues for a period of more than sixty (60) days, either party may terminate this Agreement by written notice to the other, without liability, save that any rights and obligations accrued up to the date of termination shall remain unaffected.
-
  
 16. Agreement Updates
 16.1 The Company may amend this Agreement with at least fourteen (14) days’ prior notice via the Platform.
