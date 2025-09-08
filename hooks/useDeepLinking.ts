@@ -55,20 +55,7 @@ export function useDeepLinking() {
 
   const handleDeepLink = (url: string) => {
     try {
-      console.log('🔗 Processing deep link:', url);
-      
-      // IGNORE HTTPS URLs for email verification only
-      if ((url.startsWith('https://') || url.startsWith('http://')) && url.includes('verify-email')) {
-        console.log('🔗 IGNORING email verification HTTPS URL - should open in browser');
-        return;
-      }
-      
-      // IGNORE HTTPS verification URLs - these should open in browser
-      if (url.includes('verify-email-universal.html')) {
-        console.log('🔗 Ignoring verification page URL - should open in browser');
-        return;
-      }
-      
+      console.log('🔗 Deep link received:', url);
       const linkData = DeepLinkService.handleIncomingLink(url);
       
       if (!linkData) {
@@ -76,7 +63,7 @@ export function useDeepLinking() {
         return;
       }
       
-      console.log('✅ Parsed deep link data:', linkData);
+      console.log('🔗 Parsed deep link data:', linkData);
 
       switch (linkData.type) {
         case 'referral':
@@ -123,25 +110,85 @@ export function useDeepLinking() {
         
         case 'email_verification':
           // Handle email verification deep link
-          console.log('🔗 Email verification deep link received:', linkData.params);
-          try {
-            // Build the URL with query parameters
-            const queryParams = new URLSearchParams();
-            Object.entries(linkData.params).forEach(([key, value]) => {
-              if (value !== null && value !== undefined) {
-                queryParams.append(key, String(value));
+          console.log('🔗 Email verification deep link detected:', linkData.params);
+          if (linkData.params.token_hash && linkData.params.type) {
+            console.log('🔗 Navigating to email verification screen with params:', linkData.params);
+            // Try multiple navigation approaches for maximum compatibility
+            let navigationSuccess = false;
+            
+            // Approach 1: Standard pathname with params
+            try {
+              router.push({
+                pathname: '/auth/verify-email',
+                params: linkData.params
+              });
+              navigationSuccess = true;
+              console.log('✅ Email verification navigation (approach 1) completed');
+            } catch (error) {
+              console.error('❌ Approach 1 failed:', error);
+            }
+            
+            // Approach 2: Try with replace if push failed
+            if (!navigationSuccess) {
+              try {
+                router.replace({
+                  pathname: '/auth/verify-email',
+                  params: linkData.params
+                });
+                navigationSuccess = true;
+                console.log('✅ Email verification navigation (approach 2) completed');
+              } catch (error) {
+                console.error('❌ Approach 2 failed:', error);
               }
-            });
+            }
             
-            const url = `/auth/verify-email?${queryParams.toString()}`;
-            console.log('🔗 Navigating to:', url);
+            // Approach 3: Try without leading slash
+            if (!navigationSuccess) {
+              try {
+                router.push({
+                  pathname: 'auth/verify-email',
+                  params: linkData.params
+                });
+                navigationSuccess = true;
+                console.log('✅ Email verification navigation (approach 3) completed');
+              } catch (error) {
+                console.error('❌ Approach 3 failed:', error);
+              }
+            }
             
-            router.push(url);
-            console.log('✅ Successfully navigated to verify-email screen');
-          } catch (error) {
-            console.error('❌ Failed to navigate to verify-email screen:', error);
-            // Fallback navigation
-            router.push('/auth/verify-email');
+            // Approach 4: Try with simple string navigation
+            if (!navigationSuccess) {
+              try {
+                router.push('/auth/verify-email');
+                navigationSuccess = true;
+                console.log('✅ Email verification navigation (approach 4) completed (no params)');
+              } catch (error) {
+                console.error('❌ Approach 4 failed:', error);
+              }
+            }
+            
+            // Approach 5: Try navigating to auth group first, then verify-email
+            if (!navigationSuccess) {
+              try {
+                router.push('/auth/login');
+                setTimeout(() => {
+                  router.push('/auth/verify-email');
+                }, 100);
+                navigationSuccess = true;
+                console.log('✅ Email verification navigation (approach 5) completed (via login)');
+              } catch (error) {
+                console.error('❌ Approach 5 failed:', error);
+              }
+            }
+            
+            if (!navigationSuccess) {
+              console.error('❌ ALL navigation approaches failed for email verification');
+              router.push('/auth/login');
+            }
+          } else {
+            console.error('❌ Missing token_hash or type in email verification params:', linkData.params);
+            // Navigate to login if params are missing
+            router.push('/auth/login');
           }
           break;
         

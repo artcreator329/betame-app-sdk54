@@ -4,7 +4,7 @@ apply plugin: "com.facebook.react"
 
 
 // Load keystore properties
-def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystorePropertiesFile = rootProject.file("../keystore.properties")
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
@@ -99,8 +99,8 @@ android {
         applicationId 'com.betame.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 13
-        versionName "1.0.0"
+        versionCode 15
+        versionName "1.0.1"
     }
     signingConfigs {
         debug {
