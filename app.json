@@ -24,7 +24,6 @@
           "profile/[userId]": "profile/:userId",
           "auth/reset-password": "auth/reset-password",
           "auth/verify-email": "auth/verify-email",
-          "auth/verify-email-universal": "auth/verify-email-universal",
           "payment/success": "payment/success",
           "payment/cancel": "payment/cancel",
           "payment/failed": "payment/failed"

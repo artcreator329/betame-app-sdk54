@@ -467,13 +467,25 @@ function RootLayoutNav() {
           options={stackScreenOptions}
         />
         
-        {/* Explicit route for email verification to ensure it's available */}
+        {/* Explicit auth routes for production build compatibility */}
+        <Stack.Screen 
+          name="auth/login" 
+          options={stackScreenOptions}
+        />
         <Stack.Screen 
           name="auth/verify-email" 
           options={stackScreenOptions}
         />
         <Stack.Screen 
-          name="auth/verify-email-universal" 
+          name="auth/reset-password" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="auth/signin-success" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="auth/callback" 
           options={stackScreenOptions}
         />
         

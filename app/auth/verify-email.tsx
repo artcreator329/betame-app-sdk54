@@ -44,7 +44,13 @@ export default function VerifyEmailScreen() {
 
   useEffect(() => {
     console.log('📧 VerifyEmailScreen: Component mounted with params:', params);
-    handleEmailVerification();
+    console.log('📧 VerifyEmailScreen: Expo Router pathname:', window?.location?.pathname || 'N/A');
+    console.log('📧 VerifyEmailScreen: Component successfully loaded!');
+    
+    // Add a small delay to ensure component is fully mounted
+    setTimeout(() => {
+      handleEmailVerification();
+    }, 100);
   }, []);
 
   const handleEmailVerification = async () => {

@@ -55,12 +55,15 @@ export function useDeepLinking() {
 
   const handleDeepLink = (url: string) => {
     try {
+      console.log('🔗 Deep link received:', url);
       const linkData = DeepLinkService.handleIncomingLink(url);
       
       if (!linkData) {
-        console.log('Unrecognized deep link format:', url);
+        console.log('❌ Unrecognized deep link format:', url);
         return;
       }
+      
+      console.log('🔗 Parsed deep link data:', linkData);
 
       switch (linkData.type) {
         case 'referral':
@@ -110,19 +113,82 @@ export function useDeepLinking() {
           console.log('🔗 Email verification deep link detected:', linkData.params);
           if (linkData.params.token_hash && linkData.params.type) {
             console.log('🔗 Navigating to email verification screen with params:', linkData.params);
+            // Try multiple navigation approaches for maximum compatibility
+            let navigationSuccess = false;
+            
+            // Approach 1: Standard pathname with params
             try {
               router.push({
                 pathname: '/auth/verify-email',
                 params: linkData.params
               });
-              console.log('✅ Email verification navigation completed');
+              navigationSuccess = true;
+              console.log('✅ Email verification navigation (approach 1) completed');
             } catch (error) {
-              console.error('❌ Email verification navigation failed:', error);
-              // Fallback: try without push parameters
-              router.push('/auth/verify-email');
+              console.error('❌ Approach 1 failed:', error);
+            }
+            
+            // Approach 2: Try with replace if push failed
+            if (!navigationSuccess) {
+              try {
+                router.replace({
+                  pathname: '/auth/verify-email',
+                  params: linkData.params
+                });
+                navigationSuccess = true;
+                console.log('✅ Email verification navigation (approach 2) completed');
+              } catch (error) {
+                console.error('❌ Approach 2 failed:', error);
+              }
+            }
+            
+            // Approach 3: Try without leading slash
+            if (!navigationSuccess) {
+              try {
+                router.push({
+                  pathname: 'auth/verify-email',
+                  params: linkData.params
+                });
+                navigationSuccess = true;
+                console.log('✅ Email verification navigation (approach 3) completed');
+              } catch (error) {
+                console.error('❌ Approach 3 failed:', error);
+              }
+            }
+            
+            // Approach 4: Try with simple string navigation
+            if (!navigationSuccess) {
+              try {
+                router.push('/auth/verify-email');
+                navigationSuccess = true;
+                console.log('✅ Email verification navigation (approach 4) completed (no params)');
+              } catch (error) {
+                console.error('❌ Approach 4 failed:', error);
+              }
+            }
+            
+            // Approach 5: Try navigating to auth group first, then verify-email
+            if (!navigationSuccess) {
+              try {
+                router.push('/auth/login');
+                setTimeout(() => {
+                  router.push('/auth/verify-email');
+                }, 100);
+                navigationSuccess = true;
+                console.log('✅ Email verification navigation (approach 5) completed (via login)');
+              } catch (error) {
+                console.error('❌ Approach 5 failed:', error);
+              }
+            }
+            
+            if (!navigationSuccess) {
+              console.error('❌ ALL navigation approaches failed for email verification');
+              router.push('/auth/login');
             }
           } else {
             console.error('❌ Missing token_hash or type in email verification params:', linkData.params);
+            // Navigate to login if params are missing
+            router.push('/auth/login');
           }
           break;
         
