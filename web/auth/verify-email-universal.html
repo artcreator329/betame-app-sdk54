@@ -142,6 +142,11 @@
             <p class="message">Redirecting to BetaMe app...</p>
             <div class="countdown">Redirecting in <span id="countdown">3</span> seconds</div>
             <a href="#" id="open-app-btn" class="button">Open BetaMe App</a>
+            <div style="margin-top: 15px;">
+                <a href="betame://auth/login" class="button" style="background: rgba(255,255,255,0.1); font-size: 14px; padding: 8px 16px;">
+                    Try Alternative Link
+                </a>
+            </div>
         </div>
 
         <div id="error-state" style="display: none;">
@@ -168,6 +173,44 @@
         const tokenHash = urlParams.get('token_hash');
         const type = urlParams.get('type');
         const next = urlParams.get('next') || '';
+        const debug = urlParams.get('debug') === 'true';
+        const browserOnly = urlParams.get('browser_only') === 'true';
+        
+        // Debug mode logging
+        if (debug) {
+            console.log('🐛 DEBUG MODE ENABLED');
+            console.log('🐛 URL Parameters:', Object.fromEntries(urlParams.entries()));
+            console.log('🐛 Token Hash:', tokenHash);
+            console.log('🐛 Type:', type);
+            console.log('🐛 Next:', next);
+        }
+
+        // CRITICAL: Detect if this page is being opened in the app instead of browser
+        // This is a workaround for iOS Universal Links caching issue
+        const isInApp = window.navigator.userAgent.includes('BetaMe') || 
+                       window.location.protocol === 'file:' ||
+                       !window.location.hostname ||
+                       window.location.hostname === 'localhost';
+        
+        if (isInApp && !browserOnly) {
+            console.log('🚨 DETECTED: Page opened in app instead of browser!');
+            console.log('🔄 Redirecting to browser-only version...');
+            
+            // Redirect to browser-only version
+            const currentParams = new URLSearchParams(window.location.search);
+            const browserOnlyUrl = `verify-email-browser-only.html?${currentParams.toString()}`;
+            window.location.href = browserOnlyUrl;
+            return;
+        }
+        
+        if (isInApp && browserOnly) {
+            // Show warning but continue
+            console.log('⚠️ Still in app but browser_only flag set - showing warning');
+            const warningDiv = document.createElement('div');
+            warningDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #EF4444; color: white; padding: 10px; text-align: center; z-index: 10000; font-size: 14px;';
+            warningDiv.innerHTML = '⚠️ Please open this link in your browser (Safari/Chrome) for best results';
+            document.body.appendChild(warningDiv);
+        }
 
         // State management
         function showState(state) {
@@ -191,10 +234,46 @@
             showState('success');
             
             // Set up deep link URL with all original parameters preserved, including session data for auto-login
-            const deepLinkUrl = `betame://auth/verify-email?verified=true&web_verification=success${sessionData}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
+            const params = new URLSearchParams({
+                verified: 'true',
+                web_verification: 'success'
+            });
+            
+            // Add session data if available
+            if (sessionData) {
+                const sessionParams = new URLSearchParams(sessionData.substring(1)); // Remove leading &
+                sessionParams.forEach((value, key) => {
+                    params.append(key, value);
+                });
+            }
+            
+            // Add next parameter if available
+            if (next) {
+                params.append('next', next);
+            }
+            
+            const deepLinkUrl = `betame://auth/verify-email?${params.toString()}`;
             
             // Update button href
             document.getElementById('open-app-btn').href = deepLinkUrl;
+            
+            // Log the deep link for debugging
+            console.log('🔗 Generated deep link:', deepLinkUrl);
+            console.log('🔗 Deep link params:', Object.fromEntries(params.entries()));
+            
+            // Debug mode - show debug info on page
+            if (debug) {
+                const debugInfo = document.createElement('div');
+                debugInfo.style.cssText = 'position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px; border-radius: 5px; max-width: 300px; z-index: 9999;';
+                debugInfo.innerHTML = `
+                    <strong>DEBUG INFO</strong><br>
+                    Deep Link: ${deepLinkUrl}<br>
+                    Session Data: ${sessionData ? 'Yes' : 'No'}<br>
+                    Token Hash: ${tokenHash || 'None'}<br>
+                    Type: ${type || 'None'}
+                `;
+                document.body.appendChild(debugInfo);
+            }
             
             // Countdown and redirect
             let countdown = 3;
@@ -204,8 +283,22 @@
                 
                 if (countdown <= 0) {
                     clearInterval(countdownInterval);
-                    // Try to open the app
+                    // Try multiple approaches to open the app
+                    console.log('🔗 Attempting to open app with deep link:', deepLinkUrl);
+                    
+                    // Method 1: Direct window.location
                     window.location.href = deepLinkUrl;
+                    
+                    // Method 2: Create a temporary link and click it (sometimes more reliable)
+                    setTimeout(() => {
+                        const tempLink = document.createElement('a');
+                        tempLink.href = deepLinkUrl;
+                        tempLink.style.display = 'none';
+                        document.body.appendChild(tempLink);
+                        tempLink.click();
+                        document.body.removeChild(tempLink);
+                        console.log('🔗 Attempted secondary deep link method');
+                    }, 500);
                     
                     // Fallback for if app isn't installed
                     let hasRedirected = false;
@@ -214,15 +307,25 @@
                     const handleVisibilityChange = () => {
                         if (document.hidden) {
                             hasRedirected = true;
+                            console.log('🔗 Page became hidden - app likely opened');
                         }
                     };
                     document.addEventListener('visibilitychange', handleVisibilityChange);
                     
+                    // Listen for blur events (another indicator app opened)
+                    const handleBlur = () => {
+                        hasRedirected = true;
+                        console.log('🔗 Page lost focus - app likely opened');
+                    };
+                    window.addEventListener('blur', handleBlur);
+                    
                     setTimeout(() => {
                         document.removeEventListener('visibilitychange', handleVisibilityChange);
+                        window.removeEventListener('blur', handleBlur);
                         
                         // Only redirect to store if app didn't open
                         if (!hasRedirected && document.visibilityState === 'visible') {
+                            console.log('🔗 App did not open, showing fallback options');
                             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
                             const isAndroid = /Android/.test(navigator.userAgent);
                             

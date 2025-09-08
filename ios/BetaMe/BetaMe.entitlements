@@ -6,8 +6,6 @@
     <string>development</string>
     <key>com.apple.developer.associated-domains</key>
     <array>
-      <string>applinks:betame.com.my</string>
-      <string>webcredentials:betame.com.my</string>
     </array>
   </dict>
 </plist>

@@ -38,7 +38,7 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="https" android:host="betame.com.my" android:pathPrefix="/auth/verify-email"/>
+        <data android:scheme="https" android:host="betame.com.my" android:path="/auth/verify-email"/>
         <data android:scheme="https" android:host="betame.com.my" android:pathPrefix="/profile"/>
         <data android:scheme="https" android:host="betame.com.my" android:pathPrefix="/payment"/>
       </intent-filter>

@@ -461,6 +461,19 @@ eas init
 - **Icon Fix**: ✅ **CONFIRMED WORKING** - Build 28 continues to use the correct `icon.png` icon
 - **Changes**: Standard build number increment, all dependencies and configurations maintained
 
+### Local Production Build (App Store) - Version 1.0.1 (9)
+- **Build Method**: Local Xcode build (no EAS)
+- **Status**: ✅ Completed
+- **Distribution**: App Store Connect
+- **Artifact**: `ios/build/ipa/BetaMe.ipa` (77.8 MB)
+- **Build Number**: 9
+- **Certificate**: Cloud Managed Apple Distribution
+- **Team**: T72JDH8ZL6 (BETAME SDN. BHD.)
+- **Provisioning Profile**: iOS Team Store Provisioning Profile
+- **Created**: September 8, 2025 (21:20)
+- **Icon Fix**: ✅ **CONFIRMED WORKING** - Build 9 continues to use the correct `icon.png` icon
+- **Changes**: Updated to version 1.0.1 with build number 9, all dependencies and configurations maintained
+
 ## Apple Developer Account Setup
 
 ### Credentials Created

@@ -216,9 +216,6 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
             </View>
           </View>
         </View>
-        <View style={styles.totalRewardCard}>
-          <Text style={styles.totalRewardText}>🎉 Total potential: 15 BetaCoins + RM4.90 per referral</Text>
-        </View>
       </View>
 
       {/* Share Button */}
@@ -570,19 +567,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E5EA',
     marginVertical: 8,
   },
-  totalRewardCard: {
-    backgroundColor: '#FFF3CD',
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#FFD93D',
-  },
-  totalRewardText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#856404',
-    textAlign: 'center',
-  },
+
   shareButton: {
     borderRadius: 20,
     shadowColor: '#FF6B6B',

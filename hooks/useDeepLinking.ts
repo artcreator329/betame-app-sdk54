@@ -55,12 +55,28 @@ export function useDeepLinking() {
 
   const handleDeepLink = (url: string) => {
     try {
+      console.log('🔗 Processing deep link:', url);
+      
+      // IGNORE HTTPS URLs for email verification only
+      if ((url.startsWith('https://') || url.startsWith('http://')) && url.includes('verify-email')) {
+        console.log('🔗 IGNORING email verification HTTPS URL - should open in browser');
+        return;
+      }
+      
+      // IGNORE HTTPS verification URLs - these should open in browser
+      if (url.includes('verify-email-universal.html')) {
+        console.log('🔗 Ignoring verification page URL - should open in browser');
+        return;
+      }
+      
       const linkData = DeepLinkService.handleIncomingLink(url);
       
       if (!linkData) {
-        console.log('Unrecognized deep link format:', url);
+        console.log('❌ Unrecognized deep link format:', url);
         return;
       }
+      
+      console.log('✅ Parsed deep link data:', linkData);
 
       switch (linkData.type) {
         case 'referral':
@@ -107,11 +123,25 @@ export function useDeepLinking() {
         
         case 'email_verification':
           // Handle email verification deep link
-          if (linkData.params.token_hash && linkData.params.type) {
-            router.push({
-              pathname: '/auth/verify-email',
-              params: linkData.params
+          console.log('🔗 Email verification deep link received:', linkData.params);
+          try {
+            // Build the URL with query parameters
+            const queryParams = new URLSearchParams();
+            Object.entries(linkData.params).forEach(([key, value]) => {
+              if (value !== null && value !== undefined) {
+                queryParams.append(key, String(value));
+              }
             });
+            
+            const url = `/auth/verify-email?${queryParams.toString()}`;
+            console.log('🔗 Navigating to:', url);
+            
+            router.push(url);
+            console.log('✅ Successfully navigated to verify-email screen');
+          } catch (error) {
+            console.error('❌ Failed to navigate to verify-email screen:', error);
+            // Fallback navigation
+            router.push('/auth/verify-email');
           }
           break;
         

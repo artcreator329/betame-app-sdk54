@@ -75,7 +75,21 @@ export class DeepLinkService {
    */
   static handleIncomingLink(url: string): { type: string; params: any } | null {
     try {
+      console.log('🔗 DeepLinkService: Parsing URL:', url);
+      
+      // IGNORE HTTPS/HTTP URLs for email verification only
+      if ((url.startsWith('https://') || url.startsWith('http://')) && url.includes('verify-email')) {
+        console.log('🔗 DeepLinkService: IGNORING email verification HTTPS URL - should open in browser');
+        return null;
+      }
+      
       const parsedUrl = new URL(url);
+      console.log('🔗 DeepLinkService: Parsed URL:', {
+        protocol: parsedUrl.protocol,
+        hostname: parsedUrl.hostname,
+        pathname: parsedUrl.pathname,
+        searchParams: Object.fromEntries(parsedUrl.searchParams.entries())
+      });
 
       // Handle deep link scheme
       if (parsedUrl.protocol === `${this.config.scheme}:`) {
@@ -130,6 +144,23 @@ export class DeepLinkService {
         }
 
         // Handle auth callbacks
+        if (hostname === 'auth' && pathSegments[0] === 'verify-email') {
+          return {
+            type: 'email_verification',
+            params: {
+              token_hash: parsedUrl.searchParams.get('token_hash'),
+              type: parsedUrl.searchParams.get('type'),
+              next: parsedUrl.searchParams.get('next'),
+              verified: parsedUrl.searchParams.get('verified'),
+              web_verification: parsedUrl.searchParams.get('web_verification'),
+              access_token: parsedUrl.searchParams.get('access_token'),
+              refresh_token: parsedUrl.searchParams.get('refresh_token'),
+              expires_at: parsedUrl.searchParams.get('expires_at'),
+            }
+          };
+        }
+
+        // Legacy support for path-based auth callbacks
         if (pathSegments[0] === 'auth') {
           if (pathSegments[1] === 'verify-email') {
             return {
@@ -187,6 +218,12 @@ export class DeepLinkService {
       // Handle universal links
       if (parsedUrl.hostname === this.config.domain) {
         const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
+
+        // EXCLUDE email verification pages - these should open in browser
+        if (pathSegments[0] === 'auth' && pathSegments[1] === 'verify-email-universal.html') {
+          console.log('🔗 Email verification page should open in browser, not app');
+          return null;
+        }
 
         if (pathSegments[0] === 'profile' && pathSegments[1]) {
           return {

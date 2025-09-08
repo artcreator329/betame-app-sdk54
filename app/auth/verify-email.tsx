@@ -40,6 +40,8 @@ export default function VerifyEmailScreen() {
   };
 
   useEffect(() => {
+    console.log('🔄 VerifyEmailScreen: Component mounted with params:', params);
+    console.log('🔄 VerifyEmailScreen: All URL search params:', Object.keys(params));
     handleEmailVerification();
   }, []);
 

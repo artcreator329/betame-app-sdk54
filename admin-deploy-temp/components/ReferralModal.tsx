@@ -174,9 +174,6 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
           <Ionicons name="checkmark-circle-outline" size={20} color="#34C759" />
           <Text style={styles.rewardText}>Friend completes first job: +RM4.90</Text>
         </View>
-        <View style={styles.totalReward}>
-          <Text style={styles.totalRewardText}>Total potential: 15 BetaCoins + RM4.90 per referral</Text>
-        </View>
       </View>
 
       {/* Share Button */}
@@ -433,18 +430,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 12,
   },
-  totalReward: {
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  totalRewardText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
-    textAlign: 'center',
-  },
+
   shareButton: {
     backgroundColor: '#007AFF',
     flexDirection: 'row',

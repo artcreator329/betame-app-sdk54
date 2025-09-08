@@ -5,9 +5,12 @@
       {
         "appID": "T72JDH8ZL6.com.betame.app",
         "paths": [
-          "/auth/verify-email*",
           "/profile/*",
-          "/payment/*"
+          "/payment/*",
+          "/share/*",
+          "/install*",
+          "/ref*",
+          "NOT /auth/verify-email*"
         ]
       }
     ]

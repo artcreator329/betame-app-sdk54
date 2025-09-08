@@ -56,3 +56,4 @@ export const createResponsiveStyles = <T extends Record<string, any>>(
   
   return styleFactory(desktop, tablet, mobile);
 };
+
