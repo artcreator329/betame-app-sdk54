@@ -107,11 +107,22 @@ export function useDeepLinking() {
         
         case 'email_verification':
           // Handle email verification deep link
+          console.log('🔗 Email verification deep link detected:', linkData.params);
           if (linkData.params.token_hash && linkData.params.type) {
-            router.push({
-              pathname: '/auth/verify-email',
-              params: linkData.params
-            });
+            console.log('🔗 Navigating to email verification screen with params:', linkData.params);
+            try {
+              router.push({
+                pathname: '/auth/verify-email',
+                params: linkData.params
+              });
+              console.log('✅ Email verification navigation completed');
+            } catch (error) {
+              console.error('❌ Email verification navigation failed:', error);
+              // Fallback: try without push parameters
+              router.push('/auth/verify-email');
+            }
+          } else {
+            console.error('❌ Missing token_hash or type in email verification params:', linkData.params);
           }
           break;
         

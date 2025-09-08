@@ -2,7 +2,7 @@
   "expo": {
     "name": "BetaMe",
     "slug": "betame",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "betame",
@@ -24,6 +24,7 @@
           "profile/[userId]": "profile/:userId",
           "auth/reset-password": "auth/reset-password",
           "auth/verify-email": "auth/verify-email",
+          "auth/verify-email-universal": "auth/verify-email-universal",
           "payment/success": "payment/success",
           "payment/cancel": "payment/cancel",
           "payment/failed": "payment/failed"
@@ -36,7 +37,7 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-       "buildNumber": "29",
+       "buildNumber": "8",
       "backgroundColor": "#0f1419",
       "appleTeamId": "T72JDH8ZL6"
     },
@@ -47,7 +48,7 @@
         }
       },
       "package": "com.betame.app",
-      "versionCode": 13,
+      "versionCode": 15,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0f1419"

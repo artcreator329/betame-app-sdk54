@@ -230,3 +230,4 @@ For grid-based content:
 The desktop web optimization provides a comprehensive solution for ensuring all pages in the BetaMe app are properly aligned and optimized for desktop browser viewing. The implementation follows modern web standards and provides a consistent, performant experience across all device types.
 
 For questions or issues related to desktop optimization, refer to this guide or consult the component documentation in the respective files.
+

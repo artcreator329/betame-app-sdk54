@@ -28,6 +28,9 @@ export default function VerifyEmailScreen() {
   const { user } = useAuth();
   const params = useLocalSearchParams();
 
+  // Debug: Log component render
+  console.log('📧 VerifyEmailScreen: Component rendering...');
+
   const videos = [
     require('../../assets/images/sign_up_page_video.mp4'),
     require('../../assets/images/sign_up_page_video_2.mp4'),
@@ -40,10 +43,14 @@ export default function VerifyEmailScreen() {
   };
 
   useEffect(() => {
+    console.log('📧 VerifyEmailScreen: Component mounted with params:', params);
     handleEmailVerification();
   }, []);
 
   const handleEmailVerification = async () => {
+    console.log('📧 VerifyEmailScreen: Starting email verification process');
+    console.log('📧 All params received:', JSON.stringify(params, null, 2));
+    
     try {
       // Check if this is coming from web verification
       const webVerification = params.web_verification as string;
@@ -51,6 +58,8 @@ export default function VerifyEmailScreen() {
       const accessToken = params.access_token as string;
       const refreshToken = params.refresh_token as string;
       const expiresAt = params.expires_at as string;
+      
+      console.log('📧 Extracted params - webVerification:', webVerification, 'verified:', verified);
       
       if (webVerification === 'success' && verified === 'true') {
         // Email was already verified by web page, now handle auto-login
@@ -188,38 +197,56 @@ export default function VerifyEmailScreen() {
     }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {Platform.OS === 'android' && AndroidVideoBackground && (
-        <AndroidVideoBackground
-          onVideoError={(error: any) => console.log('Android video error:', error)}
-        />
-      )}
-      {Platform.OS === 'ios' && (
-        <View style={styles.videoContainer}>
-          <Video
-            source={videos[currentVideoIndex]}
-            style={styles.video}
-            resizeMode={ResizeMode.COVER}
-            shouldPlay
-            isLooping={false}
-            isMuted
-            onPlaybackStatusUpdate={(status) => {
-              if (status.isLoaded && status.didJustFinish) {
-                handleVideoEnd();
-              }
-            }}
-          />
-          {/* Overlay for better text readability */}
-          <View style={styles.videoOverlay} />
-        </View>
-      )}
-      
-      <View style={styles.content}>
-        {renderContent()}
-      </View>
-    </SafeAreaView>
-  );
+  // Safety wrapper for rendering
+  const renderSafeContent = () => {
+    try {
+      return (
+        <SafeAreaView style={styles.container}>
+          {Platform.OS === 'android' && AndroidVideoBackground && (
+            <AndroidVideoBackground
+              onVideoError={(error: any) => console.log('Android video error:', error)}
+            />
+          )}
+          {Platform.OS === 'ios' && (
+            <View style={styles.videoContainer}>
+              <Video
+                source={videos[currentVideoIndex]}
+                style={styles.video}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay
+                isLooping={false}
+                isMuted
+                onPlaybackStatusUpdate={(status) => {
+                  if (status.isLoaded && status.didJustFinish) {
+                    handleVideoEnd();
+                  }
+                }}
+              />
+              {/* Overlay for better text readability */}
+              <View style={styles.videoOverlay} />
+            </View>
+          )}
+          
+          <View style={styles.content}>
+            {renderContent()}
+          </View>
+        </SafeAreaView>
+      );
+    } catch (error) {
+      console.error('❌ VerifyEmailScreen render error:', error);
+      // Fallback minimal UI
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={styles.content}>
+            <Text style={styles.title}>Email Verification</Text>
+            <Text style={styles.subtitle}>Loading...</Text>
+          </View>
+        </SafeAreaView>
+      );
+    }
+  };
+
+  return renderSafeContent();
 }
 
 const styles = StyleSheet.create({

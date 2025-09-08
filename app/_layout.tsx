@@ -467,6 +467,16 @@ function RootLayoutNav() {
           options={stackScreenOptions}
         />
         
+        {/* Explicit route for email verification to ensure it's available */}
+        <Stack.Screen 
+          name="auth/verify-email" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="auth/verify-email-universal" 
+          options={stackScreenOptions}
+        />
+        
         {/* Admin screens with slide animation */}
         <Stack.Screen 
           name="admin" 
