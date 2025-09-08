@@ -219,7 +219,7 @@ export default function LoginScreen() {
         type: 'signup',
         email: email.trim(),
         options: {
-          emailRedirectTo: 'betame://auth/verify-email',
+          emailRedirectTo: 'https://betame.com.my/auth/verify-email-universal',
         },
       });
 

@@ -45,6 +45,45 @@ export default function VerifyEmailScreen() {
 
   const handleEmailVerification = async () => {
     try {
+      // Check if this is coming from web verification
+      const webVerification = params.web_verification as string;
+      const verified = params.verified as string;
+      const accessToken = params.access_token as string;
+      const refreshToken = params.refresh_token as string;
+      const expiresAt = params.expires_at as string;
+      
+      if (webVerification === 'success' && verified === 'true') {
+        // Email was already verified by web page, now handle auto-login
+        setVerificationStatus('success');
+        setLoading(false);
+        
+        // Auto-login if session data is available
+        if (accessToken && refreshToken) {
+          try {
+            console.log('🔐 Auto-login: Setting session from web verification');
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (sessionError) {
+              console.error('❌ Auto-login failed:', sessionError);
+              // Still show success but user will need to login manually
+            } else {
+              console.log('✅ Auto-login successful');
+            }
+          } catch (error) {
+            console.error('❌ Auto-login error:', error);
+          }
+        }
+        
+        // Auto-redirect after 3 seconds
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 3000);
+        return;
+      }
+      
       // Extract token_hash from URL parameters (sent from email template)
       const tokenHash = (params.token_hash || params.token) as string;
       const type = params.type as string;

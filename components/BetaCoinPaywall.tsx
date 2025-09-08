@@ -21,6 +21,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LightTheme, DarkTheme } from '@/constants/Colors';
 
 const { width: screenWidth } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && screenWidth >= 1024;
 
 interface BetaCoinPaywallProps {
   onClose?: () => void;
@@ -217,7 +219,7 @@ export function BetaCoinPaywall({ onClose, onPurchaseSuccess }: BetaCoinPaywallP
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
       >
         <Animated.View 
           style={[
@@ -410,6 +412,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 20,
+  },
+  scrollContentDesktop: {
+    maxWidth: 1200,
+    alignSelf: 'center',
+    paddingHorizontal: 40,
   },
   productsContainer: {
     paddingHorizontal: 20,

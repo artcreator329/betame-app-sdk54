@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-itunes-app" content="app-id=YOUR_APP_ID, app-argument=betame://auth/verify-email">
+    <title>Email Verification - BetaMe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a2332 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: white;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .status {
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        .status.verifying {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }
+
+        .status.success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #4ade80;
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #60a5fa;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .button {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3);
+        }
+
+        .button.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .countdown {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-top: 15px;
+        }
+
+        .app-info {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .store-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .store-button {
+            padding: 12px 20px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            .store-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">B</div>
+        <h1>Email Verification</h1>
+        <p class="subtitle">We're verifying your email address and setting up your account</p>
+        
+        <div id="status" class="status verifying">
+            <div class="loading"></div>
+            Verifying your email...
+        </div>
+
+        <div id="countdown" class="countdown" style="display: none;">
+            Redirecting to BetaMe app in <span id="countdown-timer">3</span> seconds...
+        </div>
+
+        <div id="actions" style="display: none;">
+            <a href="#" id="openApp" class="button">Open BetaMe App</a>
+            <a href="#" id="tryAgain" class="button secondary">Try Again</a>
+        </div>
+
+        <div class="app-info">
+            <p>Don't have the BetaMe app yet?</p>
+            <div class="store-buttons" id="storeButtons" style="display: none;">
+                <a href="#" id="iosLink" class="button store-button">Download for iOS</a>
+                <a href="#" id="androidLink" class="button store-button">Download for Android</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            appStoreLinks: {
+                ios: 'https://apps.apple.com/app/betame/id123456789', // Replace with actual App Store ID
+                android: 'https://play.google.com/store/apps/details?id=com.betame.app'
+            },
+            redirectDelay: 3000, // 3 seconds
+            maxRedirectAttempts: 2
+        };
+
+        let redirectAttempts = 0;
+
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenHash = urlParams.get('token_hash');
+        const type = urlParams.get('type');
+        const next = urlParams.get('next') || '';
+        const status = urlParams.get('status');
+        const message = urlParams.get('message');
+
+        // DOM elements
+        const statusEl = document.getElementById('status');
+        const actionsEl = document.getElementById('actions');
+        const countdownEl = document.getElementById('countdown');
+        const countdownTimerEl = document.getElementById('countdown-timer');
+        const storeButtonsEl = document.getElementById('storeButtons');
+        const openAppBtn = document.getElementById('openApp');
+        const tryAgainBtn = document.getElementById('tryAgain');
+        const iosLinkEl = document.getElementById('iosLink');
+        const androidLinkEl = document.getElementById('androidLink');
+
+        // Set up store links
+        iosLinkEl.href = CONFIG.appStoreLinks.ios;
+        androidLinkEl.href = CONFIG.appStoreLinks.android;
+
+        // Platform detection
+        function getPlatform() {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            
+            if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+                return 'ios';
+            }
+            
+            if (/android/i.test(userAgent)) {
+                return 'android';
+            }
+            
+            return 'web';
+        }
+
+        // Update status display
+        function updateStatus(type, message) {
+            statusEl.className = `status ${type}`;
+            statusEl.innerHTML = type === 'verifying' 
+                ? `<div class="loading"></div>${message}`
+                : message;
+        }
+
+        // Show download options
+        function showDownloadOptions() {
+            const platform = getPlatform();
+            
+            if (platform === 'ios') {
+                window.location.href = CONFIG.appStoreLinks.ios;
+            } else if (platform === 'android') {
+                window.location.href = CONFIG.appStoreLinks.android;
+            } else {
+                storeButtonsEl.style.display = 'flex';
+            }
+        }
+
+        // Countdown timer
+        function startCountdown(seconds, callback) {
+            countdownEl.style.display = 'block';
+            countdownTimerEl.textContent = seconds;
+            
+            const timer = setInterval(() => {
+                seconds--;
+                countdownTimerEl.textContent = seconds;
+                
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    countdownEl.style.display = 'none';
+                    callback();
+                }
+            }, 1000);
+        }
+
+        // Try to open the app
+        function tryOpenApp() {
+            const deepLink = `betame://auth/verify-email?token_hash=${encodeURIComponent(tokenHash)}&type=${encodeURIComponent(type)}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
+            
+            // Create a hidden iframe to attempt opening the deep link
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = deepLink;
+            document.body.appendChild(iframe);
+            
+            // Also try using window.location as a fallback
+            setTimeout(() => {
+                try {
+                    window.location.href = deepLink;
+                } catch (e) {
+                    console.log('Deep link failed:', e);
+                }
+            }, 100);
+            
+            // Clean up iframe
+            setTimeout(() => {
+                if (document.body.contains(iframe)) {
+                    document.body.removeChild(iframe);
+                }
+            }, 1000);
+            
+            // If we're still here after the delay, the app probably isn't installed
+            setTimeout(() => {
+                redirectAttempts++;
+                if (redirectAttempts >= CONFIG.maxRedirectAttempts) {
+                    updateStatus('error', 'Unable to open BetaMe app. You may need to install it first.');
+                    actionsEl.style.display = 'block';
+                    showDownloadOptions();
+                } else {
+                    // Try one more time
+                    tryOpenApp();
+                }
+            }, 2000);
+        }
+
+        // Handle successful verification
+        function handleSuccess() {
+            updateStatus('success', '✅ Email verified successfully!');
+            
+            startCountdown(3, () => {
+                tryOpenApp();
+            });
+        }
+
+        // Handle verification error
+        function handleError(message) {
+            updateStatus('error', `❌ ${message}`);
+            actionsEl.style.display = 'block';
+            showDownloadOptions();
+        }
+
+        // Main verification function
+        async function verifyEmail() {
+            // Check if we already have a status from the server
+            if (status === 'success') {
+                handleSuccess();
+                return;
+            } else if (status === 'error') {
+                handleError(message || 'Verification failed. Please try again or contact support.');
+                return;
+            }
+
+            // If no status, this might be a direct link - show error
+            if (!tokenHash || !type) {
+                handleError('Invalid verification link. Please check your email and try again.');
+                return;
+            }
+
+            // If we have token but no status, redirect to server for verification
+            window.location.href = `https://betame.com.my/.netlify/functions/verify-server?token_hash=${encodeURIComponent(tokenHash)}&type=${encodeURIComponent(type)}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
+        }
+
+        // Event listeners
+        openAppBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            tryOpenApp();
+        });
+
+        tryAgainBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.reload();
+        });
+
+        // Handle page visibility change (user might have switched to app)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // User might have switched to the app
+                updateStatus('success', '✅ Redirected to BetaMe app');
+            }
+        });
+
+        // Start verification when page loads
+        window.addEventListener('load', () => {
+            setTimeout(verifyEmail, 500);
+        });
+    </script>
+</body>
+</html>

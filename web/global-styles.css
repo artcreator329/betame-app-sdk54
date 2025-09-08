@@ -1,9 +1,11 @@
-/* Global styles to prevent white flash during navigation */
+/* Global styles to prevent white flash during navigation and optimize desktop layouts */
 
 /* Base HTML and body styles */
 html {
   background-color: #f0f8ff; /* Light theme background */
   transition: background-color 0.3s ease;
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 body {
@@ -11,6 +13,7 @@ body {
   margin: 0;
   padding: 0;
   transition: background-color 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
 /* Dark mode support */
@@ -135,5 +138,159 @@ body {
   * {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+/* Desktop-specific optimizations */
+@media (min-width: 1024px) {
+  /* Main container optimizations */
+  .desktop-main-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    min-height: 100vh;
+  }
+  
+  /* Page content wrapper */
+  .desktop-page-wrapper {
+    padding: 24px 0;
+    min-height: calc(100vh - 48px);
+  }
+  
+  /* Grid layouts for desktop */
+  .desktop-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  
+  .desktop-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  
+  .desktop-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+  
+  /* Card layouts */
+  .desktop-card {
+    background: inherit;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .desktop-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Form layouts */
+  .desktop-form-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 32px;
+  }
+  
+  .desktop-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  /* List layouts */
+  .desktop-list-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .desktop-list-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s ease;
+  }
+  
+  .desktop-list-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  
+  /* Button optimizations */
+  .desktop-button {
+    min-height: 44px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  
+  .desktop-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Typography improvements */
+  .desktop-heading-1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+  }
+  
+  .desktop-heading-2 {
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 0.75rem;
+  }
+  
+  .desktop-heading-3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+  }
+  
+  .desktop-body-text {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  
+  /* Spacing utilities */
+  .desktop-spacing-xs { margin: 8px; }
+  .desktop-spacing-sm { margin: 16px; }
+  .desktop-spacing-md { margin: 24px; }
+  .desktop-spacing-lg { margin: 32px; }
+  .desktop-spacing-xl { margin: 48px; }
+  
+  /* Responsive breakpoints */
+  @media (max-width: 1440px) {
+    .desktop-grid-4 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .desktop-main-container {
+      max-width: 1200px;
+      padding: 0 20px;
+    }
+  }
+  
+  @media (max-width: 1200px) {
+    .desktop-grid-3 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .desktop-main-container {
+      max-width: 1000px;
+      padding: 0 16px;
+    }
   }
 }

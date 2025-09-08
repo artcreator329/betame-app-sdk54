@@ -129,6 +129,25 @@ export class DeepLinkService {
           }
         }
 
+        // Handle auth callbacks
+        if (pathSegments[0] === 'auth') {
+          if (pathSegments[1] === 'verify-email') {
+            return {
+              type: 'email_verification',
+              params: {
+                token_hash: parsedUrl.searchParams.get('token_hash'),
+                type: parsedUrl.searchParams.get('type'),
+                next: parsedUrl.searchParams.get('next'),
+                verified: parsedUrl.searchParams.get('verified'),
+                web_verification: parsedUrl.searchParams.get('web_verification'),
+                access_token: parsedUrl.searchParams.get('access_token'),
+                refresh_token: parsedUrl.searchParams.get('refresh_token'),
+                expires_at: parsedUrl.searchParams.get('expires_at'),
+              }
+            };
+          }
+        }
+
         // Handle payment callbacks
         if (pathSegments[0] === 'payment') {
           if (pathSegments[1] === 'success') {

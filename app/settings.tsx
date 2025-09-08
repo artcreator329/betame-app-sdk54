@@ -12,6 +12,7 @@ import {
   Linking,
   Platform,
   useWindowDimensions,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +20,11 @@ import { ArrowLeft, Heart, Briefcase, Share as ShareIcon, Settings as SettingsIc
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme, useColors } from '@/contexts/ThemeContext';
+import DesktopWrapper from '@/components/DesktopWrapper';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && width >= 1024;
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -164,11 +170,8 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={isDesktop ? styles.desktopScrollContent : undefined}
-      >
+    <DesktopWrapper scrollable={true} className="settings-screen">
+      <View style={[styles.contentWrapper, { backgroundColor: colors.background.primary }]}>
         {/* Header */}
         <View style={[styles.header, isDesktop && styles.headerDesktop, { backgroundColor: colors.background.tertiary }]}>
           <TouchableOpacity onPress={() => router.back()}>
@@ -379,14 +382,18 @@ export default function SettingsScreen() {
           <Text style={[styles.versionText, { color: colors.text.secondary }]}>BetaMe v1.0.0</Text>
           <Text style={[styles.copyrightText, { color: colors.text.secondary }]}>© 2025 Betame Sdn. Bhd.</Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </DesktopWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  contentWrapper: {
+    flex: 1,
+    paddingBottom: 20,
   },
   desktopScrollContent: {
     maxWidth: 1200,

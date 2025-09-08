@@ -16,6 +16,8 @@ import LayoutToggle from '@/components/LayoutToggle';
 import { useFocusEffect } from '@react-navigation/native';
 import ServiceCard from '@/components/ServiceCard';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
+import DesktopWrapper from '@/components/DesktopWrapper';
+import ResponsiveGrid, { GridCard } from '@/components/ResponsiveGrid';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { useColors } from '@/contexts/ThemeContext';
@@ -151,7 +153,7 @@ export default function ServicesScreen() {
   });
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+    <DesktopWrapper scrollable={false} className="services-screen">
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Services</Text>
@@ -240,7 +242,7 @@ export default function ServicesScreen() {
       />
 
       
-    </SafeAreaView>
+    </DesktopWrapper>
   );
 }
 

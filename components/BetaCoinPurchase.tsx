@@ -13,6 +13,7 @@ import {
   Linking,
   ActivityIndicator,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X, ShoppingCart, Apple, CreditCard } from 'lucide-react-native';
@@ -22,6 +23,10 @@ import { WalletService } from '@/lib/wallet-service';
 import CurlecPaymentService from '@/lib/curlec-payment-service';
 import { RevenueCatIAPService } from '@/lib/revenuecat-iap-service';
 import { BetaCoinPaywall } from './BetaCoinPaywall';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && width >= 1024;
 
 interface BetaCoinBundle {
   id: string;
@@ -100,6 +105,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmationData, setConfirmationData] = useState<{bundle: BetaCoinBundle, fees: any} | null>(null);
   const [showRevenueCatPaywall, setShowRevenueCatPaywall] = useState(false);
+  const [imageErrors, setImageErrors] = useState<{[key: string]: boolean}>({});
 
   // Show RevenueCat Paywall for iOS, custom UI for Android
   useEffect(() => {
@@ -353,6 +359,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
         <Pressable
           style={({ pressed }) => [
             styles.bundleCard,
+            isDesktop && styles.bundleCardDesktop,
             { borderColor: colors.border.main },
             {
               transform: [{ scale: pressed ? 0.98 : 1 }],
@@ -368,8 +375,12 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
             style={styles.bundleImage}
             imageStyle={styles.bundleImageStyle}
             onLoad={() => {
-              console.log(`🍎 iOS: Loading ${bundle.betacoins} BetaCoins image:`, 
+              console.log(`📱 Loading ${bundle.betacoins} BetaCoins image for ${Platform.OS}:`, 
                 Platform.OS === 'ios' ? 'iOS image' : 'Android/Web image');
+            }}
+            onError={(error) => {
+              console.error(`❌ Failed to load image for ${bundle.betacoins} BetaCoins:`, error);
+              setImageErrors(prev => ({ ...prev, [bundle.id]: true }));
             }}
           >
             {bundle.badge && (
@@ -385,11 +396,25 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
               style={styles.bundleContent}
               imageStyle={styles.bundleImageStyle}
               onLoad={() => {
-                console.log(`🍎 iOS: Loading ${bundle.betacoins} BetaCoins content image:`, 
+                console.log(`📱 Loading ${bundle.betacoins} BetaCoins content image for ${Platform.OS}:`, 
                   Platform.OS === 'ios' ? 'iOS image' : 'Android/Web image');
               }}
+              onError={(error) => {
+                console.error(`❌ Failed to load content image for ${bundle.betacoins} BetaCoins:`, error);
+              }}
             >
-              <View style={styles.bundleContentOverlay} />
+              <View style={styles.bundleContentOverlay}>
+                {imageErrors[bundle.id] && (
+                  <View style={styles.fallbackContent}>
+                    <Text style={[styles.fallbackBetaCoins, { color: colors.primary.main }]}>
+                      {bundle.betacoins} BetaCoins
+                    </Text>
+                    <Text style={[styles.fallbackPrice, { color: colors.text.primary }]}>
+                      RM{bundle.priceValue.toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </ImageBackground>
           </ImageBackground>
         </Pressable>
@@ -452,7 +477,11 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
         </View>
 
         {!showConfirmation ? (
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={[styles.content, isDesktop && styles.contentDesktop]} 
+            contentContainerStyle={isDesktop ? styles.contentContainerDesktop : undefined}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.description}>
               <Text style={[styles.descriptionText, { color: colors.text.secondary }]}>
                 BetaCoins can be purchased or exchanged with Diamonds. 
@@ -470,7 +499,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
               </View>
             </View>
 
-            <View style={styles.bundlesGrid}>
+            <View style={[styles.bundlesGrid, isDesktop && styles.bundlesGridDesktop]}>
               {betacoinBundles.map(renderBundle)}
             </View>
 
@@ -493,7 +522,7 @@ export function BetaCoinPurchase({ visible, onClose, onPurchaseSuccess }: BetaCo
             </View>
           </ScrollView>
         ) : (
-          <View style={styles.confirmationContainer}>
+          <View style={[styles.confirmationContainer, isDesktop && styles.confirmationContainerDesktop]}>
             {/* Header with coin animation */}
             <View style={styles.confirmationHeader}>
               <View style={[styles.coinContainer, { backgroundColor: colors.primary.main }]}>
@@ -619,6 +648,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  contentDesktop: {
+    maxWidth: 1200,
+    alignSelf: 'center',
+    paddingHorizontal: 40,
+  },
+  contentContainerDesktop: {
+    paddingBottom: 40,
+  },
   description: {
     paddingVertical: 20,
   },
@@ -650,6 +687,12 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingTop: 16,
   },
+  bundlesGridDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingTop: 24,
+  },
   bundleCard: {
     borderRadius: 20,
     overflow: 'visible',
@@ -657,6 +700,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1A1A',
     height: 64,
     marginTop: 8,
+  },
+  bundleCardDesktop: {
+    width: '48%',
+    maxWidth: 300,
+    marginBottom: 16,
+    marginHorizontal: '1%',
+    height: 80,
   },
   bundleImage: {
     height: '100%',
@@ -697,6 +747,22 @@ const styles = StyleSheet.create({
   bundleContentOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.01)', // Very subtle overlay for depth
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fallbackContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  fallbackBetaCoins: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  fallbackPrice: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   purchaseButton: {
     flexDirection: 'row',
@@ -746,6 +812,11 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: 'center',
+  },
+  confirmationContainerDesktop: {
+    maxWidth: 600,
+    alignSelf: 'center',
+    padding: 40,
   },
   confirmationHeader: {
     alignItems: 'center',

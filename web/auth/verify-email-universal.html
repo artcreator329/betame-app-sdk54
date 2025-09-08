@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-itunes-app" content="app-id=6751435061, app-argument=betame://auth/verify-email">
+    <title>Email Verification - BetaMe</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a2332 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: #3B82F6;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .message {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #3B82F6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .success-icon {
+            width: 60px;
+            height: 60px;
+            margin: 20px auto;
+            color: #10B981;
+        }
+
+        .error-icon {
+            width: 60px;
+            height: 60px;
+            margin: 20px auto;
+            color: #EF4444;
+        }
+
+        .button {
+            display: inline-block;
+            background: #3B82F6;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            margin-top: 20px;
+            transition: all 0.2s;
+        }
+
+        .button:hover {
+            background: #2563EB;
+            transform: translateY(-1px);
+        }
+
+        .countdown {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-top: 10px;
+        }
+
+        #error-details {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">B</div>
+        
+        <div id="loading-state">
+            <h1>Verifying Email</h1>
+            <p class="message">Please wait while we verify your email address...</p>
+            <div class="spinner"></div>
+        </div>
+
+        <div id="success-state" style="display: none;">
+            <svg class="success-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h1>Email Verified!</h1>
+            <p class="message">Your email has been successfully verified.</p>
+            <p class="message">Redirecting to BetaMe app...</p>
+            <div class="countdown">Redirecting in <span id="countdown">3</span> seconds</div>
+            <a href="#" id="open-app-btn" class="button">Open BetaMe App</a>
+        </div>
+
+        <div id="error-state" style="display: none;">
+            <svg class="error-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h1>Verification Failed</h1>
+            <p class="message" id="error-message">Unable to verify your email address.</p>
+            <div id="error-details"></div>
+            <a href="betame://auth/login" class="button">Back to Login</a>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const { createClient } = supabase;
+        const supabaseUrl = 'https://rkcfgebgpixgfvggbwmc.supabase.co';
+        const supabaseAnonKey = '<REDACTED_JWT>';
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenHash = urlParams.get('token_hash');
+        const type = urlParams.get('type');
+        const next = urlParams.get('next') || '';
+
+        // State management
+        function showState(state) {
+            document.getElementById('loading-state').style.display = state === 'loading' ? 'block' : 'none';
+            document.getElementById('success-state').style.display = state === 'success' ? 'block' : 'none';
+            document.getElementById('error-state').style.display = state === 'error' ? 'block' : 'none';
+        }
+
+        // Handle error
+        function handleError(message, details = '') {
+            showState('error');
+            document.getElementById('error-message').textContent = message;
+            if (details) {
+                document.getElementById('error-details').style.display = 'block';
+                document.getElementById('error-details').textContent = details;
+            }
+        }
+
+        // Handle success
+        async function handleSuccess(sessionData = '') {
+            showState('success');
+            
+            // Set up deep link URL with all original parameters preserved, including session data for auto-login
+            const deepLinkUrl = `betame://auth/verify-email?verified=true&web_verification=success${sessionData}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
+            
+            // Update button href
+            document.getElementById('open-app-btn').href = deepLinkUrl;
+            
+            // Countdown and redirect
+            let countdown = 3;
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                document.getElementById('countdown').textContent = countdown;
+                
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval);
+                    // Try to open the app
+                    window.location.href = deepLinkUrl;
+                    
+                    // Fallback for if app isn't installed
+                    let hasRedirected = false;
+                    
+                    // Listen for page visibility changes (app opening)
+                    const handleVisibilityChange = () => {
+                        if (document.hidden) {
+                            hasRedirected = true;
+                        }
+                    };
+                    document.addEventListener('visibilitychange', handleVisibilityChange);
+                    
+                    setTimeout(() => {
+                        document.removeEventListener('visibilitychange', handleVisibilityChange);
+                        
+                        // Only redirect to store if app didn't open
+                        if (!hasRedirected && document.visibilityState === 'visible') {
+                            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                            const isAndroid = /Android/.test(navigator.userAgent);
+                            
+                            if (isIOS) {
+                                window.location.href = 'https://apps.apple.com/my/app/betame/id6751435061';
+                            } else if (isAndroid) {
+                                window.location.href = 'https://play.google.com/store/apps/details?id=com.betame.app';
+                            } else {
+                                // Desktop fallback
+                                document.getElementById('countdown').parentElement.textContent = 'Please install the BetaMe app to continue';
+                            }
+                        }
+                    }, 3000);
+                }
+            }, 1000);
+        }
+
+        // Verify email
+        async function verifyEmail() {
+            if (!tokenHash || !type) {
+                handleError('Invalid verification link', 'Missing required parameters');
+                return;
+            }
+
+            try {
+                // Use Supabase auth to verify the email token
+                const { data, error } = await supabaseClient.auth.verifyOtp({
+                    token_hash: tokenHash,
+                    type: type
+                });
+
+                if (error) {
+                    console.error('Verification error:', error);
+                    handleError(
+                        'Email verification failed',
+                        error.message || 'Please try again or contact support'
+                    );
+                    return;
+                }
+
+                // Extract session data for auto-login
+                const session = data.session;
+                let sessionData = '';
+                if (session && session.access_token) {
+                    sessionData = `&access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token || '')}&expires_at=${session.expires_at || ''}`;
+                }
+                
+                // Success!
+                handleSuccess(sessionData);
+                
+            } catch (error) {
+                console.error('Unexpected error:', error);
+                handleError(
+                    'An unexpected error occurred',
+                    'Please try again later'
+                );
+            }
+        }
+
+        // Start verification when page loads
+        verifyEmail();
+    </script>
+</body>
+</html>

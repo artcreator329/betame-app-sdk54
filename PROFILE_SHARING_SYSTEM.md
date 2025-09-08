@@ -167,7 +167,7 @@ Update the app store links in `DeepLinkService`:
 ```typescript
 static getAppStoreLinks() {
   return {
-    ios: 'https://apps.apple.com/app/betame/id[YOUR_APP_ID]',
+    ios: 'https://apps.apple.com/my/app/betame/id6751435061',
     android: 'https://play.google.com/store/apps/details?id=com.artcreator329.boltexponativewind',
     web: 'https://betame.com.my'
   };

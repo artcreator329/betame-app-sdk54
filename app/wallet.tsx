@@ -11,6 +11,8 @@ import {
   Image,
   ImageBackground,
   StatusBar,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Zap, TrendingUp, Trophy, CreditCard, Gift, Eye, Target, Sparkles, ShoppingBag, History, Plus, Minus } from 'lucide-react-native';
@@ -22,7 +24,13 @@ import { useColors, useTheme } from '@/contexts/ThemeContext';
 import { BetaCoinPurchase } from '../components/BetaCoinPurchase';
 import { ServiceSelectionModal } from '../components/ServiceSelectionModal';
 import { TransactionHistory } from '../components/TransactionHistory';
+import DesktopWrapper from '@/components/DesktopWrapper';
+import ResponsiveGrid, { GridCard } from '@/components/ResponsiveGrid';
 import { Service } from '../lib/service-service';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && width >= 1024;
 
 interface Feature {
   id: string;
@@ -361,11 +369,8 @@ export default function WalletScreen() {
         backgroundColor="transparent"
         translucent={true}
       />
-      <SafeAreaView 
-        style={[styles.container, { backgroundColor: colors.background.primary }]}
-        edges={['top', 'left', 'right', 'bottom']}
-      >
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <DesktopWrapper scrollable={true} className="wallet-screen">
+        <View style={[styles.contentWrapper, { backgroundColor: colors.background.primary }]}>
         {/* Header */}
         <View style={[styles.headerContainer, { backgroundColor: colors.background.primary }]}>
           <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
@@ -388,69 +393,75 @@ export default function WalletScreen() {
         </View>
 
         {/* Wallet Balances */}
-        <View style={styles.balanceSection}>
-          <ImageBackground 
-            source={require('../assets/images/diamond-bg.jpeg')}
-            style={styles.balanceCard}
-            imageStyle={styles.balanceCardImage}
-          >
-            <View style={styles.balanceOverlay}>
-               <View style={styles.balanceHeader}>
-                 <Text style={styles.balanceLabelWithBg}>Premium Diamonds</Text>
+        <View style={[styles.balanceSection, isDesktop && styles.balanceSectionDesktop]}>
+          <View style={[styles.balanceCard, isDesktop && styles.balanceCardDesktop]}>
+            <ImageBackground 
+              source={require('../assets/images/diamond-bg.jpeg')}
+              style={styles.balanceCardInner}
+              imageStyle={styles.balanceCardImage}
+            >
+              <View style={styles.balanceOverlay}>
+                 <View style={styles.balanceHeader}>
+                   <Text style={styles.balanceLabelWithBg}>Premium Diamonds</Text>
+                 </View>
+                 <Text style={styles.balanceAmountWithBg}>{walletData?.betame_diamonds || 0} Diamonds</Text>
+                 <Text style={styles.balanceSubtextWithBg}>Convert to BetaCoins</Text>
                </View>
-               <Text style={styles.balanceAmountWithBg}>{walletData?.betame_diamonds || 0} Diamonds</Text>
-               <Text style={styles.balanceSubtextWithBg}>Convert to BetaCoins</Text>
-             </View>
-          </ImageBackground>
+            </ImageBackground>
+          </View>
 
-          <ImageBackground 
-            source={require('../assets/images/coin-bg.jpeg')}
-            style={styles.balanceCard}
-            imageStyle={styles.balanceCardImage}
-          >
-            <View style={styles.balanceOverlay}>
-               <View style={styles.balanceHeader}>
-                 <Text style={styles.balanceLabelWithBg}>BetaCoin Wallet</Text>
+          <View style={[styles.balanceCard, isDesktop && styles.balanceCardDesktop]}>
+            <ImageBackground 
+              source={require('../assets/images/coin-bg.jpeg')}
+              style={styles.balanceCardInner}
+              imageStyle={styles.balanceCardImage}
+            >
+              <View style={styles.balanceOverlay}>
+                 <View style={styles.balanceHeader}>
+                   <Text style={styles.balanceLabelWithBg}>BetaCoin Wallet</Text>
+                   <TouchableOpacity 
+                     onPress={() => setShowBetaCoinPurchase(true)}
+                     style={styles.marketplaceButton}
+                   >
+                     <ShoppingBag size={20} color="white" />
+                   </TouchableOpacity>
+                 </View>
+                 <Text style={styles.balanceAmountWithBg}>{walletData?.betame_betacoins || 0} BetaCoins</Text>
                  <TouchableOpacity 
                    onPress={() => setShowBetaCoinPurchase(true)}
-                   style={styles.marketplaceButton}
+                   style={styles.buyMoreButton}
                  >
-                   <ShoppingBag size={20} color="white" />
+                   <Text style={styles.buyMoreText}>Purchase More BetaCoins</Text>
                  </TouchableOpacity>
                </View>
-               <Text style={styles.balanceAmountWithBg}>{walletData?.betame_betacoins || 0} BetaCoins</Text>
-               <TouchableOpacity 
-                 onPress={() => setShowBetaCoinPurchase(true)}
-                 style={styles.buyMoreButton}
-               >
-                 <Text style={styles.buyMoreText}>Purchase More BetaCoins</Text>
-               </TouchableOpacity>
-             </View>
-          </ImageBackground>
+            </ImageBackground>
+          </View>
 
-          <ImageBackground 
-            source={require('../assets/images/cash-background.png')}
-            style={styles.balanceCard}
-            imageStyle={styles.balanceCardImage}
-          >
-            <View style={styles.balanceOverlay}>
-               <View style={styles.balanceHeader}>
-                 <Text style={styles.balanceLabelWithBg}>Cash Balance</Text>
+          <View style={[styles.balanceCard, isDesktop && styles.balanceCardDesktop]}>
+            <ImageBackground 
+              source={require('../assets/images/cash-background.png')}
+              style={styles.balanceCardInner}
+              imageStyle={styles.balanceCardImage}
+            >
+              <View style={styles.balanceOverlay}>
+                 <View style={styles.balanceHeader}>
+                   <Text style={styles.balanceLabelWithBg}>Cash Balance</Text>
+                 </View>
+                 <Text style={styles.balanceAmountWithBg}>RM {walletData?.cash || 0}</Text>
+                 <Text style={styles.withdrawalNotice}>Minimum withdrawal amount: RM10</Text>
+                 <TouchableOpacity 
+                   onPress={() => handleWithdrawCash()}
+                   style={styles.buyMoreButton}
+                 >
+                   <Text style={styles.buyMoreText}>Withdraw Cash</Text>
+                 </TouchableOpacity>
                </View>
-               <Text style={styles.balanceAmountWithBg}>RM {walletData?.cash || 0}</Text>
-               <Text style={styles.withdrawalNotice}>Minimum withdrawal amount: RM10</Text>
-               <TouchableOpacity 
-                 onPress={() => handleWithdrawCash()}
-                 style={styles.buyMoreButton}
-               >
-                 <Text style={styles.buyMoreText}>Withdraw Cash</Text>
-               </TouchableOpacity>
-             </View>
-          </ImageBackground>
+            </ImageBackground>
+          </View>
         </View>
 
         {/* Transaction History Quick Access */}
-        <View style={styles.transactionSection}>
+        <View style={[styles.transactionSection, isDesktop && styles.transactionSectionDesktop]}>
           <View style={styles.transactionHeader}>
             <Text style={[styles.transactionTitle, { color: colors.text.primary }]}>Recent Transactions</Text>
             <TouchableOpacity 
@@ -483,9 +494,10 @@ export default function WalletScreen() {
         </View>
 
         {/* Conversion Section */}
-        <View style={styles.conversionSection}>
-          <Text style={[styles.conversionTitle, { color: colors.text.primary }]}>Convert your diamonds to BetaCoins!</Text>
-          <Text style={[styles.conversionSubtitle, { color: colors.text.secondary }]}>Convert 10 premium diamonds into 1 BetaCoin</Text>
+        <View style={[styles.conversionSection, isDesktop && styles.conversionSectionDesktop]}>
+          <View style={[styles.conversionContent, isDesktop && styles.conversionContentDesktop]}>
+            <Text style={[styles.conversionTitle, { color: colors.text.primary }]}>Convert your diamonds to BetaCoins!</Text>
+            <Text style={[styles.conversionSubtitle, { color: colors.text.secondary }]}>Convert 10 premium diamonds into 1 BetaCoin</Text>
           
           <View style={[styles.conversionCard, { backgroundColor: colors.background.tertiary }]}>
             <View style={styles.conversionRow}>
@@ -557,10 +569,11 @@ export default function WalletScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          </View>
         </View>
 
         {/* Purchased Features */}
-        <View style={styles.purchasedFeaturesSection}>
+        <View style={[styles.purchasedFeaturesSection, isDesktop && styles.purchasedFeaturesSectionDesktop]}>
           <View style={styles.purchasedFeaturesHeader}>
             <Text style={[styles.purchasedFeaturesTitle, { color: colors.text.primary }]}>Your Purchased Features</Text>
             <View style={styles.purchasedFeaturesBadge}>
@@ -642,7 +655,7 @@ export default function WalletScreen() {
         </View>
 
         {/* Visibility Boosts */}
-        <View style={styles.boostsSection}>
+        <View style={[styles.boostsSection, isDesktop && styles.boostsSectionDesktop]}>
           <Text style={[styles.boostsTitle, { color: colors.text.primary }]}>Boost to Convert...</Text>
           <Text style={[styles.boostsSubtitle, { color: colors.text.secondary }]}>Different feature to make the listing extra visibility by using BetaCoins to boost</Text>
           
@@ -771,8 +784,8 @@ export default function WalletScreen() {
             userId={user.id}
           />
         )}
-      </ScrollView>
-      </SafeAreaView>
+        </View>
+      </DesktopWrapper>
     </>
   );
 }
@@ -780,6 +793,10 @@ export default function WalletScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  contentWrapper: {
+    flex: 1,
+    paddingBottom: 20,
   },
   headerContainer: {
     paddingTop: 0,
@@ -812,6 +829,13 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
+  balanceSectionDesktop: {
+    flexDirection: 'row',
+    padding: 32,
+    gap: 24,
+    maxWidth: 1200,
+    alignSelf: 'center',
+  },
   balanceCard: {
     backgroundColor: 'transparent',
     borderRadius: 12,
@@ -825,6 +849,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     overflow: 'hidden',
+  },
+  balanceCardDesktop: {
+    flex: 1,
+    maxWidth: 400,
+    padding: 0,
+  },
+  balanceCardInner: {
+    borderRadius: 12,
+    padding: 20,
+    overflow: 'hidden',
+    flex: 1,
   },
   balanceCardImage: {
     borderRadius: 12,
@@ -917,6 +952,18 @@ const styles = StyleSheet.create({
   },
   conversionSection: {
     padding: 20,
+  },
+  conversionSectionDesktop: {
+    padding: 32,
+    maxWidth: 1200,
+    alignSelf: 'center',
+  },
+  conversionContent: {
+    flex: 1,
+  },
+  conversionContentDesktop: {
+    maxWidth: 800,
+    alignSelf: 'center',
   },
   conversionTitle: {
     fontSize: 18,
@@ -1047,6 +1094,11 @@ const styles = StyleSheet.create({
   },
   boostsSection: {
     padding: 20,
+  },
+  boostsSectionDesktop: {
+    padding: 32,
+    maxWidth: 1200,
+    alignSelf: 'center',
   },
   boostsTitle: {
     fontSize: 18,
@@ -1217,6 +1269,11 @@ const styles = StyleSheet.create({
   purchasedFeaturesSection: {
     padding: 20,
     paddingTop: 10,
+  },
+  purchasedFeaturesSectionDesktop: {
+    padding: 32,
+    maxWidth: 1200,
+    alignSelf: 'center',
   },
   purchasedFeaturesHeader: {
     flexDirection: 'row',
@@ -1540,6 +1597,11 @@ const styles = StyleSheet.create({
   transactionSection: {
     padding: 20,
     paddingTop: 10,
+  },
+  transactionSectionDesktop: {
+    padding: 32,
+    maxWidth: 1200,
+    alignSelf: 'center',
   },
   transactionHeader: {
     flexDirection: 'row',

@@ -2418,7 +2418,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
-  - react-native-google-maps (from `/Users/christopher/Desktop/Project/betame-app/node_modules/react-native-maps`)
+  - react-native-google-maps (from `/Users/christopher/Main/Project/betame-app/node_modules/react-native-maps`)
   - react-native-maps (from `../node_modules/react-native-maps`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
@@ -2643,7 +2643,7 @@ EXTERNAL SOURCES:
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   react-native-google-maps:
-    :path: "/Users/christopher/Desktop/Project/betame-app/node_modules/react-native-maps"
+    :path: "/Users/christopher/Main/Project/betame-app/node_modules/react-native-maps"
   react-native-maps:
     :path: "../node_modules/react-native-maps"
   react-native-netinfo:

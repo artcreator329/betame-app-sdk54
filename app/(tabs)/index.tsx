@@ -20,6 +20,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import ServiceCard from '@/components/ServiceCard';
 import SearchBarWithAutoComplete from '@/components/SearchBarWithAutoComplete';
 import NearbyCategoryIcon from '@/components/NearbyCategoryIcon';
+import DesktopWrapper from '@/components/DesktopWrapper';
+import ResponsiveGrid, { GridCard } from '@/components/ResponsiveGrid';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { BannerService, Banner } from '@/lib/banner-service';
@@ -305,15 +307,8 @@ export default function HomeScreen() {
 
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent, 
-          isDesktop && styles.desktopScrollContent,
-          { paddingBottom: getAdaptiveBottomPadding() }
-        ]}
-      >
+    <DesktopWrapper scrollable={true} className="home-screen">
+      <View style={[styles.contentWrapper, { backgroundColor: colors.background.primary }]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -487,17 +482,31 @@ export default function HomeScreen() {
               <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading nearby services...</Text>
             </View>
           ) : nearbyServices.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.nearbyContent}
-            >
-              {nearbyServices.slice(0, isDesktop ? 16 : 8).map((service) => (
-                <View key={service.id} style={styles.nearbyServiceCard}>
-                  <ServiceCard service={service} />
-                </View>
-              ))}
-            </ScrollView>
+            isDesktop ? (
+              <ResponsiveGrid 
+                columns={{ mobile: 1, tablet: 2, desktop: 3, wide: 4 }}
+                gap={16}
+                className="nearby-services-grid"
+              >
+                {nearbyServices.slice(0, 12).map((service) => (
+                  <GridCard key={service.id} className="app-service-card">
+                    <ServiceCard service={service} />
+                  </GridCard>
+                ))}
+              </ResponsiveGrid>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.nearbyContent}
+              >
+                {nearbyServices.slice(0, 8).map((service) => (
+                  <View key={service.id} style={styles.nearbyServiceCard}>
+                    <ServiceCard service={service} />
+                  </View>
+                ))}
+              </ScrollView>
+            )
           ) : (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No nearby services available</Text>
@@ -520,13 +529,27 @@ export default function HomeScreen() {
                 <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading services...</Text>
               </View>
           ) : trendingServices.length > 0 ? (
-            <View style={styles.servicesGrid}>
-              {trendingServices.slice(0, isDesktop ? 8 : 4).map((service) => (
-                <View key={service.id} style={styles.serviceCardContainer}>
-                  <ServiceCard service={service} />
-                </View>
-              ))}
-            </View>
+            isDesktop ? (
+              <ResponsiveGrid 
+                columns={{ mobile: 1, tablet: 2, desktop: 3, wide: 4 }}
+                gap={16}
+                className="trending-services-grid"
+              >
+                {trendingServices.slice(0, 8).map((service) => (
+                  <GridCard key={service.id} className="app-service-card">
+                    <ServiceCard service={service} />
+                  </GridCard>
+                ))}
+              </ResponsiveGrid>
+            ) : (
+              <View style={styles.servicesGrid}>
+                {trendingServices.slice(0, 4).map((service) => (
+                  <View key={service.id} style={styles.serviceCardContainer}>
+                    <ServiceCard service={service} />
+                  </View>
+                ))}
+              </View>
+            )
           ) : (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No trending services available</Text>
@@ -571,16 +594,18 @@ export default function HomeScreen() {
             </View>
           </View>
         )}
-
-
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </DesktopWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  contentWrapper: {
+    flex: 1,
+    paddingBottom: 100,
   },
   scrollContent: {
     paddingBottom: 100,
@@ -623,8 +648,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   searchSection: {
-    paddingHorizontal: isDesktop ? 40 : 20,
-    paddingBottom: isDesktop ? 24 : 16,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     zIndex: 9999,
     position: 'relative',
   },

@@ -105,6 +105,16 @@ export function useDeepLinking() {
           });
           break;
         
+        case 'email_verification':
+          // Handle email verification deep link
+          if (linkData.params.token_hash && linkData.params.type) {
+            router.push({
+              pathname: '/auth/verify-email',
+              params: linkData.params
+            });
+          }
+          break;
+        
         default:
           console.log('Unhandled deep link type:', linkData.type);
       }

@@ -73,7 +73,7 @@ class AuthService {
           data: {
             full_name: full_name || email.split('@')[0],
           },
-          emailRedirectTo: 'betame://auth/verify-email',
+          emailRedirectTo: 'https://betame.com.my/auth/verify-email-universal',
         },
       });
 

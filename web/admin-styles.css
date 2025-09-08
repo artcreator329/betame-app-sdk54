@@ -5,6 +5,29 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  /* Main app layout optimizations */
+  .main-app-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Improved spacing and alignment */
+  .desktop-section {
+    margin-bottom: 32px;
+    padding: 24px;
+    border-radius: 16px;
+  }
+
+  .desktop-header {
+    padding: 24px 40px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .desktop-content {
+    padding: 32px 40px;
+  }
+
   /* Staggered card animations */
   .admin-card,
   .service-card,

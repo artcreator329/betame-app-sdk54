@@ -23,6 +23,7 @@
         "screens": {
           "profile/[userId]": "profile/:userId",
           "auth/reset-password": "auth/reset-password",
+          "auth/verify-email": "auth/verify-email",
           "payment/success": "payment/success",
           "payment/cancel": "payment/cancel",
           "payment/failed": "payment/failed"
@@ -46,11 +47,11 @@
         }
       },
       "package": "com.betame.app",
-      "enableProguardInReleaseBuilds": false,
-      "enableSeparateBuildPerCPUArchitecture": false,
       "versionCode": 13,
-      "versionName": "1.0.0",
-      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0f1419"
+      },
       "backgroundColor": "#0f1419"
     },
     "web": {

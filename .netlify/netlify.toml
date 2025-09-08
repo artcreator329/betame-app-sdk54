@@ -1,17 +1,15 @@
-functionsDirectory = "/Users/christopher/Desktop/Project/betame-app/netlify/functions"
-functionsDirectoryOrigin = "ui"
+functionsDirectory = "/Users/christopher/Main/Project/betame-app/netlify/functions"
+functionsDirectoryOrigin = "config"
+headersOrigin = "config"
+redirectsOrigin = "config"
 plugins = []
 
-[functions]
-
-[functions."*"]
-
 [build]
-publish = "/Users/christopher/Desktop/Project/betame-app/dist"
+publish = "/Users/christopher/Main/Project/betame-app/dist"
 publishOrigin = "config"
 commandOrigin = "config"
-command = "npm run build:web && cp -r public/* dist/ 2>/dev/null || true"
-functions = "/Users/christopher/Desktop/Project/betame-app/netlify/functions"
+command = "npm run build:web && cp -r public/* dist/ 2>/dev/null || true && mkdir -p dist/.well-known && cp -r public/.well-known/* dist/.well-known/ 2>/dev/null || true && mkdir -p dist/auth && cp web/auth/verify-email-universal.html dist/auth/ 2>/dev/null || true"
+functions = "/Users/christopher/Main/Project/betame-app/netlify/functions"
 
 [build.environment]
 NODE_VERSION = "20"
@@ -27,6 +25,19 @@ NODE_VERSION = "20"
 [build.processing.js]
 
 [build.services]
+
+[functions]
+
+[functions."*"]
+node_bundler = "esbuild"
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+X-Frame-Options = "DENY"
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "strict-origin-when-cross-origin"
 
 [[headers]]
 for = "/*"
@@ -115,6 +126,25 @@ for = "/api/*"
 
 [headers.values]
 Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+for = "/.well-known/*"
+
+[headers.values]
+Access-Control-Allow-Origin = "*"
+Content-Type = "application/json"
+
+[[redirects]]
+from = "/auth/verify-email-universal.html"
+to = "/auth/verify-email-universal.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
 
 [[redirects]]
 from = "/*"
@@ -263,6 +293,18 @@ force = false
 [[redirects]]
 from = "/betame/*"
 to = "/index.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/auth/verify-server"
+to = "/.netlify/functions/verify-server"
 status = 200.0
 force = false
 

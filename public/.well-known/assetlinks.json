@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.betame.app",
+      "sha256_cert_fingerprints": [
+        "C2:2B:CD:99:54:C3:73:A9:60:5A:1D:2A:76:4E:6D:DA:3A:F8:CA:FA:4B:24:28:C4:25:B1:49:10:F7:DD:8F:C1"
+      ]
+    }
+  }
+]
