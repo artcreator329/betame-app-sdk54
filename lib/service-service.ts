@@ -20,6 +20,7 @@ export interface Service {
   service_area_type?: string;
   is_nearby?: boolean;
   is_trending?: boolean;
+  is_digital_service?: boolean;
   rating?: number;
   review_count?: number;
   provider_name?: string;
@@ -336,6 +337,100 @@ export class ServiceService {
       });
     } catch (error) {
       console.error('Error in getTrendingServices:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get digital services (main services only with pricing from lowest variant)
+   */
+  static async getDigitalServices(): Promise<Service[]> {
+    try {
+      // Get all digital services including variants
+      const { data: allServices, error: servicesError } = await supabase
+        .from('services')
+        .select('*')
+        .eq('is_digital_service', true)
+        .order('created_at', { ascending: false });
+
+      if (servicesError) {
+        console.error('Error fetching digital services:', servicesError);
+        return [];
+      }
+
+      if (!allServices || allServices.length === 0) {
+        return [];
+      }
+
+      // Separate main services from variants
+      const mainServices = allServices.filter(service => !service.parent_service_id);
+      const serviceVariants = allServices.filter(service => service.parent_service_id);
+
+      // Group variants by parent service ID
+      const variantsMap = new Map<string, Service[]>();
+      serviceVariants.forEach(variant => {
+        const parentId = variant.parent_service_id!;
+        if (!variantsMap.has(parentId)) {
+          variantsMap.set(parentId, []);
+        }
+        variantsMap.get(parentId)!.push(variant);
+      });
+
+      // Get unique user IDs from main services
+      const userIds = [...new Set(mainServices.map(s => s.user_id))];
+
+      // Get profiles for these users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Return main services without profile data but with adjusted pricing
+        return mainServices.map(service => {
+          const variants = variantsMap.get(service.id) || [];
+          const lowestPrice = variants.length > 0 
+            ? Math.min(...variants.map(v => v.price))
+            : service.price;
+          
+          return {
+            ...service,
+            price: lowestPrice,
+            provider_name: 'Service Provider',
+            provider_avatar: undefined,
+            service_variants: variants
+          };
+        });
+      }
+
+      // Create a map for quick lookup
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Get active features for all services
+      const serviceIds = mainServices.map(s => s.id);
+      const activeFeaturesMap = await FeatureService.getActiveFeaturesForServices(serviceIds);
+
+      // Combine main services with profile data, adjusted pricing, and active features
+      return mainServices.map(service => {
+        const profile = profileMap.get(service.user_id);
+        const variants = variantsMap.get(service.id) || [];
+        const lowestPrice = variants.length > 0 
+          ? Math.min(...variants.map(v => v.price))
+          : service.price;
+        const activeFeatures = activeFeaturesMap[service.id] || [];
+        
+        return {
+          ...service,
+          price: lowestPrice,
+          provider_name: profile?.full_name || 'Service Provider',
+          provider_avatar: profile?.avatar_url,
+          service_variants: variants,
+          active_features: activeFeatures
+        };
+      });
+    } catch (error) {
+      console.error('Error in getDigitalServices:', error);
       return [];
     }
   }

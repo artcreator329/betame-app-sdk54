@@ -602,7 +602,7 @@ export default function ProfileScreen() {
             {userProfile?.is_service_provider ? (
               <View style={[styles.verifiedServiceProviderContainer, { backgroundColor: colors.background.secondary }]}>
                 <Text style={[styles.verifiedServiceProviderText, { color: colors.text.primary }]}>
-                  {userProfile?.full_name || 'User'} is a verified service provider
+                  You are a Verified Service Provider
                 </Text>
               </View>
             ) : (

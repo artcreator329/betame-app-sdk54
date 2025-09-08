@@ -179,7 +179,7 @@ const TrendingServiceCard = ({ service, index }: { service: Service; index: numb
 };
 
 export default function TrendingScreen() {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState<Service[]>([]);
@@ -238,26 +238,17 @@ export default function TrendingScreen() {
   );
 
   const getCategoryDisplayText = () => {
-    if (selectedCategories.includes('all') || selectedCategories.length === 0) {
+    if (selectedCategories.length === 0) {
       return 'All Categories';
     }
     if (selectedCategories.length === 1) {
-      const categoryMap: { [key: string]: string } = {
-        'fitness': 'Fitness',
-        'digital': 'Digital Marketing',
-        'education': 'Education',
-        'sports': 'Sports',
-        'beauty': 'Beauty',
-        'healthcare': 'Healthcare',
-      };
-      return categoryMap[selectedCategories[0]] || selectedCategories[0];
+      return selectedCategories[0];
     }
     return `${selectedCategories.length} Categories`;
   };
 
   const filteredServices = services.filter((service: Service) => {
-    const matchesCategory = selectedCategories.includes('all') || 
-                           selectedCategories.length === 0 ||
+    const matchesCategory = selectedCategories.length === 0 ||
                            selectedCategories.some(cat => 
                              service.category_name?.toLowerCase().includes(cat.toLowerCase())
                            );

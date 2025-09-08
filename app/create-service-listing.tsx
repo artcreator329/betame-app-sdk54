@@ -43,6 +43,7 @@ export default function CreateServiceListingScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedServiceType, setSelectedServiceType] = useState('');
+  const [isDigitalService, setIsDigitalService] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showServiceTypeModal, setShowServiceTypeModal] = useState(false);
@@ -231,8 +232,32 @@ export default function CreateServiceListingScreen() {
         return;
       }
 
-      setCurrentStep(2);
+      // If it's a digital service, skip service area and go directly to details
+      if (isDigitalService) {
+        handleProceedToDetailsDirectly();
+      } else {
+        setCurrentStep(2);
+      }
     }
+  };
+
+  const handleProceedToDetailsDirectly = () => {
+    // Navigate to detailed service listing without service area for digital services
+    const serviceData = {
+      title: title.trim(),
+      description: description.trim(),
+      serviceType: selectedServiceType.trim(),
+      isDigitalService: isDigitalService,
+      imageUri: imageUri || undefined,
+      serviceArea: null, // No service area needed for digital services
+    };
+
+    router.push({
+      pathname: '/detailed-service-listing',
+      params: {
+        serviceData: JSON.stringify(serviceData)
+      }
+    });
   };
 
   const handlePreviousStep = () => {
@@ -262,6 +287,7 @@ export default function CreateServiceListingScreen() {
       title: title.trim(),
       description: description.trim(),
       serviceType: selectedServiceType.trim(),
+      isDigitalService: isDigitalService,
       imageUri: imageUri || undefined,
       serviceArea: serviceArea,
     };
@@ -282,13 +308,17 @@ export default function CreateServiceListingScreen() {
         </View>
         <Text style={styles.stepLabel}>Basic Info</Text>
       </View>
-      <View style={styles.stepLine} />
-      <View style={styles.stepContainer}>
-        <View style={[styles.stepCircle, currentStep >= 2 && styles.stepCircleActive]}>
-          <Text style={[styles.stepNumber, currentStep >= 2 && styles.stepNumberActive]}>2</Text>
-        </View>
-        <Text style={styles.stepLabel}>Service Area</Text>
-      </View>
+      {!isDigitalService && (
+        <>
+          <View style={styles.stepLine} />
+          <View style={styles.stepContainer}>
+            <View style={[styles.stepCircle, currentStep >= 2 && styles.stepCircleActive]}>
+              <Text style={[styles.stepNumber, currentStep >= 2 && styles.stepNumberActive]}>2</Text>
+            </View>
+            <Text style={styles.stepLabel}>Service Area</Text>
+          </View>
+        </>
+      )}
     </View>
   );
 
@@ -365,6 +395,28 @@ export default function CreateServiceListingScreen() {
            </TouchableOpacity>
          </View>
 
+         {/* Digital Service Checkbox */}
+         <View style={styles.compactFieldContainer}>
+           <TouchableOpacity 
+             style={styles.checkboxContainer}
+             onPress={() => setIsDigitalService(!isDigitalService)}
+             activeOpacity={0.7}
+           >
+             <View style={[
+               styles.checkbox,
+               isDigitalService && styles.checkboxChecked
+             ]}>
+               {isDigitalService && (
+                 <Text style={styles.checkmark}>✓</Text>
+               )}
+             </View>
+             <Text style={styles.checkboxLabel}>Digital Service</Text>
+           </TouchableOpacity>
+           <Text style={styles.checkboxDescription}>
+             Check this if your service is delivered digitally (online, remote work, digital products, etc.)
+           </Text>
+         </View>
+
          {/* Continue Button */}
          <TouchableOpacity 
            style={[
@@ -382,7 +434,7 @@ export default function CreateServiceListingScreen() {
                ? styles.continueButtonTextActive 
                : {}
            ]}>
-             Next: Service Area
+             {isDigitalService ? 'Continue to Details' : 'Next: Service Area'}
            </Text>
          </TouchableOpacity>
        </View>
@@ -835,6 +887,43 @@ const styles = StyleSheet.create({
   },
   aiButtonDisabled: {
     backgroundColor: '#E5E5EA',
+  },
+  // Checkbox styles
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#E5E5EA',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkboxChecked: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  checkmark: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  checkboxLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1D1D1F',
+  },
+  checkboxDescription: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginLeft: 32,
+    lineHeight: 18,
   },
 
 });

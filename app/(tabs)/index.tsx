@@ -119,6 +119,7 @@ export default function HomeScreen() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [nearbyServices, setNearbyServices] = useState<Service[]>([]);
+  const [digitalServices, setDigitalServices] = useState<Service[]>([]);
   const [trendingServices, setTrendingServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
   const router = useRouter();
@@ -176,20 +177,23 @@ export default function HomeScreen() {
     
     try {
       // Fetch all data concurrently
-      const [bannersData, nearby, trending] = await Promise.all([
+      const [bannersData, nearby, digital, trending] = await Promise.all([
         BannerService.getActiveBanners(),
         ServiceService.getNearbyServices(),
+        ServiceService.getDigitalServices(),
         ServiceService.getTrendingServices()
       ]);
       
       setBanners(bannersData);
       setNearbyServices(nearby.map(convertToUIService));
+      setDigitalServices(digital.map(convertToUIService));
       setTrendingServices(trending.map(convertToUIService));
 
       // Preload images for better performance
       const imageUrls = [
         ...bannersData.map(banner => banner.image_url).filter(Boolean) as string[],
         ...nearby.map(service => service.image_url).filter(Boolean) as string[],
+        ...digital.map(service => service.image_url).filter(Boolean) as string[],
         ...trending.map(service => service.image_url).filter(Boolean) as string[]
       ];
 
@@ -510,6 +514,53 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No nearby services available</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Digital Services */}
+        <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
+          <TouchableOpacity 
+            style={styles.sectionHeader}
+            onPress={() => router.push('/digital-services')}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Digital Services</Text>
+            <ChevronRight size={20} color={colors.primary.main} />
+          </TouchableOpacity>
+          {isLoadingServices ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary.main} />
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading digital services...</Text>
+            </View>
+          ) : digitalServices.length > 0 ? (
+            isDesktop ? (
+              <ResponsiveGrid 
+                columns={{ mobile: 1, tablet: 2, desktop: 3, wide: 4 }}
+                gap={16}
+                className="digital-services-grid"
+              >
+                {digitalServices.slice(0, 12).map((service) => (
+                  <GridCard key={service.id} className="app-service-card">
+                    <ServiceCard service={service} />
+                  </GridCard>
+                ))}
+              </ResponsiveGrid>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.nearbyContent}
+              >
+                {digitalServices.slice(0, 8).map((service) => (
+                  <View key={service.id} style={styles.nearbyServiceCard}>
+                    <ServiceCard service={service} />
+                  </View>
+                ))}
+              </ScrollView>
+            )
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No digital services available</Text>
             </View>
           )}
         </View>

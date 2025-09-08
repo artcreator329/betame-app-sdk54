@@ -35,6 +35,7 @@ interface BasicServiceData {
   currency?: string;
   imageUri?: string;
   serviceType?: string;
+  isDigitalService?: boolean;
   serviceArea?: {
     latitude: number;
     longitude: number;
@@ -207,6 +208,7 @@ export default function DetailedServiceListingScreen() {
         currency: mainService.currency || 'RM',
         image_url: mainService.imageUri || undefined,
         category_name: mainService.serviceType || 'general',
+        is_digital_service: mainService.isDigitalService || false,
         location: mainService.serviceArea?.address,
         latitude: mainService.serviceArea?.latitude,
         longitude: mainService.serviceArea?.longitude,
@@ -214,7 +216,7 @@ export default function DetailedServiceListingScreen() {
         service_area_description: mainService.serviceArea?.description,
         rating: 0,
         review_count: 0,
-        is_nearby: true, // Make new services appear in nearby section
+        is_nearby: mainService.isDigitalService ? false : true, // Digital services don't appear in nearby section
         is_trending: false, // New services start as non-trending
       };
 

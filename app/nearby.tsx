@@ -36,7 +36,7 @@ export default function NearbyScreen() {
   );
   const [nearbyServices, setNearbyServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [hoveredService, setHoveredService] = useState<Service | null>(null);
@@ -130,8 +130,7 @@ export default function NearbyScreen() {
 
   // Filter services based on selected categories and industries
   const filteredServices = nearbyServices.filter((service: Service) => {
-    const matchesCategory = selectedCategories.includes('all') || 
-                           selectedCategories.length === 0 ||
+    const matchesCategory = selectedCategories.length === 0 ||
                            selectedCategories.some((cat: string) => 
                              service.category_name?.toLowerCase().includes(cat.toLowerCase())
                            );

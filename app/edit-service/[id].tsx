@@ -40,6 +40,7 @@ export default function EditServiceScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedServiceType, setSelectedServiceType] = useState<string>('');
+  const [isDigitalService, setIsDigitalService] = useState(false);
   const [serviceArea, setServiceArea] = useState<{
     latitude: number;
     longitude: number;
@@ -95,6 +96,7 @@ export default function EditServiceScreen() {
         setTitle(serviceData.title);
         setDescription(serviceData.description);
         setSelectedServiceType(serviceData.category_name || '');
+        setIsDigitalService(serviceData.is_digital_service || false);
         if (serviceData.latitude && serviceData.longitude) {
           setServiceArea({
             latitude: serviceData.latitude,
@@ -495,8 +497,13 @@ export default function EditServiceScreen() {
   const handleUpdate = async () => {
     if (!service || !user?.id) return;
     
-    if (!title.trim() || !description.trim() || !selectedServiceType.trim() || !serviceArea) {
-      Alert.alert('Error', 'Please fill in all required fields including category and service area');
+    if (!title.trim() || !description.trim() || !selectedServiceType.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    if (!isDigitalService && !serviceArea) {
+      Alert.alert('Error', 'Please set a service area for non-digital services');
       return;
     }
 
@@ -511,11 +518,12 @@ export default function EditServiceScreen() {
         title: title.trim(),
         description: description.trim(),
         category_name: selectedServiceType,
-        latitude: serviceArea.latitude,
-        longitude: serviceArea.longitude,
-        location: serviceArea.address,
-        service_area_radius: serviceArea.radius,
-        service_area_description: serviceArea.description,
+        is_digital_service: isDigitalService,
+        latitude: isDigitalService ? null : serviceArea?.latitude,
+        longitude: isDigitalService ? null : serviceArea?.longitude,
+        location: isDigitalService ? null : serviceArea?.address,
+        service_area_radius: isDigitalService ? null : serviceArea?.radius,
+        service_area_description: isDigitalService ? null : serviceArea?.description,
         image_url: imageUri || undefined,
       };
 
@@ -554,11 +562,12 @@ export default function EditServiceScreen() {
             description: variant.description.trim(),
             price: variant.price,
             category_name: selectedServiceType,
-            latitude: serviceArea?.latitude,
-            longitude: serviceArea?.longitude,
-            location: serviceArea?.address,
-            service_area_radius: serviceArea?.radius,
-            service_area_description: serviceArea?.description,
+            is_digital_service: isDigitalService,
+            latitude: isDigitalService ? null : serviceArea?.latitude,
+            longitude: isDigitalService ? null : serviceArea?.longitude,
+            location: isDigitalService ? null : serviceArea?.address,
+            service_area_radius: isDigitalService ? null : serviceArea?.radius,
+            service_area_description: isDigitalService ? null : serviceArea?.description,
           };
           await ServiceService.updateService(variant.serviceId, updateData);
         } else if (!variant.isExisting) {
@@ -570,15 +579,16 @@ export default function EditServiceScreen() {
             price: variant.price,
             currency: 'RM',
             category_name: selectedServiceType,
-            location: serviceArea?.address,
-            latitude: serviceArea?.latitude,
-            longitude: serviceArea?.longitude,
-            service_area_radius: serviceArea?.radius,
-            service_area_description: serviceArea?.description,
+            is_digital_service: isDigitalService,
+            location: isDigitalService ? null : serviceArea?.address,
+            latitude: isDigitalService ? null : serviceArea?.latitude,
+            longitude: isDigitalService ? null : serviceArea?.longitude,
+            service_area_radius: isDigitalService ? null : serviceArea?.radius,
+            service_area_description: isDigitalService ? null : serviceArea?.description,
             parent_service_id: service.id,
             rating: 0,
             review_count: 0,
-            is_nearby: true,
+            is_nearby: isDigitalService ? false : true,
             is_trending: false,
           };
           await ServiceService.createService(variantData);
@@ -744,22 +754,46 @@ export default function EditServiceScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Service Area */}
+          {/* Digital Service Checkbox */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Service Area</Text>
             <TouchableOpacity 
-              style={styles.serviceAreaButton}
-              onPress={() => setShowServiceAreaPicker(true)}
+              style={styles.checkboxContainer}
+              onPress={() => setIsDigitalService(!isDigitalService)}
+              activeOpacity={0.7}
             >
-              <Text style={[
-                styles.serviceAreaButtonText,
-                !serviceArea && styles.serviceAreaButtonPlaceholder
+              <View style={[
+                styles.checkbox,
+                isDigitalService && styles.checkboxChecked
               ]}>
-                {getServiceAreaDisplayText()}
-              </Text>
-              <Text style={styles.serviceAreaButtonArrow}>▼</Text>
+                {isDigitalService && (
+                  <Text style={styles.checkmark}>✓</Text>
+                )}
+              </View>
+              <Text style={styles.checkboxLabel}>Digital Service</Text>
             </TouchableOpacity>
+            <Text style={styles.checkboxDescription}>
+              Check this if your service is delivered digitally (online, remote work, digital products, etc.)
+            </Text>
           </View>
+
+          {/* Service Area - Only show for non-digital services */}
+          {!isDigitalService && (
+            <View style={styles.fieldContainer}>
+              <Text style={styles.fieldLabel}>Service Area</Text>
+              <TouchableOpacity 
+                style={styles.serviceAreaButton}
+                onPress={() => setShowServiceAreaPicker(true)}
+              >
+                <Text style={[
+                  styles.serviceAreaButtonText,
+                  !serviceArea && styles.serviceAreaButtonPlaceholder
+                ]}>
+                  {getServiceAreaDisplayText()}
+                </Text>
+                <Text style={styles.serviceAreaButtonArrow}>▼</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Service Variants */}
           <View style={styles.fieldContainer}>
@@ -905,16 +939,16 @@ export default function EditServiceScreen() {
           <TouchableOpacity 
             style={[
               styles.updateButton, 
-              (title.trim() && description.trim() && selectedServiceType.trim() && serviceArea && !isUpdating) 
+              (title.trim() && description.trim() && selectedServiceType.trim() && (isDigitalService || serviceArea) && !isUpdating) 
                 ? styles.updateButtonActive 
                 : styles.updateButtonDisabled
             ]} 
             onPress={handleUpdate}
-            disabled={isUpdating || !title.trim() || !description.trim() || !selectedServiceType.trim() || !serviceArea}
+            disabled={isUpdating || !title.trim() || !description.trim() || !selectedServiceType.trim() || (!isDigitalService && !serviceArea)}
           >
             <Text style={[
               styles.updateButtonText,
-              (title.trim() && description.trim() && selectedServiceType.trim() && serviceArea && !isUpdating) 
+              (title.trim() && description.trim() && selectedServiceType.trim() && (isDigitalService || serviceArea) && !isUpdating) 
                 ? styles.updateButtonTextActive 
                 : {}
             ]}>
@@ -1535,5 +1569,42 @@ const styles = StyleSheet.create({
   },
   aiButtonTextDisabled: {
     color: '#8E8E93',
+  },
+  // Checkbox styles
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#E5E5EA',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkboxChecked: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  checkmark: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1D1D1F',
+  },
+  checkboxDescription: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginLeft: 32,
+    lineHeight: 18,
   },
  });

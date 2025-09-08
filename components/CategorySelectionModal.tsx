@@ -69,9 +69,11 @@ export default function CategorySelectionModal({
 
   const handleCategoryToggle = (category: string) => {
     if (selectedCategories.includes(category)) {
-      onCategoriesChange(selectedCategories.filter(c => c !== category));
+      const newCategories = selectedCategories.filter(c => c !== category);
+      onCategoriesChange(newCategories);
     } else {
-      onCategoriesChange([...selectedCategories, category]);
+      const newCategories = [...selectedCategories, category];
+      onCategoriesChange(newCategories);
     }
   };
 
@@ -117,6 +119,8 @@ export default function CategorySelectionModal({
           />
         </View>
 
+
+
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -136,12 +140,16 @@ export default function CategorySelectionModal({
                   key={category}
                   style={styles.categoryItem}
                   onPress={() => handleCategoryToggle(category)}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.categoryText}>{category}</Text>
                   <View style={[
                     styles.checkbox,
-                    { borderColor: colors.border },
-                    selectedCategories.includes(category) && { backgroundColor: colors.primary, borderColor: colors.primary }
+                    { borderColor: selectedCategories.includes(category) ? colors.primary : colors.border },
+                    selectedCategories.includes(category) && { 
+                      backgroundColor: colors.primary, 
+                      borderColor: colors.primary 
+                    }
                   ]}>
                     {selectedCategories.includes(category) && (
                       <Check size={16} color="white" />

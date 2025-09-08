@@ -236,7 +236,7 @@ function RootLayoutNav() {
     
     // Pages that require authentication for actions but allow viewing
     const viewOnlyPages = [
-      'search', 'trending', 'nearby', 'check-in', 'detailed-service-listing',
+      'search', 'trending', 'nearby', 'digital-services', 'check-in', 'detailed-service-listing',
       'service', 'profile', 'user-profile', 'chat', 'job', 'test-map'
     ];
     
@@ -536,6 +536,10 @@ function RootLayoutNav() {
         />
         <Stack.Screen 
           name="nearby" 
+          options={stackScreenOptions}
+        />
+        <Stack.Screen 
+          name="digital-services" 
           options={stackScreenOptions}
         />
         <Stack.Screen 

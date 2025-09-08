@@ -52,7 +52,7 @@ const convertToUIService = (dbService: DBService): Service => ({
 export default function ServicesScreen() {
   console.log('🚀 ServicesScreen: Component rendered');
   
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState<Service[]>([]);
@@ -128,7 +128,7 @@ export default function ServicesScreen() {
   );
 
   const getCategoryDisplayText = () => {
-    if (selectedCategories.includes('all') || selectedCategories.length === 0) {
+    if (selectedCategories.length === 0) {
       return 'All Service Types';
     }
     if (selectedCategories.length === 1) {
@@ -138,10 +138,8 @@ export default function ServicesScreen() {
   };
 
   const filteredServices = services.filter((service: Service) => {
-    const matchesCategory = selectedCategories.includes('all') || 
-                           selectedCategories.length === 0 ||
+    const matchesCategory = selectedCategories.length === 0 ||
                            selectedCategories.some(cat => {
-                             if (cat === 'all') return true;
                              // Exact match or partial match for service category
                              return service.category_name === cat || 
                                     service.category_name?.toLowerCase().includes(cat.toLowerCase());
