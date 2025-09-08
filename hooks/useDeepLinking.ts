@@ -111,8 +111,28 @@ export function useDeepLinking() {
         case 'email_verification':
           // Handle email verification deep link
           console.log('🔗 Email verification deep link detected:', linkData.params);
-          if (linkData.params.token_hash && linkData.params.type) {
-            console.log('🔗 Navigating to email verification screen with params:', linkData.params);
+          
+          // Check if this is web verification success (from browser)
+          const webVerification = linkData.params.web_verification;
+          const verified = linkData.params.verified;
+          
+          if (webVerification === 'success' && verified === 'true') {
+            // This is a web verification success - navigate to verify-email screen
+            console.log('🔗 Web verification success detected, navigating to verify-email screen');
+            try {
+              router.push({
+                pathname: '/auth/verify-email',
+                params: linkData.params
+              });
+              console.log('✅ Web verification navigation completed');
+            } catch (error) {
+              console.error('❌ Web verification navigation failed:', error);
+              // Fallback to login
+              router.push('/auth/login');
+            }
+          } else if (linkData.params.token_hash && linkData.params.type) {
+            // Regular email verification with token_hash
+            console.log('🔗 Regular email verification with token_hash detected');
             // Try multiple navigation approaches for maximum compatibility
             let navigationSuccess = false;
             
@@ -186,7 +206,7 @@ export function useDeepLinking() {
               router.push('/auth/login');
             }
           } else {
-            console.error('❌ Missing token_hash or type in email verification params:', linkData.params);
+            console.error('❌ Missing required params in email verification:', linkData.params);
             // Navigate to login if params are missing
             router.push('/auth/login');
           }

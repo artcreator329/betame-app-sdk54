@@ -69,6 +69,7 @@ export default function VerifyEmailScreen() {
       
       if (webVerification === 'success' && verified === 'true') {
         // Email was already verified by web page, now handle auto-login
+        console.log('📧 Web verification success detected - showing success screen');
         setVerificationStatus('success');
         setLoading(false);
         
@@ -76,6 +77,9 @@ export default function VerifyEmailScreen() {
         if (accessToken && refreshToken) {
           try {
             console.log('🔐 Auto-login: Setting session from web verification');
+            console.log('🔐 Access token available:', !!accessToken);
+            console.log('🔐 Refresh token available:', !!refreshToken);
+            
             const { error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken
@@ -85,15 +89,22 @@ export default function VerifyEmailScreen() {
               console.error('❌ Auto-login failed:', sessionError);
               // Still show success but user will need to login manually
             } else {
-              console.log('✅ Auto-login successful');
+              console.log('✅ Auto-login successful - user should be signed in');
+              // Check if user is now authenticated
+              const { data: { user } } = await supabase.auth.getUser();
+              console.log('🔐 Current user after auto-login:', user?.id);
             }
           } catch (error) {
             console.error('❌ Auto-login error:', error);
           }
+        } else {
+          console.log('⚠️ No session tokens available for auto-login');
         }
         
-        // Auto-redirect after 3 seconds
+        // Auto-redirect after 3 seconds to main app
+        console.log('📧 Will redirect to main app in 3 seconds');
         setTimeout(() => {
+          console.log('📧 Redirecting to main app now');
           router.replace('/(tabs)');
         }, 3000);
         return;

@@ -163,6 +163,28 @@ export class DeepLinkService {
         // Legacy support for path-based auth callbacks
         if (pathSegments[0] === 'auth') {
           if (pathSegments[1] === 'verify-email') {
+            // Check if this is a web verification success (from browser)
+            const webVerification = parsedUrl.searchParams.get('web_verification');
+            const verified = parsedUrl.searchParams.get('verified');
+            
+            if (webVerification === 'success' && verified === 'true') {
+              // This is a web verification success - handle it as email_verification
+              return {
+                type: 'email_verification',
+                params: {
+                  token_hash: parsedUrl.searchParams.get('token_hash'),
+                  type: parsedUrl.searchParams.get('type'),
+                  next: parsedUrl.searchParams.get('next'),
+                  verified: verified,
+                  web_verification: webVerification,
+                  access_token: parsedUrl.searchParams.get('access_token'),
+                  refresh_token: parsedUrl.searchParams.get('refresh_token'),
+                  expires_at: parsedUrl.searchParams.get('expires_at'),
+                }
+              };
+            }
+            
+            // Regular email verification with token_hash
             return {
               type: 'email_verification',
               params: {

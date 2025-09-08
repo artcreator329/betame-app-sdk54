@@ -36,7 +36,7 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-       "buildNumber": "8",
+        "buildNumber": "11",
       "backgroundColor": "#0f1419",
       "appleTeamId": "T72JDH8ZL6"
     },
@@ -47,7 +47,7 @@
         }
       },
       "package": "com.betame.app",
-      "versionCode": 15,
+      "versionCode": 17,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0f1419"

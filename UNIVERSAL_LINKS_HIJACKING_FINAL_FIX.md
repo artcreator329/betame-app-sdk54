@@ -39,12 +39,12 @@ browser:
 
 ```javascript
 const isInApp = window.navigator.userAgent.includes("BetaMe") ||
-    window.location.protocol === "file:" ||
-    !window.location.hostname ||
-    window.location.hostname === "localhost";
+   window.location.protocol === "file:" ||
+   !window.location.hostname ||
+   window.location.hostname === "localhost";
 
 if (isInApp) {
-    // Redirect to browser-only version
+   // Redirect to browser-only version
 }
 ```
 

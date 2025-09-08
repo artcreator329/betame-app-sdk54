@@ -102,7 +102,7 @@ export default function CategorySelectionModal({
             <Text style={styles.subtitle}>Select service categories to filter</Text>
           </View>
           <TouchableOpacity onPress={handleSelectAll}>
-            <Text style={[styles.selectAllText, { color: colors.primary }]}>
+            <Text style={[styles.selectAllText, { color: colors.primary.main }]}>
               {selectedCategories.length === filteredCategories.length ? 'Clear' : 'All'}
             </Text>
           </TouchableOpacity>
@@ -121,10 +121,12 @@ export default function CategorySelectionModal({
 
 
 
+
+
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading categories...</Text>
+            <ActivityIndicator size="large" color={colors.primary.main} />
+            <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading categories...</Text>
           </View>
         ) : (
           <ScrollView style={styles.categoriesContainer} showsVerticalScrollIndicator={false}>
@@ -145,10 +147,10 @@ export default function CategorySelectionModal({
                   <Text style={styles.categoryText}>{category}</Text>
                   <View style={[
                     styles.checkbox,
-                    { borderColor: selectedCategories.includes(category) ? colors.primary : colors.border },
+                    { borderColor: selectedCategories.includes(category) ? colors.primary.main : colors.border.light },
                     selectedCategories.includes(category) && { 
-                      backgroundColor: colors.primary, 
-                      borderColor: colors.primary 
+                      backgroundColor: colors.primary.main, 
+                      borderColor: colors.primary.main 
                     }
                   ]}>
                     {selectedCategories.includes(category) && (
