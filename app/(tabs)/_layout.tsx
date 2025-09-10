@@ -221,8 +221,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.primary.main,
-        tabBarInactiveTintColor: theme.text.tertiary,
+        tabBarActiveTintColor: '#007AFF', // Bright blue for selected
+        tabBarInactiveTintColor: '#C7C7CC', // Light gray for unselected
         // Disable animations to prevent white flash
         animation: 'none' as const,
         tabBarStyle: {

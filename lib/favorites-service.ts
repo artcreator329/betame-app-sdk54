@@ -36,7 +36,51 @@ export class FavoritesService {
         return [];
       }
 
-      return favorites || [];
+      if (!favorites || favorites.length === 0) {
+        return [];
+      }
+
+      // Get user profiles for the services to get provider names
+      const serviceUserIds = favorites
+        .map(fav => fav.service?.user_id)
+        .filter(Boolean) as string[];
+
+      if (serviceUserIds.length === 0) {
+        return favorites;
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, created_at')
+        .in('id', serviceUserIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles for favorites:', profilesError);
+        return favorites; // Return favorites without profile data
+      }
+
+      // Create a map of user_id to profile data
+      const profileMap = new Map();
+      profiles?.forEach(profile => {
+        profileMap.set(profile.id, profile);
+      });
+
+      // Combine favorites with profile data
+      return favorites.map(favorite => {
+        if (favorite.service) {
+          const profile = profileMap.get(favorite.service.user_id);
+          return {
+            ...favorite,
+            service: {
+              ...favorite.service,
+              provider_name: profile?.full_name || 'Service Provider',
+              provider_avatar: profile?.avatar_url,
+              provider_created_at: profile?.created_at
+            }
+          };
+        }
+        return favorite;
+      });
     } catch (error) {
       console.error('Error in getUserFavorites:', error);
       return [];

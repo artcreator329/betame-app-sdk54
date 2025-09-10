@@ -9,6 +9,7 @@ import { ServiceService } from '@/lib/service-service';
 import { FavoritesService } from '@/lib/favorites-service';
 import { supabase } from '@/lib/supabase';
 import { FeatureService, ServiceFeatureApplication } from '@/lib/feature-service';
+import { AnalyticsService } from '@/lib/analytics-service';
 import FeatureIcons from './FeatureIcons';
 import OptimizedImage from './OptimizedImage';
 import { imageCacheService } from '@/lib/image-cache-service';
@@ -39,6 +40,7 @@ interface ServiceCardProps {
   style?: any;
   disableFavorites?: boolean; // New prop to disable favorites functionality
   layout?: 'vertical' | 'horizontal'; // New prop to control layout direction
+  viewSource?: 'service_card' | 'search' | 'trending' | 'category' | 'nearby' | 'other'; // Track where the view came from
 }
 
 interface ServiceVariantCardProps {
@@ -73,7 +75,7 @@ function ServiceVariantCard({ variant, onPress }: ServiceVariantCardProps) {
   );
 }
 
-export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange, onPress, style, disableFavorites = false, layout = 'vertical' }: ServiceCardProps) {
+export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange, onPress, style, disableFavorites = false, layout = 'vertical', viewSource = 'service_card' }: ServiceCardProps) {
   const router = useRouter();
   const { user } = useAuth();
   const colors = useColors();
@@ -148,7 +150,18 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     }
   };
 
-  const handlePress = (serviceId: string = service.id) => {
+  const handlePress = async (serviceId: string = service.id) => {
+    // Track the service view
+    try {
+      await AnalyticsService.trackServiceView({
+        service_id: serviceId,
+        user_id: user?.id,
+        view_source: viewSource,
+      });
+    } catch (error) {
+      console.error('Error tracking service view:', error);
+    }
+    
     router.push(`/service/${serviceId}`);
   };
 

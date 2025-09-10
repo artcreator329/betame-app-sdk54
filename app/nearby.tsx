@@ -323,6 +323,7 @@ export default function NearbyScreen() {
                 service={service}
                 style={listLayout === 'grid' ? { width: '100%' } : { width: '100%' }}
                 layout={listLayout === 'grid' ? 'vertical' : 'horizontal'}
+                viewSource="nearby"
                 disableFavorites={true} // Disable favorites for nearby services view
                 onPress={() => {
                   if (isWeb && width >= 1024) {

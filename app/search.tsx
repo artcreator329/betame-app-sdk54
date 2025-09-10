@@ -134,7 +134,7 @@ export default function SearchScreen() {
 
     const renderServiceItem = (item: any) => (
       <View key={item.id} style={styles.resultItem}>
-        <ServiceCard service={convertSearchResultToService(item)} />
+        <ServiceCard service={convertSearchResultToService(item)} viewSource="search" />
       </View>
     );
 

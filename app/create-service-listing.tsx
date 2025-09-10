@@ -20,6 +20,7 @@ import { ImageService } from '@/lib/image-service';
 import ServiceAreaPicker from '@/components/ServiceAreaPicker';
 import AIDescriptionModal from '@/components/AIDescriptionModal';
 import AIServiceTypeSelector from '@/components/AIServiceTypeSelector';
+import AIImageGenerationModal from '@/components/AIImageGenerationModal';
 
 function getPriceUnitLabel(priceUnit: string): string {
   const unitLabels: { [key: string]: string } = {
@@ -55,6 +56,7 @@ export default function CreateServiceListingScreen() {
     description: string;
   } | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showAIImageModal, setShowAIImageModal] = useState(false);
 
   const router = useRouter();
   const { user, userProfile } = useAuth();
@@ -124,6 +126,10 @@ export default function CreateServiceListingScreen() {
 
   const handleAIDescriptionSelect = (aiDescription: string) => {
     setDescription(aiDescription);
+  };
+
+  const handleAIImageGenerated = (imageUrl: string) => {
+    setImageUri(imageUrl);
   };
 
   const handlePhotoUpload = () => {
@@ -417,6 +423,60 @@ export default function CreateServiceListingScreen() {
            </Text>
          </View>
 
+         {/* Service Image */}
+         <View style={styles.compactFieldContainer}>
+           <View style={styles.imageHeader}>
+             <Text style={styles.compactFieldLabel}>Service Image</Text>
+             <TouchableOpacity
+               style={[
+                 styles.aiButton,
+                 (!title.trim() || !description.trim()) && styles.aiButtonDisabled
+               ]}
+               onPress={() => {
+                 if (!title.trim() || !description.trim()) {
+                   Alert.alert('AI Image Generation', 'Please enter service title and description first to generate an image');
+                   return;
+                 }
+                 setShowAIImageModal(true);
+               }}
+             >
+               <Text style={[
+                 styles.aiButtonText,
+                 (!title.trim() || !description.trim()) && styles.aiButtonTextDisabled
+               ]}>
+                 🎨 AI Generate
+               </Text>
+             </TouchableOpacity>
+           </View>
+           
+           {imageUri ? (
+             <View style={styles.imagePreviewContainer}>
+               <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+               <TouchableOpacity
+                 style={styles.removeImageButton}
+                 onPress={() => setImageUri(null)}
+               >
+                 <Text style={styles.removeImageButtonText}>Remove</Text>
+               </TouchableOpacity>
+             </View>
+           ) : (
+             <TouchableOpacity
+               style={styles.imageUploadButton}
+               onPress={handlePhotoUpload}
+               disabled={isUploading}
+             >
+               {isUploading ? (
+                 <Text style={styles.imageUploadButtonText}>Uploading...</Text>
+               ) : (
+                 <>
+                   <ImageIcon size={24} color={Colors.primary} />
+                   <Text style={styles.imageUploadButtonText}>Upload Image</Text>
+                 </>
+               )}
+             </TouchableOpacity>
+           )}
+         </View>
+
          {/* Continue Button */}
          <TouchableOpacity 
            style={[
@@ -514,6 +574,16 @@ export default function CreateServiceListingScreen() {
          onServiceTypeChange={handleServiceTypeSelect}
          serviceTitle={title}
          serviceDescription={description}
+       />
+
+       {/* AI Image Generation Modal */}
+       <AIImageGenerationModal
+         visible={showAIImageModal}
+         onClose={() => setShowAIImageModal(false)}
+         onImageGenerated={handleAIImageGenerated}
+         serviceTitle={title}
+         serviceDescription={description}
+         serviceCategory={selectedServiceType}
        />
      </SafeAreaView>
    );
@@ -887,6 +957,54 @@ const styles = StyleSheet.create({
   },
   aiButtonDisabled: {
     backgroundColor: '#E5E5EA',
+  },
+  // Image section styles
+  imageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  imagePreviewContainer: {
+    position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  removeImageButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  imageUploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    backgroundColor: '#F8F9FA',
+  },
+  imageUploadButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
   },
   // Checkbox styles
   checkboxContainer: {

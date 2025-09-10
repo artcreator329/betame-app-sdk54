@@ -28,6 +28,7 @@ import CategorySelectionModal from '@/components/CategorySelectionModal';
 import LayoutToggle from '@/components/LayoutToggle';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
+import { AnalyticsService } from '@/lib/analytics-service';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
@@ -186,6 +187,11 @@ export default function TrendingScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isGridLayout, setIsGridLayout] = useState(true);
+  const [trendingStats, setTrendingStats] = useState<{
+    totalViews: number;
+    uniqueViews: number;
+    growthRate: number;
+  }>({ totalViews: 0, uniqueViews: 0, growthRate: 0 });
   const router = useRouter();
   const colors = useColors();
 
@@ -197,9 +203,10 @@ export default function TrendingScreen() {
   const fetchServices = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [trending, nearby] = await Promise.all([
+      const [trending, nearby, trendingData] = await Promise.all([
         ServiceService.getTrendingServices(),
         ServiceService.getNearbyServices(),
+        AnalyticsService.getTrendingServices(20),
       ]);
       
       const allServices = [...trending, ...nearby];
@@ -208,6 +215,17 @@ export default function TrendingScreen() {
       );
       
       setServices(uniqueServices.map(convertToUIService));
+      
+      // Calculate trending stats
+      const totalViews = trendingData.reduce((sum, item) => sum + item.total_views_7d, 0);
+      const uniqueViews = trendingData.reduce((sum, item) => sum + item.unique_views_7d, 0);
+      const growthRate = trendingData.length > 0 ? Math.round((totalViews / trendingData.length) * 10) / 10 : 0;
+      
+      setTrendingStats({
+        totalViews,
+        uniqueViews,
+        growthRate,
+      });
     } catch (error) {
       console.error('Error fetching services:', error);
       setServices([]);
@@ -313,10 +331,18 @@ export default function TrendingScreen() {
             </View>
             <View style={[styles.statItem, { backgroundColor: colors.background.secondary }]}>
               <Text style={[styles.statNumber, { color: colors.status.success }]}>
-                +12%
+                {trendingStats.totalViews.toLocaleString()}
               </Text>
               <Text style={[styles.statLabel, { color: colors.text.secondary }]}>
-                Growth
+                Views (7d)
+              </Text>
+            </View>
+            <View style={[styles.statItem, { backgroundColor: colors.background.secondary }]}>
+              <Text style={[styles.statNumber, { color: colors.status.warning }]}>
+                {trendingStats.uniqueViews.toLocaleString()}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.text.secondary }]}>
+                Unique Views
               </Text>
             </View>
           </View>
@@ -358,7 +384,11 @@ export default function TrendingScreen() {
           <View style={isGridLayout ? styles.trendingServicesContainer : styles.trendingServicesList}>
             {filteredServices.map((service, index) => (
               <View key={service.id} style={isGridLayout ? styles.trendingCardWrapper : styles.trendingListItem}>
-                <ServiceCard service={service} layout={isGridLayout ? 'vertical' : 'horizontal'} />
+                <ServiceCard 
+                  service={service} 
+                  layout={isGridLayout ? 'vertical' : 'horizontal'} 
+                  viewSource="trending"
+                />
               </View>
             ))}
           </View>
@@ -433,7 +463,7 @@ const styles = StyleSheet.create({
   },
   trendingStats: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   statItem: {
     flex: 1,

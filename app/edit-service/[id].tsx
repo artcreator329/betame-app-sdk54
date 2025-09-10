@@ -24,6 +24,7 @@ import AIServiceTypeSelector from '@/components/AIServiceTypeSelector';
 import ServiceAreaPicker from '@/components/ServiceAreaPicker';
 import AIDescriptionModal from '@/components/AIDescriptionModal';
 import AIPricingSuggestions from '@/components/AIPricingSuggestions';
+import AIImageGenerationModal from '@/components/AIImageGenerationModal';
 
 interface ServiceVariant {
   id: string;
@@ -62,6 +63,7 @@ export default function EditServiceScreen() {
   const [isLoadingVariants, setIsLoadingVariants] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [currentVariantId, setCurrentVariantId] = useState<string | null>(null);
+  const [showAIImageModal, setShowAIImageModal] = useState(false);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
@@ -270,6 +272,10 @@ export default function EditServiceScreen() {
     if (!currentVariantId) return '';
     const variant = serviceVariants.find(v => v.id === currentVariantId);
     return variant?.title || '';
+  };
+
+  const handleAIImageGenerated = (imageUrl: string) => {
+    setImageUri(imageUrl);
   };
 
   const getServiceTypeDisplayText = (): string => {
@@ -675,7 +681,29 @@ export default function EditServiceScreen() {
         <View style={styles.form}>
           {/* Photo Upload */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Photo</Text>
+            <View style={styles.fieldHeader}>
+              <Text style={styles.fieldLabel}>Photo</Text>
+              <TouchableOpacity
+                style={[
+                  styles.aiButton,
+                  (!title.trim() || !description.trim()) && styles.aiButtonDisabled
+                ]}
+                onPress={() => {
+                  if (!title.trim() || !description.trim()) {
+                    Alert.alert('AI Image Generation', 'Please enter service title and description first to generate an image');
+                    return;
+                  }
+                  setShowAIImageModal(true);
+                }}
+              >
+                <Text style={[
+                  styles.aiButtonText,
+                  (!title.trim() || !description.trim()) && styles.aiButtonTextDisabled
+                ]}>
+                  🎨 AI Generate
+                </Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity 
               style={styles.photoUploadContainer} 
               onPress={handlePhotoUpload}
@@ -1034,6 +1062,16 @@ export default function EditServiceScreen() {
         onClose={() => setShowAIModal(false)}
         serviceTitle={getCurrentVariantTitle()}
         onSelectDescription={handleAIDescriptionSelect}
+      />
+
+      {/* AI Image Generation Modal */}
+      <AIImageGenerationModal
+        visible={showAIImageModal}
+        onClose={() => setShowAIImageModal(false)}
+        onImageGenerated={handleAIImageGenerated}
+        serviceTitle={title}
+        serviceDescription={description}
+        serviceCategory={selectedServiceType}
       />
     </SafeAreaView>
   );

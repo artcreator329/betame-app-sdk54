@@ -537,7 +537,7 @@ export default function HomeScreen() {
               >
                 {nearbyServices.slice(0, 12).map((service) => (
                   <GridCard key={service.id} className="app-service-card">
-                    <ServiceCard service={service} />
+                    <ServiceCard service={service} viewSource="nearby" />
                   </GridCard>
                 ))}
               </ResponsiveGrid>
@@ -546,7 +546,7 @@ export default function HomeScreen() {
                 <View style={styles.servicesGrid}>
                   {nearbyServices.slice(0, 4).map((service) => (
                     <View key={service.id} style={styles.serviceCardContainer}>
-                      <ServiceCard service={service} layout="vertical" />
+                      <ServiceCard service={service} layout="vertical" viewSource="nearby" />
                     </View>
                   ))}
                 </View>
@@ -554,7 +554,7 @@ export default function HomeScreen() {
                 <View style={styles.servicesList}>
                   {nearbyServices.slice(0, 6).map((service) => (
                     <View key={service.id} style={styles.serviceListItem}>
-                      <ServiceCard service={service} layout="horizontal" />
+                      <ServiceCard service={service} layout="horizontal" viewSource="nearby" />
                     </View>
                   ))}
                 </View>
@@ -598,7 +598,7 @@ export default function HomeScreen() {
               >
                 {digitalServices.slice(0, 12).map((service) => (
                   <GridCard key={service.id} className="app-service-card">
-                    <ServiceCard service={service} />
+                    <ServiceCard service={service} viewSource="service_card" />
                   </GridCard>
                 ))}
               </ResponsiveGrid>
@@ -607,7 +607,7 @@ export default function HomeScreen() {
                 <View style={styles.servicesGrid}>
                   {digitalServices.slice(0, 4).map((service) => (
                     <View key={service.id} style={styles.serviceCardContainer}>
-                      <ServiceCard service={service} layout="vertical" />
+                      <ServiceCard service={service} layout="vertical" viewSource="service_card" />
                     </View>
                   ))}
                 </View>
@@ -615,7 +615,7 @@ export default function HomeScreen() {
                 <View style={styles.servicesList}>
                   {digitalServices.slice(0, 6).map((service) => (
                     <View key={service.id} style={styles.serviceListItem}>
-                      <ServiceCard service={service} layout="horizontal" />
+                      <ServiceCard service={service} layout="horizontal" viewSource="service_card" />
                     </View>
                   ))}
                 </View>
@@ -659,7 +659,7 @@ export default function HomeScreen() {
               >
                 {trendingServices.slice(0, 8).map((service) => (
                   <GridCard key={service.id} className="app-service-card">
-                    <ServiceCard service={service} />
+                    <ServiceCard service={service} viewSource="trending" />
                   </GridCard>
                 ))}
               </ResponsiveGrid>
@@ -668,7 +668,7 @@ export default function HomeScreen() {
                 <View style={styles.servicesGrid}>
                   {trendingServices.slice(0, 4).map((service) => (
                     <View key={service.id} style={styles.serviceCardContainer}>
-                      <ServiceCard service={service} layout="vertical" />
+                      <ServiceCard service={service} layout="vertical" viewSource="trending" />
                     </View>
                   ))}
                 </View>
@@ -676,7 +676,7 @@ export default function HomeScreen() {
                 <View style={styles.servicesList}>
                   {trendingServices.slice(0, 6).map((service) => (
                     <View key={service.id} style={styles.serviceListItem}>
-                      <ServiceCard service={service} layout="horizontal" />
+                      <ServiceCard service={service} layout="horizontal" viewSource="trending" />
                     </View>
                   ))}
                 </View>

@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { FeatureService } from './feature-service';
+import { AnalyticsService } from './analytics-service';
 import { UserLocation, sortServicesByDistance } from '@/utils/location-utils';
 
 export interface Service {
@@ -273,20 +274,140 @@ export class ServiceService {
   }
 
   /**
-   * Get trending services
+   * Get trending services based on real view analytics
    */
   static async getTrendingServices(): Promise<Service[]> {
+    try {
+      // Get trending services based on real view data
+      const trendingData = await AnalyticsService.getTrendingServices(50);
+      
+      if (trendingData.length === 0) {
+        console.log('No trending services found based on view data, falling back to manual trending flag');
+        return this.getFallbackTrendingServices();
+      }
+
+      // Extract service IDs from trending data
+      const trendingServiceIds = trendingData.map(item => item.service_id);
+
+      // Get services with their details
+      const { data: allServices, error: servicesError } = await supabase
+        .from('services')
+        .select('*')
+        .in('id', trendingServiceIds)
+        .eq('status', 'active');
+
+      if (servicesError) {
+        console.error('Error fetching trending services:', servicesError);
+        return this.getFallbackTrendingServices();
+      }
+
+      if (!allServices || allServices.length === 0) {
+        return this.getFallbackTrendingServices();
+      }
+
+      // Sort services by trending score
+      const servicesWithTrendingScore = allServices.map(service => {
+        const trendingInfo = trendingData.find(t => t.service_id === service.id);
+        return {
+          ...service,
+          trending_score: trendingInfo?.trending_score || 0,
+          total_views_7d: trendingInfo?.total_views_7d || 0,
+          unique_views_7d: trendingInfo?.unique_views_7d || 0,
+        };
+      });
+
+      // Sort by trending score (highest first)
+      servicesWithTrendingScore.sort((a, b) => b.trending_score - a.trending_score);
+
+      // Separate main services from variants
+      const mainServices = servicesWithTrendingScore.filter(service => !service.parent_service_id);
+      const serviceVariants = servicesWithTrendingScore.filter(service => service.parent_service_id);
+
+      // Group variants by parent service ID
+      const variantsMap = new Map<string, Service[]>();
+      serviceVariants.forEach(variant => {
+        const parentId = variant.parent_service_id!;
+        if (!variantsMap.has(parentId)) {
+          variantsMap.set(parentId, []);
+        }
+        variantsMap.get(parentId)!.push(variant);
+      });
+
+      // Get unique user IDs from main services
+      const userIds = [...new Set(mainServices.map(s => s.user_id))];
+
+      // Get profiles for these users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Return main services without profile data but with variants
+        return mainServices.map(service => {
+          const variants = variantsMap.get(service.id) || [];
+          const lowestPrice = variants.length > 0 
+            ? Math.min(...variants.map(v => v.price))
+            : service.price;
+          
+          return {
+            ...service,
+            price: lowestPrice,
+            provider_name: 'Service Provider',
+            provider_avatar: undefined,
+            service_variants: variants
+          };
+        });
+      }
+
+      // Create a map for quick lookup
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Get active features for all services
+      const serviceIds = mainServices.map(s => s.id);
+      const activeFeaturesMap = await FeatureService.getActiveFeaturesForServices(serviceIds);
+
+      // Combine main services with profile data, variants, and active features
+      return mainServices.map(service => {
+        const profile = profileMap.get(service.user_id);
+        const variants = variantsMap.get(service.id) || [];
+        const lowestPrice = variants.length > 0 
+          ? Math.min(...variants.map(v => v.price))
+          : service.price;
+        const activeFeatures = activeFeaturesMap[service.id] || [];
+        
+        return {
+          ...service,
+          price: lowestPrice,
+          provider_name: profile?.full_name || 'Service Provider',
+          provider_avatar: profile?.avatar_url,
+          service_variants: variants,
+          active_features: activeFeatures
+        };
+      });
+    } catch (error) {
+      console.error('Error in getTrendingServices:', error);
+      return this.getFallbackTrendingServices();
+    }
+  }
+
+  /**
+   * Fallback method to get trending services using manual is_trending flag
+   */
+  private static async getFallbackTrendingServices(): Promise<Service[]> {
     try {
       // Get all trending services including variants
       const { data: allServices, error: servicesError } = await supabase
         .from('services')
         .select('*')
         .eq('is_trending', true)
+        .eq('status', 'active')
         .order('rating', { ascending: false })
         .order('review_count', { ascending: false });
 
       if (servicesError) {
-        console.error('Error fetching trending services:', servicesError);
+        console.error('Error fetching fallback trending services:', servicesError);
         return [];
       }
 
@@ -362,7 +483,7 @@ export class ServiceService {
         };
       });
     } catch (error) {
-      console.error('Error in getTrendingServices:', error);
+      console.error('Error in getFallbackTrendingServices:', error);
       return [];
     }
   }

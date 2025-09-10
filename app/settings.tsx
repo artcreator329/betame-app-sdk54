@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Heart, Briefcase, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet, Sparkles, Building2 } from 'lucide-react-native';
+import { ArrowLeft, Heart, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet, Sparkles, Building2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme, useColors } from '@/contexts/ThemeContext';
@@ -126,9 +126,6 @@ export default function SettingsScreen() {
     router.push('/(tabs)/profile?showReferral=true');
   };
 
-  const handleBecomeServiceProvider = () => {
-    router.push('/become-service-provider');
-  };
 
   const handleMyAccount = () => {
     router.push('/edit-profile');
@@ -244,11 +241,6 @@ export default function SettingsScreen() {
             onPress={() => router.push('/favorites')}
           />
           
-          <SettingItem
-            icon={<Briefcase size={20} color={colors.text.primary} />}
-            title="Become a service provider"
-            onPress={handleBecomeServiceProvider}
-          />
           
           <SettingItem
             icon={<ShareIcon size={20} color={colors.text.primary} />}
