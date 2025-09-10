@@ -561,6 +561,51 @@ class AuthService {
         return { data: null, error: { message: 'User not authenticated' } };
       }
 
+      // Check if user has completed eKYC verification
+      const { data: userProfile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('verification_status')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('❌ AuthService: Error fetching user profile:', profileError);
+        return { data: null, error: { message: 'Failed to verify user profile' } };
+      }
+
+      if (userProfile.verification_status !== 'verified') {
+        return { 
+          data: null, 
+          error: { 
+            message: 'eKYC verification is required to become a service provider. Please complete your eKYC verification first.',
+            status: 403
+          } 
+        };
+      }
+
+      // Check if user has approved bank statement
+      const { data: bankStatement, error: bankError } = await supabase
+        .from('bank_statements')
+        .select('status')
+        .eq('user_id', user.id)
+        .eq('status', 'approved')
+        .single();
+
+      if (bankError && bankError.code !== 'PGRST116') {
+        console.error('❌ AuthService: Error checking bank statement:', bankError);
+        return { data: null, error: { message: 'Failed to verify bank statement status' } };
+      }
+
+      if (!bankStatement) {
+        return { 
+          data: null, 
+          error: { 
+            message: 'Approved bank statement is required to become a service provider. Please upload and get your bank statement approved first.',
+            status: 403
+          } 
+        };
+      }
+
       // Try to update existing user_profiles record first
       const { error: updateError } = await supabase
         .from('user_profiles')

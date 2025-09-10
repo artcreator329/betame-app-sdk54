@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { adminService } from '@/lib/admin-service';
+import { useNavigationAnimation } from '@/hooks/useNavigationAnimation';
 
 // Import Android Video Background Component
 const AndroidVideoBackground = Platform.OS === 'android' 
@@ -24,9 +26,11 @@ export default function VerifyEmailScreen() {
   const [loading, setLoading] = useState(true);
   const [verificationStatus, setVerificationStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [manualNavigation, setManualNavigation] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const params = useLocalSearchParams();
+  const { replaceWithAnimation } = useNavigationAnimation();
 
   // Debug: Log component render
   console.log('📧 VerifyEmailScreen: Component rendering...');
@@ -40,6 +44,48 @@ export default function VerifyEmailScreen() {
   const handleVideoEnd = () => {
     // Cycle to next video when current one ends
     setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
+  };
+
+  const handleGoToHomepage = () => {
+    console.log('🏠 User manually navigating to homepage');
+    console.log('🏠 Current user state:', user?.id);
+    console.log('🏠 Current auth loading:', authLoading);
+    
+    // Set flag to prevent automatic redirect
+    setManualNavigation(true);
+    
+    try {
+      // Check if user is authenticated
+      if (!user) {
+        console.log('🏠 No user found, redirecting to login');
+        replaceWithAnimation('/auth/login');
+        return;
+      }
+      
+      // Try using the navigation animation hook first
+      console.log('🏠 Attempting replaceWithAnimation...');
+      replaceWithAnimation('/(tabs)');
+      
+      // Fallback: try direct router navigation
+      setTimeout(() => {
+        console.log('🏠 Fallback: trying router.replace...');
+        router.replace('/(tabs)');
+      }, 100);
+      
+      // Another fallback: try push instead of replace
+      setTimeout(() => {
+        console.log('🏠 Second fallback: trying router.push...');
+        router.push('/(tabs)');
+      }, 200);
+      
+      // Final fallback: try navigating to index
+      setTimeout(() => {
+        console.log('🏠 Final fallback: trying router.replace to index...');
+        router.replace('/');
+      }, 300);
+    } catch (error) {
+      console.error('🏠 Navigation error:', error);
+    }
   };
 
   useEffect(() => {
@@ -101,11 +147,15 @@ export default function VerifyEmailScreen() {
           console.log('⚠️ No session tokens available for auto-login');
         }
         
-        // Auto-redirect after 3 seconds to main app
+        // Auto-redirect after 3 seconds to main app (only if user hasn't manually navigated)
         console.log('📧 Will redirect to main app in 3 seconds');
         setTimeout(() => {
-          console.log('📧 Redirecting to main app now');
-          router.replace('/(tabs)');
+          if (!manualNavigation) {
+            console.log('📧 Auto-redirecting to main app now');
+            router.replace('/(tabs)');
+          } else {
+            console.log('📧 Skipping auto-redirect - user manually navigated');
+          }
         }, 3000);
         return;
       }
@@ -151,17 +201,21 @@ export default function VerifyEmailScreen() {
         if (type === 'recovery') {
           // For password recovery, redirect to reset password screen
           setTimeout(() => {
-            router.replace('/auth/reset-password');
+            if (!manualNavigation) {
+              router.replace('/auth/reset-password');
+            }
           }, 2000);
         } else {
           // For signup and magiclink, check if user is admin and navigate accordingly
           const isAdmin = await adminService.isAdmin(data.user.id);
           
           setTimeout(() => {
-            if (isAdmin) {
-              router.replace('/admin');
-            } else {
-              router.replace('/auth/signin-success');
+            if (!manualNavigation) {
+              if (isAdmin) {
+                router.replace('/admin');
+              } else {
+                router.replace('/auth/signin-success');
+              }
             }
           }, 2000);
         }
@@ -199,6 +253,17 @@ export default function VerifyEmailScreen() {
             </View>
             <Text style={styles.title}>Email Verified!</Text>
             <Text style={styles.subtitle}>Your account has been successfully verified. Redirecting you to the app...</Text>
+            <TouchableOpacity 
+              style={styles.homepageButton} 
+              onPress={() => {
+                console.log('🏠 Button pressed!');
+                handleGoToHomepage();
+              }}
+              activeOpacity={0.8}
+              disabled={false}
+            >
+              <Text style={styles.homepageButtonText}>Go to Homepage</Text>
+            </TouchableOpacity>
           </>
         );
       case 'error':
@@ -354,5 +419,32 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
     paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  homepageButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    marginTop: 16,
+    shadowColor: 'rgba(0, 0, 0, 0.2)',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  homepageButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

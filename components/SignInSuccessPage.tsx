@@ -6,6 +6,7 @@ import {
   Image,
   Platform,
   Animated,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,6 +37,8 @@ export default function SignInSuccessPage({ onComplete, delay = 2000 }: SignInSu
   const titleTranslateY = useRef(new Animated.Value(20)).current;
   const subtitleOpacity = useRef(new Animated.Value(0)).current;
   const subtitleTranslateY = useRef(new Animated.Value(20)).current;
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const buttonTranslateY = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     // Start entrance animations sequence
@@ -113,10 +116,26 @@ export default function SignInSuccessPage({ onComplete, delay = 2000 }: SignInSu
         ]).start();
       }, 800);
 
-      // 6. Start loading dots animation
+      // 6. Homepage button slides up and fades in
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(buttonOpacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(buttonTranslateY, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, 1000);
+
+      // 7. Start loading dots animation
       setTimeout(() => {
         animateDots();
-      }, 1000);
+      }, 1200);
     };
 
     // Animate loading dots
@@ -154,7 +173,7 @@ export default function SignInSuccessPage({ onComplete, delay = 2000 }: SignInSu
     }, delay);
 
     return () => clearTimeout(timer);
-  }, [onComplete, delay, pageOpacity, contentTranslateY, dot1Opacity, dot2Opacity, dot3Opacity, successIconScale, logoOpacity, logoScale, titleOpacity, titleTranslateY, subtitleOpacity, subtitleTranslateY]);
+  }, [onComplete, delay, pageOpacity, contentTranslateY, dot1Opacity, dot2Opacity, dot3Opacity, successIconScale, logoOpacity, logoScale, titleOpacity, titleTranslateY, subtitleOpacity, subtitleTranslateY, buttonOpacity, buttonTranslateY]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -226,6 +245,22 @@ export default function SignInSuccessPage({ onComplete, delay = 2000 }: SignInSu
               </Text>
             </Animated.View>
           </View>
+
+          {/* Homepage Button */}
+          <Animated.View
+            style={{
+              opacity: buttonOpacity,
+              transform: [{ translateY: buttonTranslateY }]
+            }}
+          >
+            <TouchableOpacity 
+              style={styles.homepageButton} 
+              onPress={onComplete}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.homepageButtonText}>Go to Homepage</Text>
+            </TouchableOpacity>
+          </Animated.View>
 
           {/* Loading Animation */}
           <View style={styles.loadingContainer}>
@@ -336,5 +371,31 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     marginHorizontal: 4,
+  },
+  homepageButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    marginBottom: 32,
+    shadowColor: 'rgba(0, 0, 0, 0.2)',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  homepageButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

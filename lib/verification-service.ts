@@ -1,5 +1,6 @@
 import { EKYCService } from './ekyc-service';
 import { authService } from './auth-service';
+import { supabase } from './supabase';
 
 export interface VerificationStatus {
   isVerified: boolean;
@@ -49,15 +50,36 @@ export class VerificationService {
 
       const verificationStatus = await EKYCService.getUserVerificationStatus();
       
-      if (verificationStatus === 'verified') {
-        return { allowed: true };
+      if (verificationStatus !== 'verified') {
+        return {
+          allowed: false,
+          reason: 'eKYC verification required to become a service provider',
+          status: verificationStatus
+        };
       }
 
-      return {
-        allowed: false,
-        reason: 'eKYC verification required to become a service provider',
-        status: verificationStatus
-      };
+      // Check if user has approved bank statement
+      const { data: bankStatement, error: bankError } = await supabase
+        .from('bank_statements')
+        .select('status')
+        .eq('user_id', user.id)
+        .eq('status', 'approved')
+        .single();
+
+      if (bankError && bankError.code !== 'PGRST116') {
+        console.error('Error checking bank statement:', bankError);
+        return { allowed: false, reason: 'Error checking bank statement status' };
+      }
+
+      if (!bankStatement) {
+        return {
+          allowed: false,
+          reason: 'Approved bank statement required to become a service provider',
+          status: 'bank_statement_required'
+        };
+      }
+
+      return { allowed: true };
     } catch (error) {
       console.error('Error checking service provider permission:', error);
       return { allowed: false, reason: 'Error checking verification status' };
@@ -113,7 +135,9 @@ export class VerificationService {
     
     const actionText = action === 'place_order' ? 'place orders' : 'become a service provider';
     const title = 'Verification Required';
-    const message = `You need to complete eKYC verification to ${actionText}. This helps us ensure a safe and secure platform for all users.`;
+    const message = action === 'place_order' 
+      ? `You need to complete eKYC verification to ${actionText}. This helps us ensure a safe and secure platform for all users.`
+      : `You need to complete eKYC verification AND upload an approved bank statement to ${actionText}. This helps us ensure a safe and secure platform for all users.`;
 
     Alert.alert(
       title,

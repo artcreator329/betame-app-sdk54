@@ -165,9 +165,78 @@ export default function WalletScreen() {
     }
   };
 
+  const handleConvertAllDiamonds = async () => {
+    if (!user?.id || !walletData) return;
+    
+    const availableDiamonds = walletData.betame_diamonds;
+    if (availableDiamonds < 10) {
+      Alert.alert(
+        'Insufficient Diamonds',
+        'You need at least 10 diamonds to convert to BetaCoins.',
+        [
+          { text: 'Cancel', style: 'cancel' as const },
+          {
+            text: 'Buy More BetaCoins',
+            onPress: () => setShowBetaCoinPurchase(true),
+          },
+        ]
+      );
+      return;
+    }
+    
+    // Show input dialog for amount selection
+    Alert.prompt(
+      'Convert Diamonds to BetaCoins',
+      `You have ${availableDiamonds} diamonds available.\n\nRate: 10 diamonds = 1 BetaCoin\n\nEnter amount to convert (minimum 10):`,
+      [
+        { text: 'Cancel', style: 'cancel' as const },
+        {
+          text: 'Convert',
+          style: 'default' as const,
+          onPress: async (inputAmount) => {
+            if (!inputAmount) {
+              Alert.alert('Invalid Amount', 'Please enter a valid amount.');
+              return;
+            }
+            
+            const amount = parseInt(inputAmount);
+            if (isNaN(amount) || amount < 10) {
+              Alert.alert('Invalid Amount', 'Please enter at least 10 diamonds.');
+              return;
+            }
+            
+            if (amount > availableDiamonds) {
+              Alert.alert('Insufficient Diamonds', `You only have ${availableDiamonds} diamonds available.`);
+              return;
+            }
+            
+            // Round down to nearest 10
+            const diamondsToConvert = Math.floor(amount / 10) * 10;
+            const betaCoinsEarned = Math.floor(diamondsToConvert / 10);
+            
+            if (diamondsToConvert === 0) {
+              Alert.alert('Invalid Amount', 'Amount must be at least 10 diamonds.');
+              return;
+            }
+            
+            const result = await WalletService.convertDiamondsToBetaCoins(user.id, diamondsToConvert);
+            if (result.success && result.wallet) {
+              setWalletData(result.wallet);
+              Alert.alert('Conversion Successful', `Converted ${diamondsToConvert} BetaMe diamonds to ${betaCoinsEarned} BetaCoin(s)!`);
+            } else {
+              Alert.alert('Conversion Failed', result.error || 'Failed to convert diamonds');
+            }
+          },
+        },
+      ],
+      'plain-text',
+      '10'
+    );
+  };
+
   const handleIncrementDiamonds = () => {
-    const currentAmount = parseInt(convertAmount) || 0;
-    const newAmount = currentAmount + 1;
+    const currentAmount = parseInt(convertAmount) || 10;
+    const newAmount = currentAmount + 10; // Increment by 10 to keep it in multiples of 10
     console.log('Incrementing diamonds:', currentAmount, '->', newAmount);
     if (!walletData || newAmount <= walletData.betame_diamonds) {
       setConvertAmount(newAmount.toString());
@@ -177,8 +246,8 @@ export default function WalletScreen() {
   };
 
   const handleDecrementDiamonds = () => {
-    const currentAmount = parseInt(convertAmount) || 0;
-    const newAmount = Math.max(10, currentAmount - 1);
+    const currentAmount = parseInt(convertAmount) || 10;
+    const newAmount = Math.max(10, currentAmount - 10); // Decrement by 10 to keep it in multiples of 10
     console.log('Decrementing diamonds:', currentAmount, '->', newAmount);
     setConvertAmount(newAmount.toString());
   };
@@ -394,7 +463,11 @@ export default function WalletScreen() {
 
         {/* Wallet Balances */}
         <View style={[styles.balanceSection, isDesktop && styles.balanceSectionDesktop]}>
-          <View style={[styles.balanceCard, isDesktop && styles.balanceCardDesktop]}>
+          <TouchableOpacity 
+            style={[styles.balanceCard, isDesktop && styles.balanceCardDesktop]}
+            onPress={handleConvertAllDiamonds}
+            activeOpacity={0.8}
+          >
             <ImageBackground 
               source={require('../assets/images/diamond-bg.jpeg')}
               style={styles.balanceCardInner}
@@ -405,10 +478,10 @@ export default function WalletScreen() {
                    <Text style={styles.balanceLabelWithBg}>Premium Diamonds</Text>
                  </View>
                  <Text style={styles.balanceAmountWithBg}>{walletData?.betame_diamonds || 0} Diamonds</Text>
-                 <Text style={styles.balanceSubtextWithBg}>Convert to BetaCoins</Text>
+                 <Text style={styles.balanceSubtextWithBg}>Tap to convert to BetaCoins</Text>
                </View>
             </ImageBackground>
-          </View>
+          </TouchableOpacity>
 
           <View style={[styles.balanceCard, isDesktop && styles.balanceCardDesktop]}>
             <ImageBackground 
@@ -514,10 +587,17 @@ export default function WalletScreen() {
                     <TextInput
                       style={[styles.input, { color: colors.text.primary }]}
                       value={convertAmount}
-                      onChangeText={setConvertAmount}
+                      onChangeText={(text) => {
+                        // Only allow numeric input and ensure it's a multiple of 10
+                        const numericValue = text.replace(/[^0-9]/g, '');
+                        if (numericValue === '' || (parseInt(numericValue) >= 10 && parseInt(numericValue) % 10 === 0)) {
+                          setConvertAmount(numericValue);
+                        }
+                      }}
                       keyboardType="numeric"
                       placeholder="10"
                       placeholderTextColor={colors.text.secondary}
+                      maxLength={4}
                     />
                     <Text style={styles.inputLabel}>💎</Text>
                   </View>
@@ -535,7 +615,7 @@ export default function WalletScreen() {
               </View>
               <View style={[styles.conversionOutput, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
                 <Text style={[styles.outputValue, { color: colors.text.primary }]}>{Math.floor(parseInt(convertAmount || '0') / 10)}</Text>
-                <Text style={styles.outputLabel}>💰</Text>
+                <Text style={styles.outputLabel}>BetaCoins</Text>
               </View>
             </View>
             
@@ -827,19 +907,19 @@ const styles = StyleSheet.create({
   },
   balanceSection: {
     padding: 20,
-    gap: 16,
+    gap: 2,
   },
   balanceSectionDesktop: {
     flexDirection: 'row',
     padding: 32,
-    gap: 24,
+    gap: 8,
     maxWidth: 1200,
     alignSelf: 'center',
   },
   balanceCard: {
     backgroundColor: 'transparent',
     borderRadius: 12,
-    padding: 20,
+    padding: 8,
     shadowColor: 'transparent',
     shadowOffset: {
       width: 0,
@@ -857,7 +937,7 @@ const styles = StyleSheet.create({
   },
   balanceCardInner: {
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
     overflow: 'hidden',
     flex: 1,
   },
@@ -867,8 +947,8 @@ const styles = StyleSheet.create({
   balanceOverlay: {
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 12,
-    padding: 20,
-    margin: -20,
+    padding: 16,
+    margin: -16,
   },
   balanceHeader: {
     flexDirection: 'row',
@@ -1021,7 +1101,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'transparent',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,

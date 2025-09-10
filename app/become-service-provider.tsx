@@ -77,9 +77,25 @@ export default function BecomeServiceProviderScreen() {
       );
     } catch (error: any) {
       console.error('Error becoming service provider:', error);
+      
+      // Show specific error messages based on the error
+      let errorMessage = 'Failed to register as service provider. Please try again.';
+      
+      if (error?.message) {
+        if (error.message.includes('eKYC verification is required')) {
+          errorMessage = 'eKYC verification is required to become a service provider. Please complete your eKYC verification first.';
+        } else if (error.message.includes('Approved bank statement is required')) {
+          errorMessage = 'Approved bank statement is required to become a service provider. Please upload and get your bank statement approved first.';
+        } else if (error.message.includes('User not authenticated')) {
+          errorMessage = 'You must be signed in to become a service provider.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       Alert.alert(
         'Error',
-        'Failed to register as service provider. Please try again.',
+        errorMessage,
         [{ text: 'OK' }]
       );
     } finally {
