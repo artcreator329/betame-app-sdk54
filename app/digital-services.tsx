@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import ServiceCard from '@/components/ServiceCard';
 import DesktopWrapper from '@/components/DesktopWrapper';
 import ResponsiveGrid, { GridCard } from '@/components/ResponsiveGrid';
+import LayoutToggle from '@/components/LayoutToggle';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { useColors } from '@/contexts/ThemeContext';
@@ -27,6 +28,7 @@ const isDesktop = isWeb && width >= 1024;
 export default function DigitalServicesScreen() {
   const [digitalServices, setDigitalServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGridLayout, setIsGridLayout] = useState(true);
   const router = useRouter();
   const colors = useColors();
 
@@ -79,7 +81,14 @@ export default function DigitalServicesScreen() {
             <ArrowLeft size={24} color={colors.primary.main} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Digital Services</Text>
-          <View style={{ width: 24 }} />
+          <View style={styles.headerActions}>
+            {!isDesktop && (
+              <LayoutToggle 
+                isGridLayout={isGridLayout} 
+                onToggle={() => setIsGridLayout(!isGridLayout)} 
+              />
+            )}
+          </View>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary.main} />
@@ -97,7 +106,14 @@ export default function DigitalServicesScreen() {
             <ArrowLeft size={24} color={colors.primary.main} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Digital Services</Text>
-          <View style={{ width: 24 }} />
+          <View style={styles.headerActions}>
+            {!isDesktop && (
+              <LayoutToggle 
+                isGridLayout={isGridLayout} 
+                onToggle={() => setIsGridLayout(!isGridLayout)} 
+              />
+            )}
+          </View>
         </View>
         <View style={styles.emptyContainer}>
           <Text style={[styles.emptyText, { color: colors.text.secondary }]}>No digital services found</Text>
@@ -117,7 +133,14 @@ export default function DigitalServicesScreen() {
             <ArrowLeft size={24} color={colors.primary.main} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Digital Services</Text>
-          <View style={{ width: 24 }} />
+          <View style={styles.headerActions}>
+            {!isDesktop && (
+              <LayoutToggle 
+                isGridLayout={isGridLayout} 
+                onToggle={() => setIsGridLayout(!isGridLayout)} 
+              />
+            )}
+          </View>
         </View>
 
         <ScrollView 
@@ -149,16 +172,31 @@ export default function DigitalServicesScreen() {
               ))}
             </ResponsiveGrid>
           ) : (
-            <View style={styles.servicesGrid}>
-              {digitalServices.map((service) => (
-                <View key={service.id} style={styles.serviceCardContainer}>
-                  <ServiceCard 
-                    service={service}
-                    onPress={() => router.push(`/service/${service.id}`)}
-                  />
-                </View>
-              ))}
-            </View>
+            isGridLayout ? (
+              <View style={styles.servicesGrid}>
+                {digitalServices.map((service) => (
+                  <View key={service.id} style={styles.serviceCardContainer}>
+                    <ServiceCard 
+                      service={service}
+                      layout="vertical"
+                      onPress={() => router.push(`/service/${service.id}`)}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.servicesList}>
+                {digitalServices.map((service) => (
+                  <View key={service.id} style={styles.serviceListItem}>
+                    <ServiceCard 
+                      service={service}
+                      layout="horizontal"
+                      onPress={() => router.push(`/service/${service.id}`)}
+                    />
+                  </View>
+                ))}
+              </View>
+            )
           )}
         </ScrollView>
       </SafeAreaView>
@@ -224,5 +262,17 @@ const styles = StyleSheet.create({
   serviceCardContainer: {
     width: isDesktop ? '23%' : '48%',
     marginBottom: 16,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  servicesList: {
+    flex: 1,
+    width: '100%',
+  },
+  serviceListItem: {
+    marginBottom: 12,
+    width: '100%',
   },
 });

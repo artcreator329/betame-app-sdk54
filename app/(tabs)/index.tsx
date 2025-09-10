@@ -22,12 +22,14 @@ import SearchBarWithAutoComplete from '@/components/SearchBarWithAutoComplete';
 import NearbyCategoryIcon from '@/components/NearbyCategoryIcon';
 import DesktopWrapper from '@/components/DesktopWrapper';
 import ResponsiveGrid, { GridCard } from '@/components/ResponsiveGrid';
+import LayoutToggle from '@/components/LayoutToggle';
 import { Service } from '@/types/service';
 import { ServiceService, Service as DBService } from '@/lib/service-service';
 import { BannerService, Banner } from '@/lib/banner-service';
 
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { getCurrentLocation, UserLocation } from '@/utils/location-utils';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import { useColors, useTheme } from '@/contexts/ThemeContext';
 import { imageCacheService } from '@/lib/image-cache-service';
@@ -122,6 +124,13 @@ export default function HomeScreen() {
   const [digitalServices, setDigitalServices] = useState<Service[]>([]);
   const [trendingServices, setTrendingServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  
+  // Layout toggle states for each section
+  const [nearbyLayout, setNearbyLayout] = useState<'grid' | 'list'>('list');
+  const [digitalLayout, setDigitalLayout] = useState<'grid' | 'list'>('list');
+  const [trendingLayout, setTrendingLayout] = useState<'grid' | 'list'>('list');
   const router = useRouter();
   const { user } = useAuth();
   const { totalUnreadCount } = useUnreadMessageCount();
@@ -172,17 +181,41 @@ export default function HomeScreen() {
     };
   };
 
+  const fetchUserLocation = useCallback(async () => {
+    setIsLoadingLocation(true);
+    try {
+      const location = await getCurrentLocation();
+      setUserLocation(location);
+      return location;
+    } catch (error) {
+      console.error('Error getting user location:', error);
+      return null;
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  }, []);
+
   const fetchData = useCallback(async () => {
     setIsLoadingServices(true);
     
     try {
+      // Get user location first
+      const location = await fetchUserLocation();
+      
       // Fetch all data concurrently
-      const [bannersData, nearby, digital, trending] = await Promise.all([
+      const [bannersData, digital, trending] = await Promise.all([
         BannerService.getActiveBanners(),
-        ServiceService.getNearbyServices(),
         ServiceService.getDigitalServices(),
         ServiceService.getTrendingServices()
       ]);
+      
+      // Fetch nearby services with location-based sorting if location is available
+      let nearby;
+      if (location) {
+        nearby = await ServiceService.getNearbyServicesSortedByLocation(location);
+      } else {
+        nearby = await ServiceService.getNearbyServices();
+      }
       
       setBanners(bannersData);
       setNearbyServices(nearby.map(convertToUIService));
@@ -206,7 +239,7 @@ export default function HomeScreen() {
     } finally {
       setIsLoadingServices(false);
     }
-  }, []);
+  }, [fetchUserLocation]);
 
   // Initial data fetch
   useEffect(() => {
@@ -473,17 +506,27 @@ export default function HomeScreen() {
 
         {/* Nearby Services */}
         <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
-          <TouchableOpacity 
-            style={styles.sectionHeader}
-            onPress={() => router.push('/nearby')}
-          >
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Nearby</Text>
-            <ChevronRight size={20} color={colors.primary.main} />
-          </TouchableOpacity>
-          {isLoadingServices ? (
+          <View style={styles.sectionHeader}>
+            <TouchableOpacity 
+              style={styles.sectionTitleContainer}
+              onPress={() => router.push('/nearby')}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Nearby</Text>
+              <ChevronRight size={20} color={colors.primary.main} />
+            </TouchableOpacity>
+            {!isDesktop && (
+              <LayoutToggle 
+                isGridLayout={nearbyLayout === 'grid'} 
+                onToggle={() => setNearbyLayout(nearbyLayout === 'grid' ? 'list' : 'grid')} 
+              />
+            )}
+          </View>
+          {isLoadingServices || isLoadingLocation ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={colors.primary.main} />
-              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading nearby services...</Text>
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>
+                {isLoadingLocation ? 'Getting your location...' : 'Loading nearby services...'}
+              </Text>
             </View>
           ) : nearbyServices.length > 0 ? (
             isDesktop ? (
@@ -499,17 +542,23 @@ export default function HomeScreen() {
                 ))}
               </ResponsiveGrid>
             ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.nearbyContent}
-              >
-                {nearbyServices.slice(0, 8).map((service) => (
-                  <View key={service.id} style={styles.nearbyServiceCard}>
-                    <ServiceCard service={service} />
-                  </View>
-                ))}
-              </ScrollView>
+              nearbyLayout === 'grid' ? (
+                <View style={styles.servicesGrid}>
+                  {nearbyServices.slice(0, 4).map((service) => (
+                    <View key={service.id} style={styles.serviceCardContainer}>
+                      <ServiceCard service={service} layout="vertical" />
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.servicesList}>
+                  {nearbyServices.slice(0, 6).map((service) => (
+                    <View key={service.id} style={styles.serviceListItem}>
+                      <ServiceCard service={service} layout="horizontal" />
+                    </View>
+                  ))}
+                </View>
+              )
             )
           ) : (
             <View style={styles.emptyState}>
@@ -520,13 +569,21 @@ export default function HomeScreen() {
 
         {/* Digital Services */}
         <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
-          <TouchableOpacity 
-            style={styles.sectionHeader}
-            onPress={() => router.push('/digital-services')}
-          >
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Digital Services</Text>
-            <ChevronRight size={20} color={colors.primary.main} />
-          </TouchableOpacity>
+          <View style={styles.sectionHeader}>
+            <TouchableOpacity 
+              style={styles.sectionTitleContainer}
+              onPress={() => router.push('/digital-services')}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Digital Services</Text>
+              <ChevronRight size={20} color={colors.primary.main} />
+            </TouchableOpacity>
+            {!isDesktop && (
+              <LayoutToggle 
+                isGridLayout={digitalLayout === 'grid'} 
+                onToggle={() => setDigitalLayout(digitalLayout === 'grid' ? 'list' : 'grid')} 
+              />
+            )}
+          </View>
           {isLoadingServices ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={colors.primary.main} />
@@ -546,17 +603,23 @@ export default function HomeScreen() {
                 ))}
               </ResponsiveGrid>
             ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.nearbyContent}
-              >
-                {digitalServices.slice(0, 8).map((service) => (
-                  <View key={service.id} style={styles.nearbyServiceCard}>
-                    <ServiceCard service={service} />
-                  </View>
-                ))}
-              </ScrollView>
+              digitalLayout === 'grid' ? (
+                <View style={styles.servicesGrid}>
+                  {digitalServices.slice(0, 4).map((service) => (
+                    <View key={service.id} style={styles.serviceCardContainer}>
+                      <ServiceCard service={service} layout="vertical" />
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.servicesList}>
+                  {digitalServices.slice(0, 6).map((service) => (
+                    <View key={service.id} style={styles.serviceListItem}>
+                      <ServiceCard service={service} layout="horizontal" />
+                    </View>
+                  ))}
+                </View>
+              )
             )
           ) : (
             <View style={styles.emptyState}>
@@ -567,13 +630,21 @@ export default function HomeScreen() {
 
         {/* Trending Services */}
         <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
-          <TouchableOpacity 
-            style={styles.sectionHeader}
-            onPress={() => router.push('/trending')}
-          >
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Trending</Text>
-            <ChevronRight size={20} color={colors.primary.main} />
-          </TouchableOpacity>
+          <View style={styles.sectionHeader}>
+            <TouchableOpacity 
+              style={styles.sectionTitleContainer}
+              onPress={() => router.push('/trending')}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Trending</Text>
+              <ChevronRight size={20} color={colors.primary.main} />
+            </TouchableOpacity>
+            {!isDesktop && (
+              <LayoutToggle 
+                isGridLayout={trendingLayout === 'grid'} 
+                onToggle={() => setTrendingLayout(trendingLayout === 'grid' ? 'list' : 'grid')} 
+              />
+            )}
+          </View>
           {isLoadingServices ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={colors.primary.main} />
@@ -593,13 +664,23 @@ export default function HomeScreen() {
                 ))}
               </ResponsiveGrid>
             ) : (
-              <View style={styles.servicesGrid}>
-                {trendingServices.slice(0, 4).map((service) => (
-                  <View key={service.id} style={styles.serviceCardContainer}>
-                    <ServiceCard service={service} />
-                  </View>
-                ))}
-              </View>
+              trendingLayout === 'grid' ? (
+                <View style={styles.servicesGrid}>
+                  {trendingServices.slice(0, 4).map((service) => (
+                    <View key={service.id} style={styles.serviceCardContainer}>
+                      <ServiceCard service={service} layout="vertical" />
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.servicesList}>
+                  {trendingServices.slice(0, 6).map((service) => (
+                    <View key={service.id} style={styles.serviceListItem}>
+                      <ServiceCard service={service} layout="horizontal" />
+                    </View>
+                  ))}
+                </View>
+              )
             )
           ) : (
             <View style={styles.emptyState}>
@@ -801,6 +882,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   sectionTitle: {
     fontSize: isDesktop ? 22 : 18,
     fontWeight: '600',
@@ -820,6 +906,14 @@ const styles = StyleSheet.create({
   serviceCardContainer: {
     width: isDesktop ? '23%' : '48%', // 4 columns on desktop, 2 on mobile
     marginBottom: isDesktop ? 16 : 16,
+  },
+  servicesList: {
+    flex: 1,
+    width: '100%',
+  },
+  serviceListItem: {
+    marginBottom: 12,
+    width: '100%',
   },
   loadingContainer: {
     flexDirection: 'row',

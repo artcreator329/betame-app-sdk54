@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { FeatureService } from './feature-service';
+import { UserLocation, sortServicesByDistance } from '@/utils/location-utils';
 
 export interface Service {
   id?: string;
@@ -242,6 +243,31 @@ export class ServiceService {
       });
     } catch (error) {
       console.error('Error in getNearbyServices:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get nearby services sorted by distance from user location
+   * @param userLocation User's current location coordinates
+   * @returns Promise<Service[]> Services sorted by distance (nearest first)
+   */
+  static async getNearbyServicesSortedByLocation(userLocation: UserLocation): Promise<Service[]> {
+    try {
+      // Get all nearby services first
+      const nearbyServices = await this.getNearbyServices();
+      
+      // Filter services that have coordinates
+      const servicesWithLocation = nearbyServices.filter(
+        service => service.latitude && service.longitude
+      );
+      
+      // Sort by distance from user location
+      const sortedServices = sortServicesByDistance(servicesWithLocation, userLocation);
+      
+      return sortedServices;
+    } catch (error) {
+      console.error('Error in getNearbyServicesSortedByLocation:', error);
       return [];
     }
   }

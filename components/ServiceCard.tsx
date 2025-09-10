@@ -38,6 +38,7 @@ interface ServiceCardProps {
   onPress?: () => void;
   style?: any;
   disableFavorites?: boolean; // New prop to disable favorites functionality
+  layout?: 'vertical' | 'horizontal'; // New prop to control layout direction
 }
 
 interface ServiceVariantCardProps {
@@ -72,7 +73,7 @@ function ServiceVariantCard({ variant, onPress }: ServiceVariantCardProps) {
   );
 }
 
-export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange, onPress, style, disableFavorites = false }: ServiceCardProps) {
+export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange, onPress, style, disableFavorites = false, layout = 'vertical' }: ServiceCardProps) {
   const router = useRouter();
   const { user } = useAuth();
   const colors = useColors();
@@ -252,7 +253,11 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
 
   return (
     <View style={[styles.cardContainer, style]}>
-      <TouchableOpacity style={[styles.card, { backgroundColor: colors.background.secondary }]} onPress={handleMainCardPress}>
+      <TouchableOpacity style={[
+        styles.card, 
+        { backgroundColor: colors.background.secondary },
+        layout === 'horizontal' && styles.horizontalCard
+      ]} onPress={handleMainCardPress}>
         {showEditButton && (
         <TouchableOpacity style={styles.editButton} onPress={handleEditPress}>
           <Edit3 size={16} color={colors.background.primary} />
@@ -298,61 +303,120 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
           />
         </View>
       )}
-        <OptimizedImage
-          source={getServiceImage()}
-          style={styles.image}
-          priority="normal"
-          cachePolicy="memory-disk"
-          showLoadingIndicator={false}
-        />
-        <View style={styles.content}>
-          <View style={styles.ratingContainer}>
-            <Star size={12} color="#FFD700" fill="#FFD700" />
-            <Text style={[styles.rating, { color: colors.text.primary }]}>{service.rating}</Text>
-            <Text style={[styles.reviewCount, { color: colors.text.secondary }]}>({service.review_count})</Text>
-            {service.active_features && service.active_features.length > 0 && (
-              <FeatureIcons 
-                features={service.active_features} 
-                size={16} 
-                style={styles.featureIcons}
-              />
-            )}
-          </View>
-          <View style={styles.providerContainer}>
-            <Text style={[styles.provider, { color: colors.text.primary }]}>{service.provider_name || 'Unknown Provider'}</Text>
-            {service.provider_created_at && (
-              <Text style={[styles.joinedDate, { color: colors.text.secondary }]}>
-                {formatJoinedDate(service.provider_created_at)}
+        
+        {layout === 'horizontal' ? (
+          <View style={styles.horizontalContent}>
+            <OptimizedImage
+              source={getServiceImage()}
+              style={styles.horizontalImage}
+              priority="normal"
+              cachePolicy="memory-disk"
+              showLoadingIndicator={false}
+            />
+            <View style={styles.horizontalDetails}>
+              <View style={styles.ratingContainer}>
+                <Star size={10} color="#FFD700" fill="#FFD700" />
+                <Text style={[styles.horizontalRating, { color: colors.text.primary }]}>{service.rating}</Text>
+                <Text style={[styles.horizontalReviewCount, { color: colors.text.secondary }]}>({service.review_count})</Text>
+                {service.active_features && service.active_features.length > 0 && (
+                  <FeatureIcons 
+                    features={service.active_features} 
+                    size={12} 
+                    style={styles.featureIcons}
+                  />
+                )}
+              </View>
+              <View style={styles.providerContainer}>
+                <Text style={[styles.horizontalProvider, { color: colors.text.primary }]} numberOfLines={1}>
+                  {service.provider_name || 'Unknown Provider'}
+                </Text>
+                {service.provider_created_at && (
+                  <Text style={[styles.horizontalJoinedDate, { color: colors.text.secondary }]} numberOfLines={1}>
+                    {formatJoinedDate(service.provider_created_at)}
+                  </Text>
+                )}
+              </View>
+              <Text style={[styles.horizontalTitle, { color: colors.text.primary }]} numberOfLines={2}>
+                {service.title}
               </Text>
-            )}
+              {service.description && (
+                <Text style={[styles.horizontalDescription, { color: colors.text.primary }]} numberOfLines={2}>
+                  {service.description}
+                </Text>
+              )}
+              {shouldShowPricing ? (
+                <View style={styles.priceContainer}>
+                  <Text style={[styles.horizontalPrice, { color: colors.text.primary }]} numberOfLines={1}>
+                    From {service.currency}{getLowestPrice()}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.detailsContainer}>
+                  <Text style={[styles.detailsLabel, { color: colors.primary.main }]} numberOfLines={1}>View Details</Text>
+                  <Text style={[styles.categoryText, { color: colors.text.primary }]} numberOfLines={1}>{service.category_name}</Text>
+                </View>
+              )}
+            </View>
           </View>
-          <Text style={[styles.title, { color: colors.text.primary }]} numberOfLines={showVariants ? undefined : 2}>
-            {service.title}
-          </Text>
-          {!showVariants && service.description && (
-            <Text style={[styles.description, { color: colors.text.primary }]} numberOfLines={2}>
-              {service.description}
-            </Text>
-          )}
-          {showVariants && (
-            <Text style={[styles.expandedDescription, { color: colors.text.primary }]} numberOfLines={undefined}>
-              {service.description}
-            </Text>
-          )}
-          {shouldShowPricing ? (
-            <View style={styles.priceContainer}>
-              <Text style={[styles.price, { color: colors.text.primary }]}>
-                From {service.currency}{getLowestPrice()}
+        ) : (
+          <>
+            <OptimizedImage
+              source={getServiceImage()}
+              style={styles.image}
+              priority="normal"
+              cachePolicy="memory-disk"
+              showLoadingIndicator={false}
+            />
+            <View style={styles.content}>
+              <View style={styles.ratingContainer}>
+                <Star size={12} color="#FFD700" fill="#FFD700" />
+                <Text style={[styles.rating, { color: colors.text.primary }]}>{service.rating}</Text>
+                <Text style={[styles.reviewCount, { color: colors.text.secondary }]}>({service.review_count})</Text>
+                {service.active_features && service.active_features.length > 0 && (
+                  <FeatureIcons 
+                    features={service.active_features} 
+                    size={16} 
+                    style={styles.featureIcons}
+                  />
+                )}
+              </View>
+              <View style={styles.providerContainer}>
+                <Text style={[styles.provider, { color: colors.text.primary }]}>{service.provider_name || 'Unknown Provider'}</Text>
+                {service.provider_created_at && (
+                  <Text style={[styles.joinedDate, { color: colors.text.secondary }]}>
+                    {formatJoinedDate(service.provider_created_at)}
+                  </Text>
+                )}
+              </View>
+              <Text style={[styles.title, { color: colors.text.primary }]} numberOfLines={showVariants ? undefined : 2}>
+                {service.title}
               </Text>
+              {!showVariants && service.description && (
+                <Text style={[styles.description, { color: colors.text.primary }]} numberOfLines={2}>
+                  {service.description}
+                </Text>
+              )}
+              {showVariants && (
+                <Text style={[styles.expandedDescription, { color: colors.text.primary }]} numberOfLines={undefined}>
+                  {service.description}
+                </Text>
+              )}
+              {shouldShowPricing ? (
+                <View style={styles.priceContainer}>
+                  <Text style={[styles.price, { color: colors.text.primary }]}>
+                    From {service.currency}{getLowestPrice()}
+                  </Text>
 
+                </View>
+              ) : (
+                <View style={styles.detailsContainer}>
+                  <Text style={[styles.detailsLabel, { color: colors.primary.main }]}>View Details</Text>
+                  <Text style={[styles.categoryText, { color: colors.text.primary }]}>{service.category_name}</Text>
+                </View>
+              )}
             </View>
-          ) : (
-            <View style={styles.detailsContainer}>
-              <Text style={[styles.detailsLabel, { color: colors.primary.main }]}>View Details</Text>
-              <Text style={[styles.categoryText, { color: colors.text.primary }]}>{service.category_name}</Text>
-            </View>
-          )}
-        </View>
+          </>
+        )}
       </TouchableOpacity>
 
 
@@ -597,5 +661,101 @@ const styles = StyleSheet.create({
   profileToggleLabel: {
     fontSize: 11,
     fontWeight: '500',
+  },
+  
+  // Horizontal layout styles
+  horizontalCard: {
+    flexDirection: 'row',
+    height: 140,
+    ...(isWeb && {
+      height: 120,
+    }),
+  },
+  horizontalContent: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  horizontalImage: {
+    width: 140,
+    height: '100%',
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    resizeMode: 'cover',
+    ...(isWeb && {
+      width: 120,
+    }),
+  },
+  horizontalDetails: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'space-between',
+    minHeight: 0, // Allow flex shrinking
+    ...(isWeb && {
+      padding: 10,
+    }),
+  },
+  horizontalTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 3,
+    lineHeight: 16,
+    flexShrink: 1,
+    ...(isWeb && {
+      fontSize: 12,
+      lineHeight: 14,
+      marginBottom: 2,
+    }),
+  },
+  horizontalDescription: {
+    fontSize: 11,
+    lineHeight: 14,
+    marginBottom: 4,
+    flexShrink: 1,
+    ...(isWeb && {
+      fontSize: 10,
+      lineHeight: 12,
+      marginBottom: 3,
+    }),
+  },
+  
+  // Horizontal layout specific text styles
+  horizontalRating: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginLeft: 2,
+    ...(isWeb && {
+      fontSize: 9,
+    }),
+  },
+  horizontalReviewCount: {
+    fontSize: 10,
+    marginLeft: 1,
+    ...(isWeb && {
+      fontSize: 9,
+    }),
+  },
+  horizontalProvider: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 1,
+    ...(isWeb && {
+      fontSize: 10,
+    }),
+  },
+  horizontalJoinedDate: {
+    fontSize: 9,
+    fontWeight: '400',
+    ...(isWeb && {
+      fontSize: 8,
+    }),
+  },
+  horizontalPrice: {
+    fontSize: 12,
+    fontWeight: '600',
+    ...(isWeb && {
+      fontSize: 11,
+    }),
   },
 });

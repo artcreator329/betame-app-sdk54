@@ -358,7 +358,7 @@ export default function TrendingScreen() {
           <View style={isGridLayout ? styles.trendingServicesContainer : styles.trendingServicesList}>
             {filteredServices.map((service, index) => (
               <View key={service.id} style={isGridLayout ? styles.trendingCardWrapper : styles.trendingListItem}>
-                <TrendingServiceCard service={service} index={index} />
+                <ServiceCard service={service} layout={isGridLayout ? 'vertical' : 'horizontal'} />
               </View>
             ))}
           </View>

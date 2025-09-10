@@ -11,6 +11,7 @@ import { CategoryService } from '@/lib/category-service';
 import ServiceCard from '@/components/ServiceCard';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
 import { Colors } from '@/constants/Colors';
+import { getCurrentLocation, UserLocation } from '@/utils/location-utils';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -34,6 +35,8 @@ export default function NearbyScreen() {
   const [listLayout, setListLayout] = useState<'list' | 'grid'>('grid');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [hoveredService, setHoveredService] = useState<Service | null>(null);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   // Load services on mount
   useEffect(() => {
@@ -57,8 +60,27 @@ export default function NearbyScreen() {
     try {
       console.log('🔧 loadServices called - starting to fetch services');
       setIsLoading(true);
-      const fetchedServices = await ServiceService.getAllServices();
-      console.log('🔧 ServiceService.getAllServices() returned:', fetchedServices);
+      
+      // Get user location first
+      setIsLoadingLocation(true);
+      const location = await getCurrentLocation();
+      setUserLocation(location);
+      setIsLoadingLocation(false);
+      
+      let fetchedServices;
+      if (category) {
+        // If category is specified, get services by category
+        fetchedServices = await CategoryService.getServicesByCategory(category);
+      } else {
+        // Get nearby services with location-based sorting if location is available
+        if (location) {
+          fetchedServices = await ServiceService.getNearbyServicesSortedByLocation(location);
+        } else {
+          fetchedServices = await ServiceService.getNearbyServices();
+        }
+      }
+      
+      console.log('🔧 ServiceService returned:', fetchedServices);
       console.log('🔧 fetchedServices length:', fetchedServices?.length || 0);
       setServices(fetchedServices);
       setFilteredServices(fetchedServices);
@@ -67,6 +89,7 @@ export default function NearbyScreen() {
       console.error('❌ Error loading services:', error);
     } finally {
       setIsLoading(false);
+      setIsLoadingLocation(false);
       console.log('🔧 loadServices completed, isLoading set to false');
     }
   };
@@ -226,11 +249,13 @@ export default function NearbyScreen() {
   };
 
   const renderListView = () => {
-    if (isLoading) {
+    if (isLoading || isLoadingLocation) {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Loading nearby services...</Text>
+          <Text style={styles.loadingText}>
+            {isLoadingLocation ? 'Getting your location...' : 'Loading nearby services...'}
+          </Text>
         </View>
       );
     }
@@ -258,6 +283,7 @@ export default function NearbyScreen() {
               <ServiceCard
                 service={service}
                 style={listLayout === 'grid' ? { width: '100%' } : { width: '100%' }}
+                layout={listLayout === 'grid' ? 'vertical' : 'horizontal'}
                 disableFavorites={true} // Disable favorites for nearby services view
                 onPress={() => {
                   if (isWeb && width >= 1024) {

@@ -219,7 +219,7 @@ export default function ServicesScreen() {
           <View style={isGridLayout ? styles.servicesGrid : styles.servicesList}>
             {filteredServices.map((service: Service) => (
               <View key={service.id} style={isGridLayout ? styles.serviceCardContainer : styles.serviceListItem}>
-                <ServiceCard service={service} />
+                <ServiceCard service={service} layout={isGridLayout ? 'vertical' : 'horizontal'} />
               </View>
             ))}
           </View>

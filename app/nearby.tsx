@@ -19,6 +19,7 @@ import { Service } from '@/types/service';
 import { useAuth } from '@/contexts/AuthContext';
 import ServiceCard from '@/components/ServiceCard';
 import CategorySelectionModal from '@/components/CategorySelectionModal';
+import { getCurrentLocation, UserLocation } from '@/utils/location-utils';
 
 import { Colors } from '@/constants/Colors';
 
@@ -40,6 +41,8 @@ export default function NearbyScreen() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [hoveredService, setHoveredService] = useState<Service | null>(null);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
   const { category } = useLocalSearchParams<{ category?: string }>();
@@ -78,6 +81,13 @@ export default function NearbyScreen() {
   const loadNearbyServices = async () => {
     try {
       setIsLoading(true);
+      
+      // Get user location first
+      setIsLoadingLocation(true);
+      const location = await getCurrentLocation();
+      setUserLocation(location);
+      setIsLoadingLocation(false);
+      
       let services;
       
       if (category) {
@@ -85,8 +95,12 @@ export default function NearbyScreen() {
         const categoryServices = await CategoryService.getServicesByCategory(category);
         services = categoryServices;
       } else {
-        // Otherwise get all nearby services
-        services = await ServiceService.getNearbyServices();
+        // Get nearby services with location-based sorting if location is available
+        if (location) {
+          services = await ServiceService.getNearbyServicesSortedByLocation(location);
+        } else {
+          services = await ServiceService.getNearbyServices();
+        }
       }
       
       // Filter out services without coordinates and ensure they have required fields
@@ -98,6 +112,7 @@ export default function NearbyScreen() {
       console.error('Error loading nearby services:', error);
     } finally {
       setIsLoading(false);
+      setIsLoadingLocation(false);
     }
   };
 
@@ -273,11 +288,13 @@ export default function NearbyScreen() {
   };
 
   const renderListView = () => {
-    if (isLoading) {
+    if (isLoading || isLoadingLocation) {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Loading nearby services...</Text>
+          <Text style={styles.loadingText}>
+            {isLoadingLocation ? 'Getting your location...' : 'Loading nearby services...'}
+          </Text>
         </View>
       );
     }
@@ -305,6 +322,7 @@ export default function NearbyScreen() {
               <ServiceCard
                 service={service}
                 style={listLayout === 'grid' ? { width: '100%' } : { width: '100%' }}
+                layout={listLayout === 'grid' ? 'vertical' : 'horizontal'}
                 disableFavorites={true} // Disable favorites for nearby services view
                 onPress={() => {
                   if (isWeb && width >= 1024) {
