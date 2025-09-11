@@ -388,7 +388,7 @@ export default function ServiceProviderBankInfoScreen() {
               Important Notice
             </Text>
             <Text style={[styles.warningText, { color: '#E17E00' }]}>
-              You take full responsibility for all information provided. Once submitted, this information cannot be changed. Please ensure all details are accurate.
+              You take full responsibility for all information provided. Once submitted, this information cannot be changed. Please ensure all details are accurate. This banking information will be used for service payment payouts, so accuracy is crucial for receiving your earnings.
             </Text>
           </View>
         </View>
