@@ -13,6 +13,7 @@ export interface VerificationStatus {
 export class VerificationService {
   /**
    * Check if user can place orders
+   * TEMPORARY: eKYC verification disabled - all users can place orders
    */
   static async canPlaceOrders(): Promise<{ allowed: boolean; reason?: string; status?: string }> {
     try {
@@ -21,6 +22,12 @@ export class VerificationService {
         return { allowed: false, reason: 'User not authenticated' };
       }
 
+      // TEMPORARY: Allow all authenticated users to place orders
+      // eKYC verification requirement temporarily disabled
+      return { allowed: true };
+
+      // Original eKYC verification logic (commented out temporarily)
+      /*
       const verificationStatus = await EKYCService.getUserVerificationStatus();
       
       if (verificationStatus === 'verified') {
@@ -32,6 +39,7 @@ export class VerificationService {
         reason: 'eKYC verification required to place orders',
         status: verificationStatus
       };
+      */
     } catch (error) {
       console.error('Error checking order placement permission:', error);
       return { allowed: false, reason: 'Error checking verification status' };
@@ -40,6 +48,7 @@ export class VerificationService {
 
   /**
    * Check if user can become a service provider
+   * UPDATED: eKYC verification disabled - only bank info required
    */
   static async canBecomeServiceProvider(): Promise<{ allowed: boolean; reason?: string; status?: string }> {
     try {
@@ -48,6 +57,31 @@ export class VerificationService {
         return { allowed: false, reason: 'User not authenticated' };
       }
 
+      // UPDATED: Skip eKYC verification check - only check bank info
+      // Check if user has submitted bank info (no longer requires approval)
+      const { data: bankInfo, error: bankError } = await supabase
+        .from('service_provider_bank_info')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (bankError && bankError.code !== 'PGRST116') {
+        console.error('Error checking bank info:', bankError);
+        return { allowed: false, reason: 'Error checking bank info status' };
+      }
+
+      if (!bankInfo) {
+        return {
+          allowed: false,
+          reason: 'Bank information required to become a service provider',
+          status: 'bank_info_required'
+        };
+      }
+
+      return { allowed: true };
+
+      // Original logic (commented out temporarily)
+      /*
       const verificationStatus = await EKYCService.getUserVerificationStatus();
       
       if (verificationStatus !== 'verified') {
@@ -80,6 +114,7 @@ export class VerificationService {
       }
 
       return { allowed: true };
+      */
     } catch (error) {
       console.error('Error checking service provider permission:', error);
       return { allowed: false, reason: 'Error checking verification status' };
@@ -88,6 +123,7 @@ export class VerificationService {
 
   /**
    * Get comprehensive verification status
+   * UPDATED: eKYC verification disabled - all users can place orders
    */
   static async getVerificationStatus(): Promise<VerificationStatus> {
     try {
@@ -102,30 +138,36 @@ export class VerificationService {
         };
       }
 
+      // TEMPORARY: All authenticated users can place orders
+      const canPlaceOrdersResult = await this.canPlaceOrders();
+      const canBecomeServiceProviderResult = await this.canBecomeServiceProvider();
+
+      // For backward compatibility, still get eKYC status but don't use it for restrictions
       const status = await EKYCService.getUserVerificationStatus();
       const isVerified = status === 'verified';
 
       return {
         isVerified,
         status: status as any,
-        canPlaceOrders: isVerified,
-        canBecomeServiceProvider: isVerified,
-        requiresVerification: !isVerified
+        canPlaceOrders: canPlaceOrdersResult.allowed,
+        canBecomeServiceProvider: canBecomeServiceProviderResult.allowed,
+        requiresVerification: false // TEMPORARY: No verification required for orders
       };
     } catch (error) {
       console.error('Error getting verification status:', error);
       return {
         isVerified: false,
         status: 'not_started',
-        canPlaceOrders: false,
+        canPlaceOrders: true, // TEMPORARY: Allow orders even on error
         canBecomeServiceProvider: false,
-        requiresVerification: true
+        requiresVerification: false
       };
     }
   }
 
   /**
    * Show verification required modal/alert
+   * UPDATED: Only for service provider registration now
    */
   static showVerificationRequiredAlert(
     action: 'place_order' | 'become_service_provider',
@@ -133,11 +175,13 @@ export class VerificationService {
   ) {
     const { Alert } = require('react-native');
     
-    const actionText = action === 'place_order' ? 'place orders' : 'become a service provider';
-    const title = 'Verification Required';
-    const message = action === 'place_order' 
-      ? `You need to complete eKYC verification to ${actionText}. This helps us ensure a safe and secure platform for all users.`
-      : `You need to complete eKYC verification AND upload an approved bank statement to ${actionText}. This helps us ensure a safe and secure platform for all users.`;
+    if (action === 'place_order') {
+      // TEMPORARY: No verification required for placing orders
+      return;
+    }
+
+    const title = 'Bank Information Required';
+    const message = 'You need to provide your bank information to become a service provider. This helps us process payments securely.';
 
     Alert.alert(
       title,
@@ -148,7 +192,7 @@ export class VerificationService {
           style: 'cancel'
         },
         {
-          text: 'Get Verified',
+          text: 'Provide Bank Info',
           onPress: onVerifyPress
         }
       ]

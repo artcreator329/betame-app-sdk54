@@ -9,6 +9,8 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter, useSegments } from 'expo-router';
+import { iosBadgeService } from '@/lib/ios-badge-service';
+import { useAppStateIOSBadge } from '@/hooks/useAppStateIOSBadge';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -42,6 +44,14 @@ function DesktopSidebar() {
   
   // Combine notification and message unread counts
   const totalBadgeCount = unreadCount + totalUnreadCount;
+  
+  // Update iOS badge count whenever total badge count changes
+  useEffect(() => {
+    iosBadgeService.updateBadgeCount(totalBadgeCount);
+  }, [totalBadgeCount]);
+  
+  // Handle app state changes for iOS badge management
+  useAppStateIOSBadge(totalBadgeCount);
 
   const NotificationBadge = ({ count }: { count: number }) => {
     if (count === 0) return null;

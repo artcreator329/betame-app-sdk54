@@ -97,12 +97,15 @@ class OrderManagementService {
     service_description?: string;
   }): Promise<Order | null> {
     try {
-      // Check if buyer is verified before creating order
+      // TEMPORARY: eKYC verification disabled - all users can place orders
+      // Check if buyer is verified before creating order (commented out temporarily)
+      /*
       const canPlaceOrder = await VerificationService.canPlaceOrders();
       if (!canPlaceOrder.allowed) {
         console.error('Order creation blocked: User not verified');
         throw new Error('eKYC verification required to place orders');
       }
+      */
 
       const total_amount = orderData.amount + (orderData.platform_fee || 0);
       

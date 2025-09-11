@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { audioSessionManager } from '@/lib/audio-session-manager';
 import { supabase } from '@/lib/supabase';
 import { authService } from '@/lib/auth-service';
+import { VersionDisplay } from '@/components/VersionDisplay';
 
 // Only import BackgroundVideoPlayer for iOS
 const BackgroundVideoPlayer = Platform.OS === 'ios' 
@@ -255,6 +256,13 @@ export default function ResetPasswordScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+
+              <VersionDisplay 
+                showBuildNumber={false}
+                showDevelopmentBadge={true}
+                style={styles.versionContainer}
+                textStyle={styles.versionText}
+              />
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -334,6 +342,13 @@ export default function ResetPasswordScreen() {
                   <Text style={styles.resetButtonText}>Update Password</Text>
                 )}
               </TouchableOpacity>
+
+              <VersionDisplay 
+                showBuildNumber={false}
+                showDevelopmentBadge={true}
+                style={styles.versionContainer}
+                textStyle={styles.versionText}
+              />
             </View>
           </View>
         </ScrollView>
@@ -499,5 +514,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  versionContainer: {
+    marginTop: 30,
+    marginBottom: 10,
+  },
+  versionText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

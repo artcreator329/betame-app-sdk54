@@ -4,6 +4,7 @@ import { notificationService } from '@/lib/notification-service';
 import { notificationScheduler } from '@/lib/notification-scheduler';
 import { jobNotificationScheduler } from '@/lib/job-notification-scheduler';
 import { pushNotificationService } from '@/lib/push-notification-service';
+import { iosBadgeService } from '@/lib/ios-badge-service';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -29,6 +30,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         if (isActive) {
           setNotifications([]);
           setUnreadCount(0);
+          
+          // Clear iOS badge when user logs out
+          iosBadgeService.clearBadge();
         }
         // Ensure realtime channel is cleaned up when user logs out
         try {
@@ -64,7 +68,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         if (isActive) {
           console.log('🔍 NotificationContext: Received notifications:', savedNotifications.length);
           setNotifications(savedNotifications);
-          setUnreadCount(savedNotifications.filter(n => !n.isRead).length);
+          const newUnreadCount = savedNotifications.filter(n => !n.isRead).length;
+          setUnreadCount(newUnreadCount);
+          
+          // Update iOS badge count
+          iosBadgeService.updateBadgeCount(newUnreadCount);
         }
 
         // Subscribe to updates
@@ -73,7 +81,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             console.log('🔍 NotificationContext: Received updated notifications:', updatedNotifications.length);
             // Force React to detect the change by creating a new array reference
             setNotifications([...updatedNotifications]);
-            setUnreadCount(updatedNotifications.filter(n => !n.isRead).length);
+            const newUnreadCount = updatedNotifications.filter(n => !n.isRead).length;
+            setUnreadCount(newUnreadCount);
+            
+            // Update iOS badge count
+            iosBadgeService.updateBadgeCount(newUnreadCount);
           }
         });
         
@@ -87,7 +99,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           const cachedNotifications = await notificationService.getNotifications();
           if (isActive) {
             setNotifications(cachedNotifications);
-            setUnreadCount(cachedNotifications.filter(n => !n.isRead).length);
+            const newUnreadCount = cachedNotifications.filter(n => !n.isRead).length;
+            setUnreadCount(newUnreadCount);
+            
+            // Update iOS badge count
+            iosBadgeService.updateBadgeCount(newUnreadCount);
           }
         } catch (cacheError) {
           console.error('❌ NotificationContext: Error getting cached notifications:', cacheError);
@@ -131,6 +147,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     
     // Force a re-render by updating the state with a new reference
     setNotifications(prev => [...prev]);
+    
+    // Clear iOS badge since all notifications are now read
+    iosBadgeService.clearBadge();
   };
 
   const clearNotification = async (notificationId: string) => {
@@ -145,6 +164,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     
     // Force a re-render by updating the state with a new reference
     setNotifications(prev => [...prev]);
+    
+    // Clear iOS badge since all notifications are cleared
+    iosBadgeService.clearBadge();
   };
 
   const refreshNotifications = async () => {

@@ -4,6 +4,9 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Import version update utility
+const { incrementVersion } = require('./update-version.js');
+
   console.log('🚀 Starting Android AAB build for BetaMe...');
   console.log('📱 Developer Account: betame.developer@gmail.com');
   console.log('📦 Package: com.betame.app');
@@ -101,21 +104,25 @@ if (keystorePropertiesFile.exists()) {
 }
 
 try {
-  console.log('📋 Step 1: Installing dependencies...');
+  console.log('📋 Step 1: Updating version numbers...');
+  execSync('node scripts/update-version.js android', { stdio: 'inherit' });
+  console.log('✅ Version numbers updated\n');
+
+  console.log('📋 Step 2: Installing dependencies...');
   execSync('npm install', { stdio: 'inherit' });
   console.log('✅ Dependencies installed\n');
 
   // Check existing keystore
   checkExistingKeystore();
 
-  console.log('🔧 Step 2: Prebuilding Android project...');
+  console.log('🔧 Step 3: Prebuilding Android project...');
   execSync('npx expo prebuild --platform android --clean', { stdio: 'inherit' });
   console.log('✅ Android project prebuilt\n');
 
   // Fix signing configuration after prebuild
   fixSigningConfiguration();
 
-  console.log('🏗️  Step 3: Building Android AAB...');
+  console.log('🏗️  Step 4: Building Android AAB...');
   
   // Change to android directory
   process.chdir(androidDir);

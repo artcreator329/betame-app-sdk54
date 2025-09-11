@@ -2,7 +2,7 @@
   "expo": {
     "name": "BetaMe",
     "slug": "betame",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "betame",
@@ -37,7 +37,7 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-        "buildNumber": "12",
+      "buildNumber": "14",
       "backgroundColor": "#0f1419",
       "appleTeamId": "T72JDH8ZL6"
     },
@@ -48,7 +48,7 @@
         }
       },
       "package": "com.betame.app",
-      "versionCode": 18,
+      "versionCode": 20,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0f1419"

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { notificationService } from '@/lib/notification-service';
 import { adminService } from '@/lib/admin-service';
 import { WalletService } from '@/lib/wallet-service';
+import { NotificationPermissionService } from '@/lib/notification-permission-service';
 import { Linking } from 'react-native';
 
 
@@ -67,6 +68,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Ensure wallet exists for the user
       console.log('🔄 AuthContext: Ensuring wallet exists for user:', userId);
       await WalletService.ensureWalletExists(userId);
+      
+      // Check notification permissions after a short delay to let the app settle
+      setTimeout(async () => {
+        try {
+          console.log('🔔 AuthContext: Checking notification permissions for user');
+          await NotificationPermissionService.checkAndPromptIfNeeded();
+        } catch (error) {
+          console.error('❌ AuthContext: Error checking notification permissions:', error);
+        }
+      }, 3000); // 3 second delay to let the app fully load
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }

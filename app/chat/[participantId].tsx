@@ -39,6 +39,7 @@ import { JobProgressMonitor } from '../../components/JobProgressMonitor';
 import { QuotedMessage } from '../../components/QuotedMessage';
 import { LocationShareModal } from '../../components/LocationShareModal';
 import { LocationRequestModal } from '../../components/LocationRequestModal';
+import EmojiPicker from '../../components/EmojiPicker';
 import { notificationService } from '@/lib/notification-service';
 import { formatMalaysianTime, formatMalaysianDate } from '@/lib/malaysian-time-utils';
 
@@ -139,6 +140,19 @@ export default function ChatScreen() {
     senderName: string;
     messageType: 'text' | 'service' | 'offer' | 'job_offer';
   } | null>(null);
+
+  // Emoji picker state
+  const [emojiPickerVisible, setEmojiPickerVisible] = useState(false);
+
+  // Handle emoji selection
+  const handleEmojiSelect = (emoji: string) => {
+    setMessage(prev => prev + emoji);
+  };
+
+  // Handle emoji button press
+  const handleEmojiButtonPress = () => {
+    setEmojiPickerVisible(true);
+  };
 
 
   const scrollViewRef = useRef<ScrollView>(null);
@@ -2029,7 +2043,10 @@ export default function ChatScreen() {
                     multiline
                     maxLength={500}
                   />
-                  <TouchableOpacity style={styles.emojiButton}>
+                  <TouchableOpacity 
+                    style={styles.emojiButton}
+                    onPress={handleEmojiButtonPress}
+                  >
                     <Smile size={24} color="#8E8E93" />
                   </TouchableOpacity>
                 </View>
@@ -2351,6 +2368,13 @@ export default function ChatScreen() {
           chatId: chatId || undefined,
           profileContext: 'chat'
         }}
+      />
+
+      {/* Emoji Picker Modal */}
+      <EmojiPicker
+        visible={emojiPickerVisible}
+        onClose={() => setEmojiPickerVisible(false)}
+        onEmojiSelect={handleEmojiSelect}
       />
 
     </SafeAreaView>

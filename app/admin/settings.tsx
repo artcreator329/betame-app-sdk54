@@ -29,6 +29,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminService } from '@/lib/admin-service';
 import { Colors } from '@/constants/Colors';
+import { getDisplayVersion, getFullVersion } from '@/utils/version-utils';
 
 interface SystemSettings {
   general: {
@@ -135,7 +136,7 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<SystemSettings>({
     general: {
       appName: 'BetaMe',
-      appVersion: '1.0.0',
+      appVersion: getDisplayVersion().replace('BetaMe v', ''), // Extract just the version number
       maintenanceMode: false,
       allowRegistration: true,
     },

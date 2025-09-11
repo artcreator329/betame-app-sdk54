@@ -6,6 +6,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "prebuildCommand": "node scripts/pre-build-hook.js",
       "ios": {
         "resourceClass": "m-medium",
         "buildConfiguration": "Debug"
@@ -13,12 +14,14 @@
     },
     "preview": {
       "distribution": "internal",
+      "prebuildCommand": "node scripts/pre-build-hook.js",
       "ios": {
         "resourceClass": "m-medium",
         "buildConfiguration": "Release"
       }
     },
     "production": {
+      "prebuildCommand": "node scripts/pre-build-hook.js",
       "ios": {
         "resourceClass": "m-medium",
         "buildConfiguration": "Release"

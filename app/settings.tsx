@@ -16,11 +16,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Heart, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Camera, Trophy, Wallet, Sparkles, Building2 } from 'lucide-react-native';
+import { ArrowLeft, Heart, Share as ShareIcon, Settings as SettingsIcon, User, CircleHelp as HelpCircle, Users, Info, LogOut, Bell, Shield, CreditCard, Globe, Moon, FileText, MessageCircle, Trophy, Wallet, Sparkles, Building2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme, useColors } from '@/contexts/ThemeContext';
 import DesktopWrapper from '@/components/DesktopWrapper';
+import { VersionDisplay } from '@/components/VersionDisplay';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -219,9 +220,6 @@ export default function SettingsScreen() {
                 <User size={40} color={colors.text.secondary} />
               </View>
             )}
-            <TouchableOpacity style={[styles.cameraButton, { backgroundColor: colors.primary.dark, borderColor: colors.background.tertiary }]}>
-              <Camera size={16} color="white" />
-            </TouchableOpacity>
           </TouchableOpacity>
           <View style={styles.profileInfo}>
             <Text style={[styles.userName, { color: colors.text.primary }]}>
@@ -371,7 +369,10 @@ export default function SettingsScreen() {
 
         {/* App Version */}
         <View style={styles.versionContainer}>
-          <Text style={[styles.versionText, { color: colors.text.secondary }]}>BetaMe v1.0.0</Text>
+          <VersionDisplay 
+            showBuildNumber={true}
+            showDevelopmentBadge={true}
+          />
           <Text style={[styles.copyrightText, { color: colors.text.secondary }]}>© 2025 Betame Sdn. Bhd.</Text>
         </View>
       </View>
@@ -451,17 +452,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  cameraButton: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
   },
   profileInfo: {
     flex: 1,
@@ -564,7 +554,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Platform.OS === 'web' ? 'League Spartan, system-ui, -apple-system, sans-serif' : 'System',
     fontWeight: '600',
+    marginBottom: 2,
+  },
+  buildText: {
+    fontSize: 12,
+    fontFamily: Platform.OS === 'web' ? 'League Spartan, system-ui, -apple-system, sans-serif' : 'System',
+    fontWeight: '400',
     marginBottom: 4,
+    opacity: 0.8,
   },
   copyrightText: {
     fontSize: 12,

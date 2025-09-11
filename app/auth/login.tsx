@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { audioSessionManager } from '@/lib/audio-session-manager';
 import { supabase } from '@/lib/supabase';
 import { useReferral } from '@/contexts/ReferralContext';
+import { VersionDisplay } from '@/components/VersionDisplay';
 
 // Import BackgroundVideoPlayer for iOS with improved stability
 const BackgroundVideoPlayer = Platform.OS === 'ios' 
@@ -468,7 +469,13 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.bottomSection}>
-             </View>
+              <VersionDisplay 
+                showBuildNumber={false}
+                showDevelopmentBadge={true}
+                style={styles.versionContainer}
+                textStyle={styles.versionText}
+              />
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -772,5 +779,17 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
+  },
+  versionContainer: {
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  versionText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

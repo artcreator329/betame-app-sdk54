@@ -34,6 +34,8 @@ import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount';
 import { useColors, useTheme } from '@/contexts/ThemeContext';
 import { imageCacheService } from '@/lib/image-cache-service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import NotificationPermissionBanner from '@/components/NotificationPermissionBanner';
+import { useNotificationPermissions } from '@/hooks/useNotificationPermissions';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -137,6 +139,7 @@ export default function HomeScreen() {
   const colors = useColors();
   const { isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
+  const { hasPermission: hasNotificationPermission } = useNotificationPermissions();
   
   // Auto-slide functionality
   const bannerScrollViewRef = useRef<ScrollView>(null);
@@ -413,6 +416,11 @@ export default function HomeScreen() {
             onSearch={(query) => router.push(`/search?q=${encodeURIComponent(query)}`)}
           />
         </View>
+
+        {/* Notification Permission Banner */}
+        {user && !hasNotificationPermission && (
+          <NotificationPermissionBanner />
+        )}
 
 
 
