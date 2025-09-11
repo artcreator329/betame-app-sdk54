@@ -11,14 +11,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { authService } from '@/lib/auth-service';
-import { supabase } from '@/lib/supabase';
-import { VerificationService } from '@/lib/verification-service';
 
 export default function BecomeServiceProviderScreen() {
   const router = useRouter();
-  const { user, userProfile, refreshProfile } = useAuth();
-  const [isBecomingServiceProvider, setIsBecomingServiceProvider] = useState(false);
+  const { user, userProfile } = useAuth();
 
   // Check if user is authenticated
   useEffect(() => {
@@ -41,66 +37,10 @@ export default function BecomeServiceProviderScreen() {
   //   // ... subscription code removed
   // }, [user]);
 
-  // Function to register user as service provider
-  const handleBecomeServiceProvider = async () => {
+  // Function to navigate to bank info page
+  const handleBecomeServiceProvider = () => {
     if (!user) return;
-
-    // Check verification status before allowing service provider registration
-    const canBecomeServiceProvider = await VerificationService.checkVerificationForAction(
-      'become_service_provider',
-      () => {
-        router.push('/ekyc-verification');
-      }
-    );
-
-    if (!canBecomeServiceProvider) {
-      return; // Verification check will show appropriate alert
-    }
-
-    setIsBecomingServiceProvider(true);
-    try {
-      const { data, error } = await authService.becomeServiceProvider();
-      
-      if (error) {
-        throw error;
-      }
-
-      // Refresh the user profile
-      await refreshProfile();
-
-      Alert.alert(
-        'Success!',
-        'You are now registered as a service provider. You can start creating service listings!',
-        [
-          { text: 'OK', onPress: () => router.push('/create-service-listing') }
-        ]
-      );
-    } catch (error: any) {
-      console.error('Error becoming service provider:', error);
-      
-      // Show specific error messages based on the error
-      let errorMessage = 'Failed to register as service provider. Please try again.';
-      
-      if (error?.message) {
-        if (error.message.includes('eKYC verification is required')) {
-          errorMessage = 'eKYC verification is required to become a service provider. Please complete your eKYC verification first.';
-        } else if (error.message.includes('Approved bank statement is required')) {
-          errorMessage = 'Approved bank statement is required to become a service provider. Please upload and get your bank statement approved first.';
-        } else if (error.message.includes('User not authenticated')) {
-          errorMessage = 'You must be signed in to become a service provider.';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      Alert.alert(
-        'Error',
-        errorMessage,
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsBecomingServiceProvider(false);
-    }
+    router.push('/service-provider-bank-info');
   };
 
   // Don't render the main content if user is not authenticated
@@ -133,7 +73,7 @@ export default function BecomeServiceProviderScreen() {
       <View style={styles.content}>
         {userProfile?.is_service_provider ? (
           <>
-            <Text style={styles.title}>You're a verified service provider!</Text>
+            <Text style={styles.title}>You're a service provider!</Text>
             <Text style={styles.subtitle}>Start listing your services/jobs!</Text>
 
             {/* Action Buttons */}
@@ -159,46 +99,6 @@ export default function BecomeServiceProviderScreen() {
               </TouchableOpacity>
             </View>
           </>
-        ) : userProfile?.verification_status === 'in_progress' ? (
-          <>
-            <Text style={styles.title}>Verification in Progress</Text>
-            <Text style={styles.subtitle}>Your eKYC verification is currently being processed. We'll notify you once it's complete!</Text>
-            
-            <View style={styles.statusContainer}>
-              <ActivityIndicator size="large" color="#007AFF" />
-              <Text style={styles.statusText}>Processing your verification...</Text>
-              <Text style={styles.statusSubtext}>This typically takes 1-3 business days</Text>
-            </View>
-          </>
-        ) : userProfile?.verification_status === 'verified' ? (
-          <>
-            <Text style={styles.title}>Verification Complete!</Text>
-            <Text style={styles.subtitle}>Your eKYC verification has been approved. Complete your service provider registration!</Text>
-            
-            <TouchableOpacity 
-              style={[styles.becomeServiceProviderButton, isBecomingServiceProvider && styles.disabledButton]}
-              onPress={handleBecomeServiceProvider}
-              disabled={isBecomingServiceProvider}
-            >
-              {isBecomingServiceProvider ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.becomeServiceProviderButtonText}>Complete Registration</Text>
-              )}
-            </TouchableOpacity>
-          </>
-        ) : userProfile?.verification_status === 'rejected' ? (
-          <>
-            <Text style={styles.title}>Verification Rejected</Text>
-            <Text style={styles.subtitle}>Unfortunately, your eKYC verification was not approved. Please try again with updated documents.</Text>
-            
-            <TouchableOpacity 
-              style={styles.becomeServiceProviderButton}
-              onPress={() => router.push('/ekyc-verification')}
-            >
-              <Text style={styles.becomeServiceProviderButtonText}>Retry Verification</Text>
-            </TouchableOpacity>
-          </>
         ) : (
           <>
             <Text style={styles.title}>Become a Service Provider</Text>
@@ -212,15 +112,10 @@ export default function BecomeServiceProviderScreen() {
             </View>
 
             <TouchableOpacity 
-              style={[styles.becomeServiceProviderButton, isBecomingServiceProvider && styles.disabledButton]}
-              onPress={() => router.push('/ekyc-verification')}
-              disabled={isBecomingServiceProvider}
+              style={styles.becomeServiceProviderButton}
+              onPress={handleBecomeServiceProvider}
             >
-              {isBecomingServiceProvider ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.becomeServiceProviderButtonText}>Start eKYC Verification</Text>
-              )}
+              <Text style={styles.becomeServiceProviderButtonText}>Complete Banking Information</Text>
             </TouchableOpacity>
           </>
         )}

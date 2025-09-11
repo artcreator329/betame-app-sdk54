@@ -403,6 +403,22 @@ class AuthService {
         console.error('Error fetching user profile data:', userProfileError);
       }
 
+      // Check if user has bank info as an additional verification of service provider status
+      let hasBankInfo = false;
+      try {
+        const { data: bankInfo, error: bankError } = await supabase
+          .from('service_provider_bank_info')
+          .select('id')
+          .eq('user_id', user)
+          .eq('responsibility_acknowledged', true)
+          .eq('is_immutable', true)
+          .single();
+        
+        hasBankInfo = !!bankInfo && !bankError;
+      } catch (error) {
+        console.log('Bank info check failed:', error);
+      }
+
       // Merge the data, prioritizing profiles table but falling back to user_profiles
       const mergedProfile = {
         // Start with profile data (if exists)
@@ -421,7 +437,12 @@ class AuthService {
           updated_at: userProfileData?.updated_at,
         }),
         // Get is_service_provider from profiles table where we added it
-        is_service_provider: profileData?.is_service_provider || userProfileData?.is_service_provider || userProfileData?.is_seller || false,
+        // Enhanced logic with multiple fallback checks including bank info
+        is_service_provider: profileData?.is_service_provider || 
+                            userProfileData?.is_service_provider || 
+                            userProfileData?.is_seller || 
+                            hasBankInfo || // Direct bank info check as fallback
+                            false,
         // Only take service provider-specific fields from user_profiles
         service_provider_badge: userProfileData?.service_provider_badge || userProfileData?.seller_badge,
         service_provider_badge_subtitle: userProfileData?.service_provider_badge_subtitle || userProfileData?.seller_badge_subtitle,
@@ -561,51 +582,30 @@ class AuthService {
         return { data: null, error: { message: 'User not authenticated' } };
       }
 
-      // Check if user has completed eKYC verification
-      const { data: userProfile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('verification_status')
+      // UPDATED: Check if user has submitted bank information (no eKYC required)
+      const { data: bankInfo, error: bankError } = await supabase
+        .from('service_provider_bank_info')
+        .select('id, responsibility_acknowledged')
         .eq('user_id', user.id)
-        .single();
-
-      if (profileError) {
-        console.error('❌ AuthService: Error fetching user profile:', profileError);
-        return { data: null, error: { message: 'Failed to verify user profile' } };
-      }
-
-      if (userProfile.verification_status !== 'verified') {
-        return { 
-          data: null, 
-          error: { 
-            message: 'eKYC verification is required to become a service provider. Please complete your eKYC verification first.',
-            status: 403
-          } 
-        };
-      }
-
-      // Check if user has approved bank statement
-      const { data: bankStatement, error: bankError } = await supabase
-        .from('bank_statements')
-        .select('status')
-        .eq('user_id', user.id)
-        .eq('status', 'approved')
         .single();
 
       if (bankError && bankError.code !== 'PGRST116') {
-        console.error('❌ AuthService: Error checking bank statement:', bankError);
-        return { data: null, error: { message: 'Failed to verify bank statement status' } };
+        console.error('❌ AuthService: Error checking bank info:', bankError);
+        return { data: null, error: { message: 'Failed to verify bank information status' } };
       }
 
-      if (!bankStatement) {
+      if (!bankInfo || !bankInfo.responsibility_acknowledged) {
         return { 
           data: null, 
           error: { 
-            message: 'Approved bank statement is required to become a service provider. Please upload and get your bank statement approved first.',
+            message: 'Bank information is required to become a service provider. Please provide your bank information first.',
             status: 403
           } 
         };
       }
 
+      // Update both profiles and user_profiles tables to ensure consistency
+      
       // Try to update existing user_profiles record first
       const { error: updateError } = await supabase
         .from('user_profiles')
@@ -627,11 +627,33 @@ class AuthService {
           console.error('❌ AuthService: Error creating service provider profile:', insertError);
           return { data: null, error: insertError };
         }
-
-        return { data, error: null };
       } else if (updateError) {
         console.error('❌ AuthService: Error updating service provider status:', updateError);
         return { data: null, error: updateError };
+      }
+
+      // Also update profiles table if it exists
+      const { error: profilesUpdateError } = await supabase
+        .from('profiles')
+        .update({ is_service_provider: true })
+        .eq('id', user.id);
+
+      // If profiles record doesn't exist, create it
+      if (profilesUpdateError && profilesUpdateError.code === 'PGRST116') {
+        const { error: profilesInsertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            is_service_provider: true,
+          });
+
+        if (profilesInsertError) {
+          console.log('❌ AuthService: Could not create profiles record (may not be needed):', profilesInsertError);
+          // Don't fail the whole operation if profiles table update fails
+        }
+      } else if (profilesUpdateError) {
+        console.log('❌ AuthService: Could not update profiles table (may not be needed):', profilesUpdateError);
+        // Don't fail the whole operation if profiles table update fails
       }
 
       // Update was successful, fetch the updated profile

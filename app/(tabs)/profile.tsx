@@ -623,119 +623,47 @@ export default function ProfileScreen() {
               )}
             </View>
             
-            {/* Show service provider status */}
-            {userProfile?.is_service_provider ? (
-              <View style={[styles.verifiedServiceProviderContainer, { backgroundColor: colors.background.secondary }]}>
-                <Text style={[styles.verifiedServiceProviderText, { color: colors.text.primary }]}>
-                  You are a Verified Service Provider
-                </Text>
-              </View>
-            ) : (
+            {/* Show become service provider button only if user is not already a service provider */}
+            {!userProfile?.is_service_provider && (
               <TouchableOpacity
+                activeOpacity={0.7}
+                disabled={false}
                 style={[
                   styles.becomeServiceProviderButton, 
                   { 
-                    backgroundColor: userProfile?.is_service_provider 
-                      ? colors.status.success 
-                      : bankStatement?.status === 'pending' 
-                        ? colors.text.secondary 
-                        : colors.primary.main,
-                    opacity: userProfile?.is_service_provider 
-                      ? 1 
-                      : bankStatement?.status === 'pending' 
-                        ? 0.7 
-                        : 1
+                    backgroundColor: colors.primary.main,
+                    opacity: 1
                   }
                 ]}
-                onPress={async () => {
-                  try {
-                    // If user is already a service provider, show success message
-                    if (userProfile?.is_service_provider) {
-                      Alert.alert(
-                        'Service Provider Verified',
-                        'You are already a verified service provider. You can now create service listings.',
-                        [{ text: 'OK' }]
-                      );
-                      return;
-                    }
+                onPress={() => {
+                  console.log('🔄 Become Service Provider button pressed');
+                  console.log('User:', user?.id);
+                  console.log('Is Service Provider:', userProfile?.is_service_provider);
 
-                    // If bank statement is pending, show status message
-                    if (bankStatement?.status === 'pending') {
-                      Alert.alert(
-                        'Bank Statement Under Review',
-                        'Your bank statement has been submitted and is currently being reviewed. We will notify you once the review is complete.',
-                        [{ text: 'OK' }]
-                      );
-                      return;
-                    }
-
-                    // Check if user is logged in
-                    if (!user) {
-                      Alert.alert(
-                        'Sign In Required',
-                        'You need to sign in to become a service provider. Would you like to sign in now?',
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Sign In', onPress: () => router.push('/auth/login') }
-                        ]
-                      );
-                      return;
-                    }
-
-                    // Check eKYC status
-                    if (!ekycSubmission) {
-                      Alert.alert(
-                        'eKYC Verification Required',
-                        'You must complete eKYC verification before becoming a service provider. This ensures your identity is verified.',
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Complete eKYC', onPress: () => router.push('/ekyc-verification') }
-                        ]
-                      );
-                      return;
-                    }
-
-                    if (ekycSubmission.status !== 'approved') {
-                      Alert.alert(
-                        'eKYC Verification Pending',
-                        `Your eKYC verification is currently ${ekycSubmission.status}. You must have an approved eKYC before uploading bank statements.`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Check Status', onPress: () => router.push('/ekyc-verification') }
-                        ]
-                      );
-                      return;
-                    }
-
-                    // eKYC is approved, proceed to bank upload
-                    router.push('/bank-upload');
-                  } catch (error) {
-                    console.error('Error checking eKYC status:', error);
+                  // Check if user is logged in
+                  if (!user) {
+                    console.log('User not logged in, showing login alert');
                     Alert.alert(
-                      'Error',
-                      'Failed to verify your eKYC status. Please try again.',
-                      [{ text: 'OK' }]
+                      'Sign In Required',
+                      'You need to sign in to become a service provider. Would you like to sign in now?',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Sign In', onPress: () => router.push('/auth/login') }
+                      ]
                     );
+                    return;
                   }
+
+                  // Navigate to bank information form
+                  console.log('Navigating to service-provider-bank-info');
+                  router.push('/service-provider-bank-info');
                 }}
               >
                 <Text style={[styles.becomeServiceProviderButtonText, { color: colors.text.white }]}>
-                  {userProfile?.is_service_provider 
-                    ? 'Verified Service Provider' 
-                    : bankStatement?.status === 'pending' 
-                      ? 'In Review' 
-                      : 'Become a Service Provider'
-                  }
+                  Become a Service Provider
                 </Text>
                 <Text style={[styles.becomeServiceProviderButtonSubtext, { color: colors.text.white }]}>
-                  {userProfile?.is_service_provider 
-                    ? 'You can now create service listings' 
-                    : bankStatement?.status === 'pending' 
-                      ? 'Your bank statement is being reviewed' 
-                      : ekycSubmission?.status === 'approved' 
-                        ? 'Upload bank statement to verify your account' 
-                        : 'Complete eKYC verification first'
-                  }
+                  Complete banking information to get started
                 </Text>
               </TouchableOpacity>
             )}
@@ -1045,7 +973,13 @@ export default function ProfileScreen() {
   };
 
   const renderVerificationTick = () => {
-    if (!userProfile?.verification_status) return null;
+    // Always show verification tick, determine status based on service provider status
+    // Multiple fallback checks to ensure proper verification status
+    const isVerified = userProfile?.is_service_provider || 
+                      userProfile?.is_seller || // Legacy fallback
+                      bankStatement?.status === 'approved' || // Bank statement fallback
+                      false;
+    const displayStatus = isVerified ? 'verified' : 'not_verified';
 
     const getTickColor = (status: string) => {
       // Check if user has bank statement (service provider)
@@ -1072,13 +1006,13 @@ export default function ProfileScreen() {
         case 'rejected':
           return <XCircle size={16} color={getTickColor(status)} />;
         default:
-          return <CheckCircle size={16} color={getTickColor(status)} />;
+          return <AlertCircle size={16} color={getTickColor(status)} />;
       }
     };
 
+    const hasServiceListing = services.length > 0;
+
     const getTooltipText = (status: string) => {
-      const hasServiceListing = services.length > 0;
-      
       switch (status) {
         case 'verified':
           return hasServiceListing ? 'Verified Service Provider' : 'Verified User';
@@ -1087,7 +1021,7 @@ export default function ProfileScreen() {
         case 'rejected':
           return 'Verification Rejected';
         default:
-          return 'Verification Not Started';
+          return 'Not Verified';
       }
     };
 
@@ -1097,19 +1031,48 @@ export default function ProfileScreen() {
         onPress={() => {
           Alert.alert(
             'Verification Status',
-            getTooltipText(userProfile.verification_status),
+            getTooltipText(displayStatus),
             [{ text: 'OK' }]
           );
         }}
         activeOpacity={0.7}
       >
-        {getTickIcon(userProfile.verification_status)}
+        {getTickIcon(displayStatus)}
       </TouchableOpacity>
     );
   };
 
   const renderVerificationStatus = () => {
-    if (!userProfile?.verification_status) return null;
+    // Determine verification status based on service provider status (bank info completion)
+    // instead of eKYC verification_status
+    // Multiple fallback checks to ensure proper verification status
+    const isVerified = userProfile?.is_service_provider || 
+                      userProfile?.is_seller || // Legacy fallback
+                      bankStatement?.status === 'approved' || // Bank statement fallback
+                      false;
+    const displayStatus = isVerified ? 'verified' : 'not_verified';
+    
+    // Debug logging for troubleshooting
+    console.log('🔍 Profile verification debug:', {
+      userEmail: user?.email,
+      isServiceProvider: userProfile?.is_service_provider,
+      isVerified,
+      displayStatus,
+      userProfileKeys: userProfile ? Object.keys(userProfile) : 'No userProfile',
+      fullUserProfile: userProfile
+    });
+    
+    // Additional debugging for specific user
+    if (user?.email === '0bneon1s23@mrotzis.com') {
+      console.log('🚨 SPECIFIC USER DEBUG - 0bneon1s23@mrotzis.com:', {
+        userExists: !!user,
+        userProfileExists: !!userProfile,
+        isServiceProvider: userProfile?.is_service_provider,
+        isServiceProviderType: typeof userProfile?.is_service_provider,
+        verificationStatus: userProfile?.verification_status,
+        allProfileData: JSON.stringify(userProfile, null, 2)
+      });
+    }
 
     const getStatusIcon = (status: string) => {
       switch (status) {
@@ -1133,7 +1096,7 @@ export default function ProfileScreen() {
         case 'rejected':
           return 'Verification Rejected';
         default:
-          return 'Verification Not Started';
+          return 'Not Verified';
       }
     };
 
@@ -1153,9 +1116,9 @@ export default function ProfileScreen() {
     return (
       <View style={[styles.verificationStatusContainer, { backgroundColor: colors.background.secondary }]}>
         <View style={styles.verificationStatusContent}>
-          {getStatusIcon(userProfile.verification_status)}
-          <Text style={[styles.verificationStatusText, { color: getStatusColor(userProfile.verification_status) }]}>
-            {getStatusTitle(userProfile.verification_status)}
+          {getStatusIcon(displayStatus)}
+          <Text style={[styles.verificationStatusText, { color: getStatusColor(displayStatus) }]}>
+            {getStatusTitle(displayStatus)}
           </Text>
         </View>
       </View>
@@ -1592,38 +1555,6 @@ export default function ProfileScreen() {
 
                 
 
-                {/* eKYC Verification Prompt - Show different states based on verification status */}
-                {userProfile?.verification_status !== 'verified' && (
-                  <TouchableOpacity
-                    style={[
-                      styles.ekycPromptContainer, 
-                      { 
-                        backgroundColor: ekycSubmission?.status === 'pending' ? '#FFD700' : colors.primary.main 
-                      }, 
-                      isDesktop && styles.ekycPromptContainerDesktop
-                    ]}
-                    onPress={() => router.push('/ekyc-verification')}
-                  >
-                    <View style={styles.ekycPromptContent}>
-                      {ekycSubmission?.status === 'pending' ? (
-                        <Clock size={24} color="white" style={styles.ekycPromptIcon} />
-                      ) : (
-                        <CheckCircle size={24} color="white" style={styles.ekycPromptIcon} />
-                      )}
-                      <View style={styles.ekycPromptTextContainer}>
-                        <Text style={[styles.ekycPromptTitle, { color: 'white' }]}>
-                          {ekycSubmission?.status === 'pending' ? 'Pending' : 'Complete Verification'}
-                        </Text>
-                        <Text style={[styles.ekycPromptSubtitle, { color: 'rgba(255,255,255,0.9)' }]}>
-                          {ekycSubmission?.status === 'pending' 
-                            ? 'Your verification is under review • We\'ll notify you soon'
-                            : 'Unlock all features • Become a service provider • Place service orders'
-                          }
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                )}
               </View>
 
               {/* Tab Navigation */}

@@ -398,36 +398,13 @@ export default function ServiceDetailsScreen() {
       return;
     }
 
-    // Check verification status before allowing order placement
-    const canPlaceOrder = await VerificationService.checkVerificationForAction(
-      'place_order',
-      () => {
-        router.push('/ekyc-verification');
-      }
-    );
-
-    if (!canPlaceOrder) {
-      return; // Verification check will show appropriate alert
-    }
-
-    // Proceed directly to direct order
+    // Proceed directly to direct order (verification no longer required)
     setSelectedServiceForOrder(service);
     setPaymentModalVisible(true);
   };
 
   const handleVariantSelectionForOrder = async (selectedVariant: Service) => {
-    // Check verification status before allowing order placement
-    const canPlaceOrder = await VerificationService.checkVerificationForAction(
-      'place_order',
-      () => {
-        router.push('/ekyc-verification');
-      }
-    );
-
-    if (!canPlaceOrder) {
-      return; // Verification check will show appropriate alert
-    }
-
+    // Proceed directly to order (verification no longer required)
     setSelectedServiceForOrder(selectedVariant);
     setPaymentModalVisible(true);
   };

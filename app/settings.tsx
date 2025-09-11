@@ -132,9 +132,6 @@ export default function SettingsScreen() {
     router.push('/edit-profile');
   };
 
-  const handleUpdateBankInfo = () => {
-    router.push('/update-bank-info');
-  };
 
 
 
@@ -281,14 +278,12 @@ export default function SettingsScreen() {
             onPress={handleMyAccount}
           />
 
-          {/* Bank Information Update - Only show for service providers */}
-          {userProfile?.is_service_provider && (
-            <SettingItem
-              icon={<Building2 size={20} color={colors.text.primary} />}
-              title="Update Bank Information"
-              onPress={handleUpdateBankInfo}
-            />
-          )}
+          {/* Bank Information - Always show for all users */}
+          <SettingItem
+            icon={<Building2 size={20} color={colors.text.primary} />}
+            title="Bank Information"
+            onPress={() => router.push('/service-provider-bank-info')}
+          />
 
           <SettingItem
             icon={<Bell size={20} color={colors.text.primary} />}

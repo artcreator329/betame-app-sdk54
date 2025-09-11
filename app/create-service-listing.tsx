@@ -114,25 +114,7 @@ export default function CreateServiceListingScreen() {
       return;
     }
 
-    if (userProfile?.verification_status !== 'verified') {
-      const statusMessages = {
-        'not_started': 'You need to complete eKYC verification to create service listings.',
-        'in_progress': 'Your eKYC verification is still being processed. Please wait for approval before creating service listings.',
-        'rejected': 'Your eKYC verification was rejected. Please retry the verification process to create service listings.'
-      };
-
-      const actionText = userProfile?.verification_status === 'not_started' ? 'Start Verification' : 'View Status';
-      
-      Alert.alert(
-        'Verification Required',
-        statusMessages[userProfile?.verification_status as keyof typeof statusMessages] || 'Verification required to create service listings.',
-        [
-          { text: 'Cancel', style: 'cancel', onPress: () => router.back() },
-          { text: actionText, onPress: () => router.push('/become-service-provider') }
-        ]
-      );
-      return;
-    }
+    // eKYC verification is no longer required - users can create services once they're service providers
   }, [user, userProfile, router]);
 
   const handleServiceTypeSelect = (serviceType: string) => {

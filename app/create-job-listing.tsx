@@ -94,24 +94,7 @@ export default function CreateJobListingScreen() {
       return;
     }
 
-    if (userProfile?.verification_status !== 'verified') {
-      let message = 'Your account verification is required to create job listings.';
-      let action = () => router.push('/become-service-provider');
-      
-      if (userProfile?.verification_status === 'not_started') {
-        message = 'Please complete your eKYC verification to create job listings.';
-      } else if (userProfile?.verification_status === 'in_progress') {
-        message = 'Your eKYC verification is being processed. Please wait for approval before creating job listings.';
-        action = () => router.back();
-      } else if (userProfile?.verification_status === 'rejected') {
-        message = 'Your eKYC verification was rejected. Please resubmit your verification to create job listings.';
-      }
-      
-      Alert.alert('Verification Required', message, [
-        { text: 'OK', onPress: action }
-      ]);
-      return;
-    }
+    // eKYC verification is no longer required - users can create jobs once they're service providers
   }, [user, router]);
 
   // Debug: Monitor modal state changes

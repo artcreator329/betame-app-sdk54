@@ -46,7 +46,7 @@ export default function VerifyEmailScreen() {
     setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
   };
 
-  const handleGoToHomepage = () => {
+  const handleGoToHomepage = async () => {
     console.log('🏠 User manually navigating to homepage');
     console.log('🏠 Current user state:', user?.id);
     console.log('🏠 Current auth loading:', authLoading);
@@ -55,36 +55,24 @@ export default function VerifyEmailScreen() {
     setManualNavigation(true);
     
     try {
-      // Check if user is authenticated
-      if (!user) {
-        console.log('🏠 No user found, redirecting to login');
-        replaceWithAnimation('/auth/login');
+      // Check current session to ensure we have valid authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('🏠 Current session check:', !!session);
+      
+      if (!session) {
+        console.log('🏠 No valid session found, redirecting to login');
+        router.replace('/auth/login');
         return;
       }
       
-      // Try using the navigation animation hook first
-      console.log('🏠 Attempting replaceWithAnimation...');
-      replaceWithAnimation('/(tabs)');
+      // For authenticated users, navigate to main app
+      console.log('🏠 Valid session found, navigating to main app');
+      router.replace('/(tabs)');
       
-      // Fallback: try direct router navigation
-      setTimeout(() => {
-        console.log('🏠 Fallback: trying router.replace...');
-        router.replace('/(tabs)');
-      }, 100);
-      
-      // Another fallback: try push instead of replace
-      setTimeout(() => {
-        console.log('🏠 Second fallback: trying router.push...');
-        router.push('/(tabs)');
-      }, 200);
-      
-      // Final fallback: try navigating to index
-      setTimeout(() => {
-        console.log('🏠 Final fallback: trying router.replace to index...');
-        router.replace('/');
-      }, 300);
     } catch (error) {
       console.error('🏠 Navigation error:', error);
+      // Fallback to login if there's an error
+      router.replace('/auth/login');
     }
   };
 
@@ -255,9 +243,9 @@ export default function VerifyEmailScreen() {
             <Text style={styles.subtitle}>Your account has been successfully verified. Redirecting you to the app...</Text>
             <TouchableOpacity 
               style={styles.homepageButton} 
-              onPress={() => {
+              onPress={async () => {
                 console.log('🏠 Button pressed!');
-                handleGoToHomepage();
+                await handleGoToHomepage();
               }}
               activeOpacity={0.8}
               disabled={false}
