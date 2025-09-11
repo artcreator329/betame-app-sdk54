@@ -34,6 +34,25 @@ export class DeepLinkService {
   }
 
   /**
+   * Generate a deep link URL for a service
+   */
+  static generateServiceLink(serviceId: string, serviceTitle?: string): string {
+    const baseUrl = `${this.config.scheme}://service/${serviceId}`;
+    const params = serviceTitle ? `?title=${encodeURIComponent(serviceTitle)}` : '';
+    return `${baseUrl}${params}`;
+  }
+
+  /**
+   * Generate a universal service link (works on web and mobile)
+   */
+  static generateUniversalServiceLink(serviceId: string, serviceTitle?: string): string {
+    const params = new URLSearchParams();
+    if (serviceTitle) params.append('title', serviceTitle);
+
+    return `https://${this.config.domain}/service/${serviceId}${params.toString() ? `?${params.toString()}` : ''}`;
+  }
+
+  /**
    * Generate a shareable link that includes fallback for users without the app
    */
   static generateShareableProfileLink(userId: string, userName?: string, userBio?: string): string {
@@ -45,6 +64,21 @@ export class DeepLinkService {
     });
 
     return `https://${this.config.domain}/share/profile?${params.toString()}`;
+  }
+
+  /**
+   * Generate a shareable service link that includes fallback for users without the app
+   */
+  static generateShareableServiceLink(serviceId: string, serviceTitle?: string, serviceDescription?: string, providerName?: string): string {
+    const params = new URLSearchParams({
+      serviceId,
+      ...(serviceTitle && { title: serviceTitle }),
+      ...(serviceDescription && { description: serviceDescription }),
+      ...(providerName && { provider: providerName }),
+      source: 'share'
+    });
+
+    return `https://${this.config.domain}/share/service?${params.toString()}`;
   }
 
   /**
@@ -66,6 +100,29 @@ export class DeepLinkService {
       return true;
     } catch (error) {
       console.error('Error opening profile link:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Open a service deep link
+   */
+  static async openService(serviceId: string, serviceTitle?: string): Promise<boolean> {
+    try {
+      const deepLink = this.generateServiceLink(serviceId, serviceTitle);
+      const canOpen = await Linking.canOpenURL(deepLink);
+
+      if (canOpen) {
+        await Linking.openURL(deepLink);
+        return true;
+      }
+
+      // Fallback to universal link
+      const universalLink = this.generateUniversalServiceLink(serviceId, serviceTitle);
+      await WebBrowser.openBrowserAsync(universalLink);
+      return true;
+    } catch (error) {
+      console.error('Error opening service link:', error);
       return false;
     }
   }
@@ -120,6 +177,16 @@ export class DeepLinkService {
           };
         }
 
+        if (hostname === 'service' && pathSegments[0]) {
+          return {
+            type: 'service',
+            params: {
+              serviceId: pathSegments[0],
+              title: parsedUrl.searchParams.get('title')
+            }
+          };
+        }
+
         // Legacy support for path-based deep links
         if (pathSegments[0] === 'profile' && pathSegments[1]) {
           return {
@@ -127,6 +194,16 @@ export class DeepLinkService {
             params: {
               userId: pathSegments[1],
               name: parsedUrl.searchParams.get('name')
+            }
+          };
+        }
+
+        if (pathSegments[0] === 'service' && pathSegments[1]) {
+          return {
+            type: 'service',
+            params: {
+              serviceId: pathSegments[1],
+              title: parsedUrl.searchParams.get('title')
             }
           };
         }
@@ -257,6 +334,16 @@ export class DeepLinkService {
           };
         }
 
+        if (pathSegments[0] === 'service' && pathSegments[1]) {
+          return {
+            type: 'service',
+            params: {
+              serviceId: pathSegments[1],
+              title: parsedUrl.searchParams.get('title')
+            }
+          };
+        }
+
         if (pathSegments[0] === 'share' && pathSegments[1] === 'profile') {
           return {
             type: 'shared_profile',
@@ -264,6 +351,19 @@ export class DeepLinkService {
               userId: parsedUrl.searchParams.get('userId'),
               name: parsedUrl.searchParams.get('name'),
               bio: parsedUrl.searchParams.get('bio'),
+              source: parsedUrl.searchParams.get('source')
+            }
+          };
+        }
+
+        if (pathSegments[0] === 'share' && pathSegments[1] === 'service') {
+          return {
+            type: 'shared_service',
+            params: {
+              serviceId: parsedUrl.searchParams.get('serviceId'),
+              title: parsedUrl.searchParams.get('title'),
+              description: parsedUrl.searchParams.get('description'),
+              provider: parsedUrl.searchParams.get('provider'),
               source: parsedUrl.searchParams.get('source')
             }
           };
@@ -313,5 +413,20 @@ export class DeepLinkService {
     });
 
     return `https://${this.config.domain}/smart-link?${params.toString()}`;
+  }
+
+  /**
+   * Generate a smart service link that detects platform and redirects appropriately
+   */
+  static generateSmartServiceLink(serviceId: string, serviceTitle?: string, serviceDescription?: string, providerName?: string): string {
+    const params = new URLSearchParams({
+      serviceId,
+      ...(serviceTitle && { title: serviceTitle }),
+      ...(serviceDescription && { description: serviceDescription }),
+      ...(providerName && { provider: providerName }),
+      deepLink: this.generateServiceLink(serviceId, serviceTitle)
+    });
+
+    return `https://${this.config.domain}/smart-service-link?${params.toString()}`;
   }
 }

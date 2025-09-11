@@ -295,13 +295,18 @@ export class ServerPDFService {
 
       console.log('✅ Payment release receipt uploaded successfully:', uploadData);
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
+      // Get signed URL for private document
+      const { data: urlData, error: urlError } = await supabase.storage
         .from('documents')
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 1800); // 30 minutes for payment receipts
 
-      const publicUrl = urlData.publicUrl;
-      console.log('✅ Payment release receipt public URL:', publicUrl);
+      if (urlError) {
+        console.error('Error creating signed URL for payment receipt:', urlError);
+        throw new Error(`Failed to create signed URL: ${urlError.message}`);
+      }
+
+      const publicUrl = urlData.signedUrl;
+      console.log('✅ Payment release receipt signed URL:', publicUrl);
 
       // Store receipt record in database
       const receiptNumber = `PR-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
@@ -459,7 +464,16 @@ Generated on ${new Date().toLocaleString('en-MY')}
           });
           
           const latestPdf = pdfFiles[0];
-          const pdfUrl = `${supabase.storage.from('documents').getPublicUrl(`payment-release-pdfs/${jobId}/${latestPdf.name}`).data.publicUrl}`;
+          const { data: urlData, error: urlError } = await supabase.storage
+            .from('documents')
+            .createSignedUrl(`payment-release-pdfs/${jobId}/${latestPdf.name}`, 1800);
+          
+          if (urlError) {
+            console.error('Error creating signed URL for existing PDF:', urlError);
+            throw new Error(`Failed to create signed URL: ${urlError.message}`);
+          }
+          
+          const pdfUrl = urlData.signedUrl;
           
           console.log('✅ PDF receipt found in storage:', pdfUrl);
           return {

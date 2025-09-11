@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Upload, FileText, CheckCircle, XCircle } from 'lucide-react-native';
+import { ArrowLeft, Upload, FileText, CheckCircle, XCircle, Download, Scale } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/contexts/ThemeContext';
@@ -21,6 +21,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { bankStatementService } from '@/lib/bank-statement-service';
 import { BankStatementFormData } from '@/types/bank-statement';
 import { EKYCService, EKYCSubmission } from '@/lib/ekyc-service';
+import { SERVICE_PROVIDER_TERMS_OF_SERVICE, generateToSPDF } from '@/constants/ServiceProviderToS';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 interface BankStatementData {
   name: string;
@@ -38,6 +41,7 @@ export default function BankStatementUploadScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedNomadVisa, setSelectedNomadVisa] = useState<string | null>(null);
+  const [spaAccepted, setSpaAccepted] = useState(false);
   const [formData, setFormData] = useState<BankStatementData>({
     name: userProfile?.full_name || '',
     ic_number: '',
@@ -185,6 +189,10 @@ export default function BankStatementUploadScreen() {
       Alert.alert('Error', 'Please upload your Nomad Visa document');
       return false;
     }
+    if (!spaAccepted) {
+      Alert.alert('Error', 'Please accept the Service Provider Agreement to continue');
+      return false;
+    }
     return true;
   };
 
@@ -197,7 +205,8 @@ export default function BankStatementUploadScreen() {
         user.id,
         formData as BankStatementFormData,
         selectedImage!,
-        selectedNomadVisa || undefined
+        selectedNomadVisa || undefined,
+        spaAccepted
       );
 
       if (result.success) {
@@ -227,6 +236,33 @@ export default function BankStatementUploadScreen() {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleGeneratePDF = async () => {
+    try {
+      const htmlContent = generateToSPDF(
+        formData.name,
+        formData.ic_number,
+        new Date().toLocaleDateString('en-MY')
+      );
+      
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false,
+      });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Service Provider Agreement',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Success', 'PDF generated successfully!');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
+    }
   };
 
   if (isLoading || ekycLoading) {
@@ -435,15 +471,68 @@ export default function BankStatementUploadScreen() {
               </View>
             )}
 
+            {/* Service Provider Agreement Section */}
+            <View style={styles.spaSection}>
+              <Text style={[styles.spaTitle, { color: colors.text.primary }]}>
+                Service Provider Agreement
+              </Text>
+              <Text style={[styles.spaSubtitle, { color: colors.text.secondary }]}>
+                Before uploading your bank statement, you must read and accept the Service Provider Agreement
+              </Text>
+
+              <View style={[styles.spaContainer, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
+                <ScrollView style={styles.spaScrollView} showsVerticalScrollIndicator={true}>
+                  <Text style={[styles.spaDocTitle, { color: colors.text.primary }]}>{SERVICE_PROVIDER_TERMS_OF_SERVICE.title}</Text>
+                  <Text style={[styles.spaEffectiveDate, { color: colors.text.secondary }]}>Last Updated: {SERVICE_PROVIDER_TERMS_OF_SERVICE.lastUpdated}</Text>
+                  
+                  <Text style={[styles.spaContent, { color: colors.text.secondary }]}>{SERVICE_PROVIDER_TERMS_OF_SERVICE.content}</Text>
+                </ScrollView>
+              </View>
+
+              <View style={styles.spaActions}>
+                <TouchableOpacity
+                  style={[styles.pdfButton, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}
+                  onPress={handleGeneratePDF}
+                >
+                  <Download size={20} color={colors.text.primary} />
+                  <Text style={[styles.pdfButtonText, { color: colors.text.primary }]}>Download PDF</Text>
+                </TouchableOpacity>
+
+                <View style={styles.spaCheckboxContainer}>
+                  <TouchableOpacity
+                    style={[styles.spaCheckbox, spaAccepted && { backgroundColor: colors.primary.main }]}
+                    onPress={() => setSpaAccepted(!spaAccepted)}
+                  >
+                    {spaAccepted && <CheckCircle size={20} color="white" />}
+                  </TouchableOpacity>
+                  <Text style={[styles.spaCheckboxText, { color: colors.text.primary }]}>
+                    I have read and agree to the Service Provider Agreement
+                  </Text>
+                </View>
+              </View>
+
+              {!spaAccepted && (
+                <View style={[styles.warningBox, { backgroundColor: colors.status.warning + '20', borderColor: colors.status.warning }]}>
+                  <Scale size={20} color={colors.status.warning} />
+                  <Text style={[styles.warningText, { color: colors.status.warning }]}>
+                    You must accept the Service Provider Agreement to proceed with bank statement upload.
+                  </Text>
+                </View>
+              )}
+            </View>
+
             {/* Submit Button */}
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                { backgroundColor: colors.primary.main },
-                isUploading && { opacity: 0.6 }
+                { 
+                  backgroundColor: (!spaAccepted || isUploading) 
+                    ? colors.interactive.disabled 
+                    : colors.primary.main 
+                }
               ]}
               onPress={uploadBankStatement}
-              disabled={isUploading}
+              disabled={!spaAccepted || isUploading}
             >
               {isUploading ? (
                 <ActivityIndicator color="white" />
@@ -625,5 +714,95 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 8,
     fontWeight: '500',
+  },
+  spaSection: {
+    marginBottom: 30,
+  },
+  spaTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  spaSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  spaContainer: {
+    height: 300,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  spaScrollView: {
+    flex: 1,
+    padding: 16,
+  },
+  spaDocTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  spaEffectiveDate: {
+    fontSize: 14,
+    marginBottom: 16,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  spaContent: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  spaActions: {
+    marginBottom: 16,
+  },
+  pdfButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 16,
+    justifyContent: 'center',
+  },
+  pdfButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  spaCheckboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  spaCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  spaCheckboxText: {
+    fontSize: 14,
+    flex: 1,
+    lineHeight: 20,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 16,
+  },
+  warningText: {
+    fontSize: 14,
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 20,
   },
 });

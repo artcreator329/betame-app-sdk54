@@ -54,6 +54,7 @@ export default function DigitalServicesScreen() {
       updated_at: dbService.updated_at,
       provider_name: dbService.provider_name || 'Service Provider',
       provider_avatar: dbService.provider_avatar,
+      status: dbService.status, // Add status field for draft detection
     };
   };
 

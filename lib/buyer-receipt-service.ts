@@ -352,13 +352,18 @@ export class BuyerInvoiceService {
 
       console.log('✅ Buyer invoice uploaded successfully:', uploadData);
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
+      // Get signed URL for private document
+      const { data: urlData, error: urlError } = await supabase.storage
         .from('documents')
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 1800); // 30 minutes for buyer receipts
 
-      const publicUrl = urlData.publicUrl;
-      console.log('✅ Buyer invoice public URL:', publicUrl);
+      if (urlError) {
+        console.error('Error creating signed URL for buyer receipt:', urlError);
+        throw new Error(`Failed to create signed URL: ${urlError.message}`);
+      }
+
+      const publicUrl = urlData.signedUrl;
+      console.log('✅ Buyer invoice signed URL:', publicUrl);
 
       // Clean up temporary file
       try {

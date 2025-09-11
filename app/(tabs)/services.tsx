@@ -47,6 +47,7 @@ const convertToUIService = (dbService: DBService): Service => ({
   provider_created_at: dbService.provider_created_at,
   parent_service_id: dbService.parent_service_id,
   service_variants: dbService.service_variants?.map(convertToUIService) || [],
+  status: dbService.status, // Add status field for draft detection
 });
 
 export default function ServicesScreen() {

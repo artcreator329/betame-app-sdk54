@@ -8,7 +8,7 @@ plugins = []
 publish = "/Users/christopher/Main/Project/betame-app/dist"
 publishOrigin = "config"
 commandOrigin = "config"
-command = "npm run build:web && cp -r public/* dist/ 2>/dev/null || true && mkdir -p dist/.well-known && cp -r public/.well-known/* dist/.well-known/ 2>/dev/null || true && mkdir -p dist/auth && cp web/auth/verify-email-universal.html dist/auth/ 2>/dev/null || true"
+command = "npm run build:web && cp -r public/* dist/ 2>/dev/null || true && mkdir -p dist/.well-known && cp -r public/.well-known/* dist/.well-known/ 2>/dev/null || true && mkdir -p dist/auth && cp web/auth/verify-email-universal.html dist/auth/ 2>/dev/null || true && cp web/smart-service-link.html dist/ 2>/dev/null || true && mkdir -p dist/share && cp web/share/service.html dist/share/ 2>/dev/null || true"
 functions = "/Users/christopher/Main/Project/betame-app/netlify/functions"
 
 [build.environment]
@@ -30,14 +30,6 @@ NODE_VERSION = "20"
 
 [functions."*"]
 node_bundler = "esbuild"
-
-[[headers]]
-for = "/*"
-
-[headers.values]
-X-Frame-Options = "DENY"
-X-Content-Type-Options = "nosniff"
-Referrer-Policy = "strict-origin-when-cross-origin"
 
 [[headers]]
 for = "/*"
@@ -133,18 +125,6 @@ for = "/.well-known/*"
 [headers.values]
 Access-Control-Allow-Origin = "*"
 Content-Type = "application/json"
-
-[[redirects]]
-from = "/auth/verify-email-universal.html"
-to = "/auth/verify-email-universal.html"
-status = 200.0
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
 
 [[redirects]]
 from = "/*"

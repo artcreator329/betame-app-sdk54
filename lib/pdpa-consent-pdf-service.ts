@@ -250,13 +250,18 @@ export class PDPAConsentPDFService {
 
       console.log('✅ PDPA consent PDF uploaded successfully:', uploadData);
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
+      // Get signed URL for private document
+      const { data: urlData, error: urlError } = await supabase.storage
         .from('documents')
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 3600); // 1 hour for PDPA consent
 
-      const publicUrl = urlData.publicUrl;
-      console.log('✅ PDPA consent PDF public URL:', publicUrl);
+      if (urlError) {
+        console.error('Error creating signed URL for PDPA consent:', urlError);
+        throw new Error(`Failed to create signed URL: ${urlError.message}`);
+      }
+
+      const publicUrl = urlData.signedUrl;
+      console.log('✅ PDPA consent PDF signed URL:', publicUrl);
 
       // Clean up temporary file
       try {

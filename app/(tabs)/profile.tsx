@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator, ActionSheetIOS, Platform, StatusBar, RefreshControl, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun, Heart as HeartFilled, Settings as SettingsFilled, Sun as SunFilled, Moon as MoonFilled, Wallet as WalletFilled, Trophy as TrophyFilled, CheckCircle, Clock, XCircle, AlertCircle, Share as ShareIcon } from 'lucide-react-native';
+import { Settings, Heart, Wallet, Trophy, Camera, Star, MapPin, Calendar, User, Shield, Moon, Sun, Heart as HeartFilled, Settings as SettingsFilled, Sun as SunFilled, Moon as MoonFilled, Wallet as WalletFilled, Trophy as TrophyFilled, CheckCircle, Clock, XCircle, AlertCircle, Share as ShareIcon, Grid3X3, List } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -71,6 +71,7 @@ export default function ProfileScreen() {
   const [loadingEkyc, setLoadingEkyc] = useState(true);
   const [bankStatement, setBankStatement] = useState<any>(null);
   const [loadingBankStatement, setLoadingBankStatement] = useState(true);
+  const [serviceLayoutColumns, setServiceLayoutColumns] = useState<1 | 2>(1); // New state for layout toggle
   const router = useRouter();
   const { user, userProfile, updateProfile, refreshProfile, checkAdminStatus: contextCheckAdminStatus, isAdmin } = useAuth();
   const colors = useColors();
@@ -604,7 +605,23 @@ export default function ProfileScreen() {
         }
         return (
           <View style={styles.servicesContent}>
-            <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Available Listings ({String(services.length)})</Text>
+            <View style={styles.servicesHeader}>
+              <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Available Listings ({String(services.length)})</Text>
+              
+              {/* Layout Toggle Button */}
+              {services.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.layoutToggleButton, { backgroundColor: colors.background.secondary }]}
+                  onPress={() => setServiceLayoutColumns(serviceLayoutColumns === 1 ? 2 : 1)}
+                >
+                  {serviceLayoutColumns === 1 ? (
+                    <Grid3X3 size={20} color={colors.text.primary} />
+                  ) : (
+                    <List size={20} color={colors.text.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
             
             {/* Show service provider status */}
             {userProfile?.is_service_provider ? (
@@ -729,45 +746,54 @@ export default function ProfileScreen() {
                 <Text style={[styles.emptyStateSuggestion, { color: colors.text.secondary }]}>Create your first service listing!</Text>
               </View>
             ) : (
-              services
-                .filter(service => service.id) // Only include services with valid IDs
-                .map((service, index) => {
-                  const uiService: UIService = {
-                    id: service.id!, // Non-null assertion since we filtered above
-                    title: service.title,
-                    description: service.description,
-                    price: service.price,
-                    currency: service.currency,
-                    image_url: service.image_url || undefined,
-                    category_name: service.category_name || 'General',
-                    location: service.location || '',
-                    is_nearby: service.is_nearby || false,
-                    is_trending: service.is_trending || false,
-                    rating: service.rating || 0,
-                    review_count: service.review_count || 0,
-                    created_at: service.created_at || '',
-                    updated_at: service.updated_at || '',
-                    user_id: service.user_id,
-                    service_variants: service.service_variants || [],
-                    provider_name: 'You',
-                    provider_avatar: undefined,
-                    latitude: service.latitude,
-                    longitude: service.longitude,
-                    parent_service_id: service.parent_service_id,
-                    show_on_profile: service.show_on_profile ?? true
-                  };
+              <View style={serviceLayoutColumns === 2 ? styles.servicesGrid : styles.servicesList}>
+                {services
+                  .filter(service => service.id) // Only include services with valid IDs
+                  .map((service, index) => {
+                    const uiService: UIService = {
+                      id: service.id!, // Non-null assertion since we filtered above
+                      title: service.title,
+                      description: service.description,
+                      price: service.price,
+                      currency: service.currency,
+                      image_url: service.image_url || undefined,
+                      category_name: service.category_name || 'General',
+                      location: service.location || '',
+                      is_nearby: service.is_nearby || false,
+                      is_trending: service.is_trending || false,
+                      rating: service.rating || 0,
+                      review_count: service.review_count || 0,
+                      created_at: service.created_at || '',
+                      updated_at: service.updated_at || '',
+                      user_id: service.user_id,
+                      service_variants: service.service_variants || [],
+                      provider_name: 'You',
+                      provider_avatar: undefined,
+                      latitude: service.latitude,
+                      longitude: service.longitude,
+                      parent_service_id: service.parent_service_id,
+                      show_on_profile: service.show_on_profile ?? true,
+                      status: service.status // Add the status field for draft detection
+                    };
 
-                  return (
-                    <ServiceCard
-                      key={service.id}
-                      service={uiService}
-                      showEditButton={true}
-                      showProfileToggle={true}
-                      userProfileAvatar={userProfile?.avatar_url}
-                      onProfileVisibilityChange={handleProfileVisibilityChange}
-                    />
-                  );
-                })
+                    return (
+                      <View 
+                        key={service.id} 
+                        style={serviceLayoutColumns === 2 ? styles.gridServiceCard : styles.listServiceCard}
+                      >
+                        <ServiceCard
+                          service={uiService}
+                          showEditButton={true}
+                          showProfileToggle={true}
+                          userProfileAvatar={userProfile?.avatar_url}
+                          onProfileVisibilityChange={handleProfileVisibilityChange}
+                          layout={serviceLayoutColumns === 2 ? 'vertical' : 'horizontal'}
+                          disableFavorites={true}
+                        />
+                      </View>
+                    );
+                  })}
+              </View>
             )}
             <TouchableOpacity
               style={[
@@ -2266,6 +2292,41 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' && {
       width: '100%',
     }),
+  },
+  servicesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  layoutToggleButton: {
+    padding: 8,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  servicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  servicesList: {
+    flexDirection: 'column',
+  },
+  gridServiceCard: {
+    width: '48%',
+    marginBottom: 12,
+  },
+  listServiceCard: {
+    width: '100%',
+    marginBottom: 8,
   },
   serviceItem: {
     flexDirection: 'row',

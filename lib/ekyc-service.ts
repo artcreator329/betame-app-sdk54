@@ -106,14 +106,19 @@ export class EKYCService {
 
       console.log('✅ Document uploaded successfully:', data);
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
+      // Get signed URL for private document
+      const { data: urlData, error: urlError } = await supabase.storage
         .from('documents')
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 3600); // 1 hour for eKYC documents
 
-      console.log('✅ Public URL generated:', urlData.publicUrl);
+      if (urlError) {
+        console.error('Error creating signed URL for eKYC document:', urlError);
+        throw new Error(`Failed to create signed URL: ${urlError.message}`);
+      }
+
+      console.log('✅ Signed URL generated:', urlData.signedUrl);
       
-      return urlData.publicUrl;
+      return urlData.signedUrl;
     } catch (error) {
       console.error('❌ Error in uploadDocument:', error);
       throw error;

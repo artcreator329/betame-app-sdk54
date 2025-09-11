@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service on BetaMe</title>
+    
+    <!-- Open Graph Meta Tags for Social Media Sharing -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="BetaMe">
+    <meta property="og:url" content="">
+    <meta property="og:title" content="">
+    <meta property="og:description" content="">
+    <meta property="og:image" content="">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@BetaMe">
+    <meta name="twitter:title" content="">
+    <meta name="twitter:description" content="">
+    <meta name="twitter:image" content="">
+    
+    <!-- App Store Meta Tags -->
+    <meta name="apple-itunes-app" content="app-id=123456789">
+    <meta name="google-play-app" content="app-id=com.betame.app">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: #007AFF;
+            border-radius: 20px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        
+        .service-preview {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .service-image {
+            width: 100%;
+            height: 200px;
+            background: #e9ecef;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            object-fit: cover;
+        }
+        
+        .service-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+        
+        .service-provider {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .service-rating {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        
+        .service-price {
+            font-size: 18px;
+            font-weight: 600;
+            color: #007AFF;
+            margin-bottom: 12px;
+        }
+        
+        .service-description {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        h1 {
+            font-size: 28px;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .download-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        .download-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .ios-btn {
+            background: #000;
+            color: white;
+        }
+        
+        .android-btn {
+            background: #34A853;
+            color: white;
+        }
+        
+        .web-btn {
+            background: #007AFF;
+            color: white;
+            width: 100%;
+            margin-top: 16px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #999;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            .download-buttons {
+                flex-direction: column;
+            }
+            
+            .download-btn {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">B</div>
+        <h1>Check out this service!</h1>
+        <p class="subtitle">Someone shared an amazing service with you on BetaMe</p>
+        
+        <div class="service-preview" id="servicePreview">
+            <img class="service-image" id="serviceImage" alt="Service Image">
+            <div class="service-title" id="serviceTitle">Loading...</div>
+            <div class="service-provider" id="serviceProvider">By Service Provider</div>
+            <div class="service-rating" id="serviceRating">
+                <span>⭐</span>
+                <span id="ratingValue">5.0</span>
+                <span id="reviewCount">(0 reviews)</span>
+            </div>
+            <div class="service-price" id="servicePrice">View Details</div>
+            <div class="service-description" id="serviceDescription">Service description will appear here...</div>
+        </div>
+        
+        <div class="download-buttons">
+            <a href="#" class="download-btn ios-btn" id="iosBtn">
+                <span>📱</span>
+                <span>Download for iOS</span>
+            </a>
+            <a href="#" class="download-btn android-btn" id="androidBtn">
+                <span>🤖</span>
+                <span>Download for Android</span>
+            </a>
+        </div>
+        
+        <a href="#" class="download-btn web-btn" id="webBtn">
+            <span>🌐</span>
+            <span>Open in Web Browser</span>
+        </a>
+        
+        <div class="footer">
+            <p>BetaMe - Your trusted service marketplace</p>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const serviceId = urlParams.get('serviceId');
+        const title = urlParams.get('title');
+        const description = urlParams.get('description');
+        const provider = urlParams.get('provider');
+        
+        // Update meta tags for social sharing
+        if (title) {
+            document.title = `${title} - BetaMe`;
+            document.querySelector('meta[property="og:title"]').content = `${title} on BetaMe`;
+            document.querySelector('meta[name="twitter:title"]').content = `${title} on BetaMe`;
+        }
+        
+        if (description) {
+            document.querySelector('meta[property="og:description"]').content = description;
+            document.querySelector('meta[name="twitter:description"]').content = description;
+        }
+        
+        // Update service preview
+        if (title) {
+            document.getElementById('serviceTitle').textContent = title;
+        }
+        
+        if (provider) {
+            document.getElementById('serviceProvider').textContent = `By ${provider}`;
+        }
+        
+        if (description) {
+            document.getElementById('serviceDescription').textContent = description;
+        }
+        
+        // Set up download links
+        const appStoreLinks = {
+            ios: 'https://apps.apple.com/app/betame/id123456789',
+            android: 'https://play.google.com/store/apps/details?id=com.betame.app',
+            web: 'https://betame.com.my'
+        };
+        
+        document.getElementById('iosBtn').href = appStoreLinks.ios;
+        document.getElementById('androidBtn').href = appStoreLinks.android;
+        document.getElementById('webBtn').href = appStoreLinks.web;
+        
+        // Try to open the app directly
+        const deepLink = `betame://service/${serviceId}`;
+        const universalLink = `https://betame.com.my/service/${serviceId}`;
+        
+        // Attempt to open the app
+        function tryOpenApp() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isAndroid = /Android/.test(navigator.userAgent);
+            
+            if (isIOS || isAndroid) {
+                // Try to open the app
+                window.location.href = deepLink;
+                
+                // Fallback to app store after a delay
+                setTimeout(() => {
+                    if (isIOS) {
+                        window.location.href = appStoreLinks.ios;
+                    } else {
+                        window.location.href = appStoreLinks.android;
+                    }
+                }, 2000);
+            }
+        }
+        
+        // Auto-redirect on mobile
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            setTimeout(tryOpenApp, 1000);
+        }
+    </script>
+</body>
+</html>

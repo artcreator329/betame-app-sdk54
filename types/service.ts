@@ -25,6 +25,7 @@ export interface Service {
   parent_service_id?: string; // For service variants
   service_variants?: Service[]; // Child services/variants
   show_on_profile?: boolean; // Whether to display this service on user's profile by default
+  status?: 'active' | 'inactive' | 'draft'; // Service status
   active_features?: ServiceFeatureApplication[]; // Active features applied to this service
 }
 

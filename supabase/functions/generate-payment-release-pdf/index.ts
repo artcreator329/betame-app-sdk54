@@ -421,12 +421,17 @@ Generated on ${new Date().toLocaleString('en-MY')}
       )
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
+    // Get signed URL for private document
+    const { data: urlData, error: urlError } = await supabase.storage
       .from('documents')
-      .getPublicUrl(filePath)
+      .createSignedUrl(filePath, 1800) // 30 minutes for payment receipts
 
-    const publicUrl = urlData.publicUrl
+    if (urlError) {
+      console.error('Error creating signed URL for payment receipt:', urlError)
+      throw new Error(`Failed to create signed URL: ${urlError.message}`)
+    }
+
+    const publicUrl = urlData.signedUrl
 
     // Store receipt record in database
     const { error: dbError } = await supabase

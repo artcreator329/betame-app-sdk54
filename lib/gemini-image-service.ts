@@ -300,9 +300,9 @@ export class GeminiImageService {
 
       console.log('🚀 Starting upload to Supabase storage...');
 
-      // Upload with enhanced error handling - don't use Promise.race to avoid timeout conflicts
+      // Upload to service-images bucket (public bucket) instead of documents (private bucket)
       const { data, error } = await supabaseWithRetry.storage
-        .from('documents')
+        .from('service-images')
         .upload(filePath, arrayBuffer, {
           contentType: 'image/png',
           upsert: false,
@@ -348,9 +348,9 @@ export class GeminiImageService {
 
       console.log('✅ Upload successful, getting public URL...');
 
-      // Get public URL with error handling
+      // Get public URL since service-images is a public bucket
       const { data: urlData } = supabaseWithRetry.storage
-        .from('documents')
+        .from('service-images')
         .getPublicUrl(filePath);
 
       if (!urlData?.publicUrl) {
@@ -430,9 +430,9 @@ export class GeminiImageService {
    */
   private static async verifyStorageBucket(): Promise<{ accessible: boolean; error?: string }> {
     try {
-      // Try to list files in the bucket (this will fail if bucket doesn't exist or no permissions)
+      // Try to list files in the service-images bucket (this will fail if bucket doesn't exist or no permissions)
       const { data, error } = await supabaseWithRetry.storage
-        .from('documents')
+        .from('service-images')
         .list('ai-generated-images', { limit: 1 });
 
       if (error) {

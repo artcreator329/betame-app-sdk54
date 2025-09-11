@@ -55,6 +55,7 @@ const convertToUIService = (dbService: DBService): Service => ({
   provider_name: dbService.provider_name || 'Service Provider',
   provider_avatar: dbService.provider_avatar,
   provider_created_at: dbService.provider_created_at,
+  status: dbService.status, // Add status field for draft detection
 });
 
 // Trending Service Card Component

@@ -89,7 +89,8 @@ export class BankStatementService {
     userId: string,
     formData: BankStatementFormData,
     imageUri: string,
-    nomadVisaUri?: string
+    nomadVisaUri?: string,
+    spaAccepted?: boolean
   ): Promise<{ success: boolean; error?: string; data?: BankStatement }> {
     try {
       // Detect file type from URI
@@ -117,10 +118,15 @@ export class BankStatementService {
         throw uploadError;
       }
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
+      // Get signed URL for private document
+      const { data: urlData, error: urlError } = await supabase.storage
         .from('documents')
-        .getPublicUrl(storageFileName);
+        .createSignedUrl(storageFileName, 7200); // 2 hours for bank statements
+
+      if (urlError) {
+        console.error('Error creating signed URL for bank statement:', urlError);
+        throw new Error(`Failed to create signed URL: ${urlError.message}`);
+      }
 
       // Handle nomad visa upload if provided
       let nomadVisaUrl: string | undefined;
@@ -153,12 +159,17 @@ export class BankStatementService {
             throw nomadVisaUploadError;
           }
 
-          // Get nomad visa public URL
-          const { data: nomadVisaUrlData } = supabase.storage
+          // Get nomad visa signed URL for private document
+          const { data: nomadVisaUrlData, error: nomadVisaUrlError } = await supabase.storage
             .from('documents')
-            .getPublicUrl(nomadVisaStorageFileName);
+            .createSignedUrl(nomadVisaStorageFileName, 7200); // 2 hours for nomad visas
 
-          nomadVisaUrl = nomadVisaUrlData.publicUrl;
+          if (nomadVisaUrlError) {
+            console.error('Error creating signed URL for nomad visa:', nomadVisaUrlError);
+            throw new Error(`Failed to create signed URL for nomad visa: ${nomadVisaUrlError.message}`);
+          }
+
+          nomadVisaUrl = nomadVisaUrlData.signedUrl;
           nomadVisaUploaded = true;
         } catch (error) {
           console.error('Error uploading nomad visa:', error);
@@ -175,10 +186,12 @@ export class BankStatementService {
           ic_number: formData.ic_number.trim(),
           bank_name: formData.bank_name.trim(),
           bank_account_number: formData.bank_account_number.trim(),
-          statement_file_url: urlData.publicUrl,
+          statement_file_url: urlData.signedUrl,
           nomad_visa_file_url: nomadVisaUrl,
           nomad_visa_required: formData.nomad_visa_required || false,
           nomad_visa_uploaded: nomadVisaUploaded,
+          spa_accepted: spaAccepted || false,
+          spa_accepted_at: spaAccepted ? new Date().toISOString() : null,
           status: 'pending', // Set status to pending for review
         })
         .select()

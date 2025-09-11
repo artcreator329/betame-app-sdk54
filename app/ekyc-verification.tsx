@@ -41,9 +41,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/lib/auth-service';
 import { EKYCService } from '@/lib/ekyc-service';
 import { supabase } from '@/lib/supabase';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import { SERVICE_PROVIDER_TERMS_OF_SERVICE, generateToSPDF } from '@/constants/ServiceProviderToS';
+
 import { PDPAConsentModal } from '@/components/PDPAConsentModal';
 import { RealNameInputModal } from '@/components/RealNameInputModal';
 import { PDPAConsentPDFService, PDPAConsentData } from '@/lib/pdpa-consent-pdf-service';
@@ -70,8 +68,7 @@ export default function EKYCVerificationScreen() {
   const router = useRouter();
   const colors = useColors();
   const { user, refreshProfile } = useAuth();
-  const [currentStep, setCurrentStep] = useState<'identity_document' | 'personal' | 'documents' | 'terms' | 'verification' | 'review' | 'complete'>('identity_document');
-  const [tosAccepted, setTosAccepted] = useState(false);
+  const [currentStep, setCurrentStep] = useState<'identity_document' | 'personal' | 'documents' | 'verification' | 'review' | 'complete'>('identity_document');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showStateDropdown, setShowStateDropdown] = useState(false);
@@ -418,29 +415,22 @@ export default function EKYCVerificationScreen() {
       id: 'identity_document',
       title: '',
       description: 'Upload document',
-      status: currentStep === 'identity_document' ? 'in_progress' : ['personal', 'documents', 'terms', 'verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
+      status: currentStep === 'identity_document' ? 'in_progress' : ['personal', 'documents', 'verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
       icon: <CreditCard size={20} />
     },
     {
       id: 'personal',
       title: '',
       description: 'Review details',
-      status: currentStep === 'personal' ? 'in_progress' : ['documents', 'terms', 'verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
+      status: currentStep === 'personal' ? 'in_progress' : ['documents', 'verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
       icon: <User size={20} />
     },
     {
       id: 'documents',
       title: '',
       description: 'Upload documents',
-      status: currentStep === 'documents' ? 'in_progress' : ['terms', 'verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
+      status: currentStep === 'documents' ? 'in_progress' : ['verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
       icon: <FileText size={20} />
-    },
-    {
-      id: 'terms',
-      title: '',
-      description: 'Accept terms',
-      status: currentStep === 'terms' ? 'in_progress' : ['verification', 'review', 'complete'].includes(currentStep) ? 'completed' : 'pending',
-      icon: <Scale size={20} />
     },
     {
       id: 'verification',
@@ -1172,12 +1162,6 @@ export default function EKYCVerificationScreen() {
         Alert.alert('Missing Documents', 'Please upload all required additional documents.');
         return;
       }
-      setCurrentStep('terms');
-    } else if (currentStep === 'terms') {
-      if (!tosAccepted) {
-        Alert.alert('Terms Required', 'Please accept the Terms of Service to continue.');
-        return;
-      }
       if (!realName.trim()) {
         Alert.alert('Real Name Required', 'You must provide your real name before proceeding with eKYC verification.');
         setShowRealNameInput(true);
@@ -1206,10 +1190,8 @@ export default function EKYCVerificationScreen() {
       setCurrentStep('identity_document');
     } else if (currentStep === 'documents') {
       setCurrentStep('personal');
-    } else if (currentStep === 'terms') {
-      setCurrentStep('documents');
     } else if (currentStep === 'verification') {
-      setCurrentStep('terms');
+      setCurrentStep('documents');
     } else if (currentStep === 'review') {
       setCurrentStep('verification');
     }
@@ -1333,8 +1315,6 @@ export default function EKYCVerificationScreen() {
         postcode: personalInfo.postcode,
         state: personalInfo.state,
         document_urls: documentUrls,
-        terms_accepted: tosAccepted,
-        terms_accepted_at: new Date().toISOString(),
         pdpa_consent_given: pdpaConsentGiven,
         pdpa_consent_given_at: pdpaConsentGiven ? new Date().toISOString() : undefined,
         pdpa_consent_pdf_url: pdpaConsentPdfUrl
@@ -2140,162 +2120,9 @@ export default function EKYCVerificationScreen() {
     </View>
   );
 
-  const handleGeneratePDF = async () => {
-    try {
-      const htmlContent = generateToSPDF(
-        personalInfo.fullName,
-        personalInfo.icNumber,
-        new Date().toLocaleDateString('en-MY')
-      );
-      
-      const { uri } = await Print.printToFileAsync({
-        html: htmlContent,
-        base64: false,
-      });
-      
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Service Provider Terms of Service',
-          UTI: 'com.adobe.pdf',
-        });
-      } else {
-        Alert.alert('Success', 'PDF generated successfully!');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
-    }
-  };
 
-  const renderTermsStep = () => {
-    return (
-      <View style={styles.stepContent}>
-        <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Terms of Service</Text>
-        <Text style={[styles.sectionSubtitle, { color: colors.text.secondary }]}>
-          Please read and accept the Service Provider Terms of Service to continue
-        </Text>
 
-        <View style={[styles.tosContainer, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}>
-           <ScrollView style={styles.tosScrollView} showsVerticalScrollIndicator={true}>
-             <Text style={[styles.tosTitle, { color: colors.text.primary }]}>{SERVICE_PROVIDER_TERMS_OF_SERVICE.title}</Text>
-             <Text style={[styles.tosEffectiveDate, { color: colors.text.secondary }]}>Last Updated: {SERVICE_PROVIDER_TERMS_OF_SERVICE.lastUpdated}</Text>
-             
-             <Text style={[styles.tosSectionContent, { color: colors.text.secondary }]}>{SERVICE_PROVIDER_TERMS_OF_SERVICE.content}</Text>
-           </ScrollView>
-         </View>
 
-         <View style={styles.tosActions}>
-        <TouchableOpacity
-          style={[styles.pdfButton, { backgroundColor: colors.background.tertiary, borderColor: colors.border.light }]}
-          onPress={handleGeneratePDF}
-        >
-          <Download size={20} color={colors.text.primary} />
-          <Text style={[styles.pdfButtonText, { color: colors.text.primary }]}>Download PDF</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tosCheckbox, tosAccepted && { backgroundColor: colors.primary.main }]}
-          onPress={() => setTosAccepted(!tosAccepted)}
-        >
-          {tosAccepted && <CheckCircle size={20} color="white" />}
-        </TouchableOpacity>
-        <Text style={[styles.tosCheckboxText, { color: colors.text.primary }]}>
-          I have read and agree to the Service Provider Terms of Service
-        </Text>
-      </View>
-
-      {/* Real Name Status */}
-      <View style={styles.pdpaConsentSection}>
-        <View style={styles.pdpaConsentHeader}>
-          <User size={20} color={realName ? colors.status.success : colors.status.warning} />
-          <Text style={[styles.pdpaConsentTitle, { color: colors.text.primary }]}>
-            Real Name Status
-          </Text>
-        </View>
-        
-        {realName ? (
-          <View style={[styles.pdpaConsentStatus, { backgroundColor: colors.status.success + '15', borderColor: colors.status.success }]}>
-            <CheckCircle size={16} color={colors.status.success} />
-            <Text style={[styles.pdpaConsentStatusText, { color: colors.status.success }]}>
-              Real name provided: {realName}
-            </Text>
-          </View>
-        ) : (
-          <View style={[styles.pdpaConsentStatus, { backgroundColor: colors.status.warning + '15', borderColor: colors.status.warning }]}>
-            <AlertCircle size={16} color={colors.status.warning} />
-            <Text style={[styles.pdpaConsentStatusText, { color: colors.status.warning }]}>
-              Real name is required
-            </Text>
-            <TouchableOpacity
-              style={[styles.pdpaConsentButton, { backgroundColor: colors.primary.main }]}
-              onPress={() => setShowRealNameInput(true)}
-            >
-              <Text style={[styles.pdpaConsentButtonText, { color: 'white' }]}>
-                Enter Real Name
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {/* PDPA Consent Status */}
-      <View style={styles.pdpaConsentSection}>
-        <View style={styles.pdpaConsentHeader}>
-          <Shield size={20} color={pdpaConsentGiven ? colors.status.success : colors.status.warning} />
-          <Text style={[styles.pdpaConsentTitle, { color: colors.text.primary }]}>
-            PDPA Consent Status
-          </Text>
-        </View>
-        
-        {pdpaConsentGiven ? (
-          <View style={[styles.pdpaConsentStatus, { backgroundColor: colors.status.success + '15', borderColor: colors.status.success }]}>
-            <CheckCircle size={16} color={colors.status.success} />
-            <Text style={[styles.pdpaConsentStatusText, { color: colors.status.success }]}>
-              PDPA consent has been provided
-            </Text>
-            {pdpaConsentPdfUrl && (
-              <TouchableOpacity
-                style={[styles.downloadButton, { backgroundColor: colors.primary.main }]}
-                onPress={() => {
-                  Linking.openURL(pdpaConsentPdfUrl);
-                }}
-              >
-                <Download size={16} color="white" />
-                <Text style={[styles.downloadButtonText, { color: 'white' }]}>
-                  Download Consent PDF
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-          <View style={[styles.pdpaConsentStatus, { backgroundColor: colors.status.warning + '15', borderColor: colors.status.warning }]}>
-            <AlertCircle size={16} color={colors.status.warning} />
-            <Text style={[styles.pdpaConsentStatusText, { color: colors.status.warning }]}>
-              PDPA consent is required
-            </Text>
-            <TouchableOpacity
-              style={[styles.pdpaConsentButton, { backgroundColor: colors.primary.main }]}
-              onPress={() => setShowPDPAConsent(true)}
-            >
-              <Text style={[styles.pdpaConsentButtonText, { color: 'white' }]}>
-                Provide Consent
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {!tosAccepted && (
-        <View style={[styles.infoBox, { backgroundColor: colors.status.warning + '20', borderColor: colors.status.warning }]}>
-          <AlertCircle size={20} color={colors.status.warning} />
-          <Text style={[styles.infoText, { color: colors.status.warning }]}>
-            You must accept the Terms of Service to proceed with becoming a service provider.
-          </Text>
-        </View>
-      )}
-    </View>
-    );
-  };
 
   const renderCompleteStep = () => (
     <View style={styles.completeContainer}>
@@ -2406,7 +2233,6 @@ export default function EKYCVerificationScreen() {
               {currentStep === 'identity_document' && renderIdentityDocumentStep()}
               {currentStep === 'personal' && renderPersonalInfoStep()}
               {currentStep === 'documents' && renderDocumentsStep()}
-              {currentStep === 'terms' && renderTermsStep()}
               {currentStep === 'verification' && renderVerificationStep()}
               {currentStep === 'review' && renderReviewStep()}
               {currentStep === 'complete' && renderCompleteStep()}
@@ -2430,13 +2256,11 @@ export default function EKYCVerificationScreen() {
             style={[
               styles.nextButton, 
               { 
-                backgroundColor: (currentStep === 'terms' && !tosAccepted) 
-                  ? colors.interactive.disabled 
-                  : colors.primary.main 
+                backgroundColor: colors.primary.main 
               }
             ]}
             onPress={currentStep === 'review' ? handleSubmitVerification : handleNextStep}
-            disabled={(currentStep === 'terms' && !tosAccepted) || (currentStep === 'review' && isSubmitting)}
+            disabled={currentStep === 'review' && isSubmitting}
           >
             {currentStep === 'review' && isSubmitting ? (
               <ActivityIndicator size="small" color={colors.text.white} />
@@ -2444,9 +2268,7 @@ export default function EKYCVerificationScreen() {
               <Text style={[
                 styles.nextButtonText, 
                 { 
-                  color: (currentStep === 'terms' && !tosAccepted) 
-                    ? colors.text.tertiary 
-                    : colors.text.white 
+                  color: colors.text.white 
                 }
               ]}>
                 {currentStep === 'review' ? 'Submit' : 'Next'}
@@ -2751,73 +2573,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  tosContainer: {
-    height: 300,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 20,
-  },
-  tosScrollView: {
-    flex: 1,
-    padding: 16,
-  },
-  tosTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  tosEffectiveDate: {
-    fontSize: 14,
-    marginBottom: 16,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  tosSection: {
-    marginBottom: 16,
-  },
-  tosSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  tosSectionContent: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  tosActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
-  },
-  pdfButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  pdfButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-  tosCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#ccc',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tosCheckboxText: {
-    fontSize: 14,
-    flex: 1,
-    marginLeft: 8,
-  },
+
   dropdownContainer: {
     flexDirection: 'row',
     alignItems: 'center',

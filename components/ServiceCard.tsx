@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Platform, Dimensions } from 'react-native';
-import { Star, ChevronDown, ChevronUp, Edit3, Eye, EyeOff, Heart } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Platform } from 'react-native';
+import { Star, Edit3, Eye, EyeOff, Heart, Share2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Service } from '@/types/service';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,11 +8,12 @@ import { useColors } from '@/contexts/ThemeContext';
 import { ServiceService } from '@/lib/service-service';
 import { FavoritesService } from '@/lib/favorites-service';
 import { supabase } from '@/lib/supabase';
-import { FeatureService, ServiceFeatureApplication } from '@/lib/feature-service';
+
 import { AnalyticsService } from '@/lib/analytics-service';
 import FeatureIcons from './FeatureIcons';
 import OptimizedImage from './OptimizedImage';
 import { imageCacheService } from '@/lib/image-cache-service';
+import ServiceShareModal from './ServiceShareModal';
 
 // Helper function to format joined date
 const formatJoinedDate = (createdAt: string): string => {
@@ -26,12 +27,11 @@ const formatJoinedDate = (createdAt: string): string => {
   }
 };
 
-const { width } = Dimensions.get('window');
+
 const isWeb = Platform.OS === 'web';
 
 interface ServiceCardProps {
   service: Service;
-  hideVariants?: boolean;
   showEditButton?: boolean;
   showProfileToggle?: boolean;
   userProfileAvatar?: string;
@@ -43,48 +43,19 @@ interface ServiceCardProps {
   viewSource?: 'service_card' | 'search' | 'trending' | 'category' | 'nearby' | 'other'; // Track where the view came from
 }
 
-interface ServiceVariantCardProps {
-  variant: Service;
-  onPress: () => void;
-}
 
-function ServiceVariantCard({ variant, onPress }: ServiceVariantCardProps) {
-  const colors = useColors();
-  const isMainServiceVariant = !variant.parent_service_id;
-  
-  return (
-    <TouchableOpacity style={[styles.variantCard, { backgroundColor: colors.background.primary, borderColor: colors.border.light }]} onPress={onPress}>
-      <View style={styles.variantContent}>
-        <Text style={[styles.variantTitle, { color: colors.text.primary }]} numberOfLines={1}>
-          {variant.title}
-        </Text>
-        <Text style={[styles.variantDescription, { color: colors.text.primary }]} numberOfLines={2}>
-          {variant.description}
-        </Text>
-        {!isMainServiceVariant ? (
-          <Text style={[styles.variantPrice, { color: colors.primary.main }]}>
-            From {variant.currency}{String(variant.price)}
-          </Text>
-        ) : (
-          <Text style={[styles.variantMainService, { color: colors.text.secondary }]}>
-            Main Service - View Details
-          </Text>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-}
 
-export default function ServiceCard({ service, hideVariants = false, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange, onPress, style, disableFavorites = false, layout = 'vertical', viewSource = 'service_card' }: ServiceCardProps) {
+export default function ServiceCard({ service, showEditButton = false, showProfileToggle = false, userProfileAvatar, onProfileVisibilityChange, onPress, style, disableFavorites = false, layout = 'vertical', viewSource = 'service_card' }: ServiceCardProps) {
   const router = useRouter();
   const { user } = useAuth();
   const colors = useColors();
-  const [showVariants, setShowVariants] = useState(false);
+
   const [isProfileVisible, setIsProfileVisible] = useState(service.show_on_profile ?? true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const [userCoverPhoto, setUserCoverPhoto] = useState<string | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const hasVariants = service.service_variants && service.service_variants.length > 0;
 
@@ -95,13 +66,13 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
         setIsFavorited(false);
         return;
       }
-      
+
       if (!user || !service.id) {
         // For unauthenticated users, set favorite status to false and don't make API calls
         setIsFavorited(false);
         return;
       }
-      
+
       try {
         const favorited = await FavoritesService.isFavorited(user.id, service.id);
         setIsFavorited(favorited);
@@ -119,7 +90,7 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     if (disableFavorites) {
       return;
     }
-    
+
     if (!user) {
       Alert.alert(
         'Sign In Required',
@@ -161,7 +132,7 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     } catch (error) {
       console.error('Error tracking service view:', error);
     }
-    
+
     router.push(`/service/${serviceId}`);
   };
 
@@ -169,9 +140,14 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
     router.push(`/edit-service/${service.id}`);
   };
 
+  const handleSharePress = (e: any) => {
+    e.stopPropagation();
+    setShowShareModal(true);
+  };
+
   const handleProfileVisibilityToggle = async (value: boolean) => {
     if (isUpdating) return;
-    
+
     setIsUpdating(true);
     try {
       const success = await ServiceService.toggleServiceProfileVisibility(service.id, value);
@@ -251,13 +227,13 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
 
   const getLowestPrice = () => {
     if (!hasVariants) return service.price;
-    
+
     // Get all variant prices
     const variantPrices = (service.service_variants || []).map(v => v.price).filter(price => price > 0);
-    
+
     // If main service has a valid price (> 0), include it
     const validPrices = service.price > 0 ? [service.price, ...variantPrices] : variantPrices;
-    
+
     return validPrices.length > 0 ? Math.min(...validPrices) : 0;
   };
 
@@ -267,56 +243,82 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
   return (
     <View style={[styles.cardContainer, style]}>
       <TouchableOpacity style={[
-        styles.card, 
+        styles.card,
         { backgroundColor: colors.background.secondary },
-        layout === 'horizontal' && styles.horizontalCard
+        layout === 'horizontal' && styles.horizontalCard,
+        service.status === 'draft' && styles.draftCard
       ]} onPress={handleMainCardPress}>
         {showEditButton && (
-        <TouchableOpacity style={styles.editButton} onPress={handleEditPress}>
-          <Edit3 size={16} color={colors.background.primary} />
-        </TouchableOpacity>
-      )}
-      
-      {/* Favorite Button */}
-      <TouchableOpacity 
-        style={[
-          styles.favoriteButton, 
-          { backgroundColor: isFavorited ? '#FF3B30' : colors.background.tertiary },
-          isFavorited && styles.favoriteButtonActive
-        ]} 
-        onPress={handleToggleFavorite}
-        disabled={isFavoriteLoading}
-      >
-        <Heart 
-          size={16} 
-          color={isFavorited ? '#FFFFFF' : colors.text.secondary}
-          fill={isFavorited ? '#FFFFFF' : "transparent"}
-        />
-      </TouchableOpacity>
-      
-      {showProfileToggle && (
-        <View style={[styles.profileToggleContainer, { backgroundColor: colors.background.secondary }]}>
-          <View style={styles.profileToggleContent}>
-            {isProfileVisible ? (
-              <Eye size={14} color={colors.text.secondary} />
-            ) : (
-              <EyeOff size={14} color={colors.text.secondary} />
-            )}
-            <Text style={[styles.profileToggleLabel, { color: colors.text.secondary }]}>
-              {isProfileVisible ? 'Visible on profile' : 'Hidden from profile'}
-            </Text>
+          <TouchableOpacity style={styles.editButton} onPress={handleEditPress}>
+            <Edit3 size={16} color={colors.background.primary} />
+          </TouchableOpacity>
+        )}
+
+        {/* Draft Badge */}
+        {service.status === 'draft' && (
+          <View style={[styles.draftBadge, { backgroundColor: '#FF9500' }]}>
+            <Text style={styles.draftBadgeText}>DRAFT</Text>
           </View>
-          <Switch
-            value={isProfileVisible}
-            onValueChange={handleProfileVisibilityToggle}
-            disabled={isUpdating}
-            trackColor={{ false: colors.border.light, true: colors.primary.light }}
-            thumbColor={isProfileVisible ? colors.primary.main : colors.background.secondary}
-            ios_backgroundColor={colors.border.light}
+        )}
+
+        {/* Favorite Button - Hidden when disableFavorites is true */}
+        {!disableFavorites && (
+          <TouchableOpacity
+            style={[
+              styles.favoriteButton,
+              { backgroundColor: isFavorited ? '#FF3B30' : colors.background.tertiary },
+              isFavorited && styles.favoriteButtonActive,
+              // Adjust position if draft badge is present
+              service.status === 'draft' && styles.favoriteButtonWithDraft
+            ]}
+            onPress={handleToggleFavorite}
+            disabled={isFavoriteLoading}
+          >
+            <Heart
+              size={16}
+              color={isFavorited ? '#FFFFFF' : colors.text.secondary}
+              fill={isFavorited ? '#FFFFFF' : "transparent"}
+            />
+          </TouchableOpacity>
+        )}
+
+        {/* Share Button */}
+        <TouchableOpacity
+          style={[
+            styles.shareButton,
+            // Position based on whether edit button is present
+            showEditButton ? styles.shareButtonWithEdit : styles.shareButtonWithoutEdit,
+            // Adjust position if draft badge is present
+            service.status === 'draft' && styles.shareButtonWithDraft
+          ]}
+          onPress={handleSharePress}
+        >
+          <Share2
+            size={16}
+            color="white"
           />
-        </View>
-      )}
-        
+        </TouchableOpacity>
+
+        {/* Profile Toggle Button - positioned beside share button */}
+        {showProfileToggle && (
+          <TouchableOpacity
+            style={[
+              styles.profileToggleButton,
+              { backgroundColor: colors.background.tertiary },
+              showEditButton ? styles.profileToggleWithEdit : styles.profileToggleWithoutEdit,
+              service.status === 'draft' && styles.profileToggleWithDraft
+            ]}
+            onPress={handleProfileVisibilityToggle}
+            disabled={isUpdating}
+          >
+            {isProfileVisible ? (
+              <Eye size={16} color={colors.text.secondary} />
+            ) : (
+              <EyeOff size={16} color={colors.text.secondary} />
+            )}
+          </TouchableOpacity>
+        )}
+
         {layout === 'horizontal' ? (
           <View style={styles.horizontalContent}>
             <OptimizedImage
@@ -332,9 +334,9 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
                 <Text style={[styles.horizontalRating, { color: colors.text.primary }]}>{service.rating}</Text>
                 <Text style={[styles.horizontalReviewCount, { color: colors.text.secondary }]}>({service.review_count})</Text>
                 {service.active_features && service.active_features.length > 0 && (
-                  <FeatureIcons 
-                    features={service.active_features} 
-                    size={12} 
+                  <FeatureIcons
+                    features={service.active_features}
+                    size={12}
                     style={styles.featureIcons}
                   />
                 )}
@@ -355,6 +357,11 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
               {service.description && (
                 <Text style={[styles.horizontalDescription, { color: colors.text.primary }]} numberOfLines={2}>
                   {service.description}
+                </Text>
+              )}
+              {service.status === 'draft' && (
+                <Text style={[styles.draftIndicatorText, { color: '#FF9500' }]}>
+                  • Draft - Not visible to public
                 </Text>
               )}
               {shouldShowPricing ? (
@@ -386,9 +393,9 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
                 <Text style={[styles.rating, { color: colors.text.primary }]}>{service.rating}</Text>
                 <Text style={[styles.reviewCount, { color: colors.text.secondary }]}>({service.review_count})</Text>
                 {service.active_features && service.active_features.length > 0 && (
-                  <FeatureIcons 
-                    features={service.active_features} 
-                    size={16} 
+                  <FeatureIcons
+                    features={service.active_features}
+                    size={16}
                     style={styles.featureIcons}
                   />
                 )}
@@ -401,17 +408,17 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
                   </Text>
                 )}
               </View>
-              <Text style={[styles.title, { color: colors.text.primary }]} numberOfLines={showVariants ? undefined : 2}>
+              <Text style={[styles.title, { color: colors.text.primary }]} numberOfLines={2}>
                 {service.title}
               </Text>
-              {!showVariants && service.description && (
+              {service.description && (
                 <Text style={[styles.description, { color: colors.text.primary }]} numberOfLines={2}>
                   {service.description}
                 </Text>
               )}
-              {showVariants && (
-                <Text style={[styles.expandedDescription, { color: colors.text.primary }]} numberOfLines={undefined}>
-                  {service.description}
+              {service.status === 'draft' && (
+                <Text style={[styles.draftIndicatorText, { color: '#FF9500' }]}>
+                  • Draft - Not visible to public
                 </Text>
               )}
               {shouldShowPricing ? (
@@ -432,7 +439,12 @@ export default function ServiceCard({ service, hideVariants = false, showEditBut
         )}
       </TouchableOpacity>
 
-
+      {/* Share Modal */}
+      <ServiceShareModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        service={service}
+      />
     </View>
   );
 }
@@ -499,6 +511,67 @@ const styles = StyleSheet.create({
   },
   favoriteButtonActive: {
     backgroundColor: '#FF3B30',
+  },
+  favoriteButtonWithDraft: {
+    left: 60, // Move right to avoid overlapping with draft badge
+  },
+  shareButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8, // Simple positioning at the right edge
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10, // Higher z-index to ensure visibility
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  draftBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    zIndex: 2,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  draftBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  draftCard: {
+    opacity: 0.85,
+    borderWidth: 1,
+    borderColor: '#FF9500',
+    borderStyle: 'dashed',
+  },
+  draftIndicatorText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontStyle: 'italic',
+    marginBottom: 4,
+    ...(isWeb && {
+      fontSize: 10,
+      marginBottom: 3,
+    }),
   },
   image: {
     width: '100%',
@@ -583,49 +656,7 @@ const styles = StyleSheet.create({
       fontSize: 12,
     }),
   },
-  variantIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  variantCount: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  variantsContainer: {
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
-  },
-  variantCard: {
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-  },
-  variantContent: {
-    flex: 1,
-  },
-  variantTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  variantDescription: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginBottom: 6,
-  },
-  variantPrice: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  variantMainService: {
-    fontSize: 13,
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
+
   detailsContainer: {
     alignItems: 'flex-start',
   },
@@ -638,44 +669,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontStyle: 'italic',
   },
-  expandedDescription: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  profileToggleContainer: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minWidth: 140,
-    zIndex: 1,
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  profileToggleContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  profileToggleLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  
+
+
   // Horizontal layout styles
   horizontalCard: {
     flexDirection: 'row',
@@ -732,7 +727,7 @@ const styles = StyleSheet.create({
       marginBottom: 3,
     }),
   },
-  
+
   // Horizontal layout specific text styles
   horizontalRating: {
     fontSize: 10,
@@ -770,5 +765,33 @@ const styles = StyleSheet.create({
     ...(isWeb && {
       fontSize: 11,
     }),
+  },
+  profileToggleButton: {
+    position: 'absolute',
+    top: 8,
+    right: 44, // Reduced gap - closer to share button
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  profileToggleWithEdit: {
+    right: 84, // Adjust position when edit button is present
+  },
+  profileToggleWithoutEdit: {
+    right: 44, // Reduced gap - closer to share button
+  },
+  profileToggleWithDraft: {
+    right: 84, // Adjust position when draft badge is present
   },
 });

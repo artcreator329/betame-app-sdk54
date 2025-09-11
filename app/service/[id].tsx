@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Star, MessageCircle, X, Package, ShoppingCart, FileText, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { ArrowLeft, Star, MessageCircle, X, Package, ShoppingCart, FileText, ChevronDown, ChevronUp, Share2 } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSmartNavigation } from '@/hooks/useSmartNavigation';
@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/contexts/ThemeContext';
 import { authService } from '@/lib/auth-service';
 import { DirectOrderModal } from '@/components/DirectOrderModal';
+import ServiceShareModal from '@/components/ServiceShareModal';
 import { supabase } from '@/lib/supabase';
 import { VerificationService } from '@/lib/verification-service';
 
@@ -69,6 +70,7 @@ export default function ServiceDetailsScreen() {
   const [inquiryMode, setInquiryMode] = useState<'text' | 'structured' | null>(null);
   const [userCoverPhoto, setUserCoverPhoto] = useState<string | null>(null);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
 
   console.log('🔍 ServiceDetailsScreen: Component mounted with ID:', id);
   console.log('🔍 ServiceDetailsScreen: ID type:', typeof id);
@@ -443,6 +445,10 @@ export default function ServiceDetailsScreen() {
     );
   };
 
+  const handleShareService = () => {
+    setShareModalVisible(true);
+  };
+
   const subPlans = getServicePlans(service.id || '');
   const selectedSubPlan = subPlans.find((plan: SubPlan) => plan.id === selectedPlan);
 
@@ -511,6 +517,14 @@ export default function ServiceDetailsScreen() {
                   </Text>
                 </View>
               </View>
+              <TouchableOpacity 
+                style={[styles.shareServiceButton, { backgroundColor: colors.primary.main }]}
+                onPress={handleShareService}
+              >
+                <Text style={[styles.shareServiceText, { color: colors.text.white }]}>
+                  Share this service
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -762,6 +776,15 @@ export default function ServiceDetailsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Service Share Modal */}
+      {service && (
+        <ServiceShareModal
+          visible={shareModalVisible}
+          onClose={() => setShareModalVisible(false)}
+          service={service}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -1220,5 +1243,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginRight: 4,
+  },
+  shareServiceButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  shareServiceText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
