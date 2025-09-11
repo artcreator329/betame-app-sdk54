@@ -695,10 +695,21 @@ export class ChatService {
         .from('profiles')
         .select('full_name, avatar_url')
         .eq('id', participantId)
-        .single();
+        .maybeSingle();
 
-      if (error || !profile) {
-        console.error('Error fetching participant profile:', error);
+      if (error) {
+        // Only log non-PGRST116 errors (PGRST116 means no rows found, which is normal)
+        if (error.code !== 'PGRST116') {
+          console.error('Error fetching participant profile:', error);
+        }
+        return {
+          name: 'Unknown User',
+          image: '',
+          isOnline: false
+        };
+      }
+
+      if (!profile) {
         return {
           name: 'Unknown User',
           image: '',

@@ -164,7 +164,7 @@ export default function AdminDashboard() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={Colors.primary.main} />
           <Text style={styles.loadingText}>
             {!isAdmin ? 'Verifying admin access...' : 'Loading dashboard...'}
           </Text>
@@ -187,14 +187,14 @@ export default function AdminDashboard() {
             style={styles.backButton}
             onPress={smartBack}
           >
-            <ArrowLeft size={24} color={Colors.text} />
+            <ArrowLeft size={24} color={Colors.text.primary} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Admin Dashboard</Text>
             <Text style={styles.headerSubtitle}>BetaMe Management Console</Text>
           </View>
           <TouchableOpacity style={styles.settingsButton}>
-            <Settings size={24} color={Colors.text} />
+            <Settings size={24} color={Colors.text.primary} />
           </TouchableOpacity>
         </View>
 
@@ -205,8 +205,8 @@ export default function AdminDashboard() {
             <StatCard
               title="Total Users"
               value={formatNumber(stats.totalUsers)}
-              icon={<Users size={24} color={Colors.primary} />}
-              color={Colors.primary}
+              icon={<Users size={24} color={Colors.primary.main} />}
+              color={Colors.primary.main}
               onPress={() => router.push('/admin/users')}
             />
             <StatCard
@@ -253,9 +253,9 @@ export default function AdminDashboard() {
           <View style={styles.quickActionsGrid}>
             <QuickAction
               title="User Management"
-              icon={<Users size={20} color={Colors.primary} />}
+              icon={<Users size={20} color={Colors.primary.main} />}
               onPress={() => router.push('/admin/users')}
-              color={Colors.primary}
+              color={Colors.primary.main}
             />
             <QuickAction
               title="Service Moderation"

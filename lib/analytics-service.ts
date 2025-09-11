@@ -196,17 +196,51 @@ export class AnalyticsService {
    */
   static async getTrendingServices(limit: number = 20): Promise<TrendingServiceData[]> {
     try {
+      // Try to use the RPC function first
       const { data, error } = await supabase
         .rpc('get_trending_services', { limit_count: limit });
 
       if (error) {
-        console.error('Error fetching trending services:', error);
-        return [];
+        // If RPC function doesn't exist or fails, fall back to manual query
+        console.log('RPC function get_trending_services not available, using fallback query');
+        return this.getTrendingServicesFallback(limit);
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error in getTrendingServices:', error);
+      console.log('Error calling get_trending_services RPC, using fallback query');
+      return this.getTrendingServicesFallback(limit);
+    }
+  }
+
+  /**
+   * Fallback method to get trending services when RPC function is not available
+   */
+  private static async getTrendingServicesFallback(limit: number = 20): Promise<TrendingServiceData[]> {
+    try {
+      // Get services with manual trending flag as fallback
+      const { data, error } = await supabase
+        .from('services')
+        .select('id')
+        .eq('is_trending', true)
+        .eq('status', 'active')
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching fallback trending services:', error);
+        return [];
+      }
+
+      // Convert to TrendingServiceData format
+      return (data || []).map(service => ({
+        service_id: service.id,
+        total_views_7d: 0,
+        unique_views_7d: 0,
+        views_from_trending_7d: 0,
+        trending_score: 1.0
+      }));
+    } catch (error) {
+      console.error('Error in getTrendingServicesFallback:', error);
       return [];
     }
   }

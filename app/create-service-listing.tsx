@@ -13,10 +13,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Upload, Camera, ImageIcon, MapPin, Sparkles } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceService } from '@/lib/service-service';
 import { ImageService } from '@/lib/image-service';
+import { Colors } from '@/constants/Colors';
 import ServiceAreaPicker from '@/components/ServiceAreaPicker';
 import AIDescriptionModal from '@/components/AIDescriptionModal';
 import AIServiceTypeSelector from '@/components/AIServiceTypeSelector';
@@ -57,9 +58,35 @@ export default function CreateServiceListingScreen() {
   } | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
   const [showAIImageModal, setShowAIImageModal] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
 
   const router = useRouter();
   const { user, userProfile } = useAuth();
+  const { draftData } = useLocalSearchParams();
+
+  // Load draft data if continuing from draft
+  useEffect(() => {
+    if (draftData && typeof draftData === 'string') {
+      try {
+        const parsedDraftData = JSON.parse(draftData);
+        setTitle(parsedDraftData.title || '');
+        setDescription(parsedDraftData.description || '');
+        setSelectedServiceType(parsedDraftData.serviceType || '');
+        setIsDigitalService(parsedDraftData.isDigitalService || false);
+        setImageUri(parsedDraftData.imageUri || null);
+        setServiceArea(parsedDraftData.serviceArea || null);
+        setDraftId(parsedDraftData.draftId || null);
+        
+        // If service area is complete, go to step 2
+        if (!parsedDraftData.isDigitalService && parsedDraftData.serviceArea) {
+          setCurrentStep(2);
+        }
+      } catch (error) {
+        console.error('Error parsing draft data:', error);
+      }
+    }
+  }, [draftData]);
 
   // Check verification status on component mount
   useEffect(() => {
@@ -296,6 +323,7 @@ export default function CreateServiceListingScreen() {
       isDigitalService: isDigitalService,
       imageUri: imageUri || undefined,
       serviceArea: serviceArea,
+      draftId: draftId, // Pass draft ID if continuing from draft
     };
 
     router.push({
@@ -304,6 +332,74 @@ export default function CreateServiceListingScreen() {
         serviceData: JSON.stringify(serviceData)
       }
     });
+  };
+
+  const handleSaveAsDraft = async () => {
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to save drafts');
+      return;
+    }
+
+    // Validate minimum required fields for draft
+    if (!title.trim()) {
+      Alert.alert('Draft Save Error', 'Please enter a service title before saving as draft');
+      return;
+    }
+
+    setIsSavingDraft(true);
+
+    try {
+      const draftData = {
+        user_id: user.id,
+        title: title.trim(),
+        description: description.trim() || '',
+        category_name: selectedServiceType.trim() || '',
+        is_digital_service: isDigitalService,
+        image_url: imageUri || '',
+        price: 0, // Default price for draft
+        currency: 'RM',
+        // Service area data (only if not digital service and area is selected)
+        ...(serviceArea && !isDigitalService && {
+          latitude: serviceArea.latitude,
+          longitude: serviceArea.longitude,
+          location: serviceArea.address,
+          service_area_radius: serviceArea.radius,
+          service_area_description: serviceArea.description,
+        }),
+      };
+
+      let result;
+      if (draftId) {
+        // Update existing draft
+        result = await ServiceService.updateDraft(draftId, draftData);
+      } else {
+        // Create new draft
+        result = await ServiceService.saveDraft(draftData);
+      }
+
+      if (result) {
+        setDraftId(result.id);
+        Alert.alert(
+          'Draft Saved',
+          'Your service has been saved as a draft. You can continue editing it later from your profile.',
+          [
+            { text: 'Continue Editing', style: 'default' },
+            { 
+              text: 'Go to Profile', 
+              onPress: () => router.push('/(tabs)/profile'),
+              style: 'default'
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to save draft. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      Alert.alert('Error', 'Failed to save draft. Please try again.');
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   const renderStepIndicator = () => (
@@ -469,7 +565,7 @@ export default function CreateServiceListingScreen() {
                  <Text style={styles.imageUploadButtonText}>Uploading...</Text>
                ) : (
                  <>
-                   <ImageIcon size={24} color={Colors.primary} />
+                   <ImageIcon size={24} color={Colors.primary.main} />
                    <Text style={styles.imageUploadButtonText}>Upload Image</Text>
                  </>
                )}
@@ -477,26 +573,46 @@ export default function CreateServiceListingScreen() {
            )}
          </View>
 
-         {/* Continue Button */}
-         <TouchableOpacity 
-           style={[
-             styles.continueButton, 
-             (title.trim() && description.trim() && selectedServiceType.trim()) 
-               ? styles.continueButtonActive 
-               : styles.continueButtonDisabled
-           ]} 
-           onPress={handleNextStep}
-           disabled={!title.trim() || !description.trim() || !selectedServiceType.trim()}
-         >
-           <Text style={[
-             styles.continueButtonText,
-             (title.trim() && description.trim() && selectedServiceType.trim()) 
-               ? styles.continueButtonTextActive 
-               : {}
-           ]}>
-             {isDigitalService ? 'Continue to Details' : 'Next: Service Area'}
-           </Text>
-         </TouchableOpacity>
+         {/* Action Buttons */}
+         <View style={styles.actionButtonsContainer}>
+           {/* Save as Draft Button */}
+           <TouchableOpacity 
+             style={[
+               styles.draftButton,
+               title.trim() ? styles.draftButtonActive : styles.draftButtonDisabled
+             ]} 
+             onPress={handleSaveAsDraft}
+             disabled={!title.trim() || isSavingDraft}
+           >
+             <Text style={[
+               styles.draftButtonText,
+               title.trim() ? styles.draftButtonTextActive : styles.draftButtonTextDisabled
+             ]}>
+               {isSavingDraft ? 'Saving...' : 'Save as Draft'}
+             </Text>
+           </TouchableOpacity>
+
+           {/* Continue Button */}
+           <TouchableOpacity 
+             style={[
+               styles.continueButton, 
+               (title.trim() && description.trim() && selectedServiceType.trim()) 
+                 ? styles.continueButtonActive 
+                 : styles.continueButtonDisabled
+             ]} 
+             onPress={handleNextStep}
+             disabled={!title.trim() || !description.trim() || !selectedServiceType.trim()}
+           >
+             <Text style={[
+               styles.continueButtonText,
+               (title.trim() && description.trim() && selectedServiceType.trim()) 
+                 ? styles.continueButtonTextActive 
+                 : {}
+             ]}>
+               {isDigitalService ? 'Continue to Details' : 'Next: Service Area'}
+             </Text>
+           </TouchableOpacity>
+         </View>
        </View>
      </ScrollView>
    );
@@ -521,6 +637,21 @@ export default function CreateServiceListingScreen() {
          >
            <Text style={styles.backButtonText}>Back</Text>
          </TouchableOpacity>
+         
+         <TouchableOpacity 
+           style={[
+             styles.draftButton,
+             styles.draftButtonSmall
+           ]} 
+           onPress={handleSaveAsDraft}
+           disabled={isSavingDraft}
+           activeOpacity={0.8}
+         >
+           <Text style={styles.draftButtonTextSmall}>
+             {isSavingDraft ? 'Saving...' : 'Save Draft'}
+           </Text>
+         </TouchableOpacity>
+
          <TouchableOpacity 
            style={[
              styles.continueButton,
@@ -1042,6 +1173,57 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     marginLeft: 32,
     lineHeight: 18,
+  },
+  // Action buttons container
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  // Draft button styles
+  draftButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  draftButtonActive: {
+    borderColor: '#007AFF',
+    backgroundColor: '#FFFFFF',
+  },
+  draftButtonDisabled: {
+    borderColor: '#E5E5EA',
+    backgroundColor: '#F8F9FA',
+  },
+  draftButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  draftButtonTextActive: {
+    color: '#007AFF',
+  },
+  draftButtonTextDisabled: {
+    color: '#8E8E93',
+  },
+  // Small draft button for service area step
+  draftButtonSmall: {
+    flex: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minWidth: 100,
+  },
+  draftButtonTextSmall: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
   },
 
 });

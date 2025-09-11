@@ -43,14 +43,17 @@ interface BasicServiceData {
     radius: number;
     description: string;
   };
+  draftId?: string; // ID of existing draft if continuing from draft
 }
 
 export default function DetailedServiceListingScreen() {
   const [serviceVariants, setServiceVariants] = useState<ServiceVariant[]>([]);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [mainService, setMainService] = useState<BasicServiceData | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
   const [currentVariantId, setCurrentVariantId] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
   const router = useRouter();
   const { serviceData } = useLocalSearchParams();
   const { user } = useAuth();
@@ -60,6 +63,7 @@ export default function DetailedServiceListingScreen() {
       try {
         const parsedData = JSON.parse(serviceData) as BasicServiceData;
         setMainService(parsedData);
+        setDraftId(parsedData.draftId || null);
         
         // Initialize with the main service as the first variant
         const initialVariant: ServiceVariant = {
@@ -181,6 +185,76 @@ export default function DetailedServiceListingScreen() {
     return true;
   };
 
+  const handleSaveAsDraft = async () => {
+    if (!user || !mainService) {
+      Alert.alert('Error', 'Unable to save draft. Please try again.');
+      return;
+    }
+
+    // Validate minimum required fields for draft
+    const firstVariant = serviceVariants[0];
+    if (!firstVariant.title.trim()) {
+      Alert.alert('Draft Save Error', 'Please enter a service title before saving as draft');
+      return;
+    }
+
+    setIsSavingDraft(true);
+
+    try {
+      // Prepare draft data with all current information
+      const draftData = {
+        user_id: user.id,
+        title: firstVariant.title.trim(),
+        description: firstVariant.description.trim() || '',
+        category_name: mainService.serviceType || '',
+        is_digital_service: mainService.isDigitalService || false,
+        image_url: mainService.imageUri || '',
+        price: 0, // Default price for draft
+        currency: mainService.currency || 'RM',
+        // Service area data (only if not digital service and area is selected)
+        ...(mainService.serviceArea && !mainService.isDigitalService && {
+          latitude: mainService.serviceArea.latitude,
+          longitude: mainService.serviceArea.longitude,
+          location: mainService.serviceArea.address,
+          service_area_radius: mainService.serviceArea.radius,
+          service_area_description: mainService.serviceArea.description,
+        }),
+      };
+
+      let result;
+      if (draftId) {
+        // Update existing draft
+        result = await ServiceService.updateDraft(draftId, draftData);
+      } else {
+        // Create new draft
+        result = await ServiceService.saveDraft(draftData);
+      }
+
+      if (result) {
+        setDraftId(result.id);
+        Alert.alert(
+          'Draft Saved',
+          'Your service has been saved as a draft with all current details. You can continue editing it later from your profile.',
+          [
+            { text: 'Continue Editing', style: 'default' },
+            { 
+              text: 'Go to Profile', 
+              onPress: () => router.push('/(tabs)/profile'),
+              style: 'default'
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to save draft. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      Alert.alert('Error', 'Failed to save draft. Please try again.');
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   const handleCreateService = async () => {
     if (!user || !mainService) {
       Alert.alert('Error', 'Unable to create service. Please try again.');
@@ -220,7 +294,17 @@ export default function DetailedServiceListingScreen() {
         is_trending: false, // New services start as non-trending
       };
 
-      const createdService = await ServiceService.createService(mainServiceData);
+      let createdService;
+      if (draftId) {
+        // Convert draft to active service
+        createdService = await ServiceService.updateService(draftId, {
+          ...mainServiceData,
+          status: 'active'
+        });
+      } else {
+        // Create new service
+        createdService = await ServiceService.createService(mainServiceData);
+      }
       
       if (!createdService) {
         Alert.alert('Error', 'Failed to create service listing. Please try again.');
@@ -526,40 +610,62 @@ export default function DetailedServiceListingScreen() {
           )}
         </View>
 
-        {/* Create Service Button */}
-        <TouchableOpacity
-          style={[
-            styles.createButton,
-            // Require main service to have title/description, and additional variants to have valid data
-            (serviceVariants.length > 1 && 
-             serviceVariants[0].title.trim() && serviceVariants[0].description.trim() &&
-             serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0))
-              ? styles.createButtonActive
-              : styles.createButtonDisabled
-          ]}
-          onPress={handleCreateService}
-          disabled={
-            isCreating ||
-            serviceVariants.length === 1 ||
-            !serviceVariants[0].title.trim() || !serviceVariants[0].description.trim() ||
-            !serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0)
-          }
-        >
-          <Text style={[
-            styles.createButtonText,
-            (serviceVariants.length > 1 && 
-             serviceVariants[0].title.trim() && serviceVariants[0].description.trim() &&
-             serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0))
-              ? styles.createButtonTextActive
-              : {}
-          ]}>
-            {isCreating ? 'Creating Services...' : 
-              serviceVariants.length === 1 
-                ? 'Add Service Variant to Continue'
-                : `Create Service Listing (${serviceVariants.length - 1} variant${serviceVariants.length > 2 ? 's' : ''})`
+        {/* Action Buttons */}
+        <View style={styles.actionButtonsContainer}>
+          {/* Save as Draft Button */}
+          <TouchableOpacity
+            style={[
+              styles.draftButton,
+              serviceVariants[0].title.trim() ? styles.draftButtonActive : styles.draftButtonDisabled
+            ]}
+            onPress={handleSaveAsDraft}
+            disabled={isSavingDraft || !serviceVariants[0].title.trim()}
+          >
+            <Text style={[
+              styles.draftButtonText,
+              serviceVariants[0].title.trim() ? styles.draftButtonTextActive : styles.draftButtonTextDisabled
+            ]}>
+              {isSavingDraft ? 'Saving...' : draftId ? 'Update Draft' : 'Save as Draft'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Create Service Button */}
+          <TouchableOpacity
+            style={[
+              styles.createButton,
+              // Require main service to have title/description, and additional variants to have valid data
+              (serviceVariants.length > 1 && 
+               serviceVariants[0].title.trim() && serviceVariants[0].description.trim() &&
+               serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0))
+                ? styles.createButtonActive
+                : styles.createButtonDisabled
+            ]}
+            onPress={handleCreateService}
+            disabled={
+              isCreating ||
+              serviceVariants.length === 1 ||
+              !serviceVariants[0].title.trim() || !serviceVariants[0].description.trim() ||
+              !serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0)
             }
-          </Text>
-        </TouchableOpacity>
+          >
+            <Text style={[
+              styles.createButtonText,
+              (serviceVariants.length > 1 && 
+               serviceVariants[0].title.trim() && serviceVariants[0].description.trim() &&
+               serviceVariants.slice(1).every(v => v.title.trim() && v.description.trim() && v.price > 0))
+                ? styles.createButtonTextActive
+                : {}
+            ]}>
+              {isCreating ? 'Creating Services...' : 
+                serviceVariants.length === 1 
+                  ? 'Add Service Variant to Continue'
+                  : draftId 
+                    ? `Publish Service (${serviceVariants.length - 1} variant${serviceVariants.length > 2 ? 's' : ''})`
+                    : `Create Service Listing (${serviceVariants.length - 1} variant${serviceVariants.length > 2 ? 's' : ''})`
+              }
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {/* AI Description Modal */}
@@ -755,12 +861,15 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   createButton: {
+    flex: 1,
     paddingVertical: 16,
-    paddingHorizontal: 20,
     borderRadius: 12,
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   createButtonActive: {
     backgroundColor: '#007AFF',
@@ -842,5 +951,45 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     lineHeight: 20,
     textAlign: 'center',
+  },
+  // Action buttons container
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  // Draft button styles
+  draftButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  draftButtonActive: {
+    borderColor: '#007AFF',
+    backgroundColor: '#FFFFFF',
+  },
+  draftButtonDisabled: {
+    borderColor: '#E5E5EA',
+    backgroundColor: '#F8F9FA',
+  },
+  draftButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  draftButtonTextActive: {
+    color: '#007AFF',
+  },
+  draftButtonTextDisabled: {
+    color: '#8E8E93',
   },
 });

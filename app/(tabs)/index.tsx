@@ -208,6 +208,8 @@ export default function HomeScreen() {
         ServiceService.getDigitalServices(),
         ServiceService.getTrendingServices()
       ]);
+
+      console.log('🏠 Homepage: Fetched trending services:', trending.length);
       
       // Fetch nearby services with location-based sorting if location is available
       let nearby;
@@ -221,6 +223,8 @@ export default function HomeScreen() {
       setNearbyServices(nearby.map(convertToUIService));
       setDigitalServices(digital.map(convertToUIService));
       setTrendingServices(trending.map(convertToUIService));
+
+      console.log('🏠 Homepage: Set trending services state:', trending.length);
 
       // Preload images for better performance
       const imageUrls = [

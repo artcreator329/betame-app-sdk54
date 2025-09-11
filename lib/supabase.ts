@@ -49,45 +49,135 @@ const supabaseWithRetry = {
   ...supabase,
   storage: {
     ...supabase.storage,
-    from: (bucket: string) => ({
-      ...supabase.storage.from(bucket),
-      upload: async (path: string, file: any, options?: any) => {
-        let lastError: any;
+    from: (bucket: string) => {
+      const originalBucket = supabase.storage.from(bucket);
+      
+      return {
+        // Include all original methods
+        ...originalBucket,
         
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          try {
-            const result = await supabase.storage.from(bucket).upload(path, file, options);
-            
-            if (result.error) {
-              // Don't retry for certain errors
-              if (result.error.message.includes('already exists') ||
-                  result.error.message.includes('permission') ||
-                  result.error.message.includes('invalid')) {
+        // Enhanced upload method with retry logic
+        upload: async (path: string, file: any, options?: any) => {
+          let lastError: any;
+          
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              console.log(`🔄 Storage upload attempt ${attempt}/3 for path: ${path}`);
+              const result = await originalBucket.upload(path, file, options);
+              
+              if (result.error) {
+                console.error(`❌ Upload attempt ${attempt} failed:`, result.error);
+                
+                // Don't retry for certain errors
+                if (result.error.message.includes('already exists') ||
+                    result.error.message.includes('permission') ||
+                    result.error.message.includes('invalid') ||
+                    result.error.message.includes('duplicate')) {
+                  console.log('🚫 Non-retryable error, stopping attempts');
+                  return result;
+                }
+                
+                lastError = result.error;
+                if (attempt < 3) {
+                  const delay = 2000 * attempt; // Exponential backoff: 2s, 4s, 6s
+                  console.log(`⏳ Retrying in ${delay}ms...`);
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                  continue;
+                }
+              } else {
+                console.log(`✅ Upload attempt ${attempt} successful`);
                 return result;
               }
               
-              lastError = result.error;
+              return result;
+            } catch (error) {
+              console.error(`❌ Upload attempt ${attempt} threw error:`, error);
+              lastError = error;
               if (attempt < 3) {
-                console.log(`Storage upload attempt ${attempt} failed, retrying...`);
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                const delay = 2000 * attempt; // Exponential backoff: 2s, 4s, 6s
+                console.log(`⏳ Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
               }
             }
-            
-            return result;
-          } catch (error) {
-            lastError = error;
-            if (attempt < 3) {
-              console.log(`Storage upload attempt ${attempt} failed, retrying...`);
-              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-              continue;
+          }
+          
+          console.error('❌ All upload attempts failed, returning last error');
+          return { data: null, error: lastError };
+        },
+        
+        // Enhanced list method with retry logic
+        list: async (path?: string, options?: any) => {
+          let lastError: any;
+          
+          for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+              const result = await originalBucket.list(path, options);
+              
+              if (result.error) {
+                console.error(`❌ List attempt ${attempt} failed:`, result.error);
+                lastError = result.error;
+                if (attempt < 2) {
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  continue;
+                }
+              } else {
+                return result;
+              }
+              
+              return result;
+            } catch (error) {
+              console.error(`❌ List attempt ${attempt} threw error:`, error);
+              lastError = error;
+              if (attempt < 2) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                continue;
+              }
             }
           }
-        }
+          
+          return { data: null, error: lastError };
+        },
         
-        return { data: null, error: lastError };
-      }
-    })
+        // Include getPublicUrl method (no retry needed as it's synchronous)
+        getPublicUrl: (path: string, options?: any) => {
+          return originalBucket.getPublicUrl(path, options);
+        },
+        
+        // Include remove method with retry logic
+        remove: async (paths: string[]) => {
+          let lastError: any;
+          
+          for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+              const result = await originalBucket.remove(paths);
+              
+              if (result.error) {
+                console.error(`❌ Remove attempt ${attempt} failed:`, result.error);
+                lastError = result.error;
+                if (attempt < 2) {
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  continue;
+                }
+              } else {
+                return result;
+              }
+              
+              return result;
+            } catch (error) {
+              console.error(`❌ Remove attempt ${attempt} threw error:`, error);
+              lastError = error;
+              if (attempt < 2) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                continue;
+              }
+            }
+          }
+          
+          return { data: null, error: lastError };
+        }
+      };
+    }
   }
 };
 

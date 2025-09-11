@@ -54,6 +54,7 @@ export default function ProfileScreen() {
   const params = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState('My Services');
   const [services, setServices] = useState<any[]>([]);
+  const [drafts, setDrafts] = useState<any[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [jobListings, setJobListings] = useState<JobListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,15 +238,22 @@ export default function ProfileScreen() {
     try {
       setLoading(true);
 
-      // Fetch user's services
+      // Fetch user's services (including drafts and hidden services)
       try {
-        // Get all services and filter for current user to include variants
-        const allServices = await ServiceService.getAllServices();
-        userServices = allServices.filter(service => service.user_id === user.id);
+        userServices = await ServiceService.getUserServices(user.id);
         setServices(userServices);
       } catch (error) {
         console.error('Error fetching services:', error);
         setServices([]);
+      }
+
+      // Fetch user's draft services
+      try {
+        const userDrafts = await ServiceService.getUserDrafts(user.id);
+        setDrafts(userDrafts);
+      } catch (error) {
+        console.error('Error fetching drafts:', error);
+        setDrafts([]);
       }
 
       // Fetch reviews for this user (as reviewee)
@@ -841,6 +849,170 @@ export default function ProfileScreen() {
             )}
           </View>
         );
+      case 'Drafts':
+        if (loading) {
+          return (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary.main} />
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>Loading drafts...</Text>
+            </View>
+          );
+        }
+        return (
+          <View style={styles.servicesContent}>
+            <Text style={[styles.availableListings, { color: colors.text.secondary }]}>Draft Services ({String(drafts.length)})</Text>
+            
+            {drafts.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={[styles.emptyStateText, { color: colors.text.secondary }]}>No drafts yet</Text>
+                <Text style={[styles.emptyStateSuggestion, { color: colors.text.secondary }]}>Start creating a service and save it as a draft to continue later!</Text>
+                <TouchableOpacity
+                  style={[styles.createServiceButton, { backgroundColor: colors.primary.main }]}
+                  onPress={() => router.push('/create-service-listing')}
+                >
+                  <Text style={styles.createServiceButtonText}>Create Service</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {drafts.map((draft) => (
+                  <TouchableOpacity
+                    key={draft.id}
+                    style={[styles.draftCard, { backgroundColor: colors.background.secondary }]}
+                    onPress={() => {
+                      // Continue editing the draft
+                      const serviceData = {
+                        title: draft.title,
+                        description: draft.description,
+                        serviceType: draft.category_name,
+                        isDigitalService: draft.is_digital_service,
+                        imageUri: draft.image_url,
+                        serviceArea: draft.latitude && draft.longitude ? {
+                          latitude: draft.latitude,
+                          longitude: draft.longitude,
+                          address: draft.location || '',
+                          radius: draft.service_area_radius || 10,
+                          description: draft.service_area_description || '',
+                        } : undefined,
+                        draftId: draft.id,
+                      };
+
+                      if (draft.is_digital_service || (draft.latitude && draft.longitude)) {
+                        // Go directly to detailed service listing if service area is complete
+                        router.push({
+                          pathname: '/detailed-service-listing',
+                          params: {
+                            serviceData: JSON.stringify(serviceData)
+                          }
+                        });
+                      } else {
+                        // Go back to create service listing to complete service area
+                        router.push({
+                          pathname: '/create-service-listing',
+                          params: {
+                            draftData: JSON.stringify(serviceData)
+                          }
+                        });
+                      }
+                    }}
+                  >
+                    <View style={styles.draftHeader}>
+                      <View style={styles.draftInfo}>
+                        <Text style={[styles.draftTitle, { color: colors.text.primary }]}>{draft.title}</Text>
+                        <Text style={[styles.draftDescription, { color: colors.text.secondary }]} numberOfLines={2}>
+                          {draft.description || 'No description yet'}
+                        </Text>
+                        <Text style={[styles.draftDate, { color: colors.text.secondary }]}>
+                          Last updated: {new Date(draft.updated_at).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      <View style={[styles.draftBadge, { backgroundColor: colors.primary.main + '20' }]}>
+                        <Text style={[styles.draftBadgeText, { color: colors.primary.main }]}>DRAFT</Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.draftActions}>
+                      <TouchableOpacity
+                        style={[styles.draftActionButton, { backgroundColor: colors.primary.main }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          // Continue editing logic (same as card press)
+                          const serviceData = {
+                            title: draft.title,
+                            description: draft.description,
+                            serviceType: draft.category_name,
+                            isDigitalService: draft.is_digital_service,
+                            imageUri: draft.image_url,
+                            serviceArea: draft.latitude && draft.longitude ? {
+                              latitude: draft.latitude,
+                              longitude: draft.longitude,
+                              address: draft.location || '',
+                              radius: draft.service_area_radius || 10,
+                              description: draft.service_area_description || '',
+                            } : undefined,
+                            draftId: draft.id,
+                          };
+
+                          if (draft.is_digital_service || (draft.latitude && draft.longitude)) {
+                            router.push({
+                              pathname: '/detailed-service-listing',
+                              params: {
+                                serviceData: JSON.stringify(serviceData)
+                              }
+                            });
+                          } else {
+                            router.push({
+                              pathname: '/create-service-listing',
+                              params: {
+                                draftData: JSON.stringify(serviceData)
+                              }
+                            });
+                          }
+                        }}
+                      >
+                        <Text style={styles.draftActionButtonText}>Continue Editing</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[styles.draftActionButton, styles.deleteDraftButton]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          Alert.alert(
+                            'Delete Draft',
+                            'Are you sure you want to delete this draft? This action cannot be undone.',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: async () => {
+                                  try {
+                                    const success = await ServiceService.deleteService(draft.id);
+                                    if (success) {
+                                      setDrafts(prev => prev.filter(d => d.id !== draft.id));
+                                      Alert.alert('Success', 'Draft deleted successfully');
+                                    } else {
+                                      Alert.alert('Error', 'Failed to delete draft');
+                                    }
+                                  } catch (error) {
+                                    console.error('Error deleting draft:', error);
+                                    Alert.alert('Error', 'Failed to delete draft');
+                                  }
+                                }
+                              }
+                            ]
+                          );
+                        }}
+                      >
+                        <Text style={[styles.draftActionButtonText, { color: '#EF4444' }]}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        );
       default:
         return null;
     }
@@ -1266,7 +1438,7 @@ export default function ProfileScreen() {
               <View style={styles.desktopRightColumn}>
                 {/* Tab Navigation */}
                 <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }, isDesktop && styles.tabNavigationDesktop]}>
-                  {['My Services', 'Reviews'].map((tab) => (
+                  {['My Services', 'Drafts', 'Reviews'].map((tab) => (
                     <TouchableOpacity
                       key={tab}
                       style={[
@@ -1430,7 +1602,7 @@ export default function ProfileScreen() {
 
               {/* Tab Navigation */}
               <View style={[styles.tabNavigation, { backgroundColor: colors.background.primary }, isDesktop && styles.tabNavigationDesktop]}>
-                {['My Services', 'Reviews'].map((tab) => (
+                {['My Services', 'Drafts', 'Reviews'].map((tab) => (
                   <TouchableOpacity
                     key={tab}
                     style={[
@@ -1916,6 +2088,79 @@ const styles = StyleSheet.create({
   activeTab: {
   },
   activeTabText: {
+    fontWeight: '600',
+  },
+  // Draft card styles
+  draftCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  draftHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  draftInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  draftTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  draftDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  draftDate: {
+    fontSize: 12,
+  },
+  draftBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  draftBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  draftActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  draftActionButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  deleteDraftButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  draftActionButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'white',
+  },
+  createServiceButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  createServiceButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: '600',
   },
   tabContent: {

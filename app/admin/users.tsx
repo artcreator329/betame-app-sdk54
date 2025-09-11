@@ -276,7 +276,7 @@ export default function AdminUsers() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={Colors.primary.main} />
           <Text style={styles.loadingText}>Loading users...</Text>
         </View>
       </SafeAreaView>
@@ -288,7 +288,7 @@ export default function AdminUsers() {
       {/* Search and Filter */}
       <View style={styles.searchSection}>
         <View style={styles.searchContainer}>
-          <Search size={20} color={Colors.textSecondary} />
+          <Search size={20} color={Colors.text.secondary} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search users by name or email..."

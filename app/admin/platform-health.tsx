@@ -197,7 +197,7 @@ export default function PlatformHealth() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={Colors.primary.main} />
           <Text style={styles.loadingText}>Loading platform health...</Text>
         </View>
       </SafeAreaView>

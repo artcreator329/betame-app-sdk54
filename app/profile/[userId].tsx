@@ -142,12 +142,10 @@ export default function UserProfileScreen() {
 
       setProfile(mergedProfileData);
 
-      // Fetch user's services (only visible ones)
+      // Fetch user's services (only visible ones - getAllServices now filters for public visibility)
       try {
         const allServices = await ServiceService.getAllServices();
-        const userServices = allServices.filter(
-          service => service.user_id === userId && service.show_on_profile !== false
-        );
+        const userServices = allServices.filter(service => service.user_id === userId);
         setServices(userServices);
       } catch (error) {
         console.error('Error fetching services:', error);

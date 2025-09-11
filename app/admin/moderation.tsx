@@ -406,7 +406,7 @@ export default function ModerationCenter() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={Colors.primary.main} />
           <Text style={styles.loadingText}>Loading moderation center...</Text>
         </View>
       </SafeAreaView>

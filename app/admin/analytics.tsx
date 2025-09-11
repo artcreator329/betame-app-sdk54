@@ -218,7 +218,7 @@ export default function AdminAnalytics() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={Colors.primary.main} />
           <Text style={styles.loadingText}>Loading analytics...</Text>
         </View>
       </SafeAreaView>
@@ -252,8 +252,8 @@ export default function AdminAnalytics() {
             title="Total Users"
             value={formatNumber(analyticsData.overview.totalUsers)}
             change={12.5}
-            icon={<Users size={20} color={Colors.primary} />}
-            color={Colors.primary}
+            icon={<Users size={20} color={Colors.primary.main} />}
+            color={Colors.primary.main}
           />
           <MetricCard
             title="Total Revenue"

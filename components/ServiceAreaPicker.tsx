@@ -73,11 +73,20 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Location permission is required to use this feature.');
+        Alert.alert(
+          'Location Permission Required', 
+          'Please allow location access to automatically detect your current location for the service area.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Location.requestForegroundPermissionsAsync() }
+          ]
+        );
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
       const { latitude, longitude } = location.coords;
       
       const newRegion = {
@@ -97,9 +106,48 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
         const formattedAddress = `${addr.street || ''} ${addr.city || ''} ${addr.region || ''} ${addr.country || ''}`.trim();
         setAddress(formattedAddress);
         setSearchText(formattedAddress);
+        
+        // Automatically update parent component with detected location
+        onLocationSelect({
+          latitude,
+          longitude,
+          address: formattedAddress,
+          radius,
+          description,
+        });
+        
+        Alert.alert(
+          'Location Detected', 
+          `Your current location has been set as the service area: ${formattedAddress}`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        // Fallback if reverse geocoding fails
+        const fallbackAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+        setAddress(fallbackAddress);
+        setSearchText(fallbackAddress);
+        
+        onLocationSelect({
+          latitude,
+          longitude,
+          address: fallbackAddress,
+          radius,
+          description,
+        });
+        
+        Alert.alert(
+          'Location Detected', 
+          'Your current location has been set as the service area.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to get current location');
+      console.error('Location error:', error);
+      Alert.alert(
+        'Location Error', 
+        'Unable to detect your current location. Please ensure location services are enabled and try again, or manually select your location on the map.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsLoadingLocation(false);
     }
@@ -176,19 +224,24 @@ export default function ServiceAreaPicker({ onLocationSelect, initialLocation }:
     <View style={styles.container}>
       {/* Header with Current Location Button */}
       <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}>Tap on map to select location</Text>
         <TouchableOpacity 
-          style={styles.currentLocationButton} 
+          style={styles.detectLocationButton} 
           onPress={getCurrentLocation}
           disabled={isLoadingLocation}
         >
           {isLoadingLocation ? (
-            <ActivityIndicator size="small" color={Colors.primary.main} />
+            <>
+              <ActivityIndicator size="small" color="white" />
+              <Text style={styles.detectLocationButtonText}>Detecting...</Text>
+            </>
           ) : (
-            <MapPin size={20} color={Colors.primary.main} />
+            <>
+              <MapPin size={16} color="white" />
+              <Text style={styles.detectLocationButtonText}>Use My Location</Text>
+            </>
           )}
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tap on map to select location</Text>
-        <View style={{ width: 32 }} />
       </View>
 
       {/* Map */}
@@ -347,22 +400,36 @@ const styles = StyleSheet.create({
     minHeight: 500,
   },
   headerContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     padding: 16,
     backgroundColor: Colors.background.tertiary,
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '500',
     color: Colors.text.primary,
     textAlign: 'center',
-    flex: 1,
   },
-
-  currentLocationButton: {
-    padding: 8,
+  detectLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  detectLocationButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
   mapContainer: {
     height: 250,

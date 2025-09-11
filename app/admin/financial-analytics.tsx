@@ -246,7 +246,7 @@ export default function FinancialAnalytics() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={Colors.primary.main} />
           <Text style={styles.loadingText}>Loading financial analytics...</Text>
         </View>
       </SafeAreaView>
