@@ -296,6 +296,10 @@ By registering as a Provider, you acknowledge that you have read, understood, an
           </Text>
         </View>
 
+      </ScrollView>
+
+      {/* Sticky Bottom Acceptance Section */}
+      <View style={[styles.stickyBottomContainer, { backgroundColor: colors.background.primary, borderTopColor: colors.border.main }]}>
         {/* Acceptance Checkbox */}
         <TouchableOpacity
           style={styles.checkboxContainer}
@@ -330,7 +334,7 @@ By registering as a Provider, you acknowledge that you have read, understood, an
             {isAccepting ? 'Accepting...' : 'Accept Agreement & Continue'}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -362,7 +366,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 120, // Extra padding to account for sticky bottom section
   },
   documentCard: {
     borderRadius: 12,
@@ -397,7 +401,7 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 24,
+    marginBottom: 16,
     paddingHorizontal: 4,
   },
   checkbox: {
@@ -421,7 +425,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
     alignItems: 'center',
-    marginBottom: 16,
   },
   acceptButtonDisabled: {
     opacity: 0.6,
@@ -429,5 +432,23 @@ const styles = StyleSheet.create({
   acceptButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  stickyBottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 32, // Extra padding for safe area
+    borderTopWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
   },
 });

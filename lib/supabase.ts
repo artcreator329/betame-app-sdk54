@@ -25,7 +25,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   // Configure fetch with timeout and retry logic
   fetch: (url, options = {}) => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    // Longer timeout for storage uploads (especially for images)
+    const timeoutMs = url.includes('/storage/') ? 90000 : 30000; // 90s for storage, 30s for other requests
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     return fetch(url, {
       ...options,

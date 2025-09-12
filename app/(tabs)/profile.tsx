@@ -438,6 +438,7 @@ export default function ProfileScreen() {
     }
   };
 
+
   const handlePhotoOptions = (type: 'cover' | 'profile') => {
     const photoTypeText = type === 'cover' ? 'Cover Photo' : 'Profile Photo';
 
@@ -475,7 +476,11 @@ export default function ProfileScreen() {
   const handleTakePhoto = async (type: 'cover' | 'profile' = 'profile') => {
     try {
       setUploadingPhoto(true);
-      const result = await ImageService.takeProfilePhoto(user!.id);
+      
+      // Use appropriate method based on photo type
+      const result = type === 'cover' 
+        ? await ImageService.takeCoverPhoto(user!.id)
+        : await ImageService.takeProfilePhoto(user!.id);
 
       if (result.success && result.url) {
         // Update the correct field based on photo type
@@ -487,7 +492,20 @@ export default function ProfileScreen() {
         const photoTypeText = type === 'cover' ? 'Cover photo' : 'Profile photo';
         Alert.alert('Success', `${photoTypeText} updated successfully!`);
       } else {
-        Alert.alert('Error', result.error || 'Failed to upload photo. Please try again.');
+        const photoTypeText = type === 'cover' ? 'cover photo' : 'profile photo';
+        const errorMessage = result.error || 'Failed to upload photo. Please try again.';
+        
+        // Provide specific guidance based on error type
+        if (errorMessage.includes('Network connection failed') || errorMessage.includes('timeout')) {
+          Alert.alert(
+            'Network Issue', 
+            `Failed to upload ${photoTypeText} due to network connectivity. Please check your internet connection and try again.`
+          );
+        } else if (errorMessage.includes('Authentication required')) {
+          Alert.alert('Authentication Error', 'Please sign out and sign back in, then try again.');
+        } else {
+          Alert.alert('Upload Error', errorMessage);
+        }
       }
     } catch (error) {
       console.error('Error taking photo:', error);
@@ -500,7 +518,11 @@ export default function ProfileScreen() {
   const handleChoosePhoto = async (type: 'cover' | 'profile' = 'profile') => {
     try {
       setUploadingPhoto(true);
-      const result = await ImageService.uploadProfilePhoto(user!.id);
+      
+      // Use appropriate method based on photo type
+      const result = type === 'cover' 
+        ? await ImageService.uploadCoverPhoto(user!.id)
+        : await ImageService.uploadProfilePhoto(user!.id);
 
       if (result.success && result.url) {
         // Update the correct field based on photo type
@@ -512,7 +534,20 @@ export default function ProfileScreen() {
         const photoTypeText = type === 'cover' ? 'Cover photo' : 'Profile photo';
         Alert.alert('Success', `${photoTypeText} updated successfully!`);
       } else {
-        Alert.alert('Error', result.error || 'Failed to upload photo. Please try again.');
+        const photoTypeText = type === 'cover' ? 'cover photo' : 'profile photo';
+        const errorMessage = result.error || 'Failed to upload photo. Please try again.';
+        
+        // Provide specific guidance based on error type
+        if (errorMessage.includes('Network connection failed') || errorMessage.includes('timeout')) {
+          Alert.alert(
+            'Network Issue', 
+            `Failed to upload ${photoTypeText} due to network connectivity. Please check your internet connection and try again.`
+          );
+        } else if (errorMessage.includes('Authentication required')) {
+          Alert.alert('Authentication Error', 'Please sign out and sign back in, then try again.');
+        } else {
+          Alert.alert('Upload Error', errorMessage);
+        }
       }
     } catch (error) {
       console.error('Error choosing photo:', error);
@@ -656,10 +691,7 @@ export default function ProfileScreen() {
                 }}
               >
                 <Text style={[styles.becomeServiceProviderButtonText, { color: colors.text.white }]}>
-                  Become a Service Provider
-                </Text>
-                <Text style={[styles.becomeServiceProviderButtonSubtext, { color: colors.text.white }]}>
-                  Complete banking information to get started
+                  Create Your First Service Listing Now!
                 </Text>
               </TouchableOpacity>
             )}
@@ -1309,10 +1341,10 @@ export default function ProfileScreen() {
                       <Text style={[styles.reviewText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)' }]}>({userProfile?.review_count || reviews.length} reviews)</Text>
                     </View>
                     
-                    {/* Verification Status Badge */}
-                    <View style={styles.verificationContainer}>
+                    {/* Verification Status Badge - Hidden */}
+                    {/* <View style={styles.verificationContainer}>
                       <VerificationStatusBadge />
-                    </View>
+                    </View> */}
                   </View>
                 </View>
               )}
