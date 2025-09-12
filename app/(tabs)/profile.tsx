@@ -293,13 +293,9 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
 
-      // Set default active tab based on available content
+      // Always default to "My Services" tab
       if (activeTab === 'My Services' || activeTab === 'I\'m Hiring') {
-        if (userServices.length > 0) {
-          setActiveTab('My Services');
-        } else {
-          setActiveTab('Reviews');
-        }
+        setActiveTab('My Services');
       }
     }
   }, [user]); // Remove activeTab from dependencies

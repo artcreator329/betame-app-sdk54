@@ -11,10 +11,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 export default function BecomeServiceProviderScreen() {
   const router = useRouter();
   const { user, userProfile } = useAuth();
+  const [hasAcceptedAgreement, setHasAcceptedAgreement] = useState(false);
+  const [hasBankInfo, setHasBankInfo] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
 
   // Check if user is authenticated
   useEffect(() => {
@@ -30,17 +34,63 @@ export default function BecomeServiceProviderScreen() {
     }
   }, [user, router]);
 
-  // Remove the problematic real-time subscription for now
-  // useEffect(() => {
-  //   if (!user) return;
-  //   console.log('🔄 Setting up real-time subscription for become-service-provider page');
-  //   // ... subscription code removed
-  // }, [user]);
+  // Check user's current progress status
+  useEffect(() => {
+    if (user) {
+      checkUserProgress();
+    }
+  }, [user]);
 
-  // Function to navigate to bank info page
+  const checkUserProgress = async () => {
+    if (!user) return;
+    
+    try {
+      setIsCheckingStatus(true);
+      
+      // Check agreement acceptance
+      const { data: agreementData } = await supabase
+        .from('service_provider_agreement_acceptance')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      setHasAcceptedAgreement(!!agreementData);
+      
+      // Check bank info completion
+      const { data: bankData } = await supabase
+        .from('service_provider_bank_info')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_immutable', true)
+        .single();
+      
+      setHasBankInfo(!!bankData);
+      
+    } catch (error) {
+      console.error('Error checking user progress:', error);
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
+  // Function to navigate based on current progress
   const handleBecomeServiceProvider = () => {
     if (!user) return;
-    router.push('/service-provider-agreement');
+    
+    if (!hasAcceptedAgreement) {
+      // User hasn't accepted agreement yet
+      router.push('/service-provider-agreement');
+    } else if (!hasBankInfo) {
+      // User has accepted agreement but hasn't filled bank info
+      router.push('/service-provider-bank-info');
+    } else {
+      // User has completed everything
+      Alert.alert(
+        'Already a Service Provider',
+        'You have already completed the service provider registration process.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   // Don't render the main content if user is not authenticated
@@ -111,12 +161,26 @@ export default function BecomeServiceProviderScreen() {
               <Text style={styles.benefitItem}>• Earn money from your skills</Text>
             </View>
 
-            <TouchableOpacity 
-              style={styles.becomeServiceProviderButton}
-              onPress={handleBecomeServiceProvider}
-            >
-              <Text style={styles.becomeServiceProviderButtonText}>Complete Banking Information</Text>
-            </TouchableOpacity>
+            {isCheckingStatus ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#007AFF" />
+                <Text style={styles.loadingText}>Checking your progress...</Text>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.becomeServiceProviderButton}
+                onPress={handleBecomeServiceProvider}
+              >
+                <Text style={styles.becomeServiceProviderButtonText}>
+                  {!hasAcceptedAgreement 
+                    ? 'Start Registration' 
+                    : !hasBankInfo 
+                    ? 'Complete Banking Information' 
+                    : 'View Status'
+                  }
+                </Text>
+              </TouchableOpacity>
+            )}
           </>
         )}
       </View>
@@ -225,5 +289,16 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     marginTop: 8,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#8E8E93',
   },
 });

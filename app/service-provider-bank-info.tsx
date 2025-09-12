@@ -148,8 +148,12 @@ export default function ServiceProviderBankInfoScreen() {
   }, []);
 
   const checkAgreementAndLoadData = async () => {
-    await checkAgreementAcceptance();
-    await loadExistingBankInfo();
+    try {
+      await checkAgreementAcceptance();
+      await loadExistingBankInfo();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const checkAgreementAcceptance = async () => {
@@ -170,17 +174,10 @@ export default function ServiceProviderBankInfoScreen() {
       if (agreementData) {
         setHasAcceptedAgreement(true);
       } else {
-        // User hasn't accepted the agreement, redirect them back
-        Alert.alert(
-          'Agreement Required',
-          'You must accept the Service Provider Agreement before providing bank information.',
-          [
-            {
-              text: 'Go Back',
-              onPress: () => router.push('/service-provider-agreement'),
-            },
-          ]
-        );
+        // User hasn't accepted the agreement, redirect them immediately
+        setHasAcceptedAgreement(false);
+        router.replace('/service-provider-agreement');
+        return;
       }
     } catch (error) {
       console.error('Error checking agreement acceptance:', error);
@@ -223,8 +220,6 @@ export default function ServiceProviderBankInfoScreen() {
       }
     } catch (error) {
       console.error('Error loading bank info:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
