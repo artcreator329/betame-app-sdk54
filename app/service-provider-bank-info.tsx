@@ -93,6 +93,7 @@ export default function ServiceProviderBankInfoScreen() {
   const colors = useColors();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasAcceptedAgreement, setHasAcceptedAgreement] = useState(false);
   const [existingBankInfo, setExistingBankInfo] = useState<any>(null);
   const [formData, setFormData] = useState<BankInfoFormData>({
     real_name: '',
@@ -143,8 +144,48 @@ export default function ServiceProviderBankInfoScreen() {
   };
 
   useEffect(() => {
-    loadExistingBankInfo();
+    checkAgreementAndLoadData();
   }, []);
+
+  const checkAgreementAndLoadData = async () => {
+    await checkAgreementAcceptance();
+    await loadExistingBankInfo();
+  };
+
+  const checkAgreementAcceptance = async () => {
+    try {
+      if (!user) return;
+
+      const { data: agreementData, error } = await supabase
+        .from('service_provider_agreement_acceptance')
+        .select('id, accepted_at')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking agreement acceptance:', error);
+        return;
+      }
+
+      if (agreementData) {
+        setHasAcceptedAgreement(true);
+      } else {
+        // User hasn't accepted the agreement, redirect them back
+        Alert.alert(
+          'Agreement Required',
+          'You must accept the Service Provider Agreement before providing bank information.',
+          [
+            {
+              text: 'Go Back',
+              onPress: () => router.push('/service-provider-agreement'),
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error checking agreement acceptance:', error);
+    }
+  };
 
   const loadExistingBankInfo = async () => {
     try {
@@ -347,6 +388,19 @@ export default function ServiceProviderBankInfoScreen() {
           <ActivityIndicator size="large" color={colors.primary.main} />
           <Text style={[styles.loadingText, { color: colors.text.primary }]}>
             Loading bank information...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Don't show the form if user hasn't accepted the agreement
+  if (!hasAcceptedAgreement) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: colors.text.primary }]}>
+            Redirecting to Service Provider Agreement...
           </Text>
         </View>
       </SafeAreaView>

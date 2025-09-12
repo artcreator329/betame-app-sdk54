@@ -40,7 +40,7 @@ export default function BecomeServiceProviderScreen() {
   // Function to navigate to bank info page
   const handleBecomeServiceProvider = () => {
     if (!user) return;
-    router.push('/service-provider-bank-info');
+    router.push('/service-provider-agreement');
   };
 
   // Don't render the main content if user is not authenticated
