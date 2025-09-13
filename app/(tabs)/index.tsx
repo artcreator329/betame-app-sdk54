@@ -543,17 +543,18 @@ export default function HomeScreen() {
             </View>
           ) : nearbyServices.length > 0 ? (
             isDesktop ? (
-              <ResponsiveGrid 
-                columns={{ mobile: 1, tablet: 2, desktop: 3, wide: 4 }}
-                gap={16}
-                className="nearby-services-grid"
+              <ScrollView 
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.webHorizontalScrollContainer}
+                style={styles.webHorizontalScroll}
               >
                 {nearbyServices.slice(0, 12).map((service) => (
-                  <GridCard key={service.id} className="app-service-card">
+                  <View key={service.id} style={styles.webServiceCard}>
                     <ServiceCard service={service} viewSource="nearby" />
-                  </GridCard>
+                  </View>
                 ))}
-              </ResponsiveGrid>
+              </ScrollView>
             ) : (
               nearbyLayout === 'grid' ? (
                 <View style={styles.servicesGrid}>
@@ -604,17 +605,18 @@ export default function HomeScreen() {
             </View>
           ) : digitalServices.length > 0 ? (
             isDesktop ? (
-              <ResponsiveGrid 
-                columns={{ mobile: 1, tablet: 2, desktop: 3, wide: 4 }}
-                gap={16}
-                className="digital-services-grid"
+              <ScrollView 
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.webHorizontalScrollContainer}
+                style={styles.webHorizontalScroll}
               >
                 {digitalServices.slice(0, 12).map((service) => (
-                  <GridCard key={service.id} className="app-service-card">
+                  <View key={service.id} style={styles.webServiceCard}>
                     <ServiceCard service={service} viewSource="service_card" />
-                  </GridCard>
+                  </View>
                 ))}
-              </ResponsiveGrid>
+              </ScrollView>
             ) : (
               digitalLayout === 'grid' ? (
                 <View style={styles.servicesGrid}>
@@ -665,17 +667,18 @@ export default function HomeScreen() {
               </View>
           ) : trendingServices.length > 0 ? (
             isDesktop ? (
-              <ResponsiveGrid 
-                columns={{ mobile: 1, tablet: 2, desktop: 3, wide: 4 }}
-                gap={16}
-                className="trending-services-grid"
+              <ScrollView 
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.webHorizontalScrollContainer}
+                style={styles.webHorizontalScroll}
               >
                 {trendingServices.slice(0, 8).map((service) => (
-                  <GridCard key={service.id} className="app-service-card">
+                  <View key={service.id} style={styles.webServiceCard}>
                     <ServiceCard service={service} viewSource="trending" />
-                  </GridCard>
+                  </View>
                 ))}
-              </ResponsiveGrid>
+              </ScrollView>
             ) : (
               trendingLayout === 'grid' ? (
                 <View style={styles.servicesGrid}>
@@ -1088,5 +1091,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6c757d',
     textAlign: 'center',
+  },
+  // Web horizontal scroll styles
+  webHorizontalScroll: {
+    marginHorizontal: isDesktop ? -24 : 0, // Compensate for section padding
+  },
+  webHorizontalScrollContainer: {
+    paddingHorizontal: isDesktop ? 24 : 0,
+    paddingRight: isDesktop ? 48 : 0, // Extra padding at the end
+  },
+  webServiceCard: {
+    width: isDesktop ? 200 : 180, // Fixed width for horizontal scrolling
+    marginRight: isDesktop ? 16 : 12,
+    minWidth: isDesktop ? 200 : 180, // Ensure consistent width
   },
 });

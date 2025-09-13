@@ -87,39 +87,68 @@ export default function SettingsScreen() {
   const isDesktop = screenWidth >= 1024;
 
   const handleLogout = () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🔄 Starting logout process...');
-              const { error } = await signOut();
-              console.log('🔄 SignOut result:', { error });
-              
-              if (error) {
-                console.error('❌ Logout error:', error);
-                Alert.alert('Error', 'Failed to sign out. Please try again.');
-              } else {
-                console.log('✅ Logout successful, navigating to login...');
-                // Navigate to login screen after successful logout
-                router.replace('/auth/login');
-              }
-            } catch (error) {
-              console.error('❌ Logout exception:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
+    // For web, use confirm instead of Alert which might not work properly
+    if (Platform.OS === 'web') {
+      const confirmed = confirm('Are you sure you want to sign out?');
+      if (!confirmed) return;
+      
+      try {
+        console.log('🔄 Starting logout process...');
+        signOut().then(({ error }) => {
+          console.log('🔄 SignOut result:', { error });
+          
+          if (error) {
+            console.error('❌ Logout error:', error);
+            alert('Failed to sign out. Please try again.');
+          } else {
+            console.log('✅ Logout successful, navigating to login...');
+            // Navigate to login screen after successful logout
+            router.replace('/auth/login');
+          }
+        }).catch((error) => {
+          console.error('❌ Logout exception:', error);
+          alert('Failed to sign out. Please try again.');
+        });
+      } catch (error) {
+        console.error('❌ Logout exception:', error);
+        alert('Failed to sign out. Please try again.');
+      }
+    } else {
+      // Use Alert for mobile
+      Alert.alert(
+        'Log Out',
+        'Are you sure you want to log out?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
           },
-        },
-      ]
-    );
+          {
+            text: 'Log Out',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                console.log('🔄 Starting logout process...');
+                const { error } = await signOut();
+                console.log('🔄 SignOut result:', { error });
+                
+                if (error) {
+                  console.error('❌ Logout error:', error);
+                  Alert.alert('Error', 'Failed to sign out. Please try again.');
+                } else {
+                  console.log('✅ Logout successful, navigating to login...');
+                  // Navigate to login screen after successful logout
+                  router.replace('/auth/login');
+                }
+              } catch (error) {
+                console.error('❌ Logout exception:', error);
+                Alert.alert('Error', 'Failed to sign out. Please try again.');
+              }
+            },
+          },
+        ]
+      );
+    }
   };
 
   const handleInviteFriends = () => {

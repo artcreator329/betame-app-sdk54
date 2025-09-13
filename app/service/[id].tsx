@@ -10,6 +10,8 @@ import {
   Modal,
   FlatList,
   Alert,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Star, MessageCircle, X, Package, ShoppingCart, FileText, ChevronDown, ChevronUp, Share2 } from 'lucide-react-native';
@@ -25,6 +27,11 @@ import { DirectOrderModal } from '@/components/DirectOrderModal';
 import ServiceShareModal from '@/components/ServiceShareModal';
 import { supabase } from '@/lib/supabase';
 import { VerificationService } from '@/lib/verification-service';
+
+// Get screen dimensions for responsive design
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && width >= 1024;
 
 // Helper function to format joined date
 const formatJoinedDate = (createdAt: string): string => {
@@ -441,239 +448,400 @@ export default function ServiceDetailsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: colors.background.primary }}>
-        {/* Hero Image */}
-        <View style={styles.heroContainer}>
-          {getServiceImage() && (
-            <Image
-              source={{ 
-                uri: getServiceImage()!
-              }}
-              style={styles.heroImage}
-            />
-          )}
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={smartBack}
-          >
-            <ArrowLeft size={24} color={Colors.text.white} />
-          </TouchableOpacity>
-        </View>
+        <View style={styles.desktopWrapper}>
+          <View style={styles.desktopContentContainer}>
+            <View style={styles.desktopTwoColumnLayout}>
+              {/* Left Column - Hero Image and Provider Info */}
+              <View style={styles.desktopLeftColumn}>
+                {/* Hero Image */}
+                <View style={styles.heroContainer}>
+                  {getServiceImage() && (
+                    <Image
+                      source={{ 
+                        uri: getServiceImage()!
+                      }}
+                      style={styles.heroImage}
+                    />
+                  )}
+                  <TouchableOpacity 
+                    style={styles.backButton}
+                    onPress={smartBack}
+                  >
+                    <ArrowLeft size={24} color={Colors.text.white} />
+                  </TouchableOpacity>
+                </View>
 
-        {/* Content */}
-        <View style={[styles.content, { backgroundColor: colors.background.primary }]}>
-          {/* Provider Info */}
-          <View style={styles.providerSection}>
-            <View style={styles.providerInfo}>
-              <Image
-                source={{ 
-                  uri: serviceOwnerProfile?.avatar_url || 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=200' 
-                }}
-                style={styles.providerImage}
-              />
-              <View style={styles.providerDetails}>
-                <Text style={[styles.listedBy, { color: colors.text.secondary }]}>Listed by</Text>
-                <View style={styles.providerNameRow}>
-                  <View style={styles.providerNameContainer}>
-                    <Text style={[styles.providerName, { color: colors.text.primary }]}>
-                      {serviceOwnerProfile?.full_name || 'Service Provider'}
-                    </Text>
-                    {serviceOwnerProfile?.created_at && (
-                      <Text style={[styles.joinedDate, { color: colors.text.secondary }]}>
-                        {formatJoinedDate(serviceOwnerProfile.created_at)}
-                      </Text>
+                {/* Provider Info and Service Description - Only in left column on desktop */}
+                {isDesktop && (
+                  <View style={[styles.content, { backgroundColor: colors.background.primary }]}>
+                    <View style={styles.providerSection}>
+                      <View style={styles.providerInfo}>
+                        <Image
+                          source={{ 
+                            uri: serviceOwnerProfile?.avatar_url || 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=200' 
+                          }}
+                          style={styles.providerImage}
+                        />
+                        <View style={styles.providerDetails}>
+                          <Text style={[styles.listedBy, { color: colors.text.secondary }]}>Listed by</Text>
+                          <View style={styles.providerNameRow}>
+                            <View style={styles.providerNameContainer}>
+                              <Text style={[styles.providerName, { color: colors.text.primary }]}>
+                                {serviceOwnerProfile?.full_name || 'Service Provider'}
+                              </Text>
+                              {serviceOwnerProfile?.created_at && (
+                                <Text style={[styles.joinedDate, { color: colors.text.secondary }]}>
+                                  {formatJoinedDate(serviceOwnerProfile.created_at)}
+                                </Text>
+                              )}
+                            </View>
+                            <TouchableOpacity onPress={() => service?.user_id && router.push(`/user-profile/${service.user_id}`)}>
+                              <Text style={[styles.checkProfile, { color: colors.primary.main }]}>Check provider's profile!</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <View style={styles.ratingRow}>
+                            <Star size={14} color="#FFD700" fill="#FFD700" />
+                            <Text style={[styles.rating, { color: colors.text.primary }]}>
+                              {service.rating || 0} ({service.review_count || 0})
+                            </Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity 
+                          style={[styles.shareServiceButton, { backgroundColor: colors.primary.main }]}
+                          onPress={handleShareService}
+                        >
+                          <Text style={[styles.shareServiceText, { color: colors.text.white }]}>
+                            Share this service
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Service Details - Moved to left column on desktop */}
+                    <View style={styles.serviceSection}>
+                      <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>{serviceDetails.title}</Text>
+                      
+                      {/* Truncated Description with More Button */}
+                      <View style={styles.descriptionContainer}>
+                        <Text 
+                          style={[styles.serviceSubtitle, { color: colors.text.secondary }]}
+                          numberOfLines={isDescriptionExpanded ? undefined : 4}
+                        >
+                          {serviceDetails.subtitle}
+                        </Text>
+                        {serviceDetails.subtitle && serviceDetails.subtitle.length > 200 && (
+                          <TouchableOpacity
+                            style={styles.moreButton}
+                            onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                          >
+                            <Text style={[styles.moreButtonText, { color: colors.primary.main }]}>
+                              {isDescriptionExpanded ? 'Show less' : 'Read more'}
+                            </Text>
+                            {isDescriptionExpanded ? (
+                              <ChevronUp size={16} color={colors.primary.main} />
+                            ) : (
+                              <ChevronDown size={16} color={colors.primary.main} />
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      
+                      <Text style={[styles.serviceDuration, { color: colors.text.secondary }]}>{serviceDetails.duration}</Text>
+                      
+                      <View style={styles.priceContainer}>
+                        <Text style={[styles.priceLabel, { color: colors.text.secondary }]}>Starting from</Text>
+                        <Text style={[styles.priceAmount, { color: colors.text.primary }]}>
+                          {serviceDetails.currency}{serviceDetails.price}
+                        </Text>
+                      </View>
+                      
+                      {serviceDetails.location ? (
+                        <Text style={[styles.serviceDetail, { color: colors.text.secondary }]}>{serviceDetails.location}</Text>
+                      ) : null}
+                      
+                      {service.category_name && (
+                        <View style={styles.categoryContainer}>
+                          <Text style={[styles.categoryLabel, { color: colors.text.secondary }]}>Category:</Text>
+                          <Text style={[styles.categoryName, { color: colors.primary.main }]}>{service.category_name}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Pricing Plans - Moved to left column on desktop */}
+                    {subPlans.length > 0 && (
+                      <View style={styles.pricingSection}>
+                        <View style={styles.pricingTabs}>
+                          {subPlans.map((plan: SubPlan) => (
+                            <TouchableOpacity
+                              key={plan.id}
+                              style={[
+                                styles.pricingTab,
+                                selectedPlan === plan.id && styles.selectedPricingTab
+                              ]}
+                              onPress={() => setSelectedPlan(selectedPlan === plan.id ? null : plan.id)}
+                            >
+                              <Text style={[
+                                styles.pricingTabText,
+                                selectedPlan === plan.id && styles.selectedPricingTabText
+                              ]}>
+                                RM{plan.price}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+
+                        {/* Sub-plan Details */}
+                        {selectedSubPlan && (
+                          <View style={styles.subPlanDetails}>
+                            <Text style={styles.subPlanTitle}>{selectedSubPlan.description}</Text>
+                            {selectedSubPlan.details.map((detail: string, index: number) => (
+                              <Text key={index} style={styles.subPlanDetail}>{detail}</Text>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Action Buttons - Only show Edit button for own services */}
+                    {isOwnService && (
+                      <View style={styles.actionButtonsSection}>
+                        <TouchableOpacity 
+                          style={[styles.editButton, { backgroundColor: colors.primary.main }]} 
+                          onPress={() => router.push(`/edit-service/${id}`)}
+                        >
+                          <Ionicons name="pencil" size={20} color={colors.text.white} />
+                          <Text style={[styles.editButtonText, { color: colors.text.white }]}>Edit Service</Text>
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </View>
-                  <TouchableOpacity onPress={() => service?.user_id && router.push(`/user-profile/${service.user_id}`)}>
-                      <Text style={[styles.checkProfile, { color: colors.primary.main }]}>Check provider's profile!</Text>
-                    </TouchableOpacity>
-                </View>
-                <View style={styles.ratingRow}>
-                  <Star size={14} color="#FFD700" fill="#FFD700" />
-                  <Text style={[styles.rating, { color: colors.text.primary }]}>
-                    {service.rating || 0} ({service.review_count || 0})
-                  </Text>
-                </View>
+                )}
               </View>
-              <TouchableOpacity 
-                style={[styles.shareServiceButton, { backgroundColor: colors.primary.main }]}
-                onPress={handleShareService}
-              >
-                <Text style={[styles.shareServiceText, { color: colors.text.white }]}>
-                  Share this service
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
-          {/* Service Details */}
-          <View style={styles.serviceSection}>
-            <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>{serviceDetails.title}</Text>
-            
-            {/* Truncated Description with More Button */}
-            <View style={styles.descriptionContainer}>
-              <Text 
-                style={[styles.serviceSubtitle, { color: colors.text.secondary }]}
-                numberOfLines={isDescriptionExpanded ? undefined : 4}
-              >
-                {serviceDetails.subtitle}
-              </Text>
-              {serviceDetails.subtitle && serviceDetails.subtitle.length > 200 && (
-                <TouchableOpacity
-                  style={styles.moreButton}
-                  onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                >
-                  <Text style={[styles.moreButtonText, { color: colors.primary.main }]}>
-                    {isDescriptionExpanded ? 'Show less' : 'Read more'}
-                  </Text>
-                  {isDescriptionExpanded ? (
-                    <ChevronUp size={16} color={colors.primary.main} />
-                  ) : (
-                    <ChevronDown size={16} color={colors.primary.main} />
+              {/* Right Column - Only Service Variants for Desktop, Full Content for Mobile */}
+              <View style={styles.desktopRightColumn}>
+                <View style={[styles.content, { backgroundColor: colors.background.primary }]}>
+                  {/* Provider Info - Only in right column on mobile */}
+                  {!isDesktop && (
+                    <View style={styles.providerSection}>
+                      <View style={styles.providerInfo}>
+                        <Image
+                          source={{ 
+                            uri: serviceOwnerProfile?.avatar_url || 'https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=200' 
+                          }}
+                          style={styles.providerImage}
+                        />
+                        <View style={styles.providerDetails}>
+                          <Text style={[styles.listedBy, { color: colors.text.secondary }]}>Listed by</Text>
+                          <View style={styles.providerNameRow}>
+                            <View style={styles.providerNameContainer}>
+                              <Text style={[styles.providerName, { color: colors.text.primary }]}>
+                                {serviceOwnerProfile?.full_name || 'Service Provider'}
+                              </Text>
+                              {serviceOwnerProfile?.created_at && (
+                                <Text style={[styles.joinedDate, { color: colors.text.secondary }]}>
+                                  {formatJoinedDate(serviceOwnerProfile.created_at)}
+                                </Text>
+                              )}
+                            </View>
+                            <TouchableOpacity onPress={() => service?.user_id && router.push(`/user-profile/${service.user_id}`)}>
+                              <Text style={[styles.checkProfile, { color: colors.primary.main }]}>Check provider's profile!</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <View style={styles.ratingRow}>
+                            <Star size={14} color="#FFD700" fill="#FFD700" />
+                            <Text style={[styles.rating, { color: colors.text.primary }]}>
+                              {service.rating || 0} ({service.review_count || 0})
+                            </Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity 
+                          style={[styles.shareServiceButton, { backgroundColor: colors.primary.main }]}
+                          onPress={handleShareService}
+                        >
+                          <Text style={[styles.shareServiceText, { color: colors.text.white }]}>
+                            Share this service
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   )}
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            <Text style={[styles.serviceDuration, { color: colors.text.secondary }]}>{serviceDetails.duration}</Text>
-            
-            <View style={styles.priceContainer}>
-              <Text style={[styles.priceLabel, { color: colors.text.secondary }]}>Starting from</Text>
-              <Text style={[styles.priceAmount, { color: colors.text.primary }]}>
-                {serviceDetails.currency}{serviceDetails.price}
-              </Text>
-            </View>
-            
-            {serviceDetails.location ? (
-              <Text style={[styles.serviceDetail, { color: colors.text.secondary }]}>{serviceDetails.location}</Text>
-            ) : null}
-            
-            {service.category_name && (
-              <View style={styles.categoryContainer}>
-                <Text style={[styles.categoryLabel, { color: colors.text.secondary }]}>Category:</Text>
-                <Text style={[styles.categoryName, { color: colors.primary.main }]}>{service.category_name}</Text>
-              </View>
-            )}
-          </View>
 
-          {/* Pricing Plans */}
-          {subPlans.length > 0 && (
-            <View style={styles.pricingSection}>
-              <View style={styles.pricingTabs}>
-                {subPlans.map((plan: SubPlan) => (
-                  <TouchableOpacity
-                    key={plan.id}
-                    style={[
-                      styles.pricingTab,
-                      selectedPlan === plan.id && styles.selectedPricingTab
-                    ]}
-                    onPress={() => setSelectedPlan(selectedPlan === plan.id ? null : plan.id)}
-                  >
-                    <Text style={[
-                      styles.pricingTabText,
-                      selectedPlan === plan.id && styles.selectedPricingTabText
-                    ]}>
-                      RM{plan.price}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                  {/* Service Details - Only on mobile */}
+                  {!isDesktop && (
+                    <View style={styles.serviceSection}>
+                      <Text style={[styles.serviceTitle, { color: colors.text.primary }]}>{serviceDetails.title}</Text>
+                      
+                      {/* Truncated Description with More Button */}
+                      <View style={styles.descriptionContainer}>
+                        <Text 
+                          style={[styles.serviceSubtitle, { color: colors.text.secondary }]}
+                          numberOfLines={isDescriptionExpanded ? undefined : 4}
+                        >
+                          {serviceDetails.subtitle}
+                        </Text>
+                        {serviceDetails.subtitle && serviceDetails.subtitle.length > 200 && (
+                          <TouchableOpacity
+                            style={styles.moreButton}
+                            onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                          >
+                            <Text style={[styles.moreButtonText, { color: colors.primary.main }]}>
+                              {isDescriptionExpanded ? 'Show less' : 'Read more'}
+                            </Text>
+                            {isDescriptionExpanded ? (
+                              <ChevronUp size={16} color={colors.primary.main} />
+                            ) : (
+                              <ChevronDown size={16} color={colors.primary.main} />
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      
+                      <Text style={[styles.serviceDuration, { color: colors.text.secondary }]}>{serviceDetails.duration}</Text>
+                      
+                      <View style={styles.priceContainer}>
+                        <Text style={[styles.priceLabel, { color: colors.text.secondary }]}>Starting from</Text>
+                        <Text style={[styles.priceAmount, { color: colors.text.primary }]}>
+                          {serviceDetails.currency}{serviceDetails.price}
+                        </Text>
+                      </View>
+                      
+                      {serviceDetails.location ? (
+                        <Text style={[styles.serviceDetail, { color: colors.text.secondary }]}>{serviceDetails.location}</Text>
+                      ) : null}
+                      
+                      {service.category_name && (
+                        <View style={styles.categoryContainer}>
+                          <Text style={[styles.categoryLabel, { color: colors.text.secondary }]}>Category:</Text>
+                          <Text style={[styles.categoryName, { color: colors.primary.main }]}>{service.category_name}</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
 
-              {/* Sub-plan Details */}
-              {selectedSubPlan && (
-                <View style={styles.subPlanDetails}>
-                  <Text style={styles.subPlanTitle}>{selectedSubPlan.description}</Text>
-                  {selectedSubPlan.details.map((detail: string, index: number) => (
-                    <Text key={index} style={styles.subPlanDetail}>{detail}</Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
+                  {/* Pricing Plans - Only on mobile */}
+                  {!isDesktop && subPlans.length > 0 && (
+                    <View style={styles.pricingSection}>
+                      <View style={styles.pricingTabs}>
+                        {subPlans.map((plan: SubPlan) => (
+                          <TouchableOpacity
+                            key={plan.id}
+                            style={[
+                              styles.pricingTab,
+                              selectedPlan === plan.id && styles.selectedPricingTab
+                            ]}
+                            onPress={() => setSelectedPlan(selectedPlan === plan.id ? null : plan.id)}
+                          >
+                            <Text style={[
+                              styles.pricingTabText,
+                              selectedPlan === plan.id && styles.selectedPricingTabText
+                            ]}>
+                              RM{plan.price}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
 
-          {/* Service Variants Section */}
-          {serviceVariants.length > 1 && (
-            <View style={styles.variantsSection}>
-              <Text style={[styles.variantsSectionTitle, { color: colors.text.primary }]}>Available Options</Text>
-              <Text style={[styles.variantsSectionSubtitle, { color: colors.text.secondary }]}>Choose from the following service options:</Text>
-              
-              {serviceVariants.filter((_, index) => index !== 0).map((variant, index) => (
-                <View
-                  key={variant.id || `variant-${index + 1}`}
-                  style={[
-                    styles.variantCard,
-                    { backgroundColor: colors.background.secondary, borderColor: colors.border.light }
-                  ]}
-                >
-                  <View style={styles.variantCardHeader}>
-                    <View style={styles.variantCardTitleRow}>
-                      <Package size={20} color={colors.text.secondary} />
-                      <Text style={[
-                        styles.variantCardTitle,
-                        { color: colors.text.primary }
-                      ]}>
-                        {variant.title}
+                      {/* Sub-plan Details */}
+                      {selectedSubPlan && (
+                        <View style={styles.subPlanDetails}>
+                          <Text style={styles.subPlanTitle}>{selectedSubPlan.description}</Text>
+                          {selectedSubPlan.details.map((detail: string, index: number) => (
+                            <Text key={index} style={styles.subPlanDetail}>{detail}</Text>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Service Variants Section - Always shown */}
+                  {serviceVariants.length > 1 && (
+                    <View style={styles.variantsSection}>
+                      <Text style={[styles.variantsSectionTitle, { color: colors.text.primary }]}>Available Options</Text>
+                      <Text style={[styles.variantsSectionSubtitle, { color: colors.text.secondary }]}>Choose from the following service options:</Text>
+                      
+                      {serviceVariants.filter((_, index) => index !== 0).map((variant, index) => (
+                        <View
+                          key={variant.id || `variant-${index + 1}`}
+                          style={[
+                            styles.variantCard,
+                            { backgroundColor: colors.background.secondary, borderColor: colors.border.light }
+                          ]}
+                        >
+                          <View style={styles.variantCardHeader}>
+                            <View style={styles.variantCardTitleRow}>
+                              <Package size={20} color={colors.text.secondary} />
+                              <Text style={[
+                                styles.variantCardTitle,
+                                { color: colors.text.primary }
+                              ]}>
+                                {variant.title}
+                              </Text>
+                            </View>
+                            <Text style={[
+                              styles.variantCardPrice,
+                              { color: colors.text.primary }
+                            ]}>
+                              {variant.currency} {variant.price}
+                            </Text>
+                          </View>
+                          
+                          <Text style={[
+                            styles.variantCardDescription,
+                            { color: colors.text.secondary }
+                          ]}>
+                            {variant.description}
+                          </Text>
+                          
+                          {!isOwnService && (
+                            <View style={styles.variantCardActions}>
+                              <TouchableOpacity
+                                style={[styles.variantActionButton, { backgroundColor: colors.status.success }]}
+                                onPress={() => handleVariantSelectionForOrder(variant)}
+                              >
+                                <ShoppingCart size={16} color={colors.text.white} />
+                                <Text style={[styles.variantActionButtonText, { color: colors.text.white }]}>Order</Text>
+                              </TouchableOpacity>
+                              
+                              <TouchableOpacity
+                                style={[styles.variantActionButton, { backgroundColor: colors.primary.main }]}
+                                onPress={() => handleChatWithSeller(variant)}
+                              >
+                                <MessageCircle size={16} color={colors.text.white} />
+                                <Text style={[styles.variantActionButtonText, { color: colors.text.white }]}>Chat</Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Action Buttons - Only show Edit button for own services (mobile only) */}
+                  {!isDesktop && isOwnService && (
+                    <View style={styles.actionButtonsSection}>
+                      <TouchableOpacity 
+                        style={[styles.editButton, { backgroundColor: colors.primary.main }]} 
+                        onPress={() => router.push(`/edit-service/${id}`)}
+                      >
+                        <Ionicons name="pencil" size={20} color={colors.text.white} />
+                        <Text style={[styles.editButtonText, { color: colors.text.white }]}>Edit Service</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  
+                  {/* Helper text for non-owners */}
+                  {!isOwnService && (
+                    <View style={styles.helperTextSection}>
+                      <Text style={[styles.helperText, { color: colors.text.secondary }]}>
+                        Choose a service option above to order or chat with the provider
                       </Text>
                     </View>
-                    <Text style={[
-                      styles.variantCardPrice,
-                      { color: colors.text.primary }
-                    ]}>
-                      {variant.currency} {variant.price}
-                    </Text>
-                  </View>
-                  
-                  <Text style={[
-                    styles.variantCardDescription,
-                    { color: colors.text.secondary }
-                  ]}>
-                    {variant.description}
-                  </Text>
-                  
-                  {!isOwnService && (
-                    <View style={styles.variantCardActions}>
-                      <TouchableOpacity
-                        style={[styles.variantActionButton, { backgroundColor: colors.status.success }]}
-                        onPress={() => handleVariantSelectionForOrder(variant)}
-                      >
-                        <ShoppingCart size={16} color={colors.text.white} />
-                        <Text style={[styles.variantActionButtonText, { color: colors.text.white }]}>Order</Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity
-                        style={[styles.variantActionButton, { backgroundColor: colors.primary.main }]}
-                        onPress={() => handleChatWithSeller(variant)}
-                      >
-                        <MessageCircle size={16} color={colors.text.white} />
-                        <Text style={[styles.variantActionButtonText, { color: colors.text.white }]}>Chat</Text>
-                      </TouchableOpacity>
-                    </View>
                   )}
                 </View>
-              ))}
+              </View>
             </View>
-          )}
-
-          {/* Action Buttons - Only show Edit button for own services */}
-          {isOwnService && (
-            <View style={styles.actionButtonsSection}>
-              <TouchableOpacity 
-                style={[styles.editButton, { backgroundColor: colors.primary.main }]} 
-                onPress={() => router.push(`/edit-service/${id}`)}
-              >
-                <Ionicons name="pencil" size={20} color={colors.text.white} />
-                <Text style={[styles.editButtonText, { color: colors.text.white }]}>Edit Service</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          
-          {/* Helper text for non-owners */}
-          {!isOwnService && (
-            <View style={styles.helperTextSection}>
-              <Text style={[styles.helperText, { color: colors.text.secondary }]}>
-                Choose a service option above to order or chat with the provider
-              </Text>
-            </View>
-          )}
+          </View>
         </View>
       </ScrollView>
       
@@ -770,9 +938,37 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  // Desktop-optimized wrapper for content
+  desktopWrapper: {
+    flex: 1,
+    alignItems: isDesktop ? 'center' : 'stretch',
+  },
+  desktopContentContainer: {
+    width: isDesktop ? '100%' : '100%',
+    maxWidth: isDesktop ? 1200 : undefined,
+    alignSelf: isDesktop ? 'center' : 'stretch',
+  },
+  // Two-column layout for desktop
+  desktopTwoColumnLayout: {
+    flexDirection: isDesktop ? 'row' : 'column',
+    gap: isDesktop ? 32 : 0,
+    alignItems: isDesktop ? 'flex-start' : 'stretch',
+  },
+  desktopLeftColumn: {
+    flex: isDesktop ? 1 : undefined,
+    minWidth: isDesktop ? 0 : undefined,
+    maxWidth: isDesktop ? '50%' : undefined,
+  },
+  desktopRightColumn: {
+    flex: isDesktop ? 1 : undefined,
+    minWidth: isDesktop ? 0 : undefined,
+    maxWidth: isDesktop ? '50%' : undefined,
+  },
   heroContainer: {
     position: 'relative',
-    height: 250,
+    height: isDesktop ? 300 : 250,
+    borderRadius: isDesktop ? 12 : 0,
+    overflow: 'hidden',
   },
   heroImage: {
     width: '100%',
@@ -790,7 +986,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    padding: 20,
+    padding: isDesktop ? 32 : 20,
   },
   providerSection: {
     marginBottom: 20,
@@ -798,6 +994,7 @@ const styles = StyleSheet.create({
   providerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: isDesktop ? 'wrap' : 'nowrap',
   },
   providerImage: {
     width: 50,
@@ -845,9 +1042,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   serviceTitle: {
-    fontSize: 24,
+    fontSize: isDesktop ? 28 : 24,
     fontWeight: 'bold',
     marginBottom: 8,
+    lineHeight: isDesktop ? 34 : 30,
   },
   serviceSubtitle: {
     fontSize: 16,
@@ -1136,9 +1334,10 @@ const styles = StyleSheet.create({
   },
   variantsSection: {
     marginBottom: 24,
+    paddingTop: isDesktop ? 16 : 0,
   },
   variantsSectionTitle: {
-    fontSize: 20,
+    fontSize: isDesktop ? 24 : 20,
     fontWeight: 'bold',
     marginBottom: 8,
   },
@@ -1148,7 +1347,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   variantCard: {
-    padding: 16,
+    padding: isDesktop ? 20 : 16,
     marginBottom: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -1225,8 +1424,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginTop: 8,
+    alignSelf: isDesktop ? 'flex-end' : 'flex-start',
+    marginTop: isDesktop ? 0 : 8,
+    marginLeft: isDesktop ? 16 : 0,
   },
   shareServiceText: {
     fontSize: 14,

@@ -37,7 +37,7 @@
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-      "buildNumber": "14",
+        "buildNumber": "20",
       "backgroundColor": "#0f1419",
       "appleTeamId": "T72JDH8ZL6"
     },

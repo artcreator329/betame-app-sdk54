@@ -442,26 +442,29 @@ export default function WalletScreen() {
         <View style={[styles.contentWrapper, { backgroundColor: colors.background.primary }]}>
         {/* Header */}
         <View style={[styles.headerContainer, { backgroundColor: colors.background.primary }]}>
-          <View style={[styles.header, { backgroundColor: colors.background.tertiary }]}>
+          <View style={[styles.header, isDesktop && styles.headerDesktop, { backgroundColor: colors.background.tertiary }]}>
             <TouchableOpacity onPress={smartBack}>
               <ArrowLeft size={24} color={colors.text.primary} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Wallet</Text>
-            <View style={styles.headerActions}>
+            <Text style={[styles.headerTitle, isDesktop && styles.headerTitleDesktop, { color: colors.text.primary }]}>Wallet</Text>
+            <View style={[styles.headerActions, isDesktop && styles.headerActionsDesktop]}>
               <TouchableOpacity 
                 onPress={() => setShowTransactionHistory(true)}
-                style={styles.headerButton}
+                style={[styles.headerButton, isDesktop && styles.headerButtonDesktop]}
               >
                 <History size={24} color={colors.text.primary} />
+                {isDesktop && <Text style={[styles.headerButtonText, { color: colors.text.primary }]}>History</Text>}
               </TouchableOpacity>
-              <TouchableOpacity onPress={navigateToCheckIn}>
+              <TouchableOpacity onPress={navigateToCheckIn} style={[styles.headerButton, isDesktop && styles.headerButtonDesktop]}>
                 <Trophy size={24} color={colors.status.warning} />
+                {isDesktop && <Text style={[styles.headerButtonText, { color: colors.text.primary }]}>Check-in</Text>}
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Wallet Balances */}
+        {/* Wallet Balances - Mobile Only */}
+        {!isDesktop && (
         <View style={[styles.balanceSection, isDesktop && styles.balanceSectionDesktop]}>
           <TouchableOpacity 
             style={[styles.balanceCard, isDesktop && styles.balanceCardDesktop]}
@@ -532,7 +535,286 @@ export default function WalletScreen() {
             </ImageBackground>
           </View>
         </View>
+        )}
 
+        {/* Desktop Layout - Completely Redesigned */}
+        {isDesktop ? (
+          <View style={styles.desktopMainContainer}>
+            {/* Top Row - Balance Cards */}
+            <View style={styles.desktopBalanceRow}>
+              <TouchableOpacity 
+                style={[styles.balanceCard, styles.balanceCardDesktopNew]}
+                onPress={handleConvertAllDiamonds}
+                activeOpacity={0.8}
+              >
+                <ImageBackground 
+                  source={require('../assets/images/diamond-bg.jpeg')}
+                  style={styles.balanceCardInner}
+                  imageStyle={styles.balanceCardImage}
+                >
+                  <View style={styles.balanceOverlay}>
+                     <View style={styles.balanceHeader}>
+                       <Text style={styles.balanceLabelWithBg}>Premium Diamonds</Text>
+                     </View>
+                     <Text style={styles.balanceAmountWithBg}>{walletData?.betame_diamonds || 0} Diamonds</Text>
+                     <Text style={styles.balanceSubtextWithBg}>Tap to convert to BetaCoins</Text>
+                   </View>
+                </ImageBackground>
+              </TouchableOpacity>
+
+              <View style={[styles.balanceCard, styles.balanceCardDesktopNew]}>
+                <ImageBackground 
+                  source={require('../assets/images/coin-bg.jpeg')}
+                  style={styles.balanceCardInner}
+                  imageStyle={styles.balanceCardImage}
+                >
+                  <View style={styles.balanceOverlay}>
+                     <View style={styles.balanceHeader}>
+                       <Text style={styles.balanceLabelWithBg}>BetaCoin Wallet</Text>
+                       <TouchableOpacity 
+                         onPress={() => setShowBetaCoinPurchase(true)}
+                         style={styles.marketplaceButton}
+                       >
+                         <ShoppingBag size={20} color="white" />
+                       </TouchableOpacity>
+                     </View>
+                     <Text style={styles.balanceAmountWithBg}>{walletData?.betame_betacoins || 0} BetaCoins</Text>
+                     <TouchableOpacity 
+                       onPress={() => setShowBetaCoinPurchase(true)}
+                       style={styles.buyMoreButton}
+                     >
+                       <Text style={styles.buyMoreText}>Purchase More BetaCoins</Text>
+                     </TouchableOpacity>
+                   </View>
+                </ImageBackground>
+              </View>
+
+              <View style={[styles.balanceCard, styles.balanceCardDesktopNew]}>
+                <ImageBackground 
+                  source={require('../assets/images/cash-background.png')}
+                  style={styles.balanceCardInner}
+                  imageStyle={styles.balanceCardImage}
+                >
+                  <View style={styles.balanceOverlay}>
+                     <View style={styles.balanceHeader}>
+                       <Text style={styles.balanceLabelWithBg}>Cash Balance</Text>
+                     </View>
+                     <Text style={styles.balanceAmountWithBg}>RM {walletData?.cash || 0}</Text>
+                     <Text style={styles.withdrawalNotice}>Minimum withdrawal amount: RM10</Text>
+                     <TouchableOpacity 
+                       onPress={() => handleWithdrawCash()}
+                       style={styles.buyMoreButton}
+                     >
+                       <Text style={styles.buyMoreText}>Withdraw Cash</Text>
+                     </TouchableOpacity>
+                   </View>
+                </ImageBackground>
+              </View>
+            </View>
+
+            {/* Main Content Row - Three Column Layout */}
+            <View style={styles.desktopContentRow}>
+              {/* Left Column - Transaction History */}
+              <View style={styles.desktopColumn}>
+                <View style={[styles.desktopSection, { backgroundColor: colors.background.tertiary }]}>
+                  <View style={styles.desktopSectionHeader}>
+                    <Text style={[styles.desktopSectionTitle, { color: colors.text.primary }]}>Transaction History</Text>
+                    <TouchableOpacity 
+                      onPress={() => setShowTransactionHistory(true)}
+                      style={[styles.desktopViewAllButton, { backgroundColor: colors.primary.main }]}
+                    >
+                      <History size={16} color="white" />
+                      <Text style={styles.desktopViewAllText}>View All</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity 
+                    style={[styles.desktopTransactionCard, { backgroundColor: colors.background.primary }]}
+                    onPress={() => setShowTransactionHistory(true)}
+                  >
+                    <View style={[styles.desktopTransactionIcon, { backgroundColor: colors.primary.main }]}>
+                      <TrendingUp size={24} color="white" />
+                    </View>
+                    <View style={styles.desktopTransactionInfo}>
+                      <Text style={[styles.desktopTransactionTitle, { color: colors.text.primary }]}>
+                        View All Transactions
+                      </Text>
+                      <Text style={[styles.desktopTransactionSubtitle, { color: colors.text.secondary }]}>
+                        Diamonds, BetaCoins, and cash history
+                      </Text>
+                    </View>
+                    <ArrowLeft size={20} color={colors.text.secondary} style={{ transform: [{ rotate: '180deg' }] }} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Center Column - Conversion */}
+              <View style={styles.desktopColumn}>
+                <View style={[styles.desktopSection, { backgroundColor: colors.background.tertiary }]}>
+                  <View style={styles.desktopSectionHeader}>
+                    <Text style={[styles.desktopSectionTitle, { color: colors.text.primary }]}>Convert Diamonds</Text>
+                  </View>
+                  <View style={[styles.desktopConversionCard, { backgroundColor: colors.background.primary }]}>
+                    <Text style={[styles.desktopConversionSubtitle, { color: colors.text.secondary }]}>10 diamonds = 1 BetaCoin</Text>
+                    
+                    <View style={styles.desktopConversionRow}>
+                      <View style={[styles.desktopConversionInput, { backgroundColor: colors.background.secondary, borderColor: colors.border.main }]}>
+                        <View style={styles.desktopInputContainer}>
+                          <TouchableOpacity 
+                            style={styles.desktopIncrementButton}
+                            onPress={handleDecrementDiamonds}
+                            activeOpacity={0.6}
+                          >
+                            <Minus size={20} color={colors.primary.main} />
+                          </TouchableOpacity>
+                          <View style={styles.desktopNumberSection}>
+                            <TextInput
+                              style={[styles.desktopInput, { color: colors.text.primary }]}
+                              value={convertAmount}
+                              onChangeText={(text) => {
+                                const numericValue = text.replace(/[^0-9]/g, '');
+                                if (numericValue === '' || (parseInt(numericValue) >= 10 && parseInt(numericValue) % 10 === 0)) {
+                                  setConvertAmount(numericValue);
+                                }
+                              }}
+                              keyboardType="numeric"
+                              placeholder="10"
+                              placeholderTextColor={colors.text.secondary}
+                              maxLength={4}
+                            />
+                            <Text style={styles.desktopInputLabel}>💎</Text>
+                          </View>
+                          <TouchableOpacity 
+                            style={styles.desktopIncrementButton}
+                            onPress={handleIncrementDiamonds}
+                            activeOpacity={0.6}
+                          >
+                            <Plus size={20} color={colors.primary.main} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      <View style={styles.desktopConversionArrow}>
+                        <Text style={[styles.desktopConversionArrowText, { color: colors.primary.main }]}>→</Text>
+                      </View>
+                      <View style={[styles.desktopConversionOutput, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }]}>
+                        <Text style={[styles.desktopOutputValue, { color: colors.text.primary }]}>{Math.floor(parseInt(convertAmount || '0') / 10)}</Text>
+                        <Text style={styles.desktopOutputLabel}>BetaCoins</Text>
+                      </View>
+                    </View>
+                    
+                    <View style={[styles.desktopDiamondInfo, { backgroundColor: colors.background.secondary }]}>
+                      <Text style={styles.desktopDiamondEmoji}>💎</Text>
+                      <Text style={[styles.desktopDiamondText, { color: colors.text.primary }]}>
+                        {walletData?.betame_diamonds || 0} diamonds available
+                      </Text>
+                    </View>
+                    
+                    <TouchableOpacity style={[styles.desktopConvertButton, { backgroundColor: colors.primary.main }]} onPress={handleConvert}>
+                      <Text style={styles.desktopConvertButtonText}>Convert</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              {/* Right Column - Purchased Features */}
+              <View style={styles.desktopColumn}>
+                <View style={[styles.desktopSection, { backgroundColor: colors.background.tertiary }]}>
+                  <View style={styles.desktopSectionHeader}>
+                    <Text style={[styles.desktopSectionTitle, { color: colors.text.primary }]}>Your Features</Text>
+                    <View style={styles.desktopFeaturesBadge}>
+                      <Text style={styles.desktopFeaturesBadgeText}>{purchasedFeatures.length}</Text>
+                    </View>
+                  </View>
+                  
+                  {purchasedFeatures.length === 0 ? (
+                    <View style={[styles.desktopEmptyState, { backgroundColor: colors.background.primary }]}>
+                      <View style={styles.desktopEmptyIcon}>
+                        <Sparkles size={32} color={colors.text.secondary} />
+                      </View>
+                      <Text style={[styles.desktopEmptyText, { color: colors.text.primary }]}>No features purchased yet</Text>
+                      <Text style={[styles.desktopEmptySubtext, { color: colors.text.secondary }]}>Purchase boost features below</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.desktopFeaturesList}>
+                      {purchasedFeatures.map((feature) => {
+                        const featureConfig = availableFeatures.find(f => f.type === feature.feature_type);
+                        const expiryDate = new Date(feature.expires_at);
+                        const isExpiringSoon = (expiryDate.getTime() - Date.now()) < (7 * 24 * 60 * 60 * 1000);
+                        
+                        return (
+                          <TouchableOpacity
+                            key={feature.id}
+                            style={[styles.desktopFeatureCard, { backgroundColor: colors.background.primary }]}
+                            onPress={() => handleUseFeature(feature)}
+                          >
+                            <View style={[styles.desktopFeatureIcon, { backgroundColor: featureConfig?.color || '#666' }]}>
+                              {featureConfig?.icon || <Eye size={18} color="white" />}
+                            </View>
+                            <View style={styles.desktopFeatureInfo}>
+                              <Text style={[styles.desktopFeatureTitle, { color: colors.text.primary }]} numberOfLines={1}>
+                                {feature.feature_name}
+                              </Text>
+                              <Text style={[styles.desktopFeatureDetails, { color: colors.text.secondary }]}>
+                                {feature.quantity} left • Expires {expiryDate.toLocaleDateString()}
+                              </Text>
+                            </View>
+                            <View style={[styles.desktopFeatureAction, { backgroundColor: colors.primary.main }]}>
+                              <Text style={styles.desktopFeatureActionText}>Apply</Text>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {/* Bottom Row - Boost Features */}
+            <View style={styles.desktopBoostRow}>
+              <View style={[styles.desktopBoostSection, { backgroundColor: colors.background.tertiary }]}>
+                <View style={styles.desktopBoostHeader}>
+                  <Text style={[styles.desktopBoostTitle, { color: colors.text.primary }]}>Boost Your Services</Text>
+                  <Text style={[styles.desktopBoostSubtitle, { color: colors.text.secondary }]}>Enhance visibility with BetaCoins</Text>
+                </View>
+                <View style={styles.desktopBoostGrid}>
+                  {availableFeatures.map((feature, index) => {
+                    const bannerImages = [
+                      require('../assets/images/boost-banner/2-Boost.png'),
+                      require('../assets/images/boost-banner/3-Showcase.png'),
+                      require('../assets/images/boost-banner/1-Feature.png'),
+                      require('../assets/images/boost-banner/4-Boost Feature.png'),
+                    ];
+                    
+                    return (
+                      <TouchableOpacity
+                        key={feature.id}
+                        style={styles.desktopBoostCard}
+                        onPress={() => handleFeaturePurchase(feature)}
+                      >
+                        <ImageBackground
+                          source={bannerImages[index]}
+                          style={styles.desktopBoostImage}
+                          imageStyle={styles.desktopBoostImageStyle}
+                        >
+                          <View style={styles.desktopBoostGradient} />
+                          <View style={styles.desktopBoostContent}>
+                            <Text style={styles.desktopBoostCardTitle} numberOfLines={2}>{feature.title}</Text>
+                            <Text style={styles.desktopBoostCardDescription}>{feature.description}</Text>
+                            <View style={styles.desktopBoostPrice}>
+                              <Text style={styles.desktopBoostPriceText}>{feature.cost} BetaCoin</Text>
+                            </View>
+                          </View>
+                        </ImageBackground>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : (
+          /* Mobile Layout - Original Structure */
+          <>
         {/* Transaction History Quick Access */}
         <View style={[styles.transactionSection, isDesktop && styles.transactionSectionDesktop]}>
           <View style={styles.transactionHeader}>
@@ -733,8 +1015,12 @@ export default function WalletScreen() {
             </View>
           )}
         </View>
+          </>
+        )}
 
-        {/* Visibility Boosts */}
+
+        {/* Visibility Boosts - Mobile Only */}
+        {!isDesktop && (
         <View style={[styles.boostsSection, isDesktop && styles.boostsSectionDesktop]}>
           <Text style={[styles.boostsTitle, { color: colors.text.primary }]}>Boost to Convert...</Text>
           <Text style={[styles.boostsSubtitle, { color: colors.text.secondary }]}>Different feature to make the listing extra visibility by using BetaCoins to boost</Text>
@@ -780,6 +1066,7 @@ export default function WalletScreen() {
             );
           })}
         </View>
+        )}
 
         {/* Purchase Modal */}
         <Modal
@@ -1815,5 +2102,455 @@ const styles = StyleSheet.create({
   diamondCountSmall: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  // Desktop Layout Styles
+  desktopMainContent: {
+    flexDirection: 'row',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+    gap: 24,
+    paddingHorizontal: 32,
+  },
+  desktopLeftColumn: {
+    flex: 1,
+    minWidth: 0, // Allow flex shrinking
+  },
+  desktopRightColumn: {
+    flex: 1,
+    minWidth: 0, // Allow flex shrinking
+  },
+  // Desktop Boost Features Grid
+  boostsGridDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'space-between',
+  },
+  boostBannerCardDesktop: {
+    width: '48%',
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  boostBannerImageDesktop: {
+    height: 120,
+    justifyContent: 'flex-end',
+  },
+  // Completely New Desktop Layout Styles
+  desktopMainContainer: {
+    maxWidth: 1400,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 40,
+    gap: 32,
+  },
+  // Header Styles
+  headerDesktop: {
+    paddingHorizontal: 40,
+    paddingVertical: 20,
+    borderRadius: 16,
+    marginHorizontal: 40,
+    marginBottom: 24,
+  },
+  headerTitleDesktop: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  headerActionsDesktop: {
+    gap: 20,
+  },
+  headerButtonDesktop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Balance Row
+  desktopBalanceRow: {
+    flexDirection: 'row',
+    gap: 24,
+    marginBottom: 32,
+  },
+  balanceCardDesktopNew: {
+    flex: 1,
+    height: 160,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  // Content Row
+  desktopContentRow: {
+    flexDirection: 'row',
+    gap: 24,
+    marginBottom: 32,
+  },
+  desktopColumn: {
+    flex: 1,
+    minWidth: 0,
+  },
+  desktopSection: {
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  desktopSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  desktopSectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  desktopViewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  desktopViewAllText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Transaction Card
+  desktopTransactionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  desktopTransactionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  desktopTransactionInfo: {
+    flex: 1,
+  },
+  desktopTransactionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  desktopTransactionSubtitle: {
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  // Conversion Card
+  desktopConversionCard: {
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  desktopConversionSubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  desktopConversionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 12,
+  },
+  desktopConversionInput: {
+    flex: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+  },
+  desktopInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  desktopIncrementButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopNumberSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  desktopInput: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    minWidth: 50,
+  },
+  desktopInputLabel: {
+    fontSize: 18,
+  },
+  desktopConversionArrow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+  },
+  desktopConversionArrowText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  desktopConversionOutput: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+  },
+  desktopOutputValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  desktopOutputLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginLeft: 8,
+  },
+  desktopDiamondInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  desktopDiamondEmoji: {
+    fontSize: 16,
+  },
+  desktopDiamondText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  desktopConvertButton: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  desktopConvertButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  // Features
+  desktopFeaturesBadge: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  desktopFeaturesBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  desktopEmptyState: {
+    alignItems: 'center',
+    padding: 32,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderStyle: 'dashed',
+  },
+  desktopEmptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  desktopEmptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  desktopEmptySubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  desktopFeaturesList: {
+    gap: 12,
+  },
+  desktopFeatureCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  desktopFeatureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  desktopFeatureInfo: {
+    flex: 1,
+  },
+  desktopFeatureTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  desktopFeatureDetails: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  desktopFeatureAction: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  desktopFeatureActionText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Boost Section
+  desktopBoostRow: {
+    marginBottom: 32,
+  },
+  desktopBoostSection: {
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  desktopBoostHeader: {
+    marginBottom: 24,
+  },
+  desktopBoostTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  desktopBoostSubtitle: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  desktopBoostGrid: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  desktopBoostCard: {
+    flex: 1,
+    height: 140,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  desktopBoostImage: {
+    height: 140,
+    justifyContent: 'flex-end',
+  },
+  desktopBoostImageStyle: {
+    borderRadius: 12,
+  },
+  desktopBoostGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '60%',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  desktopBoostContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    zIndex: 2,
+  },
+  desktopBoostCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  desktopBoostCardDescription: {
+    fontSize: 12,
+    color: 'white',
+    lineHeight: 16,
+    marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  desktopBoostPrice: {
+    alignItems: 'flex-start',
+  },
+  desktopBoostPriceText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFD700',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 });
