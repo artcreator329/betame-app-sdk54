@@ -13,33 +13,21 @@
       "backgroundColor": "#0f1419"
     },
     "backgroundColor": "#0f1419",
-    "newArchEnabled": false,
-    "linking": {
-      "prefixes": [
-        "betame://",
-        "https://betame.com.my"
-      ],
-      "config": {
-        "screens": {
-          "profile/[userId]": "profile/:userId",
-          "service/[id]": "service/:id",
-          "auth/reset-password": "auth/reset-password",
-          "auth/verify-email": "auth/verify-email",
-          "payment/success": "payment/success",
-          "payment/cancel": "payment/cancel",
-          "payment/failed": "payment/failed"
-        }
-      }
-    },
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "config": {
         "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
       },
       "bundleIdentifier": "com.betame.app",
-        "buildNumber": "20",
+      "buildNumber": "20",
       "backgroundColor": "#0f1419",
-      "appleTeamId": "T72JDH8ZL6"
+      "appleTeamId": "T72JDH8ZL6",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to location to help you find nearby services and provide location-based features.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to location to help you find nearby services and provide location-based features.",
+        "NSLocationAlwaysUsageDescription": "This app needs access to location to help you find nearby services and provide location-based features."
+      }
     },
     "android": {
       "config": {
@@ -61,6 +49,11 @@
       "favicon": "./assets/images/favicon.png",
       "config": {
         "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}"
+      },
+      "build": {
+        "babel": {
+          "include": []
+        }
       }
     },
     "plugins": [
@@ -84,7 +77,10 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
+      "router": {
+        "origin": false,
+        "unstable_src": "./app"
+      },
       "eas": {
         "projectId": "205a3431-8510-43a6-8801-b21297ac679e"
       }

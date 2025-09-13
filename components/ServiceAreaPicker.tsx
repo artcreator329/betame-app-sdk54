@@ -9,7 +9,8 @@ import {
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
+import { PlatformMapView as MapView, PlatformMarker as Marker, PLATFORM_PROVIDER_GOOGLE as PROVIDER_GOOGLE } from './PlatformMapView';
+// Note: Circle component needs separate handling for web platform
 import { MapPin, Plus, Minus, Search } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';

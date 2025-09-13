@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, List, Map as MapIcon, ChevronDown, Grid3X3 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { PlatformMapView as MapView, PlatformMarker as Marker, PLATFORM_PROVIDER_GOOGLE as PROVIDER_GOOGLE } from '@/components/PlatformMapView';
 import { ServiceService, Service as ServiceFromLib } from '@/lib/service-service';
 import { CategoryService } from '@/lib/category-service';
 import { Service } from '@/types/service';
@@ -165,7 +165,6 @@ export default function NearbyScreen() {
       
       {/* Right side - Map */}
       <View style={styles.desktopMapContainer}>
-        <Text style={{color: 'red', fontSize: 20}}>MAP CONTAINER RENDERED</Text>
         {renderMapView()}
       </View>
     </View>

@@ -146,6 +146,18 @@ export default function HomeScreen() {
   const autoSlideTimerRef = useRef<number | null>(null);
   const [isAutoSliding, setIsAutoSliding] = useState(true);
 
+  // Helper function to calculate banner width consistently
+  const getBannerWidth = useCallback(() => {
+    if (isDesktop) {
+      const desktopMaxWidth = 1400;
+      const desktopPadding = 48; // 24px on each side
+      const bannerMargin = 80; // 40px on each side
+      const effectiveMaxWidth = Math.min(screenWidth, desktopMaxWidth) - desktopPadding - bannerMargin;
+      return effectiveMaxWidth;
+    }
+    return screenWidth - 40;
+  }, [isDesktop]);
+
   // Calculate adaptive bottom padding for Android devices
   const getAdaptiveBottomPadding = () => {
     if (Platform.OS === 'android') {
@@ -272,7 +284,7 @@ export default function HomeScreen() {
   );
 
   const handleSlideChange = (event: any) => {
-    const bannerWidth = isDesktop ? screenWidth - 200 : screenWidth - 40;
+    const bannerWidth = getBannerWidth();
     const slideIndex = Math.round(event.nativeEvent.contentOffset.x / bannerWidth);
     setCurrentSlide(slideIndex);
   };
@@ -286,7 +298,7 @@ export default function HomeScreen() {
     autoSlideTimerRef.current = setInterval(() => {
       setCurrentSlide(prevSlide => {
         const nextSlide = (prevSlide + 1) % banners.length;
-        const bannerWidth = isDesktop ? screenWidth - 200 : screenWidth - 40;
+        const bannerWidth = getBannerWidth();
         
         // Scroll to the next slide
         bannerScrollViewRef.current?.scrollTo({
@@ -297,7 +309,7 @@ export default function HomeScreen() {
         return nextSlide;
       });
     }, 3000); // Change slide every 3 seconds
-  }, [banners.length, isAutoSliding, isDesktop]);
+  }, [banners.length, isAutoSliding, getBannerWidth]);
 
   const stopAutoSlide = useCallback(() => {
     if (autoSlideTimerRef.current) {
@@ -425,97 +437,101 @@ export default function HomeScreen() {
 
 
         {/* Banner Ad Space */}
-        <View style={[styles.bannerContainer, { shadowColor: colors.shadow.medium }]}>
-          {banners.length > 0 ? (
-            <>
-              <ScrollView
-                ref={bannerScrollViewRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={handleSlideChange}
-                onTouchStart={handleBannerTouchStart}
-                onTouchEnd={handleBannerTouchEnd}
-                style={styles.bannerSlider}
-                nestedScrollEnabled={true}
-              >
-                {banners.map((item) => {
-                  const bannerWidth = isDesktop ? screenWidth - 200 : screenWidth - 40;
-                  const bannerHeight = Math.round(bannerWidth * (425 / 1200));
-                  
-                  // Check if there's any text content to display
-                  const hasTextContent = item.title || item.description || item.link_url;
-                  
-                  const handleBannerClick = async () => {
-                    try {
-                      // Increment click count
-                      await BannerService.incrementClickCount(item.id);
-                      
-                      // Handle banner click - could open link or navigate
-                      if (item.link_url) {
-                        // For now, just show an alert
-                        Alert.alert('Banner Clicked', `Banner: ${item.title}`);
-                      }
-                    } catch (error) {
-                      console.error('Error tracking banner click:', error);
-                      // Still show the alert even if tracking fails
-                      if (item.link_url) {
-                        Alert.alert('Banner Clicked', `Banner: ${item.title}`);
-                      }
+        {banners.length > 0 ? (
+          <View style={[styles.bannerContainer, { shadowColor: colors.shadow.medium }]}>
+            <ScrollView
+              ref={bannerScrollViewRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={handleSlideChange}
+              onTouchStart={handleBannerTouchStart}
+              onTouchEnd={handleBannerTouchEnd}
+              style={styles.bannerSlider}
+              nestedScrollEnabled={true}
+            >
+              {banners.map((item) => {
+                const bannerWidth = getBannerWidth();
+                const bannerHeight = Math.round(bannerWidth * (425 / 1200));
+                
+                // Check if there's any text content to display
+                const hasTextContent = item.title || item.description || item.link_url;
+                
+                const handleBannerClick = async () => {
+                  try {
+                    // Increment click count
+                    await BannerService.incrementClickCount(item.id);
+                    
+                    // Handle banner click - could open link or navigate
+                    if (item.link_url) {
+                      // For now, just show an alert
+                      Alert.alert('Banner Clicked', `Banner: ${item.title}`);
                     }
-                  };
-                  
-                  return (
-                    <View key={item.id}>
+                  } catch (error) {
+                    console.error('Error tracking banner click:', error);
+                    // Still show the alert even if tracking fails
+                    if (item.link_url) {
+                      Alert.alert('Banner Clicked', `Banner: ${item.title}`);
+                    }
+                  }
+                };
+                
+                return (
+                  <View key={item.id}>
                       <TouchableOpacity 
                         style={[styles.bannerSlide, { 
                           width: bannerWidth,
-                          height: bannerHeight 
+                          height: bannerHeight,
+                          backgroundColor: '#f8f9fa' // Add background color
                         }]}
                         onPress={handleBannerClick}
                         activeOpacity={0.9}
                       >
                         <Image 
                           source={{ uri: item.image_url }} 
-                          style={[styles.bannerImage, { height: bannerHeight }]}
-                          resizeMode="cover"
+                          style={[styles.bannerImage, { 
+                            width: bannerWidth,
+                            height: bannerHeight 
+                          }]}
+                          resizeMode="contain"
                         />
-                        {hasTextContent && (
-                          <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]}>
-                            <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
-                            {item.description && (
-                              <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.description}</Text>
-                            )}
-                            {item.link_url && (
-                              <View style={styles.bannerButton}>
-                                <Text style={styles.bannerButtonText}>Learn More</Text>
-                              </View>
-                            )}
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-              </ScrollView>
-              <View style={styles.bannerIndicators}>
-                {banners.map((_, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.indicator,
-                      index === currentSlide && styles.activeIndicator,
-                    ]}
-                  />
-                ))}
-              </View>
-            </>
-          ) : (
+                      {hasTextContent && (
+                        <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]}>
+                          <Text style={[styles.bannerTitle, { color: colors.text.white }]}>{item.title}</Text>
+                          {item.description && (
+                            <Text style={[styles.bannerSubtext, { color: colors.text.white }]}>{item.description}</Text>
+                          )}
+                          {item.link_url && (
+                            <View style={styles.bannerButton}>
+                              <Text style={styles.bannerButtonText}>Learn More</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </ScrollView>
+            <View style={styles.bannerIndicators}>
+              {banners.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.indicator,
+                    index === currentSlide && styles.activeIndicator,
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.bannerContainer, { shadowColor: colors.shadow.medium }]}>
             <View style={styles.noBannersContainer}>
               <Text style={styles.noBannersText}>No banners available</Text>
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Nearby Services */}
         <View style={[styles.section, { backgroundColor: colors.background.tertiary }]}>
@@ -827,7 +843,6 @@ const styles = StyleSheet.create({
     borderRadius: isDesktop ? 16 : 12,
     overflow: 'hidden',
     position: 'relative',
-    height: isDesktop ? 200 : 140,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -839,13 +854,12 @@ const styles = StyleSheet.create({
   },
   bannerSlider: {
     width: '100%',
-    height: '100%',
   },
   bannerSlide: {
     position: 'relative',
   },
   bannerImage: {
-    width: '100%',
+    // Width and height will be set dynamically
   },
   bannerOverlay: {
     position: 'absolute',
@@ -1081,7 +1095,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   noBannersContainer: {
-    height: 200,
+    height: isDesktop ? 200 : 140,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',

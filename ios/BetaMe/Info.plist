@@ -38,8 +38,8 @@
         </array>
       </dict>
     </array>
-    	<key>CFBundleVersion</key>
-	<string>20</string>
+    <key>CFBundleVersion</key>
+    <string>20</string>
     <key>GMSApiKey</key>
     <string><REDACTED_GOOGLE_API_KEY></string>
     <key>LSMinimumSystemVersion</key>
@@ -53,22 +53,18 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
-    <key>NSCameraUsageDescription</key>
-    <string>$(PRODUCT_NAME) needs camera access to take photos of your identity documents for eKYC verification, capture profile pictures, and document job completion. For example, we use the camera to verify your identity by taking photos of your ID card or passport during the verification process.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>$(PRODUCT_NAME) needs location access to show nearby services, enable location-based search, and provide accurate service area information. For example, we use your location to find service providers in your area and show relevant local services.</string>
+    <string>This app needs access to location to help you find nearby services and provide location-based features.</string>
     <key>NSLocationAlwaysUsageDescription</key>
-    <string>$(PRODUCT_NAME) needs location access to show nearby services, enable location-based search, and provide accurate service area information. For example, we use your location to find service providers in your area and show relevant local services.</string>
+    <string>This app needs access to location to help you find nearby services and provide location-based features.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>$(PRODUCT_NAME) needs location access to show nearby services, enable location-based search, and provide accurate service area information. For example, we use your location to find service providers in your area and show relevant local services.</string>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>$(PRODUCT_NAME) needs microphone access to record voice messages in chat conversations and capture audio for video content. For example, when sending voice messages to other users or recording videos with audio for job documentation.</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>$(PRODUCT_NAME) needs access to your photo library to select existing photos for profile pictures, upload documents for verification, and choose images for job documentation. For example, you can select a photo from your gallery to use as your profile picture or upload existing document photos for eKYC verification.</string>
+    <string>This app needs access to location to help you find nearby services and provide location-based features.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
     </array>
+    <key>RCTNewArchEnabled</key>
+    <true/>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

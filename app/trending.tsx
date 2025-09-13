@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -527,6 +528,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    ...(Platform.OS === 'web' && {
+      justifyContent: 'flex-start',
+    }),
   },
   trendingServicesList: {
     paddingHorizontal: 20,
@@ -535,6 +539,11 @@ const styles = StyleSheet.create({
   trendingCardWrapper: {
     width: '48%',
     marginBottom: 16,
+    ...(Platform.OS === 'web' && {
+      width: '18%',
+      marginBottom: 16,
+      marginRight: '2%',
+    }),
   },
   trendingListItem: {
     marginBottom: 12,

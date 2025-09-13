@@ -7,7 +7,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { PlatformMapView as MapView, PlatformMarker as Marker, PLATFORM_PROVIDER_GOOGLE as PROVIDER_GOOGLE } from '@/components/PlatformMapView';
 import { GOOGLE_PLACES_API_KEY } from '../config/maps';
 
 export default function TestMapScreen() {

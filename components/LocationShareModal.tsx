@@ -13,28 +13,8 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import { GOOGLE_PLACES_API_KEY } from '../config/maps';
 import Colors from '../constants/Colors';
 
-// Conditional import for MapView to handle native module availability
-let MapView: any = null;
-let Marker: any = null;
-let PROVIDER_GOOGLE: any = null;
-
-try {
-  const MapsModule = require('react-native-maps');
-  MapView = MapsModule.default || MapsModule.MapView;
-  Marker = MapsModule.Marker;
-  PROVIDER_GOOGLE = MapsModule.PROVIDER_GOOGLE;
-} catch (error) {
-  console.warn('react-native-maps not available:', error);
-  // Fallback components
-  MapView = ({ children, style, ...props }: any) => (
-    <View style={[style, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]} {...props}>
-      <Text>Map not available</Text>
-      {children}
-    </View>
-  );
-  Marker = ({ children }: any) => <View>{children}</View>;
-  PROVIDER_GOOGLE = 'google';
-}
+// Use platform-specific MapView
+import { PlatformMapView as MapView, PlatformMarker as Marker, PLATFORM_PROVIDER_GOOGLE as PROVIDER_GOOGLE } from './PlatformMapView';
 
 interface LocationShareModalProps {
   visible: boolean;

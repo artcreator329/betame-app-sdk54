@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Test the RPC function directly to see what's happening
+ * DISABLED: Test the RPC function directly to see what's happening
+ * This script has been disabled to prevent test notifications from appearing
  */
 
+console.log('❌ This test script has been disabled to prevent test notifications from appearing.');
+console.log('If you need to test notifications, use the NotificationTestPanel component instead.');
+process.exit(0);
+
+// DISABLED CODE BELOW - DO NOT UNCOMMENT
+/*
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
