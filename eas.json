@@ -7,6 +7,10 @@
       "developmentClient": true,
       "distribution": "internal",
       "prebuildCommand": "node scripts/pre-build-hook.js",
+      "env": {
+        "EXPO_PUBLIC_OPENAI_API_KEY": "$EXPO_PUBLIC_OPENAI_API_KEY",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "$EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
+      },
       "ios": {
         "resourceClass": "m-medium",
         "buildConfiguration": "Debug"
@@ -15,6 +19,10 @@
     "preview": {
       "distribution": "internal",
       "prebuildCommand": "node scripts/pre-build-hook.js",
+      "env": {
+        "EXPO_PUBLIC_OPENAI_API_KEY": "$EXPO_PUBLIC_OPENAI_API_KEY",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "$EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
+      },
       "ios": {
         "resourceClass": "m-medium",
         "buildConfiguration": "Release"
@@ -22,6 +30,10 @@
     },
     "production": {
       "prebuildCommand": "node scripts/pre-build-hook.js",
+      "env": {
+        "EXPO_PUBLIC_OPENAI_API_KEY": "$EXPO_PUBLIC_OPENAI_API_KEY",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "$EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
+      },
       "ios": {
         "resourceClass": "m-medium",
         "buildConfiguration": "Release"

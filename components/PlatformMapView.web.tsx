@@ -31,7 +31,7 @@ export interface MarkerProps {
 }
 
 // Google Maps API key from environment
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '<REDACTED_GOOGLE_API_KEY>';
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 // Load Google Maps script
 let googleMapsLoaded = false;

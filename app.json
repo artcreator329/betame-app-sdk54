@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "config": {
-        "googleMapsApiKey": "<REDACTED_GOOGLE_API_KEY>"
+        "googleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
       },
       "bundleIdentifier": "com.betame.app",
       "buildNumber": "20",
@@ -32,7 +32,7 @@
     "android": {
       "config": {
         "googleMaps": {
-          "apiKey": "<REDACTED_GOOGLE_API_KEY>"
+          "apiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
         }
       },
       "package": "com.betame.app",
